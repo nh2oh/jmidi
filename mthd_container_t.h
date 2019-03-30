@@ -30,7 +30,7 @@ public:
 
 	// Does not include the 4 byte "MThd" and 4 byte data-length fields
 	int32_t data_size() const;
-	// Includes the "MThd" and data-length fields
+	// Includes the "MThd" and 4-byte data-length fields
 	uint32_t size() const;	
 private:
 	const unsigned char *p_ {};  // points at the 'M' of "MThd..."

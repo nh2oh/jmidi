@@ -77,7 +77,6 @@ detect_chunk_type_result_t detect_chunk_type(const unsigned char *p, uint32_t ma
 			++p; ++n;
 		}
 	}
-	// p+=4;
 
 	result.data_length = be_2_native<uint32_t>(p);
 	result.size = 8 + result.data_length;

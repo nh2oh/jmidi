@@ -172,7 +172,7 @@ std::string print(const mtrk_event_container_t&);
 // - Should rename the present "container" types to "view;" these are still useful and 
 //   can form the basis for the internal implementation.  
 //
-class mtrk_event_container_sbo_t {
+class mtrk_event_container_sbo_t {  // sizeof() == 24
 private:
 	//
 	// About:
@@ -198,21 +198,26 @@ private:
 	bigsmall_t d_;
 	unsigned char bigsmall_flag;  // ==1u => small; ==0u => big
 
+	void set_flag_big() {
+		this->bigsmall_flag = 0x00u;
+	};
+	void set_flag_small() {
+		this->bigsmall_flag = 0x01u;
+	};
 
+public:
+	//
+	// is_small() && is_big() are only public so that the function
+	// print(mtrk_event_container_sbo_t,mtrk_sbo_print_opts::debug) can report 
+	// on the state of the object.  
+	//
 	bool is_small() const {
 		return (this->bigsmall_flag == 0x01u);
 	};
 	bool is_big() const {
 		return !is_small();
 	};
-	void set_flag_big() {
-		this->bigsmall_flag = 0x00u;
-	}
-	void set_flag_small() {
-		this->bigsmall_flag = 0x01u;
-	}
 
-public:
 	// For callers who have pre-computed the exact size of the event and who
 	// can also supply a midi status byte if applicible, ex, an mtrk_container_iterator_t.  
 	// For values of sz => bigsmall_t => big_t, d_.b.tag.midi_status == 0, since
@@ -273,6 +278,17 @@ public:
 		}
 	};
 
+	// Pointer directly to start of this->data_, without regard to 
+	// this->is_small()
+	const unsigned char *raw_data() const {
+		return &(this->d_.s.arry[0]);
+	};
+	// Pointer directly to start of this->data_, without regard to 
+	// this->is_small()
+	const unsigned char *raw_flag() const {
+		return &(this->bigsmall_flag);
+	};
+
 	// size of the event not including the delta-t field (but including the length field 
 	// in the case of sysex & meta events)
 	int32_t delta_time() const {
@@ -325,7 +341,12 @@ public:
 	};
 };
 
-std::string print(const mtrk_event_container_sbo_t&);
+enum class mtrk_sbo_print_opts {
+	normal,
+	debug
+};
+std::string print(const mtrk_event_container_sbo_t&,
+			mtrk_sbo_print_opts=mtrk_sbo_print_opts::normal);
 
 
 
