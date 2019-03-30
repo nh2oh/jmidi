@@ -13,8 +13,6 @@
 
 int midi_example() {
 
-	test_midi_vl_field_equiv_value();
-
 	auto rawfiledata = dbk::readfile("C:\\Users\\ben\\Desktop\\scr\\CLEMENTI.MID").d;
 	//auto rawfiledata = dbk::readfile("C:\\Users\\ben\\Desktop\\scr\\test.mid").d;
 	auto rawfile_check_result = validate_smf(&rawfiledata[0],rawfiledata.size(),

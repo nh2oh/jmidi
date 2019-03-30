@@ -56,21 +56,33 @@ detect_chunk_type_result_t detect_chunk_type(const unsigned char *p, int32_t max
 		return result;
 	}
 
-	// All chunks begin w/ A 4-char identifier
+	// All chunks begin w/ A 4-char ASCII identifier
 	uint32_t id = be_2_native<uint32_t>(p);
 	if (id == 0x4D546864) {  // Mthd
 		result.type = chunk_type::header;
+		p+=4;
 	} else if (id == 0x4D54726B) {  // MTrk
 		result.type = chunk_type::track;
+		p+=4;
 	} else {
 		result.type = chunk_type::unknown;
+		int n = 0;
+		while (n<4) {
+			if (*p>=127) {
+				result.type = chunk_type::invalid;
+				result.msg = "All chunks begin w/a 4-byte ASCII ID, but the present ID "
+					"field contains non-ASCII bytes.";
+				return result;
+			}
+			++p; ++n;
+		}
 	}
-	p+=4;
+	// p+=4;
 
 	result.data_length = be_2_native<int32_t>(p);
 	result.size = 8 + result.data_length;
 
-	if (result.data_length < 0 || result.size > max_size) {
+	if (result.data_length<0 || result.size>max_size) {
 		result.type = chunk_type::invalid;
 		result.msg = "result.data_length < 0 || result.size > max_size.  ";
 		result.msg += "SMF chunks must have data length >= 0 but not exceeding the size of the file.";
@@ -541,7 +553,7 @@ int midi_channel_event_n_bytes(unsigned char p, unsigned char s) {
 	if ((p & 0x80)==0x80) {
 		++N;
 		s=p;
-	} else if ((s & 0x80) != 0x80) {  // Both p,s are not status bytes
+	} else if ((s & 0x80) != 0x80) {  // Both p,s are non-status bytes
 		return 0;
 	}
 

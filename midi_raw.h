@@ -44,7 +44,6 @@ T le_2_native(const unsigned char *p) {
 };
 
 
-
 // 
 // The max size of a vl field is 4 bytes, and the largest value it may encode is
 // 0x0FFFFFFF (BE-encoded as: FF FF FF 7F) => 268,435,455, which fits safely in
@@ -112,6 +111,7 @@ constexpr int midi_vl_field_size(T val) {
 	return n;
 }
 
+
 //
 // TODO: untested
 //
@@ -134,6 +134,7 @@ It midi_write_vl_field(It beg, It end, T val) {
 
 	return beg;
 }
+
 
 //
 // Encodes T in the form of a VL quantity, the maximum size of which, according
@@ -195,11 +196,6 @@ OIt hexascii(InIt beg, InIt end, OIt out) {
 
 	return out;
 };
-
-
-
-
-
 
 
 //
@@ -271,10 +267,21 @@ enum class smf_event_type : uint8_t {  // MTrk events
 
 std::string print(const smf_event_type&);
 //
+// arg 1:  Pointer to the first byte of a delta-t field
+// arg 2:  MIDI status byte to be applied to the present event if, for the first byte
+//         following the delta-t field, !(*p&0x80) (ie, if the first byte following the
+//         delta-t field is not an 0xFF,0xF0,0xF7 or a midi status byte).  
+// arg 3:  The maximum number of times p can be incremented.  
+//
 // parse_mtrk_event_type() will parse & validate the delta-t field and evaluate the status
-// byte immediately following.  It will _not_ validate other quantities internal to the event
-// (ie, beyond the status byte) such as the <length> field in sysex_f0/f7 events.  Will return
-// smf_event_type::invalid under the following circumstances:
+// byte immediately following.  If the event is a MIDI event, either by a status byte
+// local to the event or by virtue of the running-status byte (arg 2), the event size 
+// calculation is based on the status of this byte; data bytes beyond the status byte are
+// not evaluated.  If the event is a meta or sysex-f0/f7 type, the <length> field following
+// the byte following the delta-t field is parsed and validated; bytes subsequent to the 
+// <length> field are _not_ evaluated.  
+//
+// Will return smf_event_type::invalid under the following circumstances:
 // -> the delta_t field is invalid (ex: > 4 bytes) or > max_size
 // -> the size of the delta_t field + the calculated num-data/status-bytes > max_size
 // -> the byte immediately following the delta_t field is not a status byte AND (s is not
@@ -283,11 +290,6 @@ std::string print(const smf_event_type&);
 // Note that except in the one limited case above, the data bytes are not validated as plausible
 // data bytes.  This is up to the relevant parse_() function.  
 //
-// It would be really nice if this could return the size of the event, however, the size 
-// calculation is different for sysex, meta, and channel events, and in the latter case can not
-// even be made without knowing the present midi_status (for running_status streams).  Although
-// I am trying to treat mtrk events "polymorphically," since all events have a size, that size
-// can only be calculated once the event has been classified/parsed.  
 //
 // TODO:  Rename to "detect_...()" ?
 //
@@ -295,7 +297,7 @@ struct parse_mtrk_event_result_t {
 	midi_vl_field_interpreted delta_t {};
 	smf_event_type type {smf_event_type::invalid};
 
-	// 030919
+	// Added 030919
 	int32_t size {0};
 	int32_t data_length {0};
 };
