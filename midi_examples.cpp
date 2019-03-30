@@ -34,8 +34,6 @@ int midi_example() {
 	//auto t3 = mf.get_track(2);
 	//std::cout << "TRACK 3\n" << print(t3) << std::endl << std::endl;
 
-	auto x = midi_interpret_vl_field_tests();
-
 	return 0;
 }
 

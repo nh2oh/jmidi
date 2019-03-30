@@ -57,7 +57,7 @@ struct midi_vl_field_interpreted {
 	bool is_valid {false};
 };
 midi_vl_field_interpreted midi_interpret_vl_field(const unsigned char*);
-int midi_interpret_vl_field_tests();
+
 
 //
 // Returns an integer with the bit representation of the input encoded as a midi
@@ -93,7 +93,6 @@ constexpr uint32_t midi_vl_field_equiv_value(T val) {
 
 	return res;
 }
-int test_midi_vl_field_equiv_value();
 
 
 //

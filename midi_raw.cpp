@@ -7,33 +7,6 @@
 #include <iostream>
 
 
-int test_midi_vl_field_equiv_value() {
-
-	uint32_t a {137};
-	uint32_t a_ans = 33033;
-	uint32_t a_test = midi_vl_field_equiv_value(a);
-
-	uint32_t b {106903};
-	uint32_t b_ans = 8831767;
-	uint32_t b_test = midi_vl_field_equiv_value(b);
-	uint32_t b_testr = midi_vl_field_equiv_value(b_test);
-
-	uint32_t c {268435455};  // 0x0F'FF'FF'FF 
-	uint32_t c_ans = 4294967167;  // 0xFF'FF'FF'7F 
-	uint32_t c_test = midi_vl_field_equiv_value(c);
-
-	uint32_t d = 0xFFFFFFFF;
-	uint32_t d_ans = 1; 
-	uint32_t d_test = midi_vl_field_equiv_value(d);
-
-	uint32_t e = 255;
-	uint32_t e_ans = 0x817F; 
-	uint32_t e_test = midi_vl_field_equiv_value(e);
-
-	return 0;
-}
-
-
 midi_vl_field_interpreted midi_interpret_vl_field(const unsigned char* p) {
 	midi_vl_field_interpreted result {};
 	result.val = 0;
@@ -54,40 +27,6 @@ midi_vl_field_interpreted midi_interpret_vl_field(const unsigned char* p) {
 	return result;
 };
 
-int midi_interpret_vl_field_tests() {
-	struct tests_t {
-		std::array<unsigned char,6> field {0x00,0x00,0x00,0x00,0x00,0x00};
-		midi_vl_field_interpreted ans {};
-	};
-
-	std::vector<tests_t> p131_tests {
-		// Actually from p131
-		{{0x00,0x00,0x00,0x00,0x00,0x00},{0x00000000,1,true}},
-		{{0x40,0x00,0x00,0x00,0x00,0x00},{0x00000040,1,true}},
-		{{0x7F,0x00,0x00,0x00,0x00,0x00},{0x0000007F,1,true}},
-		{{0xFF,0x7F,0x00,0x00,0x00,0x00},{0x00003FFF,2,true}},
-		{{0x81,0x80,0x00,0x00,0x00,0x00},{0x00004000,3,true}},
-		{{0xC0,0x80,0x00,0x00,0x00,0x00},{0x00100000,3,true}},
-		{{0xFF,0xFF,0x7F,0x00,0x00,0x00},{0x001FFFFF,3,true}},
-		{{0x81,0x80,0x80,0x00,0x00,0x00},{0x00200000,4,true}},
-		{{0xC0,0x80,0x80,0x00,0x00,0x00},{0x08000000,4,true}},
-		{{0xFF,0xFF,0xFF,0x7F,0x00,0x00},{0x0FFFFFFF,4,true}},
-	};
-	for (const auto& e : p131_tests) {
-		auto res = midi_interpret_vl_field(&(e.field[0]));
-		if (res.val != e.ans.val) {
-			std::cout << "what" << std::endl;
-		}
-		if (res.N != e.ans.N) {
-			std::cout << "what" << std::endl;
-		}
-		if (res.is_valid != e.ans.is_valid) {
-			std::cout << "what" << std::endl;
-		}
-	}
-
-	return 0;
-}
 
 
 // Default value of sep == ' '; see header
