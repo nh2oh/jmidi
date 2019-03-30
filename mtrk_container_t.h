@@ -171,6 +171,7 @@ std::string print(const mtrk_event_container_t&);
 // TODO:
 // - Should rename the present "container" types to "view;" these are still useful and 
 //   can form the basis for the internal implementation.  
+// - sizeof(big_t) == 24 != 23
 //
 class mtrk_event_container_sbo_t {  // sizeof() == 24
 private:
@@ -178,7 +179,7 @@ private:
 	// About:
 	// ->  big.capacity >= big.size
 	//
-	struct big_t {  // sizeof() == 23
+	struct big_t {  // sizeof() == 23  TODO:  24 !
 		unsigned char *p;
 		uint32_t size {0};
 		uint32_t capacity;
@@ -216,6 +217,37 @@ public:
 	};
 	bool is_big() const {
 		return !is_small();
+	};
+
+	//
+	// Default ctor
+	//
+	//mtrk_event_container_sbo_t()=delete;
+
+	//
+	// Copy ctor
+	//
+	mtrk_event_container_sbo_t(const mtrk_event_container_sbo_t& rhs) :
+			d_(rhs.d_), bigsmall_flag(rhs.bigsmall_flag) {
+		if (this->is_big()) {
+			// Deep copy the pointed-at range
+			unsigned char *new_p = new unsigned char[this->d_.b.size];
+			std::copy(this->d_.b.p,this->d_.b.p+this->d_.b.size,new_p);
+			this->d_.b.p = new_p;
+		}
+	};
+	//
+	// Copy assignment
+	//
+	mtrk_event_container_sbo_t& operator=(const mtrk_event_container_sbo_t& rhs) {
+		this->d_ = rhs.d_;
+		this->bigsmall_flag = rhs.bigsmall_flag;
+		if (this->is_big()) {
+			// Deep copy the pointed-at range
+			unsigned char *new_p = new unsigned char[this->d_.b.size];
+			std::copy(this->d_.b.p,this->d_.b.p+this->d_.b.size,new_p);
+			this->d_.b.p = new_p;
+		}
 	};
 
 	// For callers who have pre-computed the exact size of the event and who
@@ -256,19 +288,7 @@ public:
 			this->set_flag_small();
 		}
 	};
-	//
-	// Copy ctor
-	//
-	mtrk_event_container_sbo_t(const mtrk_event_container_sbo_t& rhs) :
-			d_(rhs.d_), bigsmall_flag(rhs.bigsmall_flag) {
-		if (this->is_big()) {
-			// Deep copy the pointed-at range
-			unsigned char *new_p = new unsigned char[this->d_.b.size];
-			std::copy(this->d_.b.p,this->d_.b.p+this->d_.b.size,new_p);
-			this->d_.b.p = new_p;
-		}
 	
-	};
 
 	~mtrk_event_container_sbo_t() {
 		if (this->is_big()) {
