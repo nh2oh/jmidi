@@ -21,7 +21,7 @@ public:
 	mthd_container_t(const validate_mthd_chunk_result_t&);
 
 	// NB:  Second arg is the _exact_ size, not a max size
-	mthd_container_t(const unsigned char *p, int32_t sz) 
+	mthd_container_t(const unsigned char *p, uint32_t sz) 
 		: p_(p),size_(sz) {};
 
 	int16_t format() const;
@@ -31,10 +31,10 @@ public:
 	// Does not include the 4 byte "MThd" and 4 byte data-length fields
 	int32_t data_size() const;
 	// Includes the "MThd" and data-length fields
-	int32_t size() const;	
+	uint32_t size() const;	
 private:
 	const unsigned char *p_ {};  // points at the 'M' of "MThd..."
-	int32_t size_ {0};
+	uint32_t size_ {0};
 };
 
 enum class midi_time_division_field_type_t {

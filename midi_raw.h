@@ -217,11 +217,11 @@ enum class chunk_type {
 //
 struct detect_chunk_type_result_t {
 	chunk_type type {chunk_type::invalid};
-	int32_t size {0};  // 4-byte ASCII header + 4-byte length field + reported length
-	int32_t data_length {0};  // reported length (not including the 8 byte header)
+	uint32_t size {0};  // 4-byte ASCII header + 4-byte length field + reported length
+	uint32_t data_length {0};  // reported length (not including the 8 byte header)
 	std::string msg {};
 };
-detect_chunk_type_result_t detect_chunk_type(const unsigned char*, int32_t=0);
+detect_chunk_type_result_t detect_chunk_type(const unsigned char*, uint32_t=0);
 
 struct validate_mthd_chunk_result_t {
 	bool is_valid {false};
@@ -380,7 +380,7 @@ channel_msg_type channel_msg_type_from_status_byte(unsigned char, unsigned char=
 struct chunk_idx_t {
 	chunk_type type {};
 	int32_t offset {0};
-	int32_t size {0};
+	uint32_t size {0};
 };
 struct validate_smf_result_t {
 	bool is_valid {};
@@ -389,7 +389,7 @@ struct validate_smf_result_t {
 	// Needed by the smf_container_t ctor
 	std::string fname {};
 	const unsigned char *p {};
-	int32_t size {0};
+	uint32_t size {0};
 	int32_t n_mtrk {0};  // Number of MTrk chunks
 	int32_t n_unknown {0};
 	std::vector<chunk_idx_t> chunk_idxs {};

@@ -19,7 +19,7 @@ int16_t mthd_container_t::ntrks() const {
 uint16_t mthd_container_t::division() const {
 	return be_2_native<uint16_t>(this->p_+8+2+2);
 }
-int32_t mthd_container_t::size() const {
+uint32_t mthd_container_t::size() const {
 	return this->size_;
 }
 int32_t mthd_container_t::data_size() const {

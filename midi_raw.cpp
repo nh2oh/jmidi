@@ -48,7 +48,7 @@ std::string print_hexascii(const unsigned char *p, int n, const char sep) {
 }
 
 
-detect_chunk_type_result_t detect_chunk_type(const unsigned char *p, int32_t max_size) {
+detect_chunk_type_result_t detect_chunk_type(const unsigned char *p, uint32_t max_size) {
 	detect_chunk_type_result_t result {};
 	if (max_size < 8) {
 		result.type = chunk_type::invalid;
@@ -79,7 +79,7 @@ detect_chunk_type_result_t detect_chunk_type(const unsigned char *p, int32_t max
 	}
 	// p+=4;
 
-	result.data_length = be_2_native<int32_t>(p);
+	result.data_length = be_2_native<uint32_t>(p);
 	result.size = 8 + result.data_length;
 
 	if (result.data_length<0 || result.size>max_size) {

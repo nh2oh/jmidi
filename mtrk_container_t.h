@@ -12,7 +12,7 @@ class mtrk_event_container_sbo_t;
 // Obtained from the begin() && end() methods of class mtrk_container_t.  
 class mtrk_container_iterator_t {
 public:
-	mtrk_container_iterator_t(const mtrk_container_t* c, int32_t o, unsigned char ms)
+	mtrk_container_iterator_t(const mtrk_container_t* c, uint32_t o, unsigned char ms)
 		: container_(c), container_offset_(o), midi_status_(ms) {};
 	mtrk_event_container_t operator*() const;
 	mtrk_event_container_sbo_t operator!() const;
@@ -27,7 +27,7 @@ public:
 	bool operator!=(const mtrk_container_iterator_t&) const;
 private:
 	const mtrk_container_t *container_ {};
-	int32_t container_offset_ {0};  // offset from this->container_.p_
+	uint32_t container_offset_ {0};  // offset from this->container_.p_
 
 	// All points in a midi stream have an implied (or explicit) midi-status
 	unsigned char midi_status_ {0};
@@ -78,15 +78,15 @@ private:
 class mtrk_container_t {
 public:
 	mtrk_container_t(const validate_mtrk_chunk_result_t&);
-	mtrk_container_t(const unsigned char*, int32_t);
+	mtrk_container_t(const unsigned char*, uint32_t);
 
 	int32_t data_size() const;
-	int32_t size() const;
+	uint32_t size() const;
 	mtrk_container_iterator_t begin() const;
 	mtrk_container_iterator_t end() const;
 private:
 	const unsigned char *p_ {};  // Points at the 'M' of "MTrk..."
-	int32_t size_ {0};
+	uint32_t size_ {0};
 	friend class mtrk_container_iterator_t;
 };
 std::string print(const mtrk_container_t&);

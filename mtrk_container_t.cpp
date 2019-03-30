@@ -132,7 +132,7 @@ mtrk_container_t::mtrk_container_t(const validate_mtrk_chunk_result_t& mtrk) {
 	this->p_ = mtrk.p;
 	this->size_ = mtrk.size;
 }
-mtrk_container_t::mtrk_container_t(const unsigned char *p, int32_t sz) {
+mtrk_container_t::mtrk_container_t(const unsigned char *p, uint32_t sz) {
 	this->p_ = p;
 	this->size_ = sz;
 }
@@ -140,7 +140,7 @@ mtrk_container_t::mtrk_container_t(const unsigned char *p, int32_t sz) {
 int32_t mtrk_container_t::data_size() const {
 	return be_2_native<int32_t>(this->p_+4);
 }
-int32_t mtrk_container_t::size() const {
+uint32_t mtrk_container_t::size() const {
 	//return this->data_size()+4;
 	return this->size_;
 }
