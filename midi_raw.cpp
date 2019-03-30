@@ -68,7 +68,7 @@ detect_chunk_type_result_t detect_chunk_type(const unsigned char *p, int32_t max
 		result.type = chunk_type::unknown;
 		int n = 0;
 		while (n<4) {
-			if (*p>=127) {
+			if (*p>=127 || *p<32) {
 				result.type = chunk_type::invalid;
 				result.msg = "All chunks begin w/a 4-byte ASCII ID, but the present ID "
 					"field contains non-ASCII bytes.";
