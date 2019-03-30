@@ -180,7 +180,7 @@ private:
 	//
 	struct big_t {  // sizeof() == 23
 		unsigned char *p;
-		uint32_t size;
+		uint32_t size {0};
 		uint32_t capacity;
 		uint32_t dt_fixed;
 		smf_event_type sevt;  // "smf_event_type"
@@ -256,6 +256,20 @@ public:
 			this->set_flag_small();
 		}
 	};
+	//
+	// Copy ctor
+	//
+	mtrk_event_container_sbo_t(const mtrk_event_container_sbo_t& rhs) :
+			d_(rhs.d_), bigsmall_flag(rhs.bigsmall_flag) {
+		if (this->is_big()) {
+			// Deep copy the pointed-at range
+			unsigned char *new_p = new unsigned char[this->d_.b.size];
+			std::copy(this->d_.b.p,this->d_.b.p+this->d_.b.size,new_p);
+			this->d_.b.p = new_p;
+		}
+	
+	};
+
 	~mtrk_event_container_sbo_t() {
 		if (this->is_big()) {
 			delete this->d_.b.p;
