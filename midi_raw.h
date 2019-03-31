@@ -224,13 +224,39 @@ struct detect_chunk_type_result_t {
 };
 detect_chunk_type_result_t detect_chunk_type(const unsigned char*, uint32_t=0);
 
+
+//
+// <Header Chunk> = <chunk type> <length> <format> <ntrks> <division>  
+//
+// Checks that:
+// -> p points at the start of a valid MThd chunk (ie, the 'M' of MThd...),
+// -> that the size of the chunk is >=6 (p 133:  "<length> is a 32-bit
+//    representation of the number 6 (high byte first)."  
+//    However,
+//    p 134:  "Also, more parameters may be added to the MThd chunk in the 
+//    future: it is important to read and honor the length, even if it is 
+//    longer than 6.")
+// -> ntrks<=1 if format==0
+//    ntrks==0 is allowed though it is debatible if a valid smf may have 0
+//    tracks.  
+//
+enum class mthd_validation_error : uint8_t {
+	invalid_chunk,
+	non_header_chunk,
+	data_length_invalid,
+	inconsistent_ntrks_format_zero,
+	no_error
+};
 struct validate_mthd_chunk_result_t {
-	bool is_valid {false};
-	std::string msg {};
-	uint32_t size {0};  //  Always == reported size (data_length) + 8
 	const unsigned char *p {};  // points at the 'M' of "MThd"...
+	uint32_t size {0};  //  Always == reported size (data_length) + 8
+	mthd_validation_error error {};
+	bool is_valid {false};
 };
 validate_mthd_chunk_result_t validate_mthd_chunk(const unsigned char*, uint32_t=0);
+std::string print_error(const validate_mthd_chunk_result_t&);
+inline auto constexpr x = sizeof(validate_mthd_chunk_result_t);
+// 72->16
 
 struct validate_mtrk_chunk_result_t {
 	bool is_valid {false};

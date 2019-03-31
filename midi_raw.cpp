@@ -92,35 +92,24 @@ detect_chunk_type_result_t detect_chunk_type(const unsigned char *p, uint32_t ma
 }
 
 
-//
-// <Header Chunk> = <chunk type> <length> <format> <ntrks> <division>  
-//
-// Checks that:
-// -> p points at the start of a valid MThd chunk (ie, the 'M' of MThd...),
-// -> that the size of the chunk is >=6 (p 133:  "<length> is a 32-bit
-//    representation of the number 6 (high byte first)."  
-//    However,
-//    p 134:  "Also, more parameters may be added to the MThd chunk in the 
-//    future: it is important to read and honor the length, even if it is 
-//    longer than 6.")
-// -> ntrks<=1 if format==0
-//    ntrks==0 is allowed though it is debatible if a valid smf may have 0
-//    tracks.  
-//
+
 validate_mthd_chunk_result_t validate_mthd_chunk(const unsigned char *p, uint32_t max_size) {
 	validate_mthd_chunk_result_t result {};
 
 	detect_chunk_type_result_t chunk_detect = detect_chunk_type(p,max_size);
 	if (chunk_detect.type != chunk_type::header) {
 		result.is_valid = false;
-		result.msg += "chunk_detect.type != chunk_type::header\n";
-		result.msg += ("chunk_detect.msg = " + chunk_detect.msg + "\n");
+		if (chunk_detect.type==chunk_type::invalid) {
+			result.error = mthd_validation_error::invalid_chunk;
+		} else {
+			result.error = mthd_validation_error::non_header_chunk;
+		}
 		return result;
 	}
 
 	if (chunk_detect.data_length < 6) {
-		result.msg = "MThd chunks must have a data length >= 6";
 		result.is_valid = false;
+		result.error = mthd_validation_error::data_length_invalid;
 		return result;
 	}
 	
@@ -133,7 +122,7 @@ validate_mthd_chunk_result_t validate_mthd_chunk(const unsigned char *p, uint32_
 	// Note that i am making it legal to have 0 tracks, for example, to represent 
 	// an smf under construction.
 	if (format==0 && ntrks>1) {
-		result.msg = "format==0 but ntrks>1; format 0 smf's have only 1 track.";
+		result.error = mthd_validation_error::inconsistent_ntrks_format_zero;
 		result.is_valid = false;
 		return result;
 	}
@@ -143,6 +132,31 @@ validate_mthd_chunk_result_t validate_mthd_chunk(const unsigned char *p, uint32_
 	result.p = p;  // pointer to the 'M' of "MThd"..., ie the _start_ of the mthd chunk
 	return result;
 }
+
+
+std::string print_error(const validate_mthd_chunk_result_t& mthd) {
+	std::string result {};
+
+	switch (mthd.error) {
+		case mthd_validation_error::invalid_chunk:
+			result += "Not a valid SMF chunk.  The 4-char ASCII 'type' field may be "
+				"missing, or the calculated chunk size may exceed the size of the "
+				"underlying array.";
+			break;
+		case mthd_validation_error::non_header_chunk:
+			result += "chunk_detect.type != chunk_type::header.";
+			break;
+		case mthd_validation_error::data_length_invalid:
+			result += "MThd chunks must have a data length >= 6";
+			break;
+		case mthd_validation_error::inconsistent_ntrks_format_zero:
+			result += "format==0 but ntrks>1; format 0 smf's have exactly 1 track.";
+			break;
+	}
+
+	return result;
+}
+
 
 
 //
