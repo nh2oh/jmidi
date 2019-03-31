@@ -181,7 +181,7 @@ private:
 	//
 	struct big_t {  // sizeof() == 23  TODO:  24 !
 		unsigned char *p;
-		uint32_t size {0};
+		uint32_t size;
 		uint32_t capacity;
 		uint32_t dt_fixed;
 		smf_event_type sevt;  // "smf_event_type"
@@ -227,7 +227,7 @@ public:
 	//
 	// Copy ctor
 	//
-	mtrk_event_container_sbo_t(const mtrk_event_container_sbo_t& rhs) :
+	/*mtrk_event_container_sbo_t(const mtrk_event_container_sbo_t& rhs) :
 			d_(rhs.d_), bigsmall_flag(rhs.bigsmall_flag) {
 		if (this->is_big()) {
 			// Deep copy the pointed-at range
@@ -248,7 +248,7 @@ public:
 			std::copy(this->d_.b.p,this->d_.b.p+this->d_.b.size,new_p);
 			this->d_.b.p = new_p;
 		}
-	};
+	};*/
 
 	// For callers who have pre-computed the exact size of the event and who
 	// can also supply a midi status byte if applicible, ex, an mtrk_container_iterator_t.  

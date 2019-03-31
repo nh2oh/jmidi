@@ -4,6 +4,7 @@
 #include <array>
 #include <limits> // CHAR_BIT
 #include <type_traits> // std::enable_if<>, is_integral<>, is_unsigned<>
+#include <cstdint>
 
 //
 // TODO:  validate_, parse_, detect_ naming inconsistency
@@ -226,11 +227,10 @@ detect_chunk_type_result_t detect_chunk_type(const unsigned char*, uint32_t=0);
 struct validate_mthd_chunk_result_t {
 	bool is_valid {false};
 	std::string msg {};
-	int32_t data_length {0};  // the reported length; does not include the "MThd" and length fields
-	int32_t size {0};  //  Always == reported size (data_length) + 8
+	uint32_t size {0};  //  Always == reported size (data_length) + 8
 	const unsigned char *p {};  // points at the 'M' of "MThd"...
 };
-validate_mthd_chunk_result_t validate_mthd_chunk(const unsigned char*, int32_t=0);
+validate_mthd_chunk_result_t validate_mthd_chunk(const unsigned char*, uint32_t=0);
 
 struct validate_mtrk_chunk_result_t {
 	bool is_valid {false};

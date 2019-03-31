@@ -93,10 +93,21 @@ detect_chunk_type_result_t detect_chunk_type(const unsigned char *p, uint32_t ma
 
 
 //
-// Checks that p points at the start of a valid MThd chunk (ie, the 'M' of MThd...),
-// and that the size of the chunk is what is expected for an MThd.  
-// 
-validate_mthd_chunk_result_t validate_mthd_chunk(const unsigned char *p, int32_t max_size) {
+// <Header Chunk> = <chunk type> <length> <format> <ntrks> <division>  
+//
+// Checks that:
+// -> p points at the start of a valid MThd chunk (ie, the 'M' of MThd...),
+// -> that the size of the chunk is >=6 (p 133:  "<length> is a 32-bit
+//    representation of the number 6 (high byte first)."  
+//    However,
+//    p 134:  "Also, more parameters may be added to the MThd chunk in the 
+//    future: it is important to read and honor the length, even if it is 
+//    longer than 6.")
+// -> ntrks<=1 if format==0
+//    ntrks==0 is allowed though it is debatible if a valid smf may have 0
+//    tracks.  
+//
+validate_mthd_chunk_result_t validate_mthd_chunk(const unsigned char *p, uint32_t max_size) {
 	validate_mthd_chunk_result_t result {};
 
 	detect_chunk_type_result_t chunk_detect = detect_chunk_type(p,max_size);
@@ -107,15 +118,28 @@ validate_mthd_chunk_result_t validate_mthd_chunk(const unsigned char *p, int32_t
 		return result;
 	}
 
-	if (chunk_detect.data_length != 6) {
-		result.msg = "MThd chunks must have a data length of 6";
+	if (chunk_detect.data_length < 6) {
+		result.msg = "MThd chunks must have a data length >= 6";
 		result.is_valid = false;
 		return result;
 	}
 	
+	// <Header Chunk> = <chunk type> <length> <format> <ntrks> <division> 
+	//                   MThd uint32_t uint16_t uint16_t uint16_t
+	uint16_t format = be_2_native<uint16_t>(p+8);
+	uint16_t ntrks = be_2_native<uint16_t>(p+10);
+	//uint16_t division = be_2_native<uint16_t>(p+12);
+
+	// Note that i am making it legal to have 0 tracks, for example, to represent 
+	// an smf under construction.
+	if (format==0 && ntrks>1) {
+		result.msg = "format==0 but ntrks>1; format 0 smf's have only 1 track.";
+		result.is_valid = false;
+		return result;
+	}
+
 	result.is_valid = true;
 	result.size = chunk_detect.size;
-	result.data_length = chunk_detect.data_length;
 	result.p = p;  // pointer to the 'M' of "MThd"..., ie the _start_ of the mthd chunk
 	return result;
 }
