@@ -52,7 +52,7 @@ detect_chunk_type_result_t detect_chunk_type(const unsigned char *p, uint32_t ma
 	detect_chunk_type_result_t result {};
 	if (max_size < 8) {
 		result.type = chunk_type::invalid;
-		result.msg = "(max_size < 8) but all smf chunks begin with an 8 byte header.";
+		result.error = chunk_validation_error::size_exceeds_underlying;
 		return result;
 	}
 
@@ -70,8 +70,7 @@ detect_chunk_type_result_t detect_chunk_type(const unsigned char *p, uint32_t ma
 		while (n<4) {
 			if (*p>=127 || *p<32) {
 				result.type = chunk_type::invalid;
-				result.msg = "All chunks begin w/a 4-byte ASCII ID, but the present ID "
-					"field contains non-ASCII bytes.";
+				result.error = chunk_validation_error::invalid_type_field;
 				return result;
 			}
 			++p; ++n;
@@ -81,16 +80,34 @@ detect_chunk_type_result_t detect_chunk_type(const unsigned char *p, uint32_t ma
 	result.data_length = be_2_native<uint32_t>(p);
 	result.size = 8 + result.data_length;
 
-	if (result.data_length<0 || result.size>max_size) {
+	if (result.size>max_size) {
 		result.type = chunk_type::invalid;
-		result.msg = "result.data_length < 0 || result.size > max_size.  ";
-		result.msg += "SMF chunks must have data length >= 0 but not exceeding the size of the file.";
+		result.error = chunk_validation_error::size_exceeds_underlying;
 		return result;
 	}
 
 	return result;
 }
 
+
+std::string print_error(const detect_chunk_type_result_t& chunk) {
+	std::string result {};
+
+	switch (chunk.error) {
+		case chunk_validation_error::size_exceeds_underlying:
+			result += "Invalid chunk header:  the calculated chunk size exceeds "
+				"the size of the underlying array.";
+			break;
+		case chunk_validation_error::invalid_type_field:
+			result += "Invalid chunk header:  The 4-char ASCII 'type' field is missing.";
+			break;
+		case chunk_validation_error::unknown_error:
+			result += "Invalid chunk header:  Unknown error.";
+			break;
+	}
+
+	return result;
+}
 
 
 validate_mthd_chunk_result_t validate_mthd_chunk(const unsigned char *p, uint32_t max_size) {
@@ -117,7 +134,6 @@ validate_mthd_chunk_result_t validate_mthd_chunk(const unsigned char *p, uint32_
 	//                   MThd uint32_t uint16_t uint16_t uint16_t
 	uint16_t format = be_2_native<uint16_t>(p+8);
 	uint16_t ntrks = be_2_native<uint16_t>(p+10);
-	//uint16_t division = be_2_native<uint16_t>(p+12);
 
 	// Note that i am making it legal to have 0 tracks, for example, to represent 
 	// an smf under construction.
@@ -152,6 +168,9 @@ std::string print_error(const validate_mthd_chunk_result_t& mthd) {
 		case mthd_validation_error::inconsistent_ntrks_format_zero:
 			result += "format==0 but ntrks>1; format 0 smf's have exactly 1 track.";
 			break;
+		case mthd_validation_error::unknown_error:
+			result += "Invalid MThd chunk:  Unknown error.";
+			break;
 	}
 
 	return result;
@@ -182,7 +201,7 @@ validate_mtrk_chunk_result_t validate_mtrk_chunk(const unsigned char *p, int32_t
 	if (chunk_detect.type != chunk_type::track) {
 		result.is_valid = false;
 		result.msg += "chunk_detect.type != chunk_type::track\n";
-		result.msg += ("chunk_detect.msg = " + chunk_detect.msg + "\n");
+		result.msg += ("chunk_detect.msg = " + print_error(chunk_detect) + "\n");
 		return result;
 	}
 
@@ -658,7 +677,7 @@ validate_smf_result_t validate_smf(const unsigned char *p, int32_t offset_end,
 		if (curr_chunk.type == chunk_type::invalid) {
 			result.is_valid = false;
 			result.msg += "curr_chunk.type == chunk_type::invalid\ncurr_chunk_type.msg== ";
-			result.msg += curr_chunk.msg;
+			result.msg += print_error(curr_chunk);
 			return result;
 		} else if (curr_chunk.type == chunk_type::header) {
 			if (offset > 0) {

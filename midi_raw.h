@@ -216,14 +216,21 @@ enum class chunk_type {
 // + the reported size does not exceed the max_size supplied as the second argument.  
 // Does _not_ inspect anything past the end of the length field.  
 //
+enum class chunk_validation_error : uint8_t {
+	size_exceeds_underlying,
+	invalid_type_field,  // 4-char ASCII field
+	unknown_error,
+	no_error
+};
 struct detect_chunk_type_result_t {
 	chunk_type type {chunk_type::invalid};
 	uint32_t size {0};  // 4-byte ASCII header + 4-byte length field + reported length
 	uint32_t data_length {0};  // reported length (not including the 8 byte header)
-	std::string msg {};
+	//std::string msg {};
+	chunk_validation_error error {chunk_validation_error::unknown_error};
 };
 detect_chunk_type_result_t detect_chunk_type(const unsigned char*, uint32_t=0);
-
+std::string print_error(const detect_chunk_type_result_t&);
 
 //
 // <Header Chunk> = <chunk type> <length> <format> <ntrks> <division>  
@@ -245,18 +252,18 @@ enum class mthd_validation_error : uint8_t {
 	non_header_chunk,
 	data_length_invalid,
 	inconsistent_ntrks_format_zero,
+	unknown_error,
 	no_error
 };
 struct validate_mthd_chunk_result_t {
 	const unsigned char *p {};  // points at the 'M' of "MThd"...
 	uint32_t size {0};  //  Always == reported size (data_length) + 8
-	mthd_validation_error error {};
+	mthd_validation_error error {mthd_validation_error::unknown_error};
 	bool is_valid {false};
 };
 validate_mthd_chunk_result_t validate_mthd_chunk(const unsigned char*, uint32_t=0);
 std::string print_error(const validate_mthd_chunk_result_t&);
-inline auto constexpr x = sizeof(validate_mthd_chunk_result_t);
-// 72->16
+
 
 struct validate_mtrk_chunk_result_t {
 	bool is_valid {false};
