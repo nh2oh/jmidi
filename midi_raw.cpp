@@ -86,6 +86,7 @@ detect_chunk_type_result_t detect_chunk_type(const unsigned char *p, uint32_t ma
 		return result;
 	}
 
+	result.error = chunk_validation_error::no_error;
 	return result;
 }
 
@@ -144,6 +145,7 @@ validate_mthd_chunk_result_t validate_mthd_chunk(const unsigned char *p, uint32_
 	}
 
 	result.is_valid = true;
+	result.error = mthd_validation_error::no_error;
 	result.size = chunk_detect.size;
 	result.p = p;  // pointer to the 'M' of "MThd"..., ie the _start_ of the mthd chunk
 	return result;

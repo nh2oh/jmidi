@@ -212,9 +212,10 @@ enum class chunk_type {
 	invalid
 };
 //
-// Checks for the 4-char id and the 4-byte size.  Verifies that the id + size field 
-// + the reported size does not exceed the max_size supplied as the second argument.  
-// Does _not_ inspect anything past the end of the length field.  
+// Checks for the 4-char ASCII id and the 4-byte size.  Verifies that 
+// the id + size field + the reported size does not exceed the max_size 
+// supplied as the second argument.  Does _not_ inspect anything past the
+// end of the length field.  
 //
 enum class chunk_validation_error : uint8_t {
 	size_exceeds_underlying,
@@ -226,7 +227,6 @@ struct detect_chunk_type_result_t {
 	chunk_type type {chunk_type::invalid};
 	uint32_t size {0};  // 4-byte ASCII header + 4-byte length field + reported length
 	uint32_t data_length {0};  // reported length (not including the 8 byte header)
-	//std::string msg {};
 	chunk_validation_error error {chunk_validation_error::unknown_error};
 };
 detect_chunk_type_result_t detect_chunk_type(const unsigned char*, uint32_t=0);
