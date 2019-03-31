@@ -37,6 +37,10 @@ private:
 	uint32_t size_ {0};
 };
 
+//
+// SMPTE => Society of Motion Picture and Television Engineers 
+// 16-bit:  [[1] frames-per-second] [resolution-within-frame]
+//
 enum class midi_time_division_field_type_t {
 	ticks_per_quarter,
 	SMPTE
@@ -44,10 +48,11 @@ enum class midi_time_division_field_type_t {
 midi_time_division_field_type_t detect_midi_time_division_type(uint16_t);
 uint16_t interpret_tpq_field(uint16_t);  // assumes midi_time_division_field_type_t::ticks_per_quarter
 struct midi_smpte_field {
-	int8_t time_code_fmt {0};
+	int8_t time_code_fmt {0};  
 	uint8_t units_per_frame {0};
 };
 midi_smpte_field interpret_smpte_field(uint16_t);  // assumes midi_time_division_field_type_t::SMPTE
 std::string print(const mthd_container_t&);
 
-
+double ticks_per_second();
+double seconds_per_tick();
