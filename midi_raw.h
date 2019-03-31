@@ -205,12 +205,13 @@ OIt hexascii(InIt beg, InIt end, OIt out) {
 // that is is always 4 bytes (is not a vl-type quantity).  From p. 132: "Your programs should 
 // expect alien chunks and treat them as if they weren't there."  
 //
-enum class chunk_type {
+enum class chunk_type : uint8_t {
 	header,  // MThd
 	track,  // MTrk
 	unknown,  // The std requires that unrecognized chunk types be permitted
 	invalid
 };
+
 //
 // Checks for the 4-char ASCII id and the 4-byte size.  Verifies that 
 // the id + size field + the reported size does not exceed the max_size 
@@ -219,7 +220,7 @@ enum class chunk_type {
 //
 enum class chunk_validation_error : uint8_t {
 	size_exceeds_underlying,
-	invalid_type_field,  // 4-char ASCII field
+	invalid_type_field,  // refers to the 4-char ASCII field
 	unknown_error,
 	no_error
 };

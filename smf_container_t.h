@@ -42,3 +42,57 @@ std::string print(const smf_container_t&);
 bool play(const smf_container_t&);
 
 
+
+//
+// smf_t
+//
+// Holds an smf; owns the underlying data
+//
+//
+class yay_mtrk_event_iterator_t;
+
+class smf_t {
+public:
+	smf_t(const validate_smf_result_t&);
+
+	uint32_t size() const;
+	uint16_t nchunks() const;
+
+	uint16_t format() const;
+	uint16_t ntrks() const;
+
+	yay_mtrk_event_iterator_t event_iterator_begin(int);  // int track number
+	yay_mtrk_event_iterator_t event_iterator_end(int);  // int track number
+private:
+	std::string fname_ {};
+	
+};
+
+//
+// Operations
+//
+// Print a list of on and off times for each note in each track in the file 
+// in order of cumtime-of-event for:
+// ex:  cumtime-of-event; 'on'; C4; velocity=x;
+// a) concurrent tracks
+// b) sequential tracks
+// 1)  Caller obtains ntrks track iterators, caller can integrate the delta-times.
+//     yay_mtrk_event_iterator_t derefs to an mtrk_event_container_sbo_t:
+//
+//
+// struct time_integrating_ymei_t {
+//   yay_mtrk_event_iterator_t it;
+//   midi_time_obj_t cumt;
+//   operator++()...;
+//   operator<()...;
+// }
+// std::vector<time_integrating_ymei_t> ymeis {ymei1,ymei2,ymei3};
+// while (true) {
+//   for (auto& curr_ymei=std::min(ymeis); (*(curr_ymei.it)).delta_t()==0; ++curr_ymei) {
+//     if (cev1.type()==midi_channel) {
+//       curr_timepoint.push_back({1,,cev1.onoff(),cev1.ch(),cev1.pitch(),cev1.velocity()});
+//     }
+//   }
+// }
+//   
+//
