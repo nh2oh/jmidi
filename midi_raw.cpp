@@ -497,7 +497,7 @@ parse_sysex_event_result_t parse_sysex_event(const unsigned char *p, int32_t max
 		return result;
 	}
 
-	if (*p != 0xF0 || *p != 0xFF) {
+	if (*p != 0xF0 && *p != 0xFF) {
 		result.is_valid = false;
 		return result;
 	}
@@ -703,6 +703,12 @@ validate_smf_result_t validate_smf(const unsigned char *p, int32_t offset_end,
 				result.is_valid = false;
 				result.msg += "curr_chunk.type == chunk_type::header but offset > 0.  ";
 				result.msg += "A valid midi file must contain only one MThd @ the very start.  \n";
+				return result;
+			}
+			validate_mthd_chunk_result_t mthd = validate_mthd_chunk(p+offset, offset_end-offset);
+			if (mthd.error != mthd_validation_error::no_error) {
+				result.is_valid = false;
+				result.msg += "mthd.error != mthd_validation_error::no_error";
 				return result;
 			}
 		} else if (curr_chunk.type == chunk_type::track) {

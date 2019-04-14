@@ -175,6 +175,10 @@ std::string print_hexascii(const unsigned char*, int, const char = ' ');
 
 
 //
+// TODO:  The error handeling here is complete ass
+//
+
+//
 // There are two types of chunks: the Header chunk, containing data pertaining to the entire file 
 // (only one per file), and the Track chunk (possibly >1 per file).  Both have a length field 
 // that is is always 4 bytes (is not a vl-type quantity).  From p. 132: "Your programs should 

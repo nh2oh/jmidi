@@ -171,7 +171,6 @@ std::string print(const mtrk_event_container_t&);
 // TODO:
 // - Should rename the present "container" types to "view;" these are still useful and 
 //   can form the basis for the internal implementation.  
-// - sizeof(big_t) == 24 != 23
 //
 class mtrk_event_container_sbo_t {  // sizeof() == 24
 private:
@@ -179,7 +178,7 @@ private:
 	// About:
 	// ->  big.capacity >= big.size
 	//
-	struct big_t {  // sizeof() == 23  TODO:  24 !
+	struct big_t {  // sizeof() == 24
 		unsigned char *p;
 		uint32_t size;
 		uint32_t capacity;
@@ -187,6 +186,7 @@ private:
 		smf_event_type sevt;  // "smf_event_type"
 		unsigned char midi_status;
 		uint8_t unused;
+		unsigned char bigsmall_flag;  // ==1u => small; ==0u => big
 	};
 	struct small_t {
 		std::array<unsigned char, sizeof(big_t)> arry;
@@ -197,13 +197,16 @@ private:
 	};
 
 	bigsmall_t d_;
-	unsigned char bigsmall_flag;  // ==1u => small; ==0u => big
 
 	void set_flag_big() {
-		this->bigsmall_flag = 0x00u;
+		if (this->is_small()) {
+			this->d_.b.bigsmall_flag = 0x00u;
+		}
 	};
 	void set_flag_small() {
-		this->bigsmall_flag = 0x01u;
+		if (this->is_big()) {
+			this->d_.b.bigsmall_flag = 0x01u;
+		}
 	};
 
 public:
@@ -212,8 +215,12 @@ public:
 	// print(mtrk_event_container_sbo_t,mtrk_sbo_print_opts::debug) can report 
 	// on the state of the object.  
 	//
+	// Note that b/c my flag is not external to the big/small_t structs, i have
+	// to make a possibly invalid read here.  I arbitrarily choose the convention
+	// of reading from d_.b (see also this->raw_flag()).  
+	//
 	bool is_small() const {
-		return (this->bigsmall_flag == 0x01u);
+		return (this->d_.b.bigsmall_flag == 0x01u);
 	};
 	bool is_big() const {
 		return !is_small();
@@ -320,11 +327,11 @@ public:
 	// Pointer directly to start of this->data_, without regard to 
 	// this->is_small()
 	const unsigned char *raw_flag() const {
-		return &(this->bigsmall_flag);
+		//return &(this->bigsmall_flag);
+		return &(this->d_.b.bigsmall_flag);
 	};
 
-	// size of the event not including the delta-t field (but including the length field 
-	// in the case of sysex & meta events)
+
 	int32_t delta_time() const {
 		if (this->is_small()) {
 			return midi_interpret_vl_field(&(this->d_.s.arry[0])).val;
@@ -342,8 +349,14 @@ public:
 		}
 	};
 
+	// size of the event not including the delta-t field (but including the length field 
+	// and type-byte in the case of sysex & meta events)
 	int32_t data_size() const {  // Does not include the delta-time
 		if (this->is_small()) {
+			// 041219
+			//detect_mtrk_event_type_dtstart_unsafe
+
+			// TODO:  this->d_.s.arry[sizeof(small_t)-1] is not the running_status...
 			auto evt = parse_mtrk_event_type(&(this->d_.s.arry[0]),
 				this->d_.s.arry[sizeof(small_t)-1],sizeof(small_t));
 			if (evt.type == smf_event_type::invalid) {

@@ -243,9 +243,9 @@ std::string print(const mtrk_event_container_sbo_t& evnt, mtrk_sbo_print_opts op
 			s += "sbo=>big   == ";
 		}
 		s += "{";
-		s += print_hexascii(evnt.raw_data(), 23, ' ');
-		s += "}; ";
-		s += "bigsmall_flag==";
+		s += print_hexascii(evnt.raw_data(), sizeof(mtrk_event_container_sbo_t), ' ');
+		s += "}; \n";
+		s += "\tbigsmall_flag==";
 		s += print_hexascii(evnt.raw_flag(), 1, ' ');
 	}
 	return s;
