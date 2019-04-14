@@ -220,7 +220,7 @@ std::string print_error(const detect_chunk_type_result_t&);
 //    future: it is important to read and honor the length, even if it is 
 //    longer than 6.")
 // -> ntrks<=1 if format==0
-//    ntrks==0 is allowed though it is debatible if a valid smf may have 0
+//    ntrks==0 is allowed though it is debatable if a valid smf may have 0
 //    tracks.  
 //
 enum class mthd_validation_error : uint8_t {
@@ -235,13 +235,36 @@ struct validate_mthd_chunk_result_t {
 	const unsigned char *p {};  // points at the 'M' of "MThd"...
 	uint32_t size {0};  //  Always == reported size (data_length) + 8
 	mthd_validation_error error {mthd_validation_error::unknown_error};
-	bool is_valid {false};
+	bool is_valid {false};  // TODO:  Get rid of this; callers should check error
 };
 validate_mthd_chunk_result_t validate_mthd_chunk(const unsigned char*, uint32_t=0);
 std::string print_error(const validate_mthd_chunk_result_t&);
 
-
+//
+// Checks that p points to the start of a valid MTrk chunk (ie, the 'M' of MTrk...),
+// then moves through the all events in the track and validates that each begins with a
+// valid vl delta-time, is one of midi_channel, meta, or sysex f0/f7, and that for each such event a
+// valid mtrk_event_container_t object can be created if necessary (it must be possible to
+// determine the size in bytes of each event).  
+//
+// If the input is a valid MTrk chunk, the validate_mtrk_chunk_result_t returned can be
+// passed to the ctor of mtrk_container_t to instantiate a valid object.  
+//
+// All the rules of the midi standard as regards sequences of MTrk events are validated
+// here for the case of the single track indicated by the input.  Ex, that each midi 
+// event has a status byte (either as part of the event or implictly through running 
+// status), etc.  
+//
+enum class mtrk_validation_error : uint8_t {
+	invalid_chunk,  // No 4-char ASCII header, reported size exceeds max-size, ...
+	non_track_chunk,  // *p != "MTrk"
+	data_length_not_match,  // Reported length does not match length of track
+	event_error,  // some sort of error w/an internal event
+	unknown_error,
+	no_error
+};
 struct validate_mtrk_chunk_result_t {
+	mtrk_validation_error error {mtrk_validation_error::unknown_error};
 	bool is_valid {false};
 	std::string msg {};
 	int32_t data_length {0};  // the reported length; does not include the "MTrk" and length fields
@@ -249,7 +272,7 @@ struct validate_mtrk_chunk_result_t {
 	const unsigned char *p {};  // points at the 'M' of "MTrk"...
 };
 validate_mtrk_chunk_result_t validate_mtrk_chunk(const unsigned char*, int32_t=0);
-
+std::string print_error(const validate_mtrk_chunk_result_t&);
 
 //
 // There are no sys_realtime messages in an mtrk event stream.  The set of valid sys_realtime 
@@ -307,7 +330,7 @@ struct parse_mtrk_event_result_t {
 	smf_event_type type {smf_event_type::invalid};
 
 	// Added 030919
-	int32_t size {0};
+	int32_t size {0};  // Includes the size of the delta_t field
 	int32_t data_length {0};
 };
 parse_mtrk_event_result_t parse_mtrk_event_type(const unsigned char*, unsigned char, int32_t=0);
@@ -386,6 +409,11 @@ int8_t channel_number_from_status_byte_unsafe(unsigned char);
 channel_msg_type channel_msg_type_from_status_byte(unsigned char, unsigned char=0);
 
 
+//
+// My smf_t, smf_container_t types do not index into each mtrk event, hence 
+// the mtrk event list's do not need to be parsed to construct these objects.  
+// The only important point is that the data be valid.  
+//
 struct chunk_idx_t {
 	chunk_type type {};
 	int32_t offset {0};
