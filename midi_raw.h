@@ -63,7 +63,7 @@ midi_vl_field_interpreted midi_interpret_vl_field(const unsigned char*);
 // Returns an integer with the bit representation of the input encoded as a midi
 // vl quantity.  Ex for:
 // input 0b1111'1111 == 0xFF == 255 => 0b1000'0001''0111'1111 == 0x817F == 33151
-// The largest value a midi vl field can accomodate is 0x0FFFFFFF == 268,435,455
+// The largest value a midi vl field can accommodate is 0x0FFFFFFF == 268,435,455
 // (note that the MSB of the max value is 0, not 7, corresponding to 4 leading 
 // 0's in the MSB of the binary representation).  
 //
@@ -175,7 +175,7 @@ std::string print_hexascii(const unsigned char*, int, const char = ' ');
 
 
 //
-// TODO:  The error handeling here is complete ass
+// TODO:  The error handling here is complete ass
 //
 
 //

@@ -175,7 +175,14 @@ std::string print(const mtrk_event_container_t&);
 class mtrk_event_container_sbo_t {  // sizeof() == 24
 private:
 	//
-	// About:
+	// Of the smf_event_types, only sysex_f0/f7 & meta events can be large enough to
+	// overflow the small buffer.  Hence, any midi message (channel_voice or 
+	// channel_mode) will fit in the small buffer.  These messages may or may not be
+	// in running_status so may or may not contain an explicit midi status byte.  
+	//
+	// For sysex_f0/f7 or meta events that overflow the small buffer, some of the
+	// fields presently in big_t make no sense; these messges overwrite any 
+	// running status, so the midi_status field makes no sense.  
 	// ->  big.capacity >= big.size
 	//
 	struct big_t {  // sizeof() == 24
@@ -234,19 +241,19 @@ public:
 	//
 	// Copy ctor
 	//
-	/*mtrk_event_container_sbo_t(const mtrk_event_container_sbo_t& rhs) :
-			d_(rhs.d_), bigsmall_flag(rhs.bigsmall_flag) {
+	mtrk_event_container_sbo_t(const mtrk_event_container_sbo_t& rhs) {
+		this->d_ = rhs.d_;
 		if (this->is_big()) {
 			// Deep copy the pointed-at range
-			unsigned char *new_p = new unsigned char[this->d_.b.size];
-			std::copy(this->d_.b.p,this->d_.b.p+this->d_.b.size,new_p);
+			unsigned char *new_p = new unsigned char[this->d_.b.capacity];
+			std::copy(this->d_.b.p,this->d_.b.p+this->d_.b.capacity,new_p);
 			this->d_.b.p = new_p;
 		}
 	};
 	//
 	// Copy assignment
 	//
-	mtrk_event_container_sbo_t& operator=(const mtrk_event_container_sbo_t& rhs) {
+	/*mtrk_event_container_sbo_t& operator=(const mtrk_event_container_sbo_t& rhs) {
 		this->d_ = rhs.d_;
 		this->bigsmall_flag = rhs.bigsmall_flag;
 		if (this->is_big()) {
