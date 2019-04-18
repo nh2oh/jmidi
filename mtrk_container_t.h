@@ -202,8 +202,11 @@ private:
 		big_t b;
 		small_t s;
 	};
-
+	
 	bigsmall_t d_;
+
+	static_assert(sizeof(small_t)==sizeof(big_t),"sizeof(small_t)!=sizeof(big_t)");
+	static_assert(sizeof(bigsmall_t)==sizeof(big_t),"sizeof(bigsmall_t)!=sizeof(big_t)");
 
 	void set_flag_big() {
 		if (this->is_small()) {
@@ -236,7 +239,7 @@ public:
 	//
 	// Default ctor
 	//
-	//mtrk_event_container_sbo_t()=delete;
+	mtrk_event_container_sbo_t()=delete;
 
 	//
 	// Copy ctor
@@ -251,19 +254,48 @@ public:
 		}
 	};
 	//
-	// Copy assignment
+	// Copy assignment; overwrites a pre-existing lhs 'this' w/ rhs
 	//
-	/*mtrk_event_container_sbo_t& operator=(const mtrk_event_container_sbo_t& rhs) {
+	mtrk_event_container_sbo_t& operator=(const mtrk_event_container_sbo_t& rhs) {
+		if (this->is_big()) {
+			delete this->d_.b.p;
+		}
 		this->d_ = rhs.d_;
-		this->bigsmall_flag = rhs.bigsmall_flag;
+		
 		if (this->is_big()) {
 			// Deep copy the pointed-at range
-			unsigned char *new_p = new unsigned char[this->d_.b.size];
-			std::copy(this->d_.b.p,this->d_.b.p+this->d_.b.size,new_p);
+			unsigned char *new_p = new unsigned char[this->d_.b.capacity];
+			std::copy(this->d_.b.p,this->d_.b.p+this->d_.b.capacity,new_p);
 			this->d_.b.p = new_p;
 		}
-	};*/
+	};
+	//
+	// Move ctor
+	//
+	mtrk_event_container_sbo_t(mtrk_event_container_sbo_t&& rhs) {
+		this->d_ = rhs.d_;
+		if (this->is_big()) {
+			rhs.set_flag_small();  // prevents ~rhs() from freeing its memory
+			// Note that this state of rhs is invalid as it almost certinally does
+			// not contain a valid "small" mtrk event
+		}
+	};
+	//
+	// Move assignment
+	//
+	mtrk_event_container_sbo_t& operator=(mtrk_event_container_sbo_t&& rhs) {
+		if (this->is_big()) {
+			delete this->d_.b.p;
+		}
+		this->d_ = rhs.d_;
+		if (rhs.is_big()) {
+			rhs.set_flag_small();  // prevents ~rhs() from freeing its memory
+			// Note that this state of rhs is invalid as it almost certinally does
+			// not contain a valid "small" mtrk event
+		}
+	};
 
+	//
 	// For callers who have pre-computed the exact size of the event and who
 	// can also supply a midi status byte if applicible, ex, an mtrk_container_iterator_t.  
 	// For values of sz => bigsmall_t => big_t, d_.b.tag.midi_status == 0, since
@@ -302,7 +334,6 @@ public:
 			this->set_flag_small();
 		}
 	};
-	
 
 	~mtrk_event_container_sbo_t() {
 		if (this->is_big()) {
@@ -318,6 +349,7 @@ public:
 		}
 	};
 
+	// TODO:  If small, this returns a ptr to a stack-allocated object...  Bad?
 	const unsigned char *data() const {
 		if (this->is_small()) {
 			return &(this->d_.s.arry[0]);
