@@ -268,6 +268,8 @@ public:
 			std::copy(this->d_.b.p,this->d_.b.p+this->d_.b.capacity,new_p);
 			this->d_.b.p = new_p;
 		}
+
+		return *this;
 	};
 	//
 	// Move ctor
@@ -293,6 +295,8 @@ public:
 			// Note that this state of rhs is invalid as it almost certinally does
 			// not contain a valid "small" mtrk event
 		}
+
+		return *this;
 	};
 
 	//
