@@ -12,11 +12,11 @@
 #include <type_traits>
 
 int midi_example() {
-
-	//auto rawfiledata = dbk::readfile("C:\\Users\\ben\\Desktop\\scr\\CLEMENTI.MID").d;
-	auto rawfiledata = dbk::readfile("C:\\Users\\ben\\Desktop\\scr\\test.mid").d;
-	auto rawfile_check_result = validate_smf(&rawfiledata[0],rawfiledata.size(),
-		"C:\\Users\\ben\\Desktop\\scr\\CLEMENTI.MID");
+	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\CLEMENTI.MID";
+	std::string fn = "C:\\Users\\ben\\Desktop\\scr\\test.mid";
+	auto rawfiledata = dbk::readfile(fn).d;
+	//auto rawfiledata = dbk::readfile("C:\\Users\\ben\\Desktop\\scr\\test.mid").d;
+	auto rawfile_check_result = validate_smf(&rawfiledata[0],rawfiledata.size(),fn);
 
 	smf_container_t mf {rawfile_check_result};
 	
