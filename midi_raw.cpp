@@ -1,4 +1,5 @@
 #include "midi_raw.h"
+#include "dbklib\byte_manipulation.h"
 #include <string>
 #include <array>
 #include <vector>
@@ -57,7 +58,7 @@ detect_chunk_type_result_t detect_chunk_type(const unsigned char *p, uint32_t ma
 	}
 
 	// All chunks begin w/ A 4-char ASCII identifier
-	uint32_t id = be_2_native<uint32_t>(p);
+	uint32_t id = dbk::be_2_native<uint32_t>(p);
 	if (id == 0x4D546864) {  // Mthd
 		result.type = chunk_type::header;
 		p+=4;
@@ -77,7 +78,7 @@ detect_chunk_type_result_t detect_chunk_type(const unsigned char *p, uint32_t ma
 		}
 	}
 
-	result.data_length = be_2_native<uint32_t>(p);
+	result.data_length = dbk::be_2_native<uint32_t>(p);
 	result.size = 8 + result.data_length;
 
 	if (result.size>max_size) {
@@ -133,8 +134,8 @@ validate_mthd_chunk_result_t validate_mthd_chunk(const unsigned char *p, uint32_
 	
 	// <Header Chunk> = <chunk type> <length> <format> <ntrks> <division> 
 	//                   MThd uint32_t uint16_t uint16_t uint16_t
-	uint16_t format = be_2_native<uint16_t>(p+8);
-	uint16_t ntrks = be_2_native<uint16_t>(p+10);
+	uint16_t format = dbk::be_2_native<uint16_t>(p+8);
+	uint16_t ntrks = dbk::be_2_native<uint16_t>(p+10);
 
 	// Note that i am making it legal to have 0 tracks, for example, to represent 
 	// an smf under construction.
@@ -199,7 +200,7 @@ validate_mtrk_chunk_result_t validate_mtrk_chunk(const unsigned char *p, int32_t
 
 	// Validate each mtrk event in the chunk
 	auto mtrk_reported_size = chunk_detect.size;  // be_2_native<uint32_t>(p+4)+8;
-	if (chunk_detect.size != (be_2_native<uint32_t>(p+4)+8)) {
+	if (chunk_detect.size != (dbk::be_2_native<uint32_t>(p+4)+8)) {
 		std::cout << "debug assertion fail: chunk_detect.size != "
 			"(be_2_native<uint32_t>(p+4)+8)" << std::endl;
 	}

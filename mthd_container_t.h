@@ -24,8 +24,8 @@ public:
 	mthd_container_t(const unsigned char *p, uint32_t sz) 
 		: p_(p),size_(sz) {};
 
-	int16_t format() const;
-	int16_t ntrks() const;
+	uint16_t format() const;
+	uint16_t ntrks() const;
 	uint16_t division() const;
 
 	// Does not include the 4 byte "MThd" and 4 byte data-length fields

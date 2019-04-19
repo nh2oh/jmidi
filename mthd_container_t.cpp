@@ -1,4 +1,5 @@
 #include "mthd_container_t.h"
+#include "dbklib\byte_manipulation.h"
 #include <cstdint>
 #include <string>
 
@@ -10,14 +11,14 @@ mthd_container_t::mthd_container_t(const validate_mthd_chunk_result_t& mthd) {
 	this->p_=mthd.p;
 	this->size_=mthd.size;
 }
-int16_t mthd_container_t::format() const {
-	return be_2_native<int16_t>(this->p_+8);
+uint16_t mthd_container_t::format() const {
+	return dbk::be_2_native<uint16_t>(this->p_+8);
 }
-int16_t mthd_container_t::ntrks() const {
-	return be_2_native<int16_t>(this->p_+8+2);
+uint16_t mthd_container_t::ntrks() const {
+	return dbk::be_2_native<uint16_t>(this->p_+8+2);
 }
 uint16_t mthd_container_t::division() const {
-	return be_2_native<uint16_t>(this->p_+8+2+2);
+	return dbk::be_2_native<uint16_t>(this->p_+8+2+2);
 }
 uint32_t mthd_container_t::size() const {
 	return this->size_;

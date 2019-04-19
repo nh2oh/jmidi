@@ -1,5 +1,6 @@
 #include "mtrk_container_t.h"
 #include "midi_raw.h"
+#include "dbklib\byte_manipulation.h"
 #include <string>
 
 
@@ -137,8 +138,9 @@ mtrk_container_t::mtrk_container_t(const unsigned char *p, uint32_t sz) {
 	this->size_ = sz;
 }
 
+// TODO:  int<->uint conversion
 int32_t mtrk_container_t::data_size() const {
-	return be_2_native<int32_t>(this->p_+4);
+	return dbk::be_2_native<uint32_t>(this->p_+4);
 }
 uint32_t mtrk_container_t::size() const {
 	//return this->data_size()+4;

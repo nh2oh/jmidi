@@ -10,41 +10,6 @@
 // TODO:  validate_, parse_, detect_ naming inconsistency
 //
 
-//
-// SMF files are big endian; be_2_native() interprets the bytes in the range
-// [p,p+sizeof(T)) such that a BE-encode integer is interpreted correctly on
-// both LE and BE architectures.  
-// TODO:  Require unsigned?
-//
-template<typename T>
-T be_2_native(const unsigned char *p) {
-	static_assert(std::is_integral<T>::value);
-
-	T result {0};
-	for (int i=0; i<sizeof(T); ++i) {
-		result = result << CHAR_BIT;
-		result += *(p+i);
-		// Note that the endianness of the native architecture is irrelevant; the 
-		// MSB is always going to be left-shifted CHAR_BIT*(sizeof(T)-1) times.  
-	}
-	return result;
-};
-
-//
-// TODO:  Untested
-//
-template<typename T>
-T le_2_native(const unsigned char *p) {
-	static_assert(std::is_integral<T>::value);
-
-	T result {0};
-	for (int i=0; i<sizeof(T); ++i) {
-		result += (*(p+i) << CHAR_BIT*i);
-	}
-	return result;
-};
-
-
 // 
 // The max size of a vl field is 4 bytes, and the largest value it may encode is
 // 0x0FFFFFFF (BE-encoded as: FF FF FF 7F) => 268,435,455, which fits safely in
