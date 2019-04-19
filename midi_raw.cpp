@@ -30,25 +30,6 @@ midi_vl_field_interpreted midi_interpret_vl_field(const unsigned char* p) {
 
 
 
-// Default value of sep == ' '; see header
-std::string print_hexascii(const unsigned char *p, int n, const char sep) {
-	std::string s {};  s.reserve(3*n);
-
-	std::array<unsigned char,16> nybble2ascii {'0','1','2','3','4','5',
-		'6','7','8','9','A','B','C','D','E','F'};
-
-	for (int i=0; i<n; ++i) {
-		s += nybble2ascii[((*p) & 0xF0)>>4];
-		s += nybble2ascii[((*p) & 0x0F)];
-		s += sep;
-		++p;
-	}
-	if (n>0) { s.pop_back(); }
-
-	return s;
-}
-
-
 detect_chunk_type_result_t detect_chunk_type(const unsigned char *p, uint32_t max_size) {
 	detect_chunk_type_result_t result {};
 	if (max_size < 8) {

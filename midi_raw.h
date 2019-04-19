@@ -136,9 +136,6 @@ std::array<unsigned char,4> midi_encode_vl_field(T val) {
 };
 
 
-std::string print_hexascii(const unsigned char*, int, const char = ' ');
-
-
 //
 // TODO:  The error handling here is complete ass
 //

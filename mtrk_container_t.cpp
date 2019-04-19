@@ -215,10 +215,10 @@ std::string print(const mtrk_event_container_t& evnt) {
 
 	auto ss = evnt.size();
 	auto ds = evnt.data_size();
-	std::string tests = print_hexascii(evnt.begin(), 10, ' ');
+	std::string tests = dbk::print_hexascii(evnt.begin(), 10, ' ');
 
-	s += ("[" + print_hexascii(evnt.begin(), evnt.size()-evnt.data_size(), ' ') + "] ");
-	s += print_hexascii(evnt.data_begin(), evnt.data_size(), ' ');
+	s += ("[" + dbk::print_hexascii(evnt.begin(), evnt.size()-evnt.data_size(), ' ') + "] ");
+	s += dbk::print_hexascii(evnt.data_begin(), evnt.data_size(), ' ');
 
 	return s;
 }
@@ -234,8 +234,8 @@ std::string print(const mtrk_event_container_sbo_t& evnt, mtrk_sbo_print_opts op
 	auto ds = evnt.data_size();
 	auto n = ss-ds;
 
-	s += ("[" + print_hexascii(evnt.data(), evnt.size()-evnt.data_size(), ' ') + "] ");
-	s += print_hexascii(evnt.data()+n, evnt.data_size(), ' ');
+	s += ("[" + dbk::print_hexascii(evnt.data(), evnt.size()-evnt.data_size(), ' ') + "] ");
+	s += dbk::print_hexascii(evnt.data()+n, evnt.data_size(), ' ');
 
 	if (opts == mtrk_sbo_print_opts::debug) {
 		s += "\n\t";
@@ -245,10 +245,10 @@ std::string print(const mtrk_event_container_sbo_t& evnt, mtrk_sbo_print_opts op
 			s += "sbo=>big   == ";
 		}
 		s += "{";
-		s += print_hexascii(evnt.raw_data(), sizeof(mtrk_event_container_sbo_t), ' ');
+		s += dbk::print_hexascii(evnt.raw_data(), sizeof(mtrk_event_container_sbo_t), ' ');
 		s += "}; \n";
 		s += "\tbigsmall_flag==";
-		s += print_hexascii(evnt.raw_flag(), 1, ' ');
+		s += dbk::print_hexascii(evnt.raw_flag(), 1, ' ');
 	}
 	return s;
 };
