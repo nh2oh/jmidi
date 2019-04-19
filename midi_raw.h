@@ -313,6 +313,18 @@ parse_mtrk_event_result_t parse_mtrk_event_type(const unsigned char*, unsigned c
 //
 smf_event_type detect_mtrk_event_type_unsafe(const unsigned char*, unsigned char=0);
 smf_event_type detect_mtrk_event_type_dtstart_unsafe(const unsigned char*, unsigned char=0);
+//
+// args:  ptr to first byte _following_ the dt, running status
+// If *arg1 is a midi status byte, 
+//   returns *arg1; it does not matter what arg2 is.  
+// If *arg1 is _not_ a midi status byte and == 0xF0u||0xF7u||0xFFu,
+//   returns 0x00u; it does not matter what arg2 is.  
+// if *arg1 is not a midi status byte and not 0xF0u||0xF7u||0xFFu,
+//   returns arg2 iff arg2 is a midi status byte.  
+//   returns 0x00u otherwise.  
+//
+unsigned char mtrk_event_get_midi_status_byte_unsafe(const unsigned char*, unsigned char=0u);
+
 
 struct parse_meta_event_result_t {
 	bool is_valid {false};
@@ -359,7 +371,7 @@ struct parse_channel_event_result_t {
 };
 parse_channel_event_result_t parse_channel_event(const unsigned char*, unsigned char=0, int32_t=0);
 bool midi_event_has_status_byte(const unsigned char*);
-unsigned char midi_event_get_status_byte(const unsigned char*);
+unsigned char midi_event_get_status_byte(const unsigned char*);  // dtstart
 // For the midi _channel_ event implied by the status byte arg 1 (or, if arg 1
 // is not a status byte, the status byte arg 2), returns the number of expected
 // data bytes + 1 if the first arg is a valid status byte; + 0 if arg 1 is not

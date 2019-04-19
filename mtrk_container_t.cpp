@@ -4,6 +4,71 @@
 #include <string>
 
 
+mtrk_iterator_t::mtrk_iterator_t(const mtrk_view_t& mtrk) {
+	this->container_ = &mtrk;
+	this->container_offset_ = 0;
+	this->midi_status_ = 0u;
+}
+mtrk_iterator_t::mtrk_iterator_t(const mtrk_view_t *mtrk, uint32_t offset, unsigned char s) {  // Private
+	this->container_ = mtrk;
+	this->container_offset_ = offset;
+	this->midi_status_ = s;
+}
+mtrk_event_container_sbo_t mtrk_iterator_t::operator*() const {
+	uint32_t maxinc = this->container_->size() -this->container_offset_;
+	const unsigned char *p = this->container_->data() + this->container_offset_;
+
+	auto event = parse_mtrk_event_type(p,this->midi_status_,maxinc);
+	return mtrk_event_container_sbo_t(p,event.size,this->midi_status_);
+}
+
+// TODO:  Should write an "..._unsafe_...()" func to just get the event size to replace
+// the call to parse_mtrk_event_type()
+mtrk_iterator_t& mtrk_iterator_t::operator++() {
+	uint32_t maxinc = this->container_->size() - this->container_offset_;
+	const unsigned char *p = this->container_->data() + this->container_offset_;
+
+	auto event = parse_mtrk_event_type(p,this->midi_status_,maxinc);
+	if (maxinc<=event.size) {  // this is the last event; return the end iterator
+		this->container_offset_ = 0;
+		this->midi_status_ = 0x00u;
+	} else {
+		p += event.size;
+		auto dt = midi_interpret_vl_field(p);
+		this->container_offset_ += event.size;
+		this->midi_status_ = mtrk_event_get_midi_status_byte_unsafe(p+dt.N,this->midi_status_);
+	}
+
+	return *this;
+}
+bool mtrk_iterator_t::operator<(const mtrk_iterator_t& rhs) const {
+	if (this->container_ == rhs.container_) {
+		return this->container_offset_ < rhs.container_offset_;
+	} else {
+		return false;
+	}
+}
+bool mtrk_iterator_t::operator==(const mtrk_iterator_t& rhs) const {
+	// I *could* compare midi_status_ as well, however, it is an error condition if it's
+	// different for the same offset.  
+	if (this->container_ == rhs.container_) {
+		return this->container_offset_ == rhs.container_offset_;
+	} else {
+		return false;
+	}
+}
+bool mtrk_iterator_t::operator!=(const mtrk_iterator_t& rhs) const {
+	return !(*this==rhs);
+}
+
+
+
+
+
+
+
+
+
 
 unsigned char mtrk_container_iterator_t::midi_status() const {
 	return this->midi_status_;
@@ -121,6 +186,70 @@ bool mtrk_container_iterator_t::operator==(const mtrk_container_iterator_t& rhs)
 bool mtrk_container_iterator_t::operator!=(const mtrk_container_iterator_t& rhs) const {
 	return !(*this==rhs);
 }
+
+
+
+
+mtrk_view_t::mtrk_view_t(const validate_mtrk_chunk_result_t& mtrk) {
+	if (!mtrk.is_valid) {
+		std::abort();
+	}
+
+	this->p_ = mtrk.p;
+	this->size_ = mtrk.size;
+}
+mtrk_view_t::mtrk_view_t(const unsigned char *p, uint32_t sz) {
+	this->p_ = p;
+	this->size_ = sz;
+}
+uint32_t mtrk_view_t::data_length() const {
+	return this->size_-8;
+	// Alternatively, could do:  return dbk::be_2_native<uint32_t>(this->p_+4);
+	// However, *(p_+4) might not be in cache, but size_ will always be hot.  
+}
+uint32_t mtrk_view_t::size() const {
+	return this->size_;
+}
+const unsigned char *mtrk_view_t::data() const {
+	return this->p_;
+}
+mtrk_iterator_t mtrk_view_t::begin() const {
+	// From the std p.135:  "The first event in each MTrk chunk must specify status"
+	// thus we know midi_event_get_status_byte(this->p_+8) will succeed
+	return mtrk_iterator_t::mtrk_iterator_t(this, uint32_t{8}, midi_event_get_status_byte(this->p_+8));
+}
+mtrk_iterator_t mtrk_view_t::end() const {
+	// Note that i am supplying an invalid midi status byte for this one-past-the-end 
+	// iterator.  
+	return mtrk_iterator_t::mtrk_iterator_t(this, this->size(), unsigned char {0});
+}
+bool mtrk_view_t::validate() const {
+	bool tf = true;
+	tf = tf && (this->size_-8 == dbk::be_2_native<uint32_t>(this->p_+4));
+
+	auto mtrk = validate_mtrk_chunk(this->p_,this->size_);
+	tf = tf && mtrk.is_valid;
+
+	return tf;
+}
+
+std::string print(const mtrk_view_t& mtrk) {
+	std::string s {};
+
+	for (mtrk_iterator_t it = mtrk.begin(); it != mtrk.end(); ++it) {
+		//auto ev = *it;
+		auto ev = *it;
+		s += print(ev,mtrk_sbo_print_opts::debug);
+		s += "\n";
+	}
+	//for (auto const& e : mtrk) {
+	//	s += print(e);
+	//	s += "\n";
+	//}
+
+	return s;
+}
+
 
 
 

@@ -318,6 +318,28 @@ smf_event_type detect_mtrk_event_type_dtstart_unsafe(const unsigned char *p, uns
 	return detect_mtrk_event_type_unsafe(p,s);
 }
 
+// p points at the first byte _past_ the dt
+unsigned char mtrk_event_get_midi_status_byte_unsafe(const unsigned char *p, unsigned char s) {
+	if (((*p)>>7)) {
+		if (*p!=0xF0u && *p!=0xF7u && *p!= 0xFFu) {
+			// *p is a valid midi status byte
+			return *p;
+		} else {
+			// *p indicates a sysex_f0/f7 or meta event, which resets the running status
+			return 0x00u;
+		}
+	}
+
+	// p does not indicate a midi status byte, nor is it the first byte of a sysex_f0/f7
+	// or meta event.  p *may* be the first data byte of a midi msg in running status.  
+	if ((s>>7) && s!=0xF0u && s!=0xF7u && s!= 0xFFu) {
+		// s is a valid midi status byte
+		return s;
+	}
+
+	return 0x00u;
+}
+
 //
 // Pointer to the first data byte following the delta-time, _not_ to the start of
 // the delta-time.  This function may have to increment the pointer by 1 byte

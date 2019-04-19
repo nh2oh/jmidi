@@ -8,7 +8,56 @@
 class mtrk_container_t;
 class mtrk_event_container_t;
 class mtrk_event_container_sbo_t;
+class mtrk_view_t;
 
+//
+// mtrk_iterator_t
+//
+// Obtained from the begin() && end() methods of class mtrk_view_t.  
+//
+// Dereferencing returns an mtrk_event_container_sbo_t, which may allocate
+// if the underlying event is large enough.  Member functions size(), 
+// data_length(), etc inspect the underlying event so an intellegent decision
+// can be made wrt dereferencing.  NB that a range-for automatically derefs
+// the iterator...
+//
+// Why store {const mtrk_view_t *, int offset, ...} instead of 
+// {const unsigned char *,...} ?  Because the container knows its size and is
+// able to produce a one-past-the-end iterator.  
+// 
+class mtrk_iterator_t {
+public:
+	mtrk_iterator_t(const mtrk_view_t&);
+
+	// Inspection into the underlying event
+	//uint32_t size() const;
+	//uint32_t data_length() const;
+	//smf_event_type type() const;
+	//uint32_t delta_time() const;
+	//unsigned char midi_status() const;
+
+	mtrk_event_container_sbo_t operator*() const;
+	mtrk_iterator_t& operator++();
+	bool operator<(const mtrk_iterator_t&) const;
+	bool operator==(const mtrk_iterator_t&) const;
+	bool operator!=(const mtrk_iterator_t&) const;
+private:
+	// Ctor that takes a caller-specified offset (arg 2) and midi status byte
+	// (arg 3); only for trusted callers (ex class mtrk_view_t)!
+	mtrk_iterator_t(const mtrk_view_t*, uint32_t, unsigned char);
+
+	const mtrk_view_t *container_ {};
+	uint32_t container_offset_ {};  // offset from this->container_.p_
+	unsigned char midi_status_ {};
+		// All points in a midi stream have an implied (or explicit) midi-status
+	
+	friend class mtrk_view_t;
+};
+
+
+
+
+//
 // Obtained from the begin() && end() methods of class mtrk_container_t.  
 class mtrk_container_iterator_t {
 public:
@@ -32,6 +81,62 @@ private:
 	// All points in a midi stream have an implied (or explicit) midi-status
 	unsigned char midi_status_ {0};
 };
+
+
+//
+// mtrk_view_t
+//
+// An mtrk_view_t is a pointer,size pair into a valid MTrk event sequence.  
+// p_ indicates the start of the MTrk chunk, so *p=='M', *++p=='T', etc.  It
+// should not be possible to construct an mtrk_view_t to an underlying char 
+// array that is not a valid MTrk chunk, so posession of an mtrk_view_t is an
+// assurance that the underlying range is valid.  Internally, mtrk_view_t 
+// takes advantage of this assurance by parsing the sequence using the fast
+// but generally unsafe parse_*_usafe(const unsigned char*) family of 
+// functions.  
+//
+// Events within MTrk event sequences are not random-accessible, since 
+// events have variable size.  Even if this were not so, at each point in 
+// the sequence there may be an implicit "running status" midi byte that 
+// can be  determined only by parsing the the preceeding most recent midi 
+// channel_voice/mode event containing a status byte.  In the worst case,
+// this event may occur hundreds of bytes to the left of the MTrk event of
+// interest.  Other styes of implicit state infest the MTrk event sequence: 
+// mid-sequence tempo and/or time-signature changes which change the meaning 
+// of the delta-time fields are possible, control/program-change events 
+// affect the way a given midi event should be sounded.  sysex_f0/f7 
+// events may set opaque types of state.  In general, to usefully "process" 
+// event n within an mtrk event sequence it is necessary to iterate through 
+// the prior n-1 events and accumulate any state relevant to the procesing
+// to be done.  
+//
+// Hence, mtrk_view_t.begin() and .end() return an iterator type defining 
+// operators pre/post ++, but not +/- int, and not --.  This iterator keeps
+// track of the most recent midi status byte, the smallest amount of 
+// information required to determine the size of the pointed at MTrk event,
+// and therefore locate the next MTrk event in the sequence.  
+//
+class mtrk_view_t {
+public:
+	mtrk_view_t(const validate_mtrk_chunk_result_t&);
+	mtrk_view_t(const unsigned char*, uint32_t);
+	
+	uint32_t size() const;
+	uint32_t data_length() const;
+	
+	const unsigned char *data() const;
+	mtrk_iterator_t begin() const;
+	mtrk_iterator_t end() const;
+
+	bool validate() const;
+private:
+	const unsigned char *p_ {};  // Points at the 'M' of "MTrk..."
+	uint32_t size_ {};
+	//friend class mtrk_iterator_t;
+};
+std::string print(const mtrk_view_t&);
+
+
 
 
 //
@@ -95,18 +200,32 @@ std::string print(const mtrk_container_t&);
 //
 // mtrk_event_container_t
 //
-// The std defines 3 types of MTrk events:  sysex, midi, meta
+// The std defines 3 types of MTrk events (enum class smf_event_type):  
+// sysex_f0/f7, (midi) channel_voice/mode, meta
 //
-// All MTrk events consist of a vl delta-time field followed by a sequence of bytes, the number
-// of which can only be determined by parsing the sequence to determine its type; in the
-// case of midi events, the size may only be determinable by parsing _prior_ midi events occuring
-// in the same MTrk container to determine the value of the running-status midi status byte.  
-// Sysex and meta events explictly encode their length as a vl field; midi events are 2, 3, 
-// or 4, bytes (following delta-time field), depending on the presence or absense and value of
-// a status byte.  
+// All MTrk events consist of a vl delta-time field followed by a sequence
+// of bytes, the number of which can only be determined by parsing said 
+// sequence to (1) get the number of bytes in the delta-time, (2) get the
+// number of bytes of the "payload" following the delta-time.  For (midi)
+// channel_voice/mode events, the number of bytes in the payload can only be
+// determined in the context of a status byte, which may or may not be the 
+// first byte of the payload.  Consider a midi event not containing a local 
+// (contained-within-payload) status byte, and a pointer p to the first byte
+// following this event's delta-time, thus, !(*p>>7).  Does ++p belong to the
+// event or is it the first byte of the delta-time for the next event?  If 
+// ((*++p)>>7), ++p is the first byte of the delta-time for the next event, 
+// however, if !((*++p)>>7), ++p may either be the first (and only) byte of 
+// the delta-time for the next event, or it may be the second midi data byte
+// of a 2-byte midi message.  It is impossible to tell.   To parse an mtrk 
+// event sequence, it is required that the most recent midi-status byte be 
+// known at all times.  
 //
-// The standard considers the delta-time to be part of the definition of an "MTrk event," but
-// not a part of the event proper.  From the std:
+// Sysex and meta events explictly encode their length as a vl field within
+// the payload; midi events are 1 (running status), 2 (local status or running
+// status), or 3 (local status), bytes (following delta-time field).  
+//
+// The standard considers the delta-time to be part of the definition of 
+// an "MTrk event," but not a part of the event proper.  From the std:
 // <MTrk event> = <delta-time> <event>
 // <event> = <MIDI event> | <sysex event> | <meta-event> 
 //
@@ -208,6 +327,7 @@ private:
 
 	static_assert(sizeof(small_t)==sizeof(big_t),"sizeof(small_t)!=sizeof(big_t)");
 	static_assert(sizeof(bigsmall_t)==sizeof(big_t),"sizeof(bigsmall_t)!=sizeof(big_t)");
+	static_assert(sizeof(bigsmall_t)==24,"sizeof(bigsmall_t)!=24");
 
 	void set_flag_big() {
 		if (this->is_small()) {
@@ -336,9 +456,13 @@ public:
 			}
 			
 			// If this is a meta or sysex_f0/f7 event, chev.is_valid == false;
+			// but == true if this is a channel_voice/mode event.  Write the 
+			// status byte to the field d_.s.arry[sizeof(small_t)-3], which is
+			// the same offset as d_.b.midi_status.  
+			// TODO:  This is some **really**nasty** hardcoding here
 			auto chev = parse_channel_event(&(this->d_.s.arry[0]),s,sizeof(small_t));
 			if (chev.is_valid) {
-				this->d_.s.arry[sizeof(small_t)-1] = chev.status_byte;
+				this->d_.s.arry[sizeof(small_t)-3] = chev.status_byte;
 			}
 			this->set_flag_small();
 		}
