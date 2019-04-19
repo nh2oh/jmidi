@@ -48,8 +48,8 @@ enum class midi_time_division_field_type_t {
 midi_time_division_field_type_t detect_midi_time_division_type(uint16_t);
 uint16_t interpret_tpq_field(uint16_t);  // assumes midi_time_division_field_type_t::ticks_per_quarter
 struct midi_smpte_field {
-	int8_t time_code_fmt {0};  
-	uint8_t units_per_frame {0};
+	int8_t time_code_fmt {0};  // ~frames-per-second
+	uint8_t units_per_frame {0};  // ~ticks-per-frame
 };
 midi_smpte_field interpret_smpte_field(uint16_t);  // assumes midi_time_division_field_type_t::SMPTE
 std::string print(const mthd_container_t&);

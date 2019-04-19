@@ -182,7 +182,8 @@ private:
 	//
 	// For sysex_f0/f7 or meta events that overflow the small buffer, some of the
 	// fields presently in big_t make no sense; these messges overwrite any 
-	// running status, so the midi_status field makes no sense.  
+	// running status, so the midi_status field makes no sense.  But, OTOH, see
+	// the MIDI Channel Prefix meta event (p.138)
 	// ->  big.capacity >= big.size
 	//
 	struct big_t {  // sizeof() == 24
@@ -307,6 +308,10 @@ public:
 	// For values of sz => bigsmall_t => small_t, and where the indicated event is 
 	// channel_voice or channel_mode, the last byte of the local data array,
 	// d_.s.arry[sizeof(small_t)-1] == the status byte.  
+	//
+	// TODO:  parse_mtrk_event_type can return smf_event_type::invalid in field .type;
+	// could replace w/ detect_mtrk_event_type_unsafe()...
+	//
 	mtrk_event_container_sbo_t(const unsigned char *p, uint32_t sz, unsigned char s=0) {
 		if (sz > sizeof(small_t)) {
 			this->d_.b.p = new unsigned char[sz];
