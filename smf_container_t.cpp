@@ -29,12 +29,14 @@ mthd_container_t smf_container_t::get_header() const {
 	// and offser == 0
 	return mthd_container_t {this->p_,this->chunk_idxs_[0].size};
 }
-mtrk_container_t smf_container_t::get_track(int n) const {
+//mtrk_container_t smf_container_t::get_track(int n) const {
+mtrk_view_t smf_container_t::get_track(int n) const {
 	int curr_trackn {0};
 	for (const auto& e : this->chunk_idxs_) {
 		if (e.type == chunk_type::track) {
 			if (n == curr_trackn) {
-				return mtrk_container_t {this->p_ + e.offset, e.size};
+				//return mtrk_container_t {this->p_ + e.offset, e.size};
+				return mtrk_view_t(this->p_ + e.offset, e.size);
 			}
 			++curr_trackn;
 		}
@@ -67,14 +69,26 @@ std::string print(const smf_container_t& smf) {
 	s += print(mthd);
 	s += "\n";
 
+
+	// where smf.get_track(i) => mtrk_view_t
 	for (int i=0; i<smf.n_tracks(); ++i) {
 		auto curr_trk = smf.get_track(i);
 		s += ("Track (MTrk) " + std::to_string(i) 
-			+ "\t(data_size = " + std::to_string(curr_trk.data_size())
+			+ "\t(data_size = " + std::to_string(curr_trk.data_length())
 			+ ", size = " + std::to_string(curr_trk.size()) + "):\n");
 		s += print(curr_trk);
 		s += "\n";
 	}
+
+	// where smf.get_track(i) => mtrk_container_t
+	//for (int i=0; i<smf.n_tracks(); ++i) {
+	//	auto curr_trk = smf.get_track(i);
+	//	s += ("Track (MTrk) " + std::to_string(i) 
+	//		+ "\t(data_size = " + std::to_string(curr_trk.data_size())
+	//		+ ", size = " + std::to_string(curr_trk.size()) + "):\n");
+	//	s += print(curr_trk);
+	//	s += "\n";
+	//}
 
 	return s;
 }

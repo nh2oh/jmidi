@@ -17,30 +17,30 @@ class mtrk_view_t;
 //
 // Dereferencing returns an mtrk_event_container_sbo_t, which may allocate
 // if the underlying event is large enough.  NB that a range-for automatically
-// derefs the iterator...
+// derefs the iterator.
 //
-// Why store {const mtrk_view_t *, int offset, ...} instead of 
-// {const unsigned char *,...} ?  Because the container knows its size and is
-// able to produce a one-past-the-end iterator.  
 // 
 class mtrk_iterator_t {
 public:
-	mtrk_iterator_t();
-
 	mtrk_event_container_sbo_t operator*() const;
 	mtrk_iterator_t& operator++();
 	//mtrk_iterator_t& operator++(int);
-	bool operator<(const mtrk_iterator_t&) const;
 	bool operator==(const mtrk_iterator_t&) const;
 	bool operator!=(const mtrk_iterator_t&) const;
 	// operator->();
 private:
-	// Ctor that takes a caller-specified offset (arg 2) and midi status byte
-	// (arg 3); only for trusted callers (ex class mtrk_view_t)!
+	// Ctor that takes a caller-specified p_ and midi status byte applicipable
+	// to the _prior_ event in the sequence (arg 2); only for trusted callers 
+	// (ex class mtrk_view_t)!
 	mtrk_iterator_t(const unsigned char*, unsigned char);
 
-	const unsigned char *p_;
-	unsigned char s_;
+	// ptr to first byte of the delta-time
+	const unsigned char *p_ {nullptr};
+	// midi status applicable to the event *prior* to this->p_;  0x00u if
+	// that event was a meta or sysex_f0/f7.  See notes in operator++();
+	unsigned char s_ {0x00u};
+
+	friend class mtrk_view_t;
 };
 
 

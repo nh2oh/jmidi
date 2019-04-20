@@ -21,7 +21,8 @@ public:
 	smf_container_t(const validate_smf_result_t&);
 
 	mthd_container_t get_header() const;
-	mtrk_container_t get_track(int) const;
+	//mtrk_container_t get_track(int) const;
+	mtrk_view_t get_track(int) const;
 	bool get_chunk(int) const;  // unknown chunks allowed...
 	std::string fname() const;
 

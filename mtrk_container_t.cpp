@@ -4,52 +4,36 @@
 #include <string>
 
 
-mtrk_iterator_t::mtrk_iterator_t() {
-	this->s_ = 0x00u;
-}
 // Private ctor used by friend class mtrk_view_t.begin(),.end()
-mtrk_iterator_t::mtrk_iterator_t(const unsigned char *p, unsigned char s) {  
+mtrk_iterator_t::mtrk_iterator_t(const unsigned char *p, unsigned char s) {
 	this->p_ = p;
 	this->s_ = s;
 }
 mtrk_event_container_sbo_t mtrk_iterator_t::operator*() const {
-	return mtrk_event_container_sbo_t(p,event.size,this->s_);
+	// Note that this->s_ indicates the status of the event prior to this->p_.  
+	auto sz = mtrk_event_get_size_dtstart_unsafe(this->p_,this->s_);
+	return mtrk_event_container_sbo_t(this->p_,sz,this->s_);
 }
-
-// TODO:  Should write an "..._unsafe_...()" func to just get the event size to replace
-// the call to parse_mtrk_event_type()
 mtrk_iterator_t& mtrk_iterator_t::operator++() {
-	uint32_t maxinc = this->container_->size() - this->container_offset_;
-	const unsigned char *p = this->container_->data() + this->container_offset_;
-
-	auto event = parse_mtrk_event_type(p,this->midi_status_,maxinc);
-	if (maxinc<=event.size) {  // this is the last event; return the end iterator
-		this->container_offset_ = 0;
-		this->midi_status_ = 0x00u;
-	} else {
-		p += event.size;
-		auto dt = midi_interpret_vl_field(p);
-		this->container_offset_ += event.size;
-		this->midi_status_ = mtrk_event_get_midi_status_byte_unsafe(p+dt.N,this->midi_status_);
-	}
-
+	auto sz = mtrk_event_get_size_dtstart_unsafe(this->p_,this->s_);
+	this->p_+=sz;
+	// Note that this->s_ now indicates the status of the *prior* event.  
+	// If i were to attempt to update it:
+	// this->s_ = mtrk_event_get_midi_status_byte_unsafe(this->p_,this->s_);
+	// i will dereference an invalid this->p_ in the case that the prior event
+	// was the last in the mtrk sequence.  
+	// One possible alternative design is to check for the end-of-sequence
+	// mtrk event {0x00u,0xFFu,0x2Fu}
 	return *this;
 }
-bool mtrk_iterator_t::operator<(const mtrk_iterator_t& rhs) const {
-	if (this->container_ == rhs.container_) {
-		return this->container_offset_ < rhs.container_offset_;
-	} else {
-		return false;
-	}
-}
 bool mtrk_iterator_t::operator==(const mtrk_iterator_t& rhs) const {
-	// I *could* compare midi_status_ as well, however, it is an error condition if it's
-	// different for the same offset.  
-	if (this->container_ == rhs.container_) {
-		return this->container_offset_ == rhs.container_offset_;
-	} else {
-		return false;
-	}
+	// Note that this->s_ is not compared; it should be impossible for two
+	// iterators w/ == p_ to have != s_, since for each, p_ must have been
+	// set by an identical sequence of operations (operator++()...).  
+	// However, the .end() method of mtrk_view_t constructs an iterator w/
+	// p_ pointing one past the end of the seq and midi status byte 0x00u,
+	// hence for the end iterator, s_ is not nec. valid.  
+	return this->p_ == rhs.p_;
 }
 bool mtrk_iterator_t::operator!=(const mtrk_iterator_t& rhs) const {
 	return !(*this==rhs);
@@ -208,14 +192,16 @@ const unsigned char *mtrk_view_t::data() const {
 	return this->p_;
 }
 mtrk_iterator_t mtrk_view_t::begin() const {
-	// From the std p.135:  "The first event in each MTrk chunk must specify status"
-	// thus we know midi_event_get_status_byte(this->p_+8) will succeed
-	return mtrk_iterator_t::mtrk_iterator_t(this, uint32_t{8}, midi_event_get_status_byte(this->p_+8));
+	// Note that in an mtrk_iterator_t, the member s_ is the status from the 
+	// _prior_ event.  
+	// See the std p.135:  "The first event in each MTrk chunk must specify status"
+	// ...yet i have many midi files which begin w/ 0x00u,0xFFu,...
+	return mtrk_iterator_t::mtrk_iterator_t(this->p_+8,0x00u);
 }
 mtrk_iterator_t mtrk_view_t::end() const {
-	// Note that i am supplying an invalid midi status byte for this one-past-the-end 
-	// iterator.  
-	return mtrk_iterator_t::mtrk_iterator_t(this, this->size(), unsigned char {0});
+	// Note that i am supplying an invalid midi status byte for this 
+	// one-past-the-end iterator.  
+	return mtrk_iterator_t::mtrk_iterator_t(this->p_+this->size(),0x00u);
 }
 bool mtrk_view_t::validate() const {
 	bool tf = true;

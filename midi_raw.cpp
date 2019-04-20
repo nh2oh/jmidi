@@ -350,10 +350,11 @@ uint32_t mtrk_event_get_size_dtstart_unsafe(const unsigned char *p, unsigned cha
 
 	if (s==0x00u) {  // Event is either invalid, meta, or sysex_f0/f7
 		if (*p==0xF0u || *p==0xF7u) {  // sysex_f0/f7
-			//...
+			sz += 1;
+			++p;  // count & step past the 0xF0||0xF7
 		} else if (*p==0xFFu) {  // meta
-			sz +=1;
-			++p;  //count & step past the meta-event type-byte
+			sz += 2;
+			p += 2;  // count & step past the 0xFF and then the meta-event type-byte
 		} else {  // Invalid event
 			std::abort();
 			//return 0;
