@@ -318,6 +318,13 @@ smf_event_type detect_mtrk_event_type_dtstart_unsafe(const unsigned char *p, uns
 	return detect_mtrk_event_type_unsafe(p,s);
 }
 
+// p points at the first byte of the dt
+unsigned char mtrk_event_get_midi_status_byte_dtstart_unsafe(const unsigned char *p, unsigned char s) {
+	auto dt = midi_interpret_vl_field(p);
+	p += dt.N;
+	return mtrk_event_get_midi_status_byte_unsafe(p,s);
+}
+
 // p points at the first byte _past_ the dt
 unsigned char mtrk_event_get_midi_status_byte_unsafe(const unsigned char *p, unsigned char s) {
 	if (((*p)>>7)) {

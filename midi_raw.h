@@ -329,8 +329,9 @@ smf_event_type detect_mtrk_event_type_dtstart_unsafe(const unsigned char*, unsig
 //   2) p indicates something that looks like a midi _data_ byte, but s is
 //     invalid.  
 //
-unsigned char mtrk_event_get_midi_status_byte_unsafe(const unsigned char*, unsigned char=0u);
-uint32_t mtrk_event_get_size_dtstart_unsafe(const unsigned char*, unsigned char=0u);
+unsigned char mtrk_event_get_midi_status_byte_dtstart_unsafe(const unsigned char*, unsigned char=0x00u);
+unsigned char mtrk_event_get_midi_status_byte_unsafe(const unsigned char*, unsigned char=0x00u);
+uint32_t mtrk_event_get_size_dtstart_unsafe(const unsigned char*, unsigned char=0x00u);
 
 struct parse_meta_event_result_t {
 	bool is_valid {false};
