@@ -319,12 +319,18 @@ smf_event_type detect_mtrk_event_type_dtstart_unsafe(const unsigned char*, unsig
 //   returns *arg1; it does not matter what arg2 is.  
 // If *arg1 is _not_ a midi status byte and == 0xF0u||0xF7u||0xFFu,
 //   returns 0x00u; it does not matter what arg2 is.  
-// if *arg1 is not a midi status byte and not 0xF0u||0xF7u||0xFFu,
+// if *arg1 is _not_ a midi status byte and not 0xF0u||0xF7u||0xFFu,
 //   returns arg2 iff arg2 is a midi status byte.  
 //   returns 0x00u otherwise.  
+// Hence, always returns either a valid midi status byte applicable to the
+// event indicated by p, or returns 0x00u.  If 0x00u, either
+//   1) p indicates a sysex_f0/f7 or meta event and *p==0xF0u||0xF7u||0xFFu
+//   or,
+//   2) p indicates something that looks like a midi _data_ byte, but s is
+//     invalid.  
 //
 unsigned char mtrk_event_get_midi_status_byte_unsafe(const unsigned char*, unsigned char=0u);
-
+uint32_t mtrk_event_get_size_dtstart_unsafe(const unsigned char*, unsigned char=0u);
 
 struct parse_meta_event_result_t {
 	bool is_valid {false};

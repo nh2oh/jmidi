@@ -340,6 +340,40 @@ unsigned char mtrk_event_get_midi_status_byte_unsafe(const unsigned char *p, uns
 	return 0x00u;
 }
 
+uint32_t mtrk_event_get_size_dtstart_unsafe(const unsigned char *p, unsigned char s) {
+	uint32_t sz {0};
+	auto dt = midi_interpret_vl_field(p);
+	sz += dt.N;
+	p += sz;
+
+	s = mtrk_event_get_midi_status_byte_unsafe(p,s);
+
+	if (s==0x00u) {  // Event is either invalid, meta, or sysex_f0/f7
+		if (*p==0xF0u || *p==0xF7u) {  // sysex_f0/f7
+			//...
+		} else if (*p==0xFFu) {  // meta
+			sz +=1;
+			++p;  //count & step past the meta-event type-byte
+		} else {  // Invalid event
+			std::abort();
+			//return 0;
+		}
+		auto data_len = midi_interpret_vl_field(p);
+		sz += (data_len.N + data_len.val);
+	} else {  // s is a midi status byte applicable to the event indicated by p
+		if ((s&0xF0)==0xD0u || (s&0xF0)==0xC0u) {
+			sz += 1;
+		} else {
+			sz += 2;
+		}
+		if (*p==s) {  // event-local status byte (not in running status)
+			sz += 1;
+		}
+	}
+
+	return sz;
+}
+
 //
 // Pointer to the first data byte following the delta-time, _not_ to the start of
 // the delta-time.  This function may have to increment the pointer by 1 byte
@@ -627,6 +661,7 @@ unsigned char midi_event_get_status_byte(const unsigned char* p) {
 	p += delta_t_vl.N;
 	return *p;
 }
+// TODO:  This is wrong.  It treats 0xF0u,0xF7u,0xFFu as valid status bytes
 int midi_channel_event_n_bytes(unsigned char p, unsigned char s) {
 	int N = 0;
 	if ((p & 0x80)==0x80) {

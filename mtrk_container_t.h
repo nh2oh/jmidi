@@ -16,10 +16,8 @@ class mtrk_view_t;
 // Obtained from the begin() && end() methods of class mtrk_view_t.  
 //
 // Dereferencing returns an mtrk_event_container_sbo_t, which may allocate
-// if the underlying event is large enough.  Member functions size(), 
-// data_length(), etc inspect the underlying event so an intellegent decision
-// can be made wrt dereferencing.  NB that a range-for automatically derefs
-// the iterator...
+// if the underlying event is large enough.  NB that a range-for automatically
+// derefs the iterator...
 //
 // Why store {const mtrk_view_t *, int offset, ...} instead of 
 // {const unsigned char *,...} ?  Because the container knows its size and is
@@ -27,31 +25,22 @@ class mtrk_view_t;
 // 
 class mtrk_iterator_t {
 public:
-	mtrk_iterator_t(const mtrk_view_t&);
-
-	// Inspection into the underlying event
-	//uint32_t size() const;
-	//uint32_t data_length() const;
-	//smf_event_type type() const;
-	//uint32_t delta_time() const;
-	//unsigned char midi_status() const;
+	mtrk_iterator_t();
 
 	mtrk_event_container_sbo_t operator*() const;
 	mtrk_iterator_t& operator++();
+	//mtrk_iterator_t& operator++(int);
 	bool operator<(const mtrk_iterator_t&) const;
 	bool operator==(const mtrk_iterator_t&) const;
 	bool operator!=(const mtrk_iterator_t&) const;
+	// operator->();
 private:
 	// Ctor that takes a caller-specified offset (arg 2) and midi status byte
 	// (arg 3); only for trusted callers (ex class mtrk_view_t)!
-	mtrk_iterator_t(const mtrk_view_t*, uint32_t, unsigned char);
+	mtrk_iterator_t(const unsigned char*, unsigned char);
 
-	const mtrk_view_t *container_ {};
-	uint32_t container_offset_ {};  // offset from this->container_.p_
-	unsigned char midi_status_ {};
-		// All points in a midi stream have an implied (or explicit) midi-status
-	
-	friend class mtrk_view_t;
+	const unsigned char *p_;
+	unsigned char s_;
 };
 
 
@@ -124,6 +113,11 @@ public:
 	uint32_t size() const;
 	uint32_t data_length() const;
 	
+	// In one possible design, this returns a ptr to the first byte of the 
+	// delta-time of the first mtrk event.  I reject this b/c for an empty 
+	// mtrk (data_length()==0, this ptr is invalid.  
+	// ctor mtrk_iterator_t(mtrk_view_t) relies on this behavior.  
+	// TODO:  unsigned char or some sort of mtrk_event_t???
 	const unsigned char *data() const;
 	mtrk_iterator_t begin() const;
 	mtrk_iterator_t end() const;
