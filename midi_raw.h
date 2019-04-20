@@ -324,7 +324,7 @@ smf_event_type detect_mtrk_event_type_dtstart_unsafe(const unsigned char*, unsig
 //   returns 0x00u otherwise.  
 // Hence, always returns either a valid midi status byte applicable to the
 // event indicated by p, or returns 0x00u.  If 0x00u, either
-//   1) p indicates a sysex_f0/f7 or meta event and *p==0xF0u||0xF7u||0xFFu
+//   1) p indicates a sysex_f0/f7 or meta event (=> *p==0xF0u||0xF7u||0xFFu)
 //   or,
 //   2) p indicates something that looks like a midi _data_ byte, but s is
 //     invalid.  

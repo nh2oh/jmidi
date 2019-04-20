@@ -15,6 +15,8 @@ mtrk_event_container_sbo_t mtrk_iterator_t::operator*() const {
 	return mtrk_event_container_sbo_t(this->p_,sz,this->s_);
 }
 mtrk_iterator_t& mtrk_iterator_t::operator++() {
+	auto dt = midi_interpret_vl_field(this->p_);
+	this->s_ = mtrk_event_get_midi_status_byte_unsafe(this->p_+dt.N,this->s_);
 	auto sz = mtrk_event_get_size_dtstart_unsafe(this->p_,this->s_);
 	this->p_+=sz;
 	// Note that this->s_ now indicates the status of the *prior* event.  

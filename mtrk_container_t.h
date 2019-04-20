@@ -509,7 +509,7 @@ public:
 	smf_event_type type() const {  // channel_{voice,mode},sysex_{f0,f7},meta,invalid
 		if (this->is_small()) {
 			return detect_mtrk_event_type_dtstart_unsafe(&(this->d_.s.arry[0]),
-				this->d_.s.arry[sizeof(small_t)-1]);
+				this->d_.s.arry[sizeof(small_t)-3]);
 		} else {
 			return this->d_.b.sevt;
 		}
@@ -524,7 +524,7 @@ public:
 
 			// TODO:  this->d_.s.arry[sizeof(small_t)-1] is not the running_status...
 			auto evt = parse_mtrk_event_type(&(this->d_.s.arry[0]),
-				this->d_.s.arry[sizeof(small_t)-1],sizeof(small_t));
+				this->d_.s.arry[sizeof(small_t)-3],sizeof(small_t));
 			if (evt.type == smf_event_type::invalid) {
 				std::abort();
 			}
@@ -540,7 +540,7 @@ public:
 	int32_t size() const {  // Includes the delta-time
 		if (this->is_small()) {
 			auto evt = parse_mtrk_event_type(&(this->d_.s.arry[0]),
-				this->d_.s.arry[sizeof(small_t)-1],sizeof(small_t));
+				this->d_.s.arry[sizeof(small_t)-3],sizeof(small_t));
 			if (evt.type == smf_event_type::invalid) {
 				std::abort();
 			}
