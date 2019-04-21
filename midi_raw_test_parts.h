@@ -54,8 +54,13 @@ struct midi_tests_t {
 };
 
 std::vector<midi_tests_t> make_random_midi_tests();
+std::vector<midi_tests_t> make_random_midi_tests2();
 void print_midi_test_cases();
 
 uint8_t random_midi_status_byte(int=0);
 uint8_t random_midi_data_byte(bool=false);  // true => (result&0b01111000u)==true
+
 };  // namespace testdata
+
+
+

@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <iterator>
 #include <iostream>
+#include <cmath>  // std::log for delta-time generation
 
 namespace testdata {
 // Assorted dt fields; can be prepended to the meta, sysex, and midi events
@@ -217,8 +218,91 @@ std::vector<midi_tests_t> make_random_midi_tests() {
 	return result;
 }
 
+
+
+
+
+std::vector<midi_tests_t> make_random_midi_tests2() {
+	std::random_device rdev;
+	std::mt19937 re(rdev());
+	std::uniform_int_distribution rd(0);
+	std::uniform_int_distribution rd_n_data_bytes(1,2);
+	
+
+	auto random_dt_val = [&re](bool running_status) -> uint32_t {
+		// If in running status, can't generate a dt of 0
+		std::uniform_int_distribution rd_delta_time(0,0x7FFFFFFF);  // NB: 1
+		
+		// I take the log to attempt to get a more uniform distribution of
+		// field lengths
+		int32_t dt_notscaled {0};
+		int32_t dt {0};
+		do {
+			dt_notscaled = rd_delta_time(re); 
+			dt = dt_notscaled; //static_cast<uint32_t>(std::log(dt_notscaled)/std::log(128));
+		} while (running_status && dt == 0);
+
+		return dt;
+	};
+
+	std::vector<midi_tests_t> result {};
+	for (int i=0; i<100; ++i) {
+		midi_tests_t curr {};
+
+		bool running_status = (rd(re)%2==0);
+
+		// delta-time
+		curr.dt_value = random_dt_val(running_status);
+		curr.dt_field_size = static_cast<uint8_t>(midi_vl_field_size(curr.dt_value));
+		std::array<unsigned char,4> temp_dt_field {};
+		auto dt_field_end = midi_write_vl_field(temp_dt_field.begin(),
+			temp_dt_field.end(),curr.dt_value);
+		std::copy(temp_dt_field.begin(),dt_field_end,std::back_inserter(curr.data));
+
+		curr.n_data_bytes = rd_n_data_bytes(re);
+		curr.data_length = curr.n_data_bytes;  // for event-local status, +=1 below
+		
+		// Set status byte values consistent w/ .n_data_bytes and write into
+		// .data consistent w/ running_status
+		curr.applic_midi_status = random_midi_status_byte(curr.n_data_bytes);
+		if (!running_status) {  // event-local status byte; random running status byte
+			curr.data.push_back(curr.applic_midi_status);
+			curr.data_length += 1;
+			curr.midisb_prev_event = random_midi_status_byte();
+			curr.dt_value = random_dt_val(false);
+		} else {  // non-event-local status byte (running status active)
+			curr.midisb_prev_event = curr.applic_midi_status;
+			curr.dt_value = random_dt_val(true);
+		}
+
+		// Generate and write data bytes, consistent w/ the applic status byte
+		for (int j=0; j<curr.n_data_bytes; ++j) {
+			if ((curr.applic_midi_status&0xF0)==0xB0 && j==0 && rd(re)%2==0) {
+				// If the present msg is elligible to be a channel_mode msg
+				// (applicible status byte ~ 0xBn) _and_ we're generating the
+				// first data byte (i==0), randomly pick between the msg being a
+				// 'Select Channel Mode' and a 'Control change' msg.  
+				curr.data.push_back(random_midi_data_byte(true));
+			} else {
+				curr.data.push_back(random_midi_data_byte(false));
+			}
+		}
+
+		result.push_back(curr);
+	}
+
+	return result;
+}
+
+
+
+
+
+
+
+
 void print_midi_test_cases() {
-	auto yay = testdata::make_random_midi_tests();
+	auto yay = testdata::make_random_midi_tests2();
 	for (const auto& tc : yay) {
 		std::cout << "{{";
 		for (int i=0; i<tc.data.size(); ++i) {

@@ -85,6 +85,7 @@ constexpr int midi_vl_field_size(T val) {
 //
 // TODO: untested
 // TODO:  Need an overload so it's possible to use std::back_inseter(some_vector)
+//
 template<typename It, typename T>
 It midi_write_vl_field(It beg, It end, T val) {
 	static_assert(CHAR_BIT == 8);
@@ -382,6 +383,7 @@ struct parse_channel_event_result_t {
 };
 parse_channel_event_result_t parse_channel_event(const unsigned char*, unsigned char=0, int32_t=0);
 bool midi_event_has_status_byte(const unsigned char*);
+// TODO:  Deprecate
 unsigned char midi_event_get_status_byte(const unsigned char*);  // dtstart
 // For the midi _channel_ event implied by the status byte arg 1 (or, if arg 1
 // is not a status byte, the status byte arg 2), returns the number of expected

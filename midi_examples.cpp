@@ -14,7 +14,6 @@
 #include <type_traits>
 
 int midi_example() {
-
 	testdata::print_midi_test_cases();
 
 	std::string fn = "C:\\Users\\ben\\Desktop\\scr\\CLEMENTI.MID";
