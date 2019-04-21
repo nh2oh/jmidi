@@ -324,14 +324,16 @@ private:
 	static_assert(sizeof(bigsmall_t)==24,"sizeof(bigsmall_t)!=24");
 
 	void set_flag_big() {
-		if (this->is_small()) {
-			this->d_.b.bigsmall_flag = 0x00u;
-		}
+		this->d_.b.bigsmall_flag = 0x00u;
+		//if (this->is_small()) {
+		//	this->d_.b.bigsmall_flag = 0x00u;
+		//}
 	};
 	void set_flag_small() {
-		if (this->is_big()) {
-			this->d_.b.bigsmall_flag = 0x01u;
-		}
+		this->d_.b.bigsmall_flag = 0x01u;
+		//if (this->is_big()) {
+		//	this->d_.b.bigsmall_flag = 0x01u;
+		//}
 	};
 
 public:

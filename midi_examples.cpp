@@ -1,17 +1,22 @@
 #include "midi_examples.h"
 #include "midi_raw.h"
+#include "midi_raw_test_parts.h"
 #include "mthd_container_t.h"
 #include "mtrk_container_t.h"
 #include "smf_container_t.h"
 #include "midi_container.h"
 #include "midi_utils.h"
 #include "dbklib\binfile.h"
+#include "dbklib\byte_manipulation.h"
 #include <iostream>
 #include <filesystem>
 #include <string>
 #include <type_traits>
 
 int midi_example() {
+
+	testdata::print_midi_test_cases();
+
 	std::string fn = "C:\\Users\\ben\\Desktop\\scr\\CLEMENTI.MID";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\test.mid";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\hallelujah_joy_to_the_world.mid";
