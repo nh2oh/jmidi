@@ -1,9 +1,14 @@
 #include "midi_raw_test_parts.h"
+#include "midi_raw.h"
 #include "dbklib\byte_manipulation.h"
 #include <vector>
 #include <cstdint>
+#include <limits>
 #include <random>
+#include <array>
 #include <string>
+#include <algorithm>
+#include <iterator>
 #include <iostream>
 
 namespace testdata {
@@ -70,6 +75,54 @@ std::vector<meta_events_t> meta_events {
 		// end of track -------------------------------------------------------
 		{{0xFFu,0x2Fu,0x00u},3,0},
 };
+
+meta_events_t random_meta_event(uint8_t type_byte, int len) {
+	std::random_device rdev;
+	std::mt19937 re(rdev());
+	std::uniform_int_distribution<int> rd127(0,127);
+	std::uniform_int_distribution<int> rd200(0,200);
+	std::uniform_int_distribution<int> rduint8t(0,std::numeric_limits<uint8_t>::max());
+
+	// All meta-events begin with FF, then have an event type 
+	// byte which is always less than 128 (midi std p. 136)
+	meta_events_t result {};
+	result.data.push_back(0xFFu);
+	
+	if (type_byte >= 128) {
+		type_byte = static_cast<uint8_t>(rd127(re));
+	}
+	result.data.push_back(type_byte);
+
+	if (type_byte == 0x59 || type_byte == 0x00) {
+		len = 2;
+	} else if (type_byte == 0x58) {
+		len = 4;
+	} else if (type_byte == 0x54) {
+		len = 5;
+	} else if (type_byte == 0x51) {
+		len = 3;
+	} else if (type_byte == 0x2F) {
+		len=0;
+	} else if (type_byte == 0x20) {
+		len=1;
+	}
+
+	if (len < 0) {
+		len = rd200(re);
+	}
+	std::array<unsigned char,4> temp_len_field {};
+	auto len_field_end = midi_write_vl_field(temp_len_field.begin(),
+		temp_len_field.end(),static_cast<uint8_t>(len));
+	std::copy(temp_len_field.begin(),len_field_end,std::back_inserter(result.data));
+	result.payload_size = len;
+
+	for (int i=0; i<len; ++i) {
+		result.data.push_back(rduint8t(re));
+	}
+	result.data_length = result.data.size();
+
+	return result;
+}
 
 // Sysex_f0/f7 events
 std::vector<sysex_events_t> sysex_events {
@@ -184,6 +237,40 @@ void print_midi_test_cases() {
 	}
 	std::cout << std::endl;
 }
+
+
+uint8_t random_midi_status_byte(int require_n_data_bytes) {
+	std::random_device rdev;
+	std::mt19937 re(rdev());
+	std::uniform_int_distribution<int> rd(128,std::numeric_limits<uint8_t>::max());
+	
+	int s = rd(re);
+	if (require_n_data_bytes == 1) {
+		while ((s&0xF0u)!=0xC0u && (s&0xF0u)!=0xD0u) {
+			s = rd(re);
+		}
+	} else if (require_n_data_bytes == 2) {
+		while ((s&0xF0u)==0xC0u || (s&0xF0u)==0xD0u) {
+			s = rd(re);
+		}
+	}
+
+	return static_cast<uint8_t>(s);
+}
+
+uint8_t random_midi_data_byte(bool require_byte_one_ch_mode) {
+	std::random_device rdev;
+	std::mt19937 re(rdev());
+	std::uniform_int_distribution<int> rd(0,127);
+	
+	int s = rd(re);
+	if (require_byte_one_ch_mode) {
+		s |= 0b01111000u;
+	}
+
+	return static_cast<uint8_t>(s);
+}
+
 
 
 };  // namespace testdata

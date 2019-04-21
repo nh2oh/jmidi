@@ -84,7 +84,7 @@ constexpr int midi_vl_field_size(T val) {
 
 //
 // TODO: untested
-//
+// TODO:  Need an overload so it's possible to use std::back_inseter(some_vector)
 template<typename It, typename T>
 It midi_write_vl_field(It beg, It end, T val) {
 	static_assert(CHAR_BIT == 8);
