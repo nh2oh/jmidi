@@ -174,37 +174,6 @@ std::vector<midi_tests_t> make_random_midi_tests() {
 	std::uniform_int_distribution rd(0);
 	std::uniform_int_distribution rd_maybe_invalid_rs(0,255);
 	std::uniform_int_distribution rd_n_data_bytes(1,2);
-	
-	auto random_dt_fld = [&re](bool running_status) -> std::array<unsigned char, 4> {
-		std::uniform_int_distribution rd(0,255);
-		std::array<unsigned char,4> result {0x00u,0x00u,0x00u,0x00u};
-		int i=0;
-		do {
-			unsigned char dig = rd(re);
-			result[i]=dig;
-			++i;
-		} while (i<4 && result[i-1]&0x80u);
-		if (i==4) {
-			result[3] &= 0x7Fu;
-		}
-		if (i==1 && running_status) {
-			// i==1 => only one dig was written; in the unlikely event that 
-			// dig==0, this is illegal when in running-status.
-			// TODO:  Not true (?);  The first note of the first chord of a track
-			// could set the status byte...
-			std::uniform_int_distribution rd_1dig_nonzero(1,127);
-			result[0] = rd_1dig_nonzero(re);
-		} else {
-			// If the value is only one digit and we're not in running-status, just
-			// set it to 0 with p=0.5; the most common dt value in an smf is probably
-			// 0.
-			if (result[0]%2==0) {
-				result[0] = 0x00u;
-			}
-		}
-
-		return result;
-	};
 
 	std::vector<midi_tests_t> result {};
 	for (int i=0; i<100; ++i) {
@@ -213,12 +182,12 @@ std::vector<midi_tests_t> make_random_midi_tests() {
 		curr.in_running_status = (rd(re)%2==0);
 
 		// delta-time
-		auto curr_dt_field = random_dt_fld(curr.in_running_status);
+		auto curr_dt_field = random_dt_field();
 		auto curr_dt = midi_interpret_vl_field(&(curr_dt_field[0]));
 		curr.dt_value = curr_dt.val;
 		curr.dt_field_size = curr_dt.N;
-		std::copy(curr_dt_field.begin(),curr_dt_field.begin()+curr.dt_field_size
-			,std::back_inserter(curr.data));
+		std::copy(curr_dt_field.begin(),curr_dt_field.begin()+curr.dt_field_size,
+			std::back_inserter(curr.data));
 
 		curr.n_data_bytes = rd_n_data_bytes(re);
 		curr.data_length = curr.n_data_bytes;  // for event-local status, +=1 below
@@ -256,6 +225,7 @@ std::vector<midi_tests_t> make_random_midi_tests() {
 
 void print_midi_test_cases() {
 	auto yay = testdata::make_random_midi_tests();
+	std::cout << "// data, rs, applic-sb, is_rs, ndata, data_length, dt_val, dt.N\n";
 	for (const auto& tc : yay) {
 		std::cout << "{{";
 		for (int i=0; i<tc.data.size(); ++i) {
