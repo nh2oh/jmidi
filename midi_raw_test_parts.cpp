@@ -167,62 +167,8 @@ std::vector<unsigned char> union_valid_invalid_midisbs {
 	0xB0,0xB1,0xBB,0xBF,
 	0xE0,0xE1,0xEB,0xEF
 };
-/*
-// This func prepends random delta-times so "_payloads" is misnaming
+
 std::vector<midi_tests_t> make_random_midi_tests() {
-	std::random_device rdev;
-	std::mt19937 re(rdev());
-	std::uniform_int_distribution rd(0,1000);
-
-	std::vector<midi_tests_t> result {};
-	for (int i=0; i<100; ++i) {
-		midi_tests_t curr {};
-		// status byte applic to the present event
-		if (rd(re)%2==0) {  // 1 data byte
-			curr.applic_midi_status = valid_midisbs_1db[rd(re)%valid_midisbs_1db.size()];
-			curr.data.push_back(valid_mididbs[rd(re)%valid_mididbs.size()]);
-			curr.n_data_bytes = 1;
-		} else {  // 2 data bytes
-			curr.applic_midi_status = valid_midisbs_2db[rd(re)%valid_midisbs_2db.size()];
-			curr.data.push_back(valid_mididbs[rd(re)%valid_mididbs.size()]);
-			curr.data.push_back(valid_mididbs[rd(re)%valid_mididbs.size()]);
-			curr.n_data_bytes = 2;
-		}
-		// Should the status byte applic to the present be local or 
-		// inherited from the prev event?
-		if (rd(re)%2==0) {  // event-local status byte
-			curr.data.insert(curr.data.begin(),curr.applic_midi_status);
-			// totally random running status
-			curr.midisb_prev_event = union_valid_invalid_midisbs[rd(re)%union_valid_invalid_midisbs.size()];
-		} else {  // non-event-local status byte
-			curr.midisb_prev_event = curr.applic_midi_status;
-		}
-		curr.data_length = curr.data.size();
-		result.push_back(curr);
-	}
-
-	// prepend random delta times
-	for (auto& e : result) {
-		dt_fields_t dt;
-		do {
-			dt = delta_time[rd(re)%delta_time.size()];
-		} while (dt.value==0 && ((e.data[0]&0x80)==0x00u));
-		// If the present midi payload e is in running-status, the delta-time
-		// can not be 0.  
-
-		e.data.insert(e.data.begin(),dt.data.begin(),dt.data.end());
-		e.dt_field_size = dt.field_size;
-		e.dt_value = dt.value;
-	}
-
-	return result;
-}*/
-
-
-
-
-
-std::vector<midi_tests_t> make_random_midi_tests2() {
 	std::random_device rdev;
 	std::mt19937 re(rdev());
 	std::uniform_int_distribution rd(0);
@@ -309,7 +255,7 @@ std::vector<midi_tests_t> make_random_midi_tests2() {
 }
 
 void print_midi_test_cases() {
-	auto yay = testdata::make_random_midi_tests2();
+	auto yay = testdata::make_random_midi_tests();
 	for (const auto& tc : yay) {
 		std::cout << "{{";
 		for (int i=0; i<tc.data.size(); ++i) {
@@ -366,6 +312,46 @@ uint8_t random_midi_data_byte(bool require_byte_one_ch_mode) {
 	return static_cast<uint8_t>(s);
 }
 
+
+std::array<unsigned char,4> random_dt_field(int n_digits) {
+	std::random_device rdev;
+	std::mt19937 re(rdev());
+	std::uniform_int_distribution rd(0x00u,0xFFu);
+
+	if (n_digits > 4) {
+		n_digits = 4;
+	} else if (n_digits < 0) {
+		n_digits = 1;
+	}
+
+	std::array<unsigned char,4> result {0x00u,0x00u,0x00u,0x00u};
+	if (n_digits==0) {  // Random number of digits
+		int i=0;
+		do {
+			unsigned char dig = rd(re);
+			result[i]=dig;
+			++i;
+		} while (i<4 && result[i-1]&0x80u);
+		if (i==4) {
+			result[3] &= ~0x80u;
+		}
+		// If the value is only one digit, just set it to 0 with p=0.5; 0 is
+		// the most common dt value in an smf.  
+		if (i==1 && result[0]%2==0) {
+			result[0] = 0x00u;
+		}
+	} else {  // Exactly n_digits
+		int i=0;
+		for (i=0; i<n_digits; ++i) {
+			unsigned char dig = rd(re);
+			result[i]=dig;
+			result[i] |= 0x80u;
+		}
+		result[i-1] &= ~0x80u;
+	}
+
+	return result;
+};
 
 
 };  // namespace testdata
