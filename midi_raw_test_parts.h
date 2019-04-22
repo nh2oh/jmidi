@@ -47,6 +47,7 @@ struct midi_tests_t {
 	std::vector<unsigned char> data {};  // data.size()==dt_field_size+data_length
 	unsigned char midisb_prev_event {};  // "midi status byte previous event"
 	unsigned char applic_midi_status {};  // "applicable midi status byte"
+	bool in_running_status {};
 	uint8_t n_data_bytes {};  // Based on value of applic_midi_status
 	uint32_t data_length {};  // n_data_bytes (+ 1 if not in running status)
 	uint32_t dt_value {};

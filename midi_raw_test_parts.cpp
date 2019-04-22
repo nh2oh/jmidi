@@ -167,7 +167,7 @@ std::vector<unsigned char> union_valid_invalid_midisbs {
 	0xB0,0xB1,0xBB,0xBF,
 	0xE0,0xE1,0xEB,0xEF
 };
-
+/*
 // This func prepends random delta-times so "_payloads" is misnaming
 std::vector<midi_tests_t> make_random_midi_tests() {
 	std::random_device rdev;
@@ -216,7 +216,7 @@ std::vector<midi_tests_t> make_random_midi_tests() {
 	}
 
 	return result;
-}
+}*/
 
 
 
@@ -226,38 +226,53 @@ std::vector<midi_tests_t> make_random_midi_tests2() {
 	std::random_device rdev;
 	std::mt19937 re(rdev());
 	std::uniform_int_distribution rd(0);
+	std::uniform_int_distribution rd_maybe_invalid_rs(0,255);
 	std::uniform_int_distribution rd_n_data_bytes(1,2);
 	
-
-	auto random_dt_val = [&re](bool running_status) -> uint32_t {
-		// If in running status, can't generate a dt of 0
-		std::uniform_int_distribution rd_delta_time(0,0x7FFFFFFF);  // NB: 1
-		
-		// I take the log to attempt to get a more uniform distribution of
-		// field lengths
-		int32_t dt_notscaled {0};
-		int32_t dt {0};
+	auto random_dt_fld = [&re](bool running_status) -> std::array<unsigned char, 4> {
+		std::uniform_int_distribution rd(0,255);
+		std::array<unsigned char,4> result {0x00u,0x00u,0x00u,0x00u};
+		int i=0;
 		do {
-			dt_notscaled = rd_delta_time(re); 
-			dt = dt_notscaled; //static_cast<uint32_t>(std::log(dt_notscaled)/std::log(128));
-		} while (running_status && dt == 0);
+			unsigned char dig = rd(re);
+			result[i]=dig;
+			++i;
+		} while (i<4 && result[i-1]&0x80u);
+		if (i==4) {
+			result[3] &= 0x7Fu;
+		}
+		if (i==1 && running_status) {
+			// i==1 => only one dig was written; in the unlikely event that 
+			// dig==0, this is illegal when in running-status.
+			// TODO:  Not true (?);  The first note of the first chord of a track
+			// could set the status byte...
+			std::uniform_int_distribution rd_1dig_nonzero(1,127);
+			result[0] = rd_1dig_nonzero(re);
+		} else {
+			// If the value is only one digit and we're not in running-status, just
+			// set it to 0 with p=0.5; the most common dt value in an smf is probably
+			// 0.
+			if (result[0]%2==0) {
+				result[0] = 0x00u;
+			}
+		}
 
-		return dt;
+		return result;
 	};
 
 	std::vector<midi_tests_t> result {};
 	for (int i=0; i<100; ++i) {
 		midi_tests_t curr {};
 
-		bool running_status = (rd(re)%2==0);
+		curr.in_running_status = (rd(re)%2==0);
 
 		// delta-time
-		curr.dt_value = random_dt_val(running_status);
-		curr.dt_field_size = static_cast<uint8_t>(midi_vl_field_size(curr.dt_value));
-		std::array<unsigned char,4> temp_dt_field {};
-		auto dt_field_end = midi_write_vl_field(temp_dt_field.begin(),
-			temp_dt_field.end(),curr.dt_value);
-		std::copy(temp_dt_field.begin(),dt_field_end,std::back_inserter(curr.data));
+		auto curr_dt_field = random_dt_fld(curr.in_running_status);
+		auto curr_dt = midi_interpret_vl_field(&(curr_dt_field[0]));
+		curr.dt_value = curr_dt.val;
+		curr.dt_field_size = curr_dt.N;
+		std::copy(curr_dt_field.begin(),curr_dt_field.begin()+curr.dt_field_size
+			,std::back_inserter(curr.data));
 
 		curr.n_data_bytes = rd_n_data_bytes(re);
 		curr.data_length = curr.n_data_bytes;  // for event-local status, +=1 below
@@ -265,14 +280,13 @@ std::vector<midi_tests_t> make_random_midi_tests2() {
 		// Set status byte values consistent w/ .n_data_bytes and write into
 		// .data consistent w/ running_status
 		curr.applic_midi_status = random_midi_status_byte(curr.n_data_bytes);
-		if (!running_status) {  // event-local status byte; random running status byte
+		if (!curr.in_running_status) {  // event-local status byte; random running status byte
 			curr.data.push_back(curr.applic_midi_status);
 			curr.data_length += 1;
-			curr.midisb_prev_event = random_midi_status_byte();
-			curr.dt_value = random_dt_val(false);
-		} else {  // non-event-local status byte (running status active)
+			// This will generate an invalid status byte ~1/2 the time
+			curr.midisb_prev_event = rd_maybe_invalid_rs(re);  //random_midi_status_byte();
+		} else {  // there is no event-local status byte (running status is active)
 			curr.midisb_prev_event = curr.applic_midi_status;
-			curr.dt_value = random_dt_val(true);
 		}
 
 		// Generate and write data bytes, consistent w/ the applic status byte
@@ -294,13 +308,6 @@ std::vector<midi_tests_t> make_random_midi_tests2() {
 	return result;
 }
 
-
-
-
-
-
-
-
 void print_midi_test_cases() {
 	auto yay = testdata::make_random_midi_tests2();
 	for (const auto& tc : yay) {
@@ -314,6 +321,7 @@ void print_midi_test_cases() {
 		std::cout << "},";
 		std::cout << "0x" << dbk::print_hexascii(&(tc.midisb_prev_event),1) << ",";
 		std::cout << "0x" << dbk::print_hexascii(&(tc.applic_midi_status),1) << ",";
+		std::cout << std::to_string(tc.in_running_status) << ",";
 		std::cout << std::to_string(tc.n_data_bytes) << ",";
 		std::cout << std::to_string(tc.data_length) << ",";
 		std::cout << std::to_string(tc.dt_value) << ",";
@@ -326,9 +334,12 @@ void print_midi_test_cases() {
 uint8_t random_midi_status_byte(int require_n_data_bytes) {
 	std::random_device rdev;
 	std::mt19937 re(rdev());
-	std::uniform_int_distribution<int> rd(128,std::numeric_limits<uint8_t>::max());
+	std::uniform_int_distribution<int> rd(128,239);
 	
 	int s = rd(re);
+	while ((s&0xF0u)==0xF0u) {
+		s = rd(re);
+	}
 	if (require_n_data_bytes == 1) {
 		while ((s&0xF0u)!=0xC0u && (s&0xF0u)!=0xD0u) {
 			s = rd(re);
