@@ -2,7 +2,7 @@
 #include "midi_raw.h"
 #include "dbklib\byte_manipulation.h"
 #include <string>
-
+#include <cstdint>
 
 // Private ctor used by friend class mtrk_view_t.begin(),.end()
 mtrk_iterator_t::mtrk_iterator_t(const unsigned char *p, unsigned char s) {
@@ -92,17 +92,11 @@ bool mtrk_view_t::validate() const {
 
 std::string print(const mtrk_view_t& mtrk) {
 	std::string s {};
-
-	for (mtrk_iterator_t it = mtrk.begin(); it != mtrk.end(); ++it) {
-		//auto ev = *it;
+	for (mtrk_iterator_t it=mtrk.begin(); it!=mtrk.end(); ++it) {
 		auto ev = *it;
 		s += print(ev,mtrk_sbo_print_opts::debug);
 		s += "\n";
 	}
-	//for (auto const& e : mtrk) {
-	//	s += print(e);
-	//	s += "\n";
-	//}
 
 	return s;
 }
@@ -317,7 +311,6 @@ int32_t mtrk_event_container_sbo_t::size() const {  // Includes the delta-time
 		return this->d_.b.size;
 	}
 };
-
 
 
 std::string print(const mtrk_event_container_sbo_t& evnt, mtrk_sbo_print_opts opts) {

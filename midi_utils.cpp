@@ -6,7 +6,7 @@
 #include <iostream>
 #include <exception>
 
-
+/*
 //
 // Maybe a better way to do this is to let some sort of note_event iterator be ctor-ible
 // from an mtrk_container_t...  End-users don't want to nec. deal with all the details of
@@ -67,7 +67,7 @@ std::string print_notelist(const mtrk_container_t& mtrk) {
 
 
 
-
+*/
 
 
 
