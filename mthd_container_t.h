@@ -83,24 +83,4 @@ double seconds_per_tick();
 // int16_t mthd_container_t::ntrks() is always == 1 for a fmt-type 0 file.  
 //
 //
-class mthd_container_t {
-public:
-	mthd_container_t(const validate_mthd_chunk_result_t&);
 
-	// NB:  Second arg is the _exact_ size, not a max size
-	mthd_container_t(const unsigned char *p, uint32_t sz) 
-		: p_(p),size_(sz) {};
-
-	uint16_t format() const;
-	uint16_t ntrks() const;
-	uint16_t division() const;
-
-	// Does not include the 4 byte "MThd" and 4 byte data-length fields
-	int32_t data_size() const;
-	// Includes the "MThd" and 4-byte data-length fields
-	uint32_t size() const;	
-private:
-	const unsigned char *p_ {};  // points at the 'M' of "MThd..."
-	uint32_t size_ {0};
-};
-std::string print(const mthd_container_t&);
