@@ -14,7 +14,7 @@
 #include <type_traits>
 
 int midi_example() {
-	testdata::print_midi_test_cases();
+	//testdata::print_midi_test_cases();
 
 	std::string fn = "C:\\Users\\ben\\Desktop\\scr\\CLEMENTI.MID";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\test.mid";
@@ -23,7 +23,8 @@ int midi_example() {
 	//auto rawfiledata = dbk::readfile("C:\\Users\\ben\\Desktop\\scr\\test.mid").d;
 	auto rawfile_check_result = validate_smf(&rawfiledata[0],rawfiledata.size(),fn);
 
-	smf_container_t mf {rawfile_check_result};
+	//smf_container_t mf {rawfile_check_result};
+	smf_t mf(rawfile_check_result);
 	
 	std::cout << print(mf) << std::endl << std::endl;
 	//std::cout << print_notelist(mf.get_track(1)) << std::endl << std::endl;
