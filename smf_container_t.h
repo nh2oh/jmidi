@@ -43,7 +43,7 @@ public:
 	std::string fname() const;
 
 	mtrk_view_t get_track_view(int) const;
-	mthd_container_t get_header_view() const;
+	mthd_view_t get_header_view() const;
 
 	// Returns mtrk events in order by tonset
 	yay_mtrk_event_iterator_t event_iterator_begin(int);  // int track number

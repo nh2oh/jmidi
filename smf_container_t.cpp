@@ -50,7 +50,7 @@ uint32_t smf_t::mthd_size() const {
 	return this->get_header_view().size();
 }
 uint32_t smf_t::mthd_data_length() const {
-	return this->get_header_view().data_size();
+	return this->get_header_view().data_length();
 }
 mtrk_view_t smf_t::get_track_view(int n) const {
 	int curr_trackn {0};
@@ -62,16 +62,14 @@ mtrk_view_t smf_t::get_track_view(int n) const {
 			++curr_trackn;
 		}
 	}
-
 	std::abort();
 }
-mthd_container_t smf_t::get_header_view() const {
+mthd_view_t smf_t::get_header_view() const {
 	for (const auto& e : this->d_) {
 		if (detect_chunk_type_unsafe(e.data())==chunk_type::header) {
-			return mthd_container_t(e.data(),e.size());
+			return mthd_view_t(e.data(),e.size());
 		}
 	}
-
 	std::abort();
 }
 std::string smf_t::fname() const {
