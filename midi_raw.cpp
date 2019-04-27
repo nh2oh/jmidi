@@ -71,7 +71,17 @@ detect_chunk_type_result_t detect_chunk_type(const unsigned char *p, uint32_t ma
 	result.error = chunk_validation_error::no_error;
 	return result;
 }
-
+// NB:  Never returns "invalid"
+chunk_type detect_chunk_type_unsafe(const unsigned char *p) {
+	uint32_t id = dbk::be_2_native<uint32_t>(p);
+	if (id == 0x4D546864) {  // Mthd
+		return chunk_type::header;
+	} else if (id == 0x4D54726B) {  // MTrk
+		return chunk_type::track;
+	} else {
+		return chunk_type::unknown;
+	}
+}
 
 std::string print_error(const detect_chunk_type_result_t& chunk) {
 	std::string result {};

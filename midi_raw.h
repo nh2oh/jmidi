@@ -177,6 +177,10 @@ struct detect_chunk_type_result_t {
 	chunk_validation_error error {chunk_validation_error::unknown_error};
 };
 detect_chunk_type_result_t detect_chunk_type(const unsigned char*, uint32_t=0);
+// Reads only the first 4 bytes, matches for 'MThd' or 'MTrk', and returns
+// chunk_type::header, ::track, or ::unknown as appropriate.  Never returns
+// ::invalid.  
+chunk_type detect_chunk_type_unsafe(const unsigned char*);
 std::string print_error(const detect_chunk_type_result_t&);
 
 //

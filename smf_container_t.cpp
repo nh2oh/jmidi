@@ -4,6 +4,68 @@
 #include "mtrk_container_t.h"
 #include <string>
 #include <cstdint>
+#include <vector>
+
+
+
+
+
+
+
+smf_t::smf_t(const validate_smf_result_t& maybe_smf) {
+	if (!maybe_smf.is_valid) {
+		std::abort();
+	}
+
+	this->fname_ = maybe_smf.fname;
+	this ->chunk_idxs_ = maybe_smf.chunk_idxs;
+	this->n_mtrk_ = maybe_smf.n_mtrk;
+	this->n_unknown_ = maybe_smf.n_unknown;
+	this->p_ = maybe_smf.p;
+	this->size_ = maybe_smf.size;
+}
+
+uint16_t smf_t::ntrks() const {
+	return static_cast<uint16_t>(this->dtrks_.size());
+}
+int smf_container_t::n_chunks() const {
+	return this->n_mtrk_ + this->n_unknown_ + 1;  // +1 => MThd
+}
+mthd_container_t smf_container_t::get_header() const {
+	// I am assuming this->chunk_idxs_[0] has .type == chunk_type::header
+	// and offser == 0
+	return mthd_container_t {this->p_,this->chunk_idxs_[0].size};
+}
+//mtrk_container_t smf_container_t::get_track(int n) const {
+mtrk_view_t smf_container_t::get_track(int n) const {
+	int curr_trackn {0};
+	for (const auto& e : this->chunk_idxs_) {
+		if (e.type == chunk_type::track) {
+			if (n == curr_trackn) {
+				//return mtrk_container_t {this->p_ + e.offset, e.size};
+				return mtrk_view_t(this->p_ + e.offset, e.size);
+			}
+			++curr_trackn;
+		}
+	}
+
+	std::abort();
+}
+bool smf_container_t::get_chunk(int n) const {
+	// don't yet have a generic chunk container
+
+	return false;
+}
+
+std::string smf_container_t::fname() const {
+	return this->fname_;
+}
+
+
+
+
+
+
 
 smf_container_t::smf_container_t(const validate_smf_result_t& maybe_smf) {
 	if (!maybe_smf.is_valid) {

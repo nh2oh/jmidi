@@ -15,8 +15,8 @@ class mtrk_view_t;
 // Obtained from the begin() && end() methods of class mtrk_view_t.  
 //
 // Dereferencing returns an mtrk_event_container_sbo_t, which may allocate
-// if the underlying event is large enough.  NB that a range-for automatically
-// derefs the iterator.
+// if the underlying event is large enough (note that a range-for automatically
+// derefs the iterator).
 //
 // 
 class mtrk_iterator_t {
@@ -98,7 +98,6 @@ public:
 private:
 	const unsigned char *p_ {};  // Points at the 'M' of "MTrk..."
 	uint32_t size_ {};
-	//friend class mtrk_iterator_t;
 };
 std::string print(const mtrk_view_t&);
 

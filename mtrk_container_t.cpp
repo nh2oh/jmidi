@@ -20,10 +20,12 @@ mtrk_iterator_t& mtrk_iterator_t::operator++() {
 	auto sz = mtrk_event_get_size_dtstart_unsafe(this->p_,this->s_);
 	this->p_+=sz;
 	// Note that this->s_ now indicates the status of the *prior* event.  
-	// If i were to attempt to update it:
+	// Were I to attempt to update it to correspond to the present event(
+	// that indicated by this->p_), ex:
 	// this->s_ = mtrk_event_get_midi_status_byte_unsafe(this->p_,this->s_);
 	// i will dereference an invalid this->p_ in the case that the prior event
-	// was the last in the mtrk sequence.  
+	// was the last in the mtrk sequence and this->p_ is now pointing one past
+	// the end of the valid range.  
 	// One possible alternative design is to check for the end-of-sequence
 	// mtrk event {0x00u,0xFFu,0x2Fu}
 	return *this;
