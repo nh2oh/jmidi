@@ -16,7 +16,7 @@
 //
 // Alternate design:  Can hold mthd_view_t, mtrk_view_t objects as members.
 //
-class yay_mtrk_event_iterator_t;
+class smf_chrono_iterator_t;
 
 class smf_t {
 public:
@@ -35,15 +35,16 @@ public:
 	mthd_view_t get_header_view() const;
 
 	// Returns mtrk events in order by tonset
-	yay_mtrk_event_iterator_t event_iterator_begin(int);  // int track number
-	yay_mtrk_event_iterator_t event_iterator_end(int);  // int track number
+	smf_chrono_iterator_t event_iterator_begin();  // int track number
+	smf_chrono_iterator_t event_iterator_end();  // int track number
 private:
 	std::string fname_ {};
 	std::vector<std::vector<unsigned char>> d_ {};  // All chunks, incl ::unknown
 };
 std::string print(const smf_t&);
 
-
+// Draft of the the chrono_iterator
+std::string print_events_chrono(const smf_t&);
 
 
 //

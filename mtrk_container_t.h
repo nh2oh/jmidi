@@ -170,8 +170,7 @@ public:
 	const unsigned char *data() const;
 	bool is_small() const;
 	bool is_big() const;
-	// Pointer directly to start of this->data_, without regard to 
-	// this->is_small()
+	// Ptr to this->data_[0], w/o regard to this->is_small()
 	const unsigned char *raw_data() const;
 	const unsigned char *raw_flag() const;
 	int32_t delta_time() const;
