@@ -13,19 +13,8 @@
 // Holds an smf; owns the underlying data.  Splits each chunk into its
 // own std::vector<unsigned char>
 //
-// Open question if i should create some sort of mthd_view_t or simply
-// alias the mthd functions division(), ntrks(), etc to functions in smf_t.  
-// Ther is only one MThd per smf, so this data may as well be associated w/
-// the smf_t from the perspective of the user.  
 //
-// TODO:  Replace
-// mthd_container_t get_header_view(int) const;
-// w/ some sort of header_view_t get_header_view() const;
-// 
-// TODO:  header_view_t
-//
-// TODO:  Fix the aliased header funcs to use header_view_t
-//
+// Alternate design:  Can hold mthd_view_t, mtrk_view_t objects as members.
 //
 class yay_mtrk_event_iterator_t;
 
@@ -85,44 +74,4 @@ std::string print(const smf_t&);
 // }
 //   
 //
-
-
-
-//
-// smf_container_t & friends
-//
-// As was the case for the mtrk_event_container_t and mtrk_container_t above, an 
-// smf_container_t is nothing more than an assurance that the pointed to range is a valid 
-// smf.  It contains exactly one MThd chunk and one or more unknown or MTrk chunks.  The
-// sizes of all chunks are validated, so the chunk_container_t returned from the appropriate
-// methods are guaranteed correct.  Further, for the MThd and Mtrk chunk types, all sub-data
-// is validated (ie, all events in an MTrk are valid).
-//
-//
-class smf_container_t {
-public:
-	smf_container_t(const validate_smf_result_t&);
-
-	mthd_container_t get_header() const;
-	//mtrk_container_t get_track(int) const;
-	mtrk_view_t get_track(int) const;
-	bool get_chunk(int) const;  // unknown chunks allowed...
-	std::string fname() const;
-
-	int n_tracks() const;
-	int n_chunks() const;  // Includes MThd
-private:
-	std::string fname_ {};
-	std::vector<chunk_idx_t> chunk_idxs_ {};
-
-	// Total number of chunks is n_unknown + n_mtrk + 1 (MThd)
-	int8_t n_mtrk_ {0};
-	int8_t n_unknown_ {0};
-	const unsigned char *p_ {};
-	int32_t size_ {0};
-};
-
-std::string print(const smf_container_t&);
-bool play(const smf_container_t&);
-
 

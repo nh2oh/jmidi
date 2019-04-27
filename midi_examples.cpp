@@ -23,7 +23,6 @@ int midi_example() {
 	//auto rawfiledata = dbk::readfile("C:\\Users\\ben\\Desktop\\scr\\test.mid").d;
 	auto rawfile_check_result = validate_smf(&rawfiledata[0],rawfiledata.size(),fn);
 
-	//smf_container_t mf {rawfile_check_result};
 	smf_t mf(rawfile_check_result);
 	
 	std::cout << print(mf) << std::endl << std::endl;
