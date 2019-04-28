@@ -72,6 +72,22 @@ mthd_view_t smf_t::get_header_view() const {
 std::string smf_t::fname() const {
 	return this->fname_;
 }
+smf_chrono_iterator_t smf_t::event_iterator_begin() const {
+	std::vector<track_state_t> trks {};
+	for (int i=0; i<this->ntrks(); ++i) {
+		auto curr_trk = this->get_track_view(i);
+		trks.push_back({curr_trk.begin(),curr_trk.end(),0});
+	}
+	return smf_chrono_iterator_t(trks);
+}
+smf_chrono_iterator_t smf_t::event_iterator_end() const {
+	std::vector<track_state_t> trks {};
+	for (int i=0; i<this->ntrks(); ++i) {
+		auto curr_trk = this->get_track_view(i);
+		trks.push_back({curr_trk.end(),curr_trk.end(),0});
+	}
+	return smf_chrono_iterator_t(trks);
+}
 
 std::string print(const smf_t& smf) {
 	std::string s {};
@@ -103,6 +119,23 @@ std::string print(const smf_t& smf) {
 }
 
 
+
+std::string print_events_chrono2(const smf_t& smf) {
+	std::vector<int32_t> onset_prior(smf.ntrks(),0);
+	std::string s {};
+	auto end = smf.event_iterator_end();
+	for (auto curr=smf.event_iterator_begin(); curr!=end; ++curr) {
+		auto curr_event = *curr;
+		std::cout << "Tick onset == " + std::to_string(curr_event.tick_onset) + "; "
+			<< "Track == " + std::to_string(curr_event.trackn) + "; "
+			<< "Onset prior track event == " + std::to_string(onset_prior[curr_event.trackn]) + "\n\t"
+			<< print(curr_event.event,mtrk_sbo_print_opts::debug) + "\n";
+		onset_prior[curr_event.trackn] = curr_event.tick_onset;
+	}
+
+	return s;
+}
+
 //
 // Draft of the the chrono_iterator
 //
@@ -110,11 +143,6 @@ std::string print(const smf_t& smf) {
 // -Creating mtrk_iterator_t's to _temporary_ mtrk_view_t's works but is horrible
 //
 std::string print_events_chrono(const smf_t& smf) {
-	struct track_state_t {
-		mtrk_iterator_t next;
-		mtrk_iterator_t end;
-		int32_t cumtk;  // The time at which the _previous_ event on the track initiated
-	};
 	std::vector<track_state_t> its;
 	for (int i=0; i<smf.ntrks(); ++i) {
 		auto curr_trk = smf.get_track_view(i);
@@ -171,6 +199,77 @@ std::string print_events_chrono(const smf_t& smf) {
 
 	return s;
 }
+
+
+smf_chrono_iterator_t::smf_chrono_iterator_t(const std::vector<track_state_t>& trks) {  // private ctor
+	this->trks_=trks;
+}
+smf_event_t smf_chrono_iterator_t::operator*() const {
+	//smf_event_t result;  // TODO:  Deleted function error
+	auto ev = this->present_event();
+	//result.trackn = ev.trackn;
+	//result.tick_onset = ev.tick_onset;
+	//result.event = *(this->trks_[ev.trackn].next);
+	//return result;
+	return smf_event_t {ev.trackn,ev.tick_onset,*(this->trks_[ev.trackn].next)};
+}
+smf_chrono_iterator_t& smf_chrono_iterator_t::operator++() {
+	auto present = this->present_event();
+	this->trks_[present.trackn].cumtk = present.tick_onset;
+	++(this->trks_[present.trackn].next);
+	return *this;
+}
+bool smf_chrono_iterator_t::operator==(const smf_chrono_iterator_t& rhs) const {
+	if (this->trks_.size() != rhs.trks_.size()) {
+		return false;
+	}
+	bool result {true};
+	for (int i=0; i<this->trks_.size(); ++i) {
+		result &= (rhs.trks_[i].next==this->trks_[i].next);
+	}
+	return result;
+}
+
+bool smf_chrono_iterator_t::operator!=(const smf_chrono_iterator_t& rhs) const {
+	return !(*this==rhs);
+}
+
+smf_chrono_iterator_t::present_event_t smf_chrono_iterator_t::present_event() const {
+	smf_chrono_iterator_t::present_event_t result;
+	// trks_[i].cumtk is the time at which the _previous_ event on the track w/
+	// idx i _initiated_ (one event prior to trks_[i].next).  The time at which the
+	// next event on track i should begin is:  
+	// trks_[i].cumtk + (*trks_[i].next).delta_time()
+	//
+	// The next track to fire an event is the track i for which the quantity
+	// this->trks_[i].cumtk + (*this->trks_[i].next).delta_time();
+	// is minimum
+	//
+	bool first {true};
+	//result.tick_onset = -1; //int32_t curr_min_cumtk = -1;
+	//result.trackn = -1;  //int track_min_cumtk = -1;
+	for (int i=0; i<this->trks_.size(); ++i) {
+		if (this->trks_[i].next==this->trks_[i].end) { continue; }
+		auto curr_cumtk_start = this->trks_[i].cumtk + (*this->trks_[i].next).delta_time();
+		if (first) {
+			result.tick_onset = curr_cumtk_start;
+			result.trackn = i;
+			first = false;
+		} else {
+			if (curr_cumtk_start<result.tick_onset) {
+				result.tick_onset = curr_cumtk_start;
+				result.trackn = i;
+			}
+		}
+	}
+
+	// first => someone has incremented to, or beyond the end.  
+	// result is uninitialized
+	return result;
+}
+
+
+
 
 
 

@@ -35,8 +35,8 @@ public:
 	mthd_view_t get_header_view() const;
 
 	// Returns mtrk events in order by tonset
-	smf_chrono_iterator_t event_iterator_begin();  // int track number
-	smf_chrono_iterator_t event_iterator_end();  // int track number
+	smf_chrono_iterator_t event_iterator_begin() const;  // int track number
+	smf_chrono_iterator_t event_iterator_end() const;  // int track number
 private:
 	std::string fname_ {};
 	std::vector<std::vector<unsigned char>> d_ {};  // All chunks, incl ::unknown
@@ -45,6 +45,47 @@ std::string print(const smf_t&);
 
 // Draft of the the chrono_iterator
 std::string print_events_chrono(const smf_t&);
+// Uses the iterator
+std::string print_events_chrono2(const smf_t&);
+
+
+struct track_state_t {
+	mtrk_iterator_t next;
+	mtrk_iterator_t end;
+	int32_t cumtk;  // The time at which the _previous_ event on the track initiated
+};
+
+struct smf_event_t {
+	uint16_t trackn;
+	int32_t tick_onset;
+	mtrk_event_container_sbo_t event;
+};
+class smf_chrono_iterator_t {
+public:
+	smf_event_t operator*() const;
+	smf_chrono_iterator_t& operator++();
+	//smf_chrono_iterator_t& operator++(int);
+	bool operator==(const smf_chrono_iterator_t&) const;
+	bool operator!=(const smf_chrono_iterator_t&) const;
+private:
+	smf_chrono_iterator_t(const std::vector<track_state_t>&);  // used by smf_t
+
+	struct present_event_t {
+		uint16_t trackn;
+		int32_t tick_onset;
+	};
+	present_event_t present_event() const;
+	std::vector<track_state_t> trks_;
+
+	friend class smf_t;
+};
+
+
+
+
+
+
+
 
 
 //
