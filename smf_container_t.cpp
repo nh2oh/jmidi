@@ -110,70 +110,64 @@ std::string print(const smf_t& smf) {
 // -Creating mtrk_iterator_t's to _temporary_ mtrk_view_t's works but is horrible
 //
 std::string print_events_chrono(const smf_t& smf) {
-	std::string s {};
-	struct range_t {
-		int traknum;
-		mtrk_iterator_t beg;
+	struct track_state_t {
+		mtrk_iterator_t next;
 		mtrk_iterator_t end;
-		uint32_t cumtk;  // cumulative tick for the track
+		int32_t cumtk;  // The time at which the _previous_ event on the track initiated
 	};
-	std::vector<range_t> its;
+	std::vector<track_state_t> its;
 	for (int i=0; i<smf.ntrks(); ++i) {
 		auto curr_trk = smf.get_track_view(i);
-		its.push_back({i,curr_trk.begin(),curr_trk.end(),0});
+		its.push_back({curr_trk.begin(),curr_trk.end(),0});
 	}
 	
-	auto finished = [](const std::vector<range_t>& its)->bool {
+	auto finished = [&its]()->bool { 
 		bool result {true};
 		for (const auto& e : its) {
-			result &= (e.beg==e.end);
+			result &= (e.next==e.end);
 		}
 		return result;
 	};
-	auto idx_min_range = [](const std::vector<range_t>& its, uint32_t ticks_min)->int {
+	auto idx_next = [](const std::vector<track_state_t>& its)->int {
+		// its[i].cumtk is the time at which the _previous_ event on the track w/
+		// idx i _initiated_ (one event prior to its[i].next).  The time at which the
+		// next event on track i should begin is:  
+		// its[i].cumtk + (*its[i].next).delta_time()
+		bool first {true};
+		int32_t curr_min_cumtk = -1;
+		int track_min_cumtk = -1;
 		for (int i=0; i<its.size(); ++i) {
-			if (its[i].beg==its[i].end) {
-				continue;
-			}
-			if (its[i].cumtk<=ticks_min) {
-				return i;
+			if (its[i].next==its[i].end) { continue; }
+			auto curr_cumtk_start = its[i].cumtk + (*its[i].next).delta_time();
+			if (first) {
+				curr_min_cumtk = curr_cumtk_start;
+				track_min_cumtk = i;
+				first = false;
+			} else {
+				if (curr_cumtk_start<curr_min_cumtk) {
+					curr_min_cumtk = curr_cumtk_start;
+					track_min_cumtk = i;
+				}
 			}
 		}
-		return -1;
+		return track_min_cumtk;
 	};
 
-	int evnum {0};
-	int curr_range_idx = -1;
-	while (!finished(its)) {
-		curr_range_idx = idx_min_range(its,curr_range_idx);
-		if (curr_range_idx==-1) {
-			std::cout << "wait";
-		}
-		if (its[curr_range_idx].beg==its[curr_range_idx].end) {
-			continue;
-		}
-		auto curr_mtrk_event = *(its[curr_range_idx].beg);
-		
-		if (curr_mtrk_event.delta_time() > 10000) {
-			s += "what";
-		}
-		std::cout << "TRACK = " << std::to_string(its[curr_range_idx].traknum) << "; "
-			 << "CUM_TICK = " << std::to_string(its[curr_range_idx].cumtk) << "\n";
-		std::cout << print(curr_mtrk_event,mtrk_sbo_print_opts::debug) << std::endl;
-
-		its[curr_range_idx].cumtk += curr_mtrk_event.delta_time();
-		s += "TRACK = " + std::to_string(its[curr_range_idx].traknum) + "; "
-			 + "CUM_TICK = " + std::to_string(its[curr_range_idx].cumtk) + "\n";
-		s += print(curr_mtrk_event);
-		s += "\n";
-
-		++(its[curr_range_idx].beg);
-		++evnum;
-		if (evnum >= 400) {
-			break;
-		}
+	std::string s {};
+	while (!finished()) {
+		int curr_trackn = idx_next(its);
+		auto curr_event = *(its[curr_trackn].next);
+		s += "Tick onset == " + std::to_string(its[curr_trackn].cumtk+curr_event.delta_time()) + "; "
+			+ "Track == " + std::to_string(curr_trackn) + "; "
+			+ "Onset prior track event == " + std::to_string(its[curr_trackn].cumtk) + "\n\t"
+			+ print(curr_event,mtrk_sbo_print_opts::debug) + "\n";
+		//std::cout << "Tick onset == " << std::to_string(its[curr_trackn].cumtk+curr_event.delta_time()) << "; "
+		//	<< "Track == " << std::to_string(curr_trackn) << "; "
+		//	<< "Onset prior track event == " << std::to_string(its[curr_trackn].cumtk) << "\n\t"
+		//	<< print(curr_event,mtrk_sbo_print_opts::debug) << std::endl;
+		its[curr_trackn].cumtk += curr_event.delta_time();
+		++(its[curr_trackn].next);
 	}
-
 
 	return s;
 }
