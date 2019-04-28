@@ -49,12 +49,50 @@ std::string print_events_chrono(const smf_t&);
 std::string print_events_chrono2(const smf_t&);
 
 
+
+
+
+//
+// smf_chrono_iterator_t
+//
+// Returned from smf_t.event_iterator_begin().  Returns all the mtrk_events
+// in the smf_t in chronological order, ie, w/o regard to the track number
+// in which the event is encoded (format 1 files).  Internally, holds a 
+// std::vector<track_state_t>, which, for each track in the collection, 
+// holds an end iterator, an iterator to the _next_ event scheduled on that
+// track, and the cumulative tick value, which is the onset time (tick) 
+// corresponding to the _previous_ event in the track (one event prior to 
+// the next-event iterator).  The event indicated by an iterator object, ie,
+// the mtrk event that the iterator is currently "pointing to" is encoded 
+// implictly:  it is the event for which the quantity 
+// tonset = trks_[i].cumtk + (*trks_[i].next).delta_time()
+// is minimum.  
+// This has to me calculated for all i on every call to operator++() and
+// operator*().  
+//
+// In an alternate design, which is probably simpler, trks_[i].cumtk holds 
+// the tonset for trks_[i].next.  When trks_[i].next==trks_[i].end, however,
+// trks_[i].cumtk has a different meaning.  
+//
+//
+//
+// TODO:  Need to incorporate an understanding of tick units and respond
+// to meta events that change those units.  
+//
+// TODO:  Don't intersperse events for format 2 files
+//
+// How "attached" should this be to class smf_t?  As written, will work to 
+// intersperse events from any collection of mtrk_view_t's.  
+//
+//
+//
+
+
 struct track_state_t {
 	mtrk_iterator_t next;
 	mtrk_iterator_t end;
 	int32_t cumtk;  // The time at which the _previous_ event on the track initiated
 };
-
 struct smf_event_t {
 	uint16_t trackn;
 	int32_t tick_onset;
@@ -92,28 +130,10 @@ private:
 // Operations
 //
 // Print a list of on and off times for each note in each track in the file 
-// in order of cumtime-of-event for:
-// ex:  cumtime-of-event; 'on'; C4; velocity=x;
-// a) concurrent tracks
-// b) sequential tracks
-// 1)  Caller obtains ntrks track iterators, caller can integrate the delta-times.
-//     yay_mtrk_event_iterator_t derefs to an mtrk_event_container_sbo_t:
+// in order of tick-onset:
 //
 //
-// struct time_integrating_ymei_t {
-//   yay_mtrk_event_iterator_t it;
-//   midi_time_obj_t cumt;
-//   operator++()...;
-//   operator<()...;
-// }
-// std::vector<time_integrating_ymei_t> ymeis {ymei1,ymei2,ymei3};
-// while (true) {
-//   for (auto& curr_ymei=std::min(ymeis); (*(curr_ymei.it)).delta_t()==0; ++curr_ymei) {
-//     if (cev1.type()==midi_channel) {
-//       curr_timepoint.push_back({1,,cev1.onoff(),cev1.ch(),cev1.pitch(),cev1.velocity()});
-//     }
-//   }
-// }
-//   
-//
+std::string print_tied_events(const smf_t&);
+
+
 

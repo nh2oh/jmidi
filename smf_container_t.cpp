@@ -7,6 +7,8 @@
 #include <vector>
 #include <algorithm>  // std::copy() in smf_t::smf_t(const validate_smf_result_t& maybe_smf)
 #include <iostream>
+#include <exception>
+#include <iomanip>
 
 
 
@@ -72,6 +74,9 @@ mthd_view_t smf_t::get_header_view() const {
 std::string smf_t::fname() const {
 	return this->fname_;
 }
+// TODO:
+// -Creating mtrk_iterator_t's to _temporary_ mtrk_view_t's works but is horrible
+//
 smf_chrono_iterator_t smf_t::event_iterator_begin() const {
 	std::vector<track_state_t> trks {};
 	for (int i=0; i<this->ntrks(); ++i) {
@@ -269,7 +274,57 @@ smf_chrono_iterator_t::present_event_t smf_chrono_iterator_t::present_event() co
 }
 
 
+std::string print_tied_events(const smf_t& smf) {
+	struct sounding_t {
+		int32_t trackn;  // TODO:   Needed?  Do events communicate cross-track?
+		int32_t ch;
+		int32_t note;
+		int32_t tkon;
+		//mtrk_event_container_sbo_t ev_on;
+		//mtrk_event_container_sbo_t ev_off;
+	};
+	std::string s {};
+	std::vector<sounding_t> sounding {};
+	std::cout << std::setw(12) << "Tick on";
+	std::cout << std::setw(12) << "Tick off";
+	std::cout << std::setw(12) << "Ch (off)";
+	std::cout << std::setw(12) << "p1 (off)";
+	std::cout << std::setw(12) << "p2 (off)";
+	std::cout << std::setw(12) << "Trk (on)";
+	std::cout << std::setw(12) << "Trk (off)";
+	std::cout << "\n";
 
+	auto end = smf.event_iterator_end();
+	for (auto curr=smf.event_iterator_begin(); curr!=end; ++curr) {
+		auto curr_event = *curr;
+		auto curr_ev_midi_data = midi_extract(curr_event.event);
+		if (curr_ev_midi_data.is_valid) {
+			if (curr_ev_midi_data.status_nybble==0x90) {  // note on
+				sounding.push_back({curr_event.trackn,curr_ev_midi_data.ch,
+					curr_ev_midi_data.p1,curr_event.tick_onset});
+			} else if (curr_ev_midi_data.status_nybble==0x80) {  // note off
+				auto on_ev = std::find_if(sounding.begin(),sounding.end(),
+					[&curr_ev_midi_data](const sounding_t& rhs)->bool {
+						return (rhs.ch==curr_ev_midi_data.ch && rhs.note==curr_ev_midi_data.p1);
+					});
+				if (on_ev==sounding.end()) {  // no corresponding on event (weird)
+					continue;
+				}
+				std::cout << std::setw(12) << std::to_string((*on_ev).tkon);
+				std::cout << std::setw(12) << std::to_string(curr_event.tick_onset);
+				std::cout << std::setw(12) << std::to_string(curr_ev_midi_data.ch);
+				std::cout << std::setw(12) << std::to_string(curr_ev_midi_data.p1);
+				std::cout << std::setw(12) << std::to_string(curr_ev_midi_data.p2);
+				std::cout << std::setw(12) << std::to_string((*on_ev).trackn);
+				std::cout << std::setw(12) << std::to_string(curr_event.trackn);
+				std::cout << "\n";
+
+				sounding.erase(on_ev);
+			}
+		}
+	}
+	return s;
+}
 
 
 

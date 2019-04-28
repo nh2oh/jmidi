@@ -18,7 +18,9 @@ class mtrk_view_t;
 // if the underlying event is large enough (note that a range-for automatically
 // derefs the iterator).
 //
-// 
+// TODO:  "Sticky" status bits w/ meta event FF 20 ???  May need modifications
+// to the _unsafe_ lib funcs
+//
 class mtrk_iterator_t {
 public:
 	mtrk_event_container_sbo_t operator*() const;
@@ -186,6 +188,15 @@ enum class mtrk_sbo_print_opts {
 std::string print(const mtrk_event_container_sbo_t&,
 			mtrk_sbo_print_opts=mtrk_sbo_print_opts::normal);
 
+
+struct midi_extract_t {
+	bool is_valid {false};
+	uint8_t status_nybble {0x00u};
+	uint8_t ch {0xFFu};
+	uint8_t p1 {0xFFu};
+	uint8_t p2 {0xFFu};
+};
+midi_extract_t midi_extract(const mtrk_event_container_sbo_t&);
 
 
 

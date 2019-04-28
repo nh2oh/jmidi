@@ -343,3 +343,37 @@ std::string print(const mtrk_event_container_sbo_t& evnt, mtrk_sbo_print_opts op
 	return s;
 };
 
+
+
+/*
+struct midi_extract_t {
+	bool is_valid {false};
+	uint8_t status_nybble {0x00u};
+	uint8_t ch {0xFFu};
+	uint8_t p1 {0xFFu};
+	uint8_t p2 {0xFFu};
+};*/
+midi_extract_t midi_extract(const mtrk_event_container_sbo_t& ev) {
+	midi_extract_t result {};
+	if (ev.type()==smf_event_type::channel_mode
+				|| ev.type()==smf_event_type::channel_voice) {
+		auto p = ev.data() + midi_interpret_vl_field(ev.data()).N;
+		result.status_nybble = *p;
+		result.ch = (*p)&0x0F;
+		
+		++p;
+		result.p1 = *p;
+		
+		++p;
+		result.p2 = *p;
+		result.is_valid = true;
+	}
+
+	return result;
+}
+
+
+
+
+
+
