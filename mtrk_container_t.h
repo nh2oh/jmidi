@@ -8,6 +8,7 @@
 
 class mtrk_event_container_sbo_t;
 class mtrk_view_t;
+class mtrk_event_view_t;
 
 //
 // mtrk_iterator_t
@@ -28,7 +29,7 @@ public:
 	//mtrk_iterator_t& operator++(int);
 	bool operator==(const mtrk_iterator_t&) const;
 	bool operator!=(const mtrk_iterator_t&) const;
-	// operator->();
+	mtrk_event_view_t operator->() const;
 private:
 	// Ctor that takes a caller-specified p_ and midi status byte applicipable
 	// to the _prior_ event in the sequence (arg 2); only for trusted callers 
@@ -43,6 +44,35 @@ private:
 
 	friend class mtrk_view_t;
 };
+
+class mtrk_event_view_t {
+public:
+	smf_event_type type() const;
+	uint32_t size() const;
+	uint32_t data_length() const;
+	int32_t delta_time() const;
+
+	// Only funtional for midi events
+	channel_msg_type ch_msg_type() const;
+	uint8_t velocity() const;
+	uint8_t chn() const;
+	uint8_t note() const;
+	uint8_t progn() const;
+	uint8_t ctrln() const;
+	uint8_t ctrlv() const;
+	uint8_t p1() const;
+	uint8_t p2() const;
+private:
+	// ptr to first byte of the delta-time
+	const unsigned char *p_ {nullptr};
+	// midi status applicable to the event *prior* to this->p_;  0x00u if
+	// that event was a meta or sysex_f0/f7.  See notes in operator++();
+	unsigned char s_ {0x00u};
+};
+
+
+
+
 
 
 

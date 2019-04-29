@@ -8,8 +8,8 @@
 #include <algorithm>  // std::copy() in smf_t::smf_t(const validate_smf_result_t& maybe_smf)
 #include <iostream>
 #include <exception>
-#include <iomanip>
-
+#include <iomanip>  // std::setw()
+#include <ios>  // std::left
 
 
 smf_t::smf_t(const validate_smf_result_t& maybe_smf) {
@@ -285,6 +285,7 @@ std::string print_tied_events(const smf_t& smf) {
 	};
 	std::string s {};
 	std::vector<sounding_t> sounding {};
+	std::cout << std::left;
 	std::cout << std::setw(12) << "Tick on";
 	std::cout << std::setw(12) << "Tick off";
 	std::cout << std::setw(12) << "Ch (off)";
@@ -323,6 +324,7 @@ std::string print_tied_events(const smf_t& smf) {
 			}
 		}
 	}
+	std::cout << std::endl;
 	return s;
 }
 

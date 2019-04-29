@@ -341,6 +341,7 @@ smf_event_type detect_mtrk_event_type_dtstart_unsafe(const unsigned char*, unsig
 unsigned char mtrk_event_get_midi_status_byte_dtstart_unsafe(const unsigned char*, unsigned char=0x00u);
 unsigned char mtrk_event_get_midi_status_byte_unsafe(const unsigned char*, unsigned char=0x00u);
 uint32_t mtrk_event_get_size_dtstart_unsafe(const unsigned char*, unsigned char=0x00u);
+unsigned char mtrk_event_get_midi_p1_dtstart_unsafe(const unsigned char*, unsigned char=0x00u);
 
 struct parse_meta_event_result_t {
 	bool is_valid {false};
@@ -372,6 +373,7 @@ enum class channel_msg_type : uint8_t {
 	channel_mode,
 	invalid
 };
+channel_msg_type mtrk_event_get_ch_msg_type_unsafe(const unsigned char*, unsigned char=0x00u);
 // NB:  validate_mtrk_chunk() keeps track of the most recent status byte by assigning from the 
 // status_byte field of this struct.  Change this before adopting any sort of sign convention for
 // implied running_status.  

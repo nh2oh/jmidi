@@ -336,6 +336,9 @@ unsigned char mtrk_event_get_midi_status_byte_dtstart_unsafe(const unsigned char
 }
 
 // p points at the first byte _past_ the dt
+// TODO:  Is this right??  *p!=0xF0u && *p!=0xF7u && *p!= 0xFFu
+//     Shouldn't i mask off the low bits???
+//
 unsigned char mtrk_event_get_midi_status_byte_unsafe(const unsigned char *p, unsigned char s) {
 	if (((*p)>>7)) {
 		if (*p!=0xF0u && *p!=0xF7u && *p!= 0xFFu) {
@@ -390,6 +393,49 @@ uint32_t mtrk_event_get_size_dtstart_unsafe(const unsigned char *p, unsigned cha
 	}
 
 	return sz;
+}
+
+unsigned char mtrk_event_get_midi_p1_dtstart_unsafe(const unsigned char *p, unsigned char s) {
+	p += midi_interpret_vl_field(p).N;
+	s = mtrk_event_get_midi_status_byte_unsafe(p,s);
+	if (!is_midi_status_byte(s)) { // p does not indicate a midi event
+		return 0x80u;  // Invalid data byte
+	}
+	
+	// p _does_ indicate a valid midi event; running-status may (=>*p is not
+	// a status byte) or may not (=> *p is a status byte) be in effect
+	if (is_midi_status_byte(*p)) {
+		return *++p;  // Not in running status
+	} else {
+		return *p;  // In running status; p is the first data byte
+	}
+}
+unsigned char mtrk_event_get_midi_p2_dtstart_unsafe(const unsigned char *p, unsigned char s) {
+	p += midi_interpret_vl_field(p).N;
+	s = mtrk_event_get_midi_status_byte_unsafe(p,s);
+	if (!is_midi_status_byte(s)) { // p does not indicate a midi event
+		return 0x80u;  // Invalid data byte
+	}
+	
+	// p _does_ indicate a valid midi event; running-status may (=>*p is not
+	// a status byte) or may not (=> *p is a status byte) be in effect.  
+	if (((s&0xF0u)==0xC0u) || ((s&0xF0u)==0xD0u)) { 
+		// This type of midi event has no p2
+		return 0x80u;  // Invalid data byte
+	}
+	if (is_midi_status_byte(*p)) {
+		return *(p+=2);  // Not in running status
+	} else {
+		return *++p;  // In running status; p is the first data byte
+	}
+}
+
+bool is_midi_status_byte(const unsigned char s) {
+	unsigned char sm = s&0xF0u;
+	return ((sm>=0x80u) && (sm!=0xF0u));
+}
+unsigned char mtrk_event_get_p1_unsafe(const unsigned char *p, unsigned char s) {
+	//...
 }
 
 //
@@ -578,6 +624,36 @@ parse_sysex_event_result_t parse_sysex_event(const unsigned char *p, int32_t max
 	return result;
 }
 
+
+
+channel_msg_type mtrk_event_get_ch_msg_type_unsafe(const unsigned char *p, unsigned char s) {
+	s = mtrk_event_get_midi_status_byte_dtstart_unsafe(p,s);
+	
+	channel_msg_type result = channel_msg_type::invalid;
+	if ((s & 0xF0u) != 0xB0u) {
+		switch (s & 0xF0u) {
+			case 0x80u:  result = channel_msg_type::note_off; break;
+			case 0x90u: result = channel_msg_type::note_on; break;
+			case 0xA0u:  result = channel_msg_type::key_pressure; break;
+			//case 0xB0:  ....
+			case 0xC0u:  result = channel_msg_type::program_change; break;
+			case 0xD0u:  result = channel_msg_type::channel_pressure; break;
+			case 0xE0u:  result = channel_msg_type::pitch_bend; break;
+			default: result = channel_msg_type::invalid; break;
+		}
+	} else if ((s & 0xF0u) == 0xB0u) {
+		// To distinguish a channel_mode from a control_change msg, have to look at the
+		// first data byte.  
+		unsigned char p1 = mtrk_event_get_p1_unsafe(p,s);
+		if (p1 >= 121 && p1 <= 127) {
+			result = channel_msg_type::channel_mode;
+		} else {
+			result = channel_msg_type::control_change;
+		}
+	}
+
+	return result;
+}
 
 //
 // TODO:  There are some other conditions to verify:  I think only certain types of 
