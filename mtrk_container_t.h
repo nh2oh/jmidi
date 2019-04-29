@@ -65,9 +65,12 @@ public:
 private:
 	// ptr to first byte of the delta-time
 	const unsigned char *p_ {nullptr};
-	// midi status applicable to the event *prior* to this->p_;  0x00u if
-	// that event was a meta or sysex_f0/f7.  See notes in operator++();
+	// Possibly a valid midi status byte to be interpreted as the value of
+	// the running-status should the event at p_ not have a status byte.  
+	// _Not_ nec. the status byte applicable to the event at p_!
 	unsigned char s_ {0x00u};
+
+	friend class mtrk_iterator_t;
 };
 
 

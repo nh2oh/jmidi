@@ -434,9 +434,6 @@ bool is_midi_status_byte(const unsigned char s) {
 	unsigned char sm = s&0xF0u;
 	return ((sm>=0x80u) && (sm!=0xF0u));
 }
-unsigned char mtrk_event_get_p1_unsafe(const unsigned char *p, unsigned char s) {
-	//...
-}
 
 //
 // Pointer to the first data byte following the delta-time, _not_ to the start of
@@ -626,12 +623,12 @@ parse_sysex_event_result_t parse_sysex_event(const unsigned char *p, int32_t max
 
 
 
-channel_msg_type mtrk_event_get_ch_msg_type_unsafe(const unsigned char *p, unsigned char s) {
+channel_msg_type mtrk_event_get_ch_msg_type_dtstart_unsafe(const unsigned char *p, unsigned char s) {
 	s = mtrk_event_get_midi_status_byte_dtstart_unsafe(p,s);
 	
 	channel_msg_type result = channel_msg_type::invalid;
-	if ((s & 0xF0u) != 0xB0u) {
-		switch (s & 0xF0u) {
+	if ((s&0xF0u) != 0xB0u) {
+		switch (s&0xF0u) {
 			case 0x80u:  result = channel_msg_type::note_off; break;
 			case 0x90u: result = channel_msg_type::note_on; break;
 			case 0xA0u:  result = channel_msg_type::key_pressure; break;
@@ -641,10 +638,10 @@ channel_msg_type mtrk_event_get_ch_msg_type_unsafe(const unsigned char *p, unsig
 			case 0xE0u:  result = channel_msg_type::pitch_bend; break;
 			default: result = channel_msg_type::invalid; break;
 		}
-	} else if ((s & 0xF0u) == 0xB0u) {
+	} else {  // (s&0xF0u) == 0xB0u
 		// To distinguish a channel_mode from a control_change msg, have to look at the
 		// first data byte.  
-		unsigned char p1 = mtrk_event_get_p1_unsafe(p,s);
+		unsigned char p1 = mtrk_event_get_midi_p1_dtstart_unsafe(p,s);
 		if (p1 >= 121 && p1 <= 127) {
 			result = channel_msg_type::channel_mode;
 		} else {
@@ -778,7 +775,7 @@ int midi_channel_event_n_bytes(unsigned char p, unsigned char s) {
 	return N;
 }
 int8_t channel_number_from_status_byte_unsafe(unsigned char s) {
-	return int8_t {(s & 0x0F) + 1};
+	return static_cast<uint8_t>(s&0x0Fu + 1);
 }
 channel_msg_type channel_msg_type_from_status_byte(unsigned char s, unsigned char p1) {
 	channel_msg_type result = channel_msg_type::invalid;

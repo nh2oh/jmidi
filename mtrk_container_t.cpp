@@ -42,6 +42,53 @@ bool mtrk_iterator_t::operator==(const mtrk_iterator_t& rhs) const {
 bool mtrk_iterator_t::operator!=(const mtrk_iterator_t& rhs) const {
 	return !(*this==rhs);
 }
+mtrk_event_view_t mtrk_iterator_t::operator->() const {
+	mtrk_event_view_t result;
+	result.p_ = this->p_; result.s_ = this->s_;
+	return result;
+}
+
+
+
+
+
+smf_event_type mtrk_event_view_t::type() const {
+	return detect_mtrk_event_type_dtstart_unsafe(this->p_,this->s_);
+}
+uint32_t mtrk_event_view_t::size() const {
+	return mtrk_event_get_size_dtstart_unsafe(this->p_,this->s_);
+}
+uint32_t mtrk_event_view_t::data_length() const {
+	auto sz = mtrk_event_get_size_dtstart_unsafe(this->p_,this->s_);
+	auto dl = midi_interpret_vl_field(this->p_).N;
+	return sz-dl;
+}
+int32_t mtrk_event_view_t::delta_time() const {
+	return midi_interpret_vl_field(this->p_).val;
+}
+// Only funtional for midi events
+channel_msg_type mtrk_event_view_t::ch_msg_type() const {
+	return mtrk_event_get_ch_msg_type_dtstart_unsafe(this->p_,this->s_);
+}
+uint8_t mtrk_event_view_t::velocity() const {
+	return mtrk_event_get_midi_p1_dtstart_unsafe(this->p_,this->s_);
+}
+uint8_t mtrk_event_view_t::chn() const {
+	auto s = mtrk_event_get_midi_status_byte_dtstart_unsafe(this->p_,this->s_);
+	return channel_number_from_status_byte_unsafe(s);
+}
+uint8_t mtrk_event_view_t::note() const {
+	return mtrk_event_get_midi_p1_dtstart_unsafe(this->p_,this->s_);
+}
+uint8_t mtrk_event_view_t::p1() const {
+	return mtrk_event_get_midi_p1_dtstart_unsafe(this->p_,this->s_);
+}
+uint8_t mtrk_event_view_t::p2() const {
+	return mtrk_event_get_midi_p2_dtstart_unsafe(this->p_,this->s_);
+}
+
+
+
 
 
 
