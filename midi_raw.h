@@ -348,6 +348,7 @@ unsigned char mtrk_event_get_midi_p1_dtstart_unsafe(const unsigned char*, unsign
 unsigned char mtrk_event_get_midi_p2_dtstart_unsafe(const unsigned char*, unsigned char=0x00u);
 // Does not consider 0xFnu to be valid
 bool is_midi_status_byte(const unsigned char);
+bool is_midi_data_byte(const unsigned char);
 
 struct parse_meta_event_result_t {
 	bool is_valid {false};
@@ -410,6 +411,8 @@ int8_t channel_number_from_status_byte_unsafe(unsigned char);
 // Not really "_unsafe"-worthy since will return channel_msg_type::invalid if the
 // status byte is not legit.  
 channel_msg_type channel_msg_type_from_status_byte(unsigned char, unsigned char=0);
+
+
 
 
 //

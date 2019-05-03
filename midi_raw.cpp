@@ -434,6 +434,9 @@ bool is_midi_status_byte(const unsigned char s) {
 	unsigned char sm = s&0xF0u;
 	return ((sm>=0x80u) && (sm!=0xF0u));
 }
+bool is_midi_data_byte(const unsigned char s) {
+	return ((s&0x80u)==0x80u);
+}
 
 //
 // Pointer to the first data byte following the delta-time, _not_ to the start of
