@@ -212,6 +212,9 @@ public:
 	smf_event_type type() const;
 	int32_t data_size() const;  // Not indluding delta-t
 	int32_t size() const;  // Includes delta-t
+
+	//uint8_t status_byte() const;
+	//bool running_status() const;
 };
 
 enum class mtrk_sbo_print_opts {

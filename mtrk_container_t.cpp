@@ -359,6 +359,13 @@ int32_t mtrk_event_container_sbo_t::size() const {  // Includes the delta-time
 		return this->d_.b.size;
 	}
 };
+/*
+uint8_t mtrk_event_container_sbo_t::status_byte() const {
+	//...
+}
+bool mtrk_event_container_sbo_t::running_status() const {
+	//...
+}*/
 
 
 std::string print(const mtrk_event_container_sbo_t& evnt, mtrk_sbo_print_opts opts) {
@@ -409,6 +416,8 @@ midi_extract_t midi_extract(const mtrk_event_container_sbo_t& ev) {
 			std::cout << "all midi events should fit in the small bffr...";
 		}
 		auto p = ev.data() + midi_interpret_vl_field(ev.data()).N;
+		
+		//if (ev.runn
 		result.status_nybble = (*p)&0xF0u;
 		result.ch = (*p)&0x0Fu;
 		
