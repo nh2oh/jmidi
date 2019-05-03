@@ -74,7 +74,8 @@ std::string print_events_chrono2(const smf_t&);
 // the tonset for trks_[i].next.  When trks_[i].next==trks_[i].end, however,
 // trks_[i].cumtk has a different meaning.  
 //
-//
+// TODO:  MIDI tracks are indeiendent midi streams; events on diff mtrks do
+// not crosstalk.  
 //
 // TODO:  Need to incorporate an understanding of tick units and respond
 // to meta events that change those units.  
@@ -95,7 +96,7 @@ struct track_state_t {
 };
 struct smf_event_t {
 	uint16_t trackn;
-	int32_t tick_onset;
+	int32_t tick_onset;  // cumulative (TODO: ?)
 	mtrk_event_container_sbo_t event;
 };
 class smf_chrono_iterator_t {

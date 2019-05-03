@@ -16,8 +16,8 @@
 int midi_example() {
 	//testdata::print_midi_test_cases();
 
-	std::string fn = "C:\\Users\\ben\\Desktop\\scr\\CLEMENTI.MID";
-	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\test.mid";
+	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\CLEMENTI.MID";
+	std::string fn = "C:\\Users\\ben\\Desktop\\scr\\test.mid";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\hallelujah_joy_to_the_world.mid";
 	auto rawfiledata = dbk::readfile(fn).d;
 	//auto rawfiledata = dbk::readfile("C:\\Users\\ben\\Desktop\\scr\\test.mid").d;

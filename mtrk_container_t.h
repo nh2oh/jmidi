@@ -224,8 +224,8 @@ std::string print(const mtrk_event_container_sbo_t&,
 
 struct midi_extract_t {
 	bool is_valid {false};
-	uint8_t status_nybble {0x00u};
-	uint8_t ch {0xFFu};
+	uint8_t status_nybble {0x00u};  // MSBits of the status byte
+	uint8_t ch {0xFFu};  // LSBits of the status byte
 	uint8_t p1 {0xFFu};
 	uint8_t p2 {0xFFu};
 };

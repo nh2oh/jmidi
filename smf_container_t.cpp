@@ -10,7 +10,7 @@
 #include <exception>
 #include <iomanip>  // std::setw()
 #include <ios>  // std::left
-
+#include <sstream>
 
 smf_t::smf_t(const validate_smf_result_t& maybe_smf) {
 	if (!maybe_smf.is_valid) {
@@ -276,56 +276,107 @@ smf_chrono_iterator_t::present_event_t smf_chrono_iterator_t::present_event() co
 
 std::string print_tied_events(const smf_t& smf) {
 	struct sounding_t {
-		int32_t trackn;  // TODO:   Needed?  Do events communicate cross-track?
-		int32_t ch;
-		int32_t note;
-		int32_t tkon;
-		//mtrk_event_container_sbo_t ev_on;
-		//mtrk_event_container_sbo_t ev_off;
+		// Needed to prevent cross-track communication.  A track 2 note-off event
+		// matching the ch- and note-number of a presently "on" track-1 note should
+		// not shut off the track 1 note.  
+		uint16_t trackn;
+		int32_t tk;  // cumulative
+		uint8_t ch;
+		uint8_t note;  // p1
 	};
-	std::string s {};
-	std::vector<sounding_t> sounding {};
-	std::cout << std::left;
-	std::cout << std::setw(12) << "Tick on";
-	std::cout << std::setw(12) << "Tick off";
-	std::cout << std::setw(12) << "Ch (off)";
-	std::cout << std::setw(12) << "p1 (off)";
-	std::cout << std::setw(12) << "p2 (off)";
-	std::cout << std::setw(12) << "Trk (on)";
-	std::cout << std::setw(12) << "Trk (off)";
-	std::cout << "\n";
 
+	std::stringstream s {};
+	s << smf.fname() << "\n";
+	s << std::left;
+	s << std::setw(12) << "Tick on";
+	s << std::setw(12) << "Tick off";
+	s << std::setw(12) << "Duration";
+	s << std::setw(12) << "Ch (off)";
+	s << std::setw(12) << "p1 (off)";
+	s << std::setw(12) << "Trk (off)";
+	s << "\n";
+
+	// Holds data fro all note-on midi events for which a corresponing note-off
+	// event has not yet occured.  When the corresponding note-off event is
+	// encountered, the on-event is erased() from the vector.  
+	std::vector<sounding_t> sounding {};
+	// Holds midi data for any note-off events unable to be matched w/a 
+	// corresponding note-on event.  
+	std::vector<sounding_t> orphan_off_events {};
+
+	midi_extract_t curr_ev_midi_data;
+	sounding_t curr_sounding;
+	auto matching_noteon = [&curr_sounding](const sounding_t& rhs)->bool {
+		return (rhs.trackn==curr_sounding.trackn
+			&& rhs.ch==curr_sounding.ch
+			&& rhs.note==curr_sounding.note);
+	};
+	auto print_sounding_ev = [&s](const sounding_t& ev_on, const sounding_t& ev_off)->void {
+		bool missing_ev_on = (ev_on.trackn==0 && ev_on.tk==0 && ev_on.ch==0 && ev_on.note==0);
+		if (missing_ev_on) {
+			s << std::setw(12) << "?";  // tk note-on
+		} else {
+			s << std::setw(12) << std::to_string(ev_on.tk);  // tk note-on
+		}
+		s << std::setw(12) << std::to_string(ev_off.tk);  // tk note-off
+		if (missing_ev_on) {
+			s << std::setw(12) << "?";  // tk note-on
+		} else {
+			s << std::setw(12) << std::to_string(ev_off.tk-ev_on.tk);
+		}
+		s << std::setw(12) << std::to_string(ev_off.ch);
+		s << std::setw(12) << std::to_string(ev_off.note);
+		s << std::setw(12) << std::to_string(ev_off.trackn);
+		s << "\n";
+	};
+	
 	auto end = smf.event_iterator_end();
 	for (auto curr=smf.event_iterator_begin(); curr!=end; ++curr) {
-		auto curr_event = *curr;
-		auto curr_ev_midi_data = midi_extract(curr_event.event);
-		if (curr_ev_midi_data.is_valid) {
-			if (curr_ev_midi_data.status_nybble==0x90) {  // note on
-				sounding.push_back({curr_event.trackn,curr_ev_midi_data.ch,
-					curr_ev_midi_data.p1,curr_event.tick_onset});
-			} else if (curr_ev_midi_data.status_nybble==0x80) {  // note off
-				auto on_ev = std::find_if(sounding.begin(),sounding.end(),
-					[&curr_ev_midi_data](const sounding_t& rhs)->bool {
-						return (rhs.ch==curr_ev_midi_data.ch && rhs.note==curr_ev_midi_data.p1);
-					});
-				if (on_ev==sounding.end()) {  // no corresponding on event (weird)
-					continue;
-				}
-				std::cout << std::setw(12) << std::to_string((*on_ev).tkon);
-				std::cout << std::setw(12) << std::to_string(curr_event.tick_onset);
-				std::cout << std::setw(12) << std::to_string(curr_ev_midi_data.ch);
-				std::cout << std::setw(12) << std::to_string(curr_ev_midi_data.p1);
-				std::cout << std::setw(12) << std::to_string(curr_ev_midi_data.p2);
-				std::cout << std::setw(12) << std::to_string((*on_ev).trackn);
-				std::cout << std::setw(12) << std::to_string(curr_event.trackn);
-				std::cout << "\n";
+		auto curr_smf_event = *curr;  // {trackn, tick_onset, event}
+		curr_ev_midi_data = midi_extract(curr_smf_event.event);
+		if (!curr_ev_midi_data.is_valid) {
+			continue;  // Not a midi-event (maybe a meta event, sysex_f0/f7...)
+		}
 
+		curr_sounding.trackn = curr_smf_event.trackn;
+		curr_sounding.tk = curr_smf_event.tick_onset;
+		curr_sounding.ch = curr_ev_midi_data.ch;
+
+		if (curr_ev_midi_data.status_nybble==0x90u) {  // note on
+			curr_sounding.note = curr_ev_midi_data.p1;
+			sounding.push_back(curr_sounding);
+		} else if (curr_ev_midi_data.status_nybble==0x80u) {  // note off
+			curr_sounding.note = curr_ev_midi_data.p1;
+			auto on_ev = std::find_if(sounding.begin(),sounding.end(),matching_noteon);
+			if (on_ev==sounding.end()) {  // no corresponding note-on event (weird)
+				orphan_off_events.push_back(curr_sounding);
+			} else {
+				print_sounding_ev(*on_ev,curr_sounding);
 				sounding.erase(on_ev);
 			}
 		}
+	}  // To next smf-event
+
+	if (sounding.size()>0) {
+		s << "FILE CONTAINS ORPHAN NOTE-ON EVENTS:\n";
+		for (const auto& e : sounding) {
+			s << std::setw(12) << e.tk;
+			s << std::setw(12) << "?";
+			s << std::setw(12) << "?";
+			s << std::setw(12) << e.ch;
+			s << std::setw(12) << e.note;
+			s << std::setw(12) << e.trackn;
+			s << "\n";
+		}
 	}
-	std::cout << std::endl;
-	return s;
+	if (orphan_off_events.size()>0) {
+		s << "FILE CONTAINS ORPHAN NOTE-OFF EVENTS:\n";
+		for (const auto& e : orphan_off_events) {
+			print_sounding_ev({0,0,0,0},e);
+		}
+	}
+
+	return s.str();
 }
 
 
