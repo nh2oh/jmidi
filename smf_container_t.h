@@ -134,7 +134,8 @@ private:
 // in order of tick-onset:
 //
 //
+//
 std::string print_tied_events(const smf_t&);
-
+int chit_test();
 
 

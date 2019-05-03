@@ -3,6 +3,7 @@
 #include "dbklib\byte_manipulation.h"
 #include <string>
 #include <cstdint>
+#include <iostream>
 
 // Private ctor used by friend class mtrk_view_t.begin(),.end()
 mtrk_iterator_t::mtrk_iterator_t(const unsigned char *p, unsigned char s) {
@@ -404,9 +405,12 @@ midi_extract_t midi_extract(const mtrk_event_container_sbo_t& ev) {
 	midi_extract_t result {};
 	if (ev.type()==smf_event_type::channel_mode
 				|| ev.type()==smf_event_type::channel_voice) {
+		if (!ev.is_small()) {
+			std::cout << "all midi events should fit in the small bffr...";
+		}
 		auto p = ev.data() + midi_interpret_vl_field(ev.data()).N;
-		result.status_nybble = *p;
-		result.ch = (*p)&0x0F;
+		result.status_nybble = (*p)&0xF0u;
+		result.ch = (*p)&0x0Fu;
 		
 		++p;
 		result.p1 = *p;
