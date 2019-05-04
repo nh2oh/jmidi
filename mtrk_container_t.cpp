@@ -454,14 +454,15 @@ midi_extract_t midi_extract(const mtrk_event_container_sbo_t& ev) {
 
 
 
-
-
+mecsbo2_t::mecsbo2_t() {
+	this->set_flag_small();
+}
 //
 // For callers who have pre-computed the exact size of the event and who
 // can also supply a midi status byte if applicible, ex, an mtrk_container_iterator_t.  
 //
 mecsbo2_t::mecsbo2_t(const unsigned char *p, uint32_t sz, unsigned char s) {
-	if (sz<=22) {  // small
+	if (sz<=static_cast<uint64_t>(offs::max_size_sbo)) {  // small
 		this->set_flag_small();
 
 		auto end = std::copy(p,p+sz,this->d_.begin());
@@ -557,11 +558,7 @@ mecsbo2_t::~mecsbo2_t() {
 }
 
 unsigned char mecsbo2_t::operator[](uint32_t i) const {
-	if (this->is_small()) {
-		return this->d_[i];
-	} else {
-		return *(this->big_ptr()+i);
-	}
+	return *(this->data()+i);
 };
 const unsigned char *mecsbo2_t::raw_data() const {
 	return &(this->d_[0]);
@@ -577,46 +574,46 @@ const unsigned char *mecsbo2_t::data() const {
 const unsigned char *mecsbo2_t::raw_flag() const {
 	return &(this->flags_);
 }
-int32_t mecsbo2_t::delta_time() const {
+uint32_t mecsbo2_t::delta_time() const {
 	if (this->is_small()) {
-		return midi_interpret_vl_field(&(this->d_[0])).val;
+		return midi_interpret_vl_field(this->data()).val;
 	} else {
 		return this->big_delta_t();
 	}
 }
 smf_event_type mecsbo2_t::type() const {
 	if (is_small()) {
-		return detect_mtrk_event_type_dtstart_unsafe(&(this->d_[0]),this->midi_status_);
+		return detect_mtrk_event_type_dtstart_unsafe(this->data(),this->midi_status_);
 	} else {
 		return this->big_smf_event_type();
 	}
 }
-int32_t mecsbo2_t::data_size() const {  // Not indluding delta-t
-	if (this->is_small()) {
-		auto sz = mtrk_event_get_size_dtstart_unsafe(&(this->d_[0]),this->midi_status_);
-		auto data_sz = sz-midi_interpret_vl_field(&(this->d_[0])).N;
-		return data_sz;
-	} else {
-		auto sz = mtrk_event_get_size_dtstart_unsafe(this->big_ptr(),this->midi_status_);
-		auto data_sz = sz-midi_interpret_vl_field(this->big_ptr()).N;
-		return data_sz;
-	}
+uint32_t mecsbo2_t::data_size() const {  // Not indluding delta-t
+		auto sz = mtrk_event_get_size_dtstart_unsafe(this->data(),this->midi_status_);
+		auto dt = midi_interpret_vl_field(this->data());
+		if (dt.N >= sz) {
+			std::abort();
+		}
+		return sz-dt.N;
 }
-int32_t mecsbo2_t::size() const {  // Includes delta-t
-	if (this->is_small()) {
-		auto sz = mtrk_event_get_size_dtstart_unsafe(&(this->d_[0]),this->midi_status_);
-		return sz;
-	} else {
-		auto sz = mtrk_event_get_size_dtstart_unsafe(this->big_ptr(),this->midi_status_);
-		return sz;
-	}
+uint32_t mecsbo2_t::size() const {  // Includes the contrib from delta-t
+	return mtrk_event_get_size_dtstart_unsafe(this->data(),this->midi_status_);
 }
 bool mecsbo2_t::validate() const {
 	bool tf = true;
+
+	auto dt_val = this->delta_time();
+	tf &= dt_val>=0;
 	if (this->is_small()) {
+		auto dt_raw_interp = midi_interpret_vl_field(this->data());
+		tf &= dt_raw_interp.N > 0 && dt_raw_interp.N <= 4;
+		tf &= dt_raw_interp.val==dt_val;
+
 		auto sz = mtrk_event_get_size_dtstart_unsafe(&(this->d_[0]),this->midi_status_);
 		tf &= sz==this->size();
 	} else {
+		tf &= this->big_delta_t()==dt_val;
+
 		auto sz = mtrk_event_get_size_dtstart_unsafe(this->big_ptr(),this->midi_status_);
 		tf &= sz==this->big_size();
 		tf &= sz==this->size();
@@ -644,14 +641,16 @@ unsigned char *mecsbo2_t::big_ptr() const {
 		std::abort();
 	}
 	unsigned char *p {nullptr};
-	std::memcpy(&p,&(this->d_[0]),sizeof(p));
+	uint64_t o = static_cast<uint64_t>(offs::ptr);
+	std::memcpy(&p,&(this->d_[o]),sizeof(p));
 	return p;
 }
 unsigned char *mecsbo2_t::big_ptr(unsigned char *p) {
 	if (this->is_small()) {
 		std::abort();
 	}
-	std::memcpy(&(this->d_[0]),&p,sizeof(p));
+	uint64_t o = static_cast<uint64_t>(offs::ptr);
+	std::memcpy(&(this->d_[o]),&p,sizeof(p));
 	return p;
 }
 uint32_t mecsbo2_t::big_size() const {
@@ -659,14 +658,16 @@ uint32_t mecsbo2_t::big_size() const {
 		std::abort();
 	}
 	uint32_t sz {0};
-	std::memcpy(&sz,&(this->d_[0+sizeof(unsigned char*)]),sizeof(uint32_t));
+	uint64_t o = static_cast<uint64_t>(offs::size);
+	std::memcpy(&sz,&(this->d_[o]),sizeof(uint32_t));
 	return sz;
 }
 uint32_t mecsbo2_t::big_size(uint32_t sz) {
 	if (this->is_small()) {
 		std::abort();
 	}
-	std::memcpy(&(this->d_[0+sizeof(unsigned char*)]),&sz,sizeof(uint32_t));
+	uint64_t o = static_cast<uint64_t>(offs::size);
+	std::memcpy(&(this->d_[o]),&sz,sizeof(uint32_t));
 	return sz;
 }
 uint32_t mecsbo2_t::big_cap() const {
@@ -674,14 +675,16 @@ uint32_t mecsbo2_t::big_cap() const {
 		std::abort();
 	}
 	uint32_t c {0};
-	std::memcpy(&c,&(this->d_[0+sizeof(unsigned char*)+sizeof(uint32_t)]),sizeof(uint32_t));
+	uint64_t o = static_cast<uint64_t>(offs::cap);
+	std::memcpy(&c,&(this->d_[o]),sizeof(uint32_t));
 	return c;
 }
 uint32_t mecsbo2_t::big_cap(uint32_t c) {
 	if (this->is_small()) {
 		std::abort();
 	}
-	std::memcpy(&(this->d_[0+sizeof(unsigned char*)+sizeof(uint32_t)]),&c,sizeof(uint32_t));
+	uint64_t o = static_cast<uint64_t>(offs::cap);
+	std::memcpy(&(this->d_[o]),&c,sizeof(uint32_t));
 	return c;
 }
 uint32_t mecsbo2_t::big_delta_t() const {
@@ -689,16 +692,16 @@ uint32_t mecsbo2_t::big_delta_t() const {
 		std::abort();
 	}
 	uint32_t dt {0};
-	auto offset = sizeof(unsigned char*)+sizeof(uint32_t)+sizeof(uint32_t);
-	std::memcpy(&dt,&(this->d_[0+offset]),sizeof(uint32_t));
+	uint64_t o = static_cast<uint64_t>(offs::dt);
+	std::memcpy(&dt,&(this->d_[o]),sizeof(uint32_t));
 	return dt;
 }
 uint32_t mecsbo2_t::big_delta_t(uint32_t dt) {
 	if (this->is_small()) {
 		std::abort();
 	}
-	auto offset = sizeof(unsigned char*)+sizeof(uint32_t)+sizeof(uint32_t);
-	std::memcpy(&(this->d_[0+offset]),&dt,sizeof(uint32_t));
+	uint64_t o = static_cast<uint64_t>(offs::dt);
+	std::memcpy(&(this->d_[o]),&dt,sizeof(uint32_t));
 	return dt;
 }
 smf_event_type mecsbo2_t::big_smf_event_type() const {
@@ -706,16 +709,16 @@ smf_event_type mecsbo2_t::big_smf_event_type() const {
 		std::abort();
 	}
 	smf_event_type t {smf_event_type::invalid};
-	auto offset = sizeof(unsigned char*)+sizeof(uint32_t)+sizeof(uint32_t)+sizeof(uint32_t);
-	std::memcpy(&t,&(this->d_[0+offset]),sizeof(smf_event_type));
+	uint64_t o = static_cast<uint64_t>(offs::type);
+	std::memcpy(&t,&(this->d_[o]),sizeof(smf_event_type));
 	return t;
 }
 smf_event_type mecsbo2_t::big_smf_event_type(smf_event_type t) {
 	if (this->is_small()) {
 		std::abort();
 	}
-	auto offset = sizeof(unsigned char*)+sizeof(uint32_t)+sizeof(uint32_t)+sizeof(uint32_t);
-	std::memcpy(&(this->d_[0+offset]),&t,sizeof(smf_event_type));
+	uint64_t o = static_cast<uint64_t>(offs::type);
+	std::memcpy(&(this->d_[o]),&t,sizeof(smf_event_type));
 	return t;
 }
 

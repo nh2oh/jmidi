@@ -255,6 +255,12 @@ midi_extract_t midi_extract(const mtrk_event_container_sbo_t&);
 
 class mecsbo2_t {
 public:
+
+	//
+	// Default ctor; creates a "small" object that is essentially invalid 
+	// (does not represent an mtrk event).  
+	//
+	mecsbo2_t();
 	//
 	// Ctor for callers who have pre-computed the exact size of the event and who
 	// can also supply a midi status byte if applicible, ex, an mtrk_container_iterator_t.  
@@ -272,19 +278,32 @@ public:
 	~mecsbo2_t();
 
 	unsigned char operator[](uint32_t) const;
-	const unsigned char *data() const;  // Ptr to this->data_[0], w/o regard to this->is_small()
+	// Ptr to this->data_[0] if this->is_small(), big_ptr() if is_big()
+	const unsigned char *data() const;
+	// Ptr to this->data_[0], w/o regard to this->is_small()
 	const unsigned char *raw_data() const;
+	// ptr to this->flags_
 	const unsigned char *raw_flag() const;
-	int32_t delta_time() const;
+	uint32_t delta_time() const;
 	smf_event_type type() const;
-	int32_t data_size() const;  // Not indluding delta-t
-	int32_t size() const;  // Includes delta-t
+	uint32_t data_size() const;  // Not indluding delta-t
+	uint32_t size() const;  // Includes delta-t
 
 	bool is_big() const;
 	bool is_small() const;
 
 	bool validate() const;
 private:
+	enum class offs {
+		ptr = 0,
+		size = 0 + sizeof(unsigned char*),
+		cap = 0 + sizeof(unsigned char*) + sizeof(uint32_t),
+		dt = 0 + sizeof(unsigned char*) + 2*sizeof(uint32_t),
+		type = 0 + sizeof(unsigned char*) + 3*sizeof(uint32_t),
+		// Not really an "offset":
+		max_size_sbo = sizeof(unsigned char*) + 3*sizeof(uint32_t) + 2
+	};
+
 	// 
 	// Case big:  Probably meta, sysex_f0/f7, but _could_ be midi (rs or 
 	// non-rs).  
@@ -314,11 +333,10 @@ private:
 	//     unsigned char b22;  // byte n-1 following the vl event start
 	// };  // sizeof() => 22
 	std::array<unsigned char,22> d_ {0x00u};
-	unsigned char midi_status_;  // always the applic. midi status
-	unsigned char flags_ {0x00u};
-	// flags&0b10000000 == 0x00u=>big
+	unsigned char midi_status_ {0x00u};  // always the applic. midi status
+	unsigned char flags_ {0x80u};  // 0x00u=>big; NB:  defaults to "small"
 
-
+	static_assert(static_cast<uint64_t>(offs::max_size_sbo)==sizeof(d_));
 	
 	void set_flag_small();
 	void set_flag_big();
