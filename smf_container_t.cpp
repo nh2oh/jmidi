@@ -285,30 +285,22 @@ std::string print_tied_events(const smf_t& smf) {
 		// Needed to prevent cross-track communication.  A track 2 note-off event
 		// matching the ch- and note-number of a presently "on" track-1 note should
 		// not shut off the track 1 note.  
-		uint16_t trackn;
-		int32_t tk;  // cumulative
-		uint8_t ch;
-		uint8_t note;  // p1
+		uint16_t trackn {0};
+		int32_t tk {-1};  // cumulative
+		uint8_t ch {0};
+		uint8_t note {0};  // p1
+		uint8_t velocity {0};  // p2
 	};
-	struct linked_t {
-		uint16_t trackn;
-		int32_t tk_on;  // cumulative
-		int32_t tk_off;
-		int32_t duration;
-		uint8_t ch;
-		uint8_t note;  // p1
+	struct linked_t {  // -1 used to signify "empty" or "not found"
+		uint16_t trackn {0};
+		int32_t tk_on {-1};  // cumulative
+		int32_t tk_off {-1};
+		int32_t duration {-1};
+		uint8_t ch {0};
+		uint8_t note {0};  // p1
+		uint8_t velocity_on {0};  // p2
+		uint8_t velocity_off {0};  // p2
 	};
-
-	std::stringstream s {};
-	s << smf.fname() << "\n";
-	s << std::left;
-	s << std::setw(12) << "Tick on";
-	s << std::setw(12) << "Tick off";
-	s << std::setw(12) << "Duration";
-	s << std::setw(12) << "Ch (off)";
-	s << std::setw(12) << "p1 (off)";
-	s << std::setw(12) << "Trk (off)";
-	s << "\n";
 
 	// Holds data fro all note-on midi events for which a corresponing note-off
 	// event has not yet occured.  When the corresponding note-off event is
@@ -332,24 +324,6 @@ std::string print_tied_events(const smf_t& smf) {
 			&& rhs.ch==curr_onoff_ev.ch
 			&& rhs.note==curr_onoff_ev.note);
 	};
-	auto print_sounding_ev = [&s](const onoff_event_t& ev_on, const onoff_event_t& ev_off)->void {
-		bool missing_ev_on = (ev_on.trackn==0 && ev_on.tk==0 && ev_on.ch==0 && ev_on.note==0);
-		if (missing_ev_on) {
-			s << std::setw(12) << "?";  // tk note-on
-		} else {
-			s << std::setw(12) << std::to_string(ev_on.tk);  // tk note-on
-		}
-		s << std::setw(12) << std::to_string(ev_off.tk);  // tk note-off
-		if (missing_ev_on) {
-			s << std::setw(12) << "?";  // tk note-on
-		} else {
-			s << std::setw(12) << std::to_string(ev_off.tk-ev_on.tk);
-		}
-		s << std::setw(12) << std::to_string(ev_off.ch);
-		s << std::setw(12) << std::to_string(ev_off.note);
-		s << std::setw(12) << std::to_string(ev_off.trackn);
-		s << "\n";
-	};
 	auto make_linked = [](const onoff_event_t& ev_on, const onoff_event_t& ev_off)->linked_t {
 		linked_t res;
 		bool missing_ev_on = (ev_on.trackn==0 && ev_on.tk==0 && ev_on.ch==0 && ev_on.note==0);
@@ -358,6 +332,8 @@ std::string print_tied_events(const smf_t& smf) {
 		missing_ev_on ? res.duration=-1 : res.duration=ev_off.tk-ev_on.tk;
 		res.ch=ev_off.ch;
 		res.note = ev_off.note;
+		res.velocity_on = ev_on.velocity;
+		res.velocity_off = ev_off.velocity;
 		res.trackn=ev_off.trackn;
 
 		return res;
@@ -374,14 +350,17 @@ std::string print_tied_events(const smf_t& smf) {
 			curr_onoff_ev.tk=curr_smf_event.tick_onset;
 			curr_onoff_ev.ch=curr_ev_midi_data.ch;
 			curr_onoff_ev.note=curr_ev_midi_data.p1;
+			curr_onoff_ev.velocity=curr_ev_midi_data.p2;
 		}
 		if (!curr_ev_midi_data.is_valid) {
 				continue;  
 		}
 
-		if (curr_ev_midi_data.status_nybble==0x90u) {  // curr_onoff_ev is a note-on
+		if (curr_ev_midi_data.status_nybble==0x90u && curr_ev_midi_data.p2!=0) {  // curr_onoff_ev is a note-on
 			sounding.push_back(curr_onoff_ev);
-		} else if (curr_ev_midi_data.status_nybble==0x80u) {  // curr_onoff_ev is a note-off
+		} else if (curr_ev_midi_data.status_nybble==0x80u
+			|| (curr_ev_midi_data.status_nybble==0x90u 
+			&& curr_ev_midi_data.p2==0)) {  // curr_onoff_ev is a note-off
 			auto matching_on_ev = std::find_if(sounding.begin(),sounding.end(),matching_noteon);
 			if (matching_on_ev==sounding.end()) {  // no corresponding note-on event (weird)
 				orphan_off_events.push_back(curr_onoff_ev);
@@ -404,7 +383,6 @@ std::string print_tied_events(const smf_t& smf) {
 					if ((*it).trackn==curr_onoff_ev.trackn) {
 						found_event = true;
 						linked.push_back(make_linked(*it,curr_onoff_ev));
-						//print_sounding_ev(*it,curr_sounding);
 						sounding.erase(it);  // Invalidates it
 						break;
 					}
@@ -418,6 +396,36 @@ std::string print_tied_events(const smf_t& smf) {
 		}  // else if (curr_ev_midi_data.status_nybble==0xB0u)  {  // all notes off
 	}  // To next smf-event
 
+	//
+	// Printing
+	//
+	std::stringstream s {};
+
+	auto print_linked_ev = [&s](const linked_t& ev)->void {
+		bool missing_ev_on = (ev.tk_on==-1);
+		s << std::setw(12) << std::to_string(ev.tk_on);
+		s << std::setw(12) << std::to_string(ev.tk_off);
+		s << std::setw(12) << std::to_string(ev.tk_off-ev.tk_on);
+		s << std::setw(12) << std::to_string(ev.ch);
+		s << std::setw(12) << std::to_string(ev.note);  // p1
+		s << std::setw(12) << std::to_string(ev.velocity_on);  // p2
+		s << std::setw(12) << std::to_string(ev.velocity_off);  // p2
+		s << std::setw(12) << std::to_string(ev.trackn);
+	};
+
+	
+	s << smf.fname() << "\n";
+	s << std::left;
+	s << std::setw(12) << "Tick on";
+	s << std::setw(12) << "Tick off";
+	s << std::setw(12) << "Duration";
+	s << std::setw(12) << "Ch (off)";
+	s << std::setw(12) << "p1 (off)";
+	s << std::setw(12) << "p2 (on)";
+	s << std::setw(12) << "p2 (off)";
+	s << std::setw(12) << "Trk (off)";
+	s << "\n";
+
 	if (linked.size()>0) {
 		std::sort(linked.begin(),linked.end(),
 			[](const linked_t& r, const linked_t& l)->bool {
@@ -425,34 +433,65 @@ std::string print_tied_events(const smf_t& smf) {
 			});
 		s << "LINKED EVENTS:\n";
 		for (const auto& e : linked) {
-			s << std::setw(12) << std::to_string(e.tk_on);
+			print_linked_ev(e);
+			/*s << std::setw(12) << std::to_string(e.tk_on);
 			s << std::setw(12) << std::to_string(e.tk_off);
 			s << std::setw(12) << std::to_string(e.duration);
 			s << std::setw(12) << std::to_string(e.ch);
 			s << std::setw(12) << std::to_string(e.note);
-			s << std::setw(12) << std::to_string(e.trackn);
+			s << std::setw(12) << std::to_string(e.velocity_on);
+			s << std::setw(12) << std::to_string(e.velocity_off);
+			s << std::setw(12) << std::to_string(e.trackn);*/
 			s << "\n";
 		}
 	}
 	if (sounding.size()>0) {
 		s << "FILE CONTAINS ORPHAN NOTE-ON EVENTS:\n";
 		for (const auto& e : sounding) {
-			s << std::setw(12) << std::to_string(e.tk);
+			linked_t curr_unmatched_link;
+			curr_unmatched_link = make_linked(e,onoff_event_t {});
+			print_linked_ev(curr_unmatched_link);
+			/*s << std::setw(12) << std::to_string(e.tk);
 			s << std::setw(12) << "?";
 			s << std::setw(12) << "?";
 			s << std::setw(12) << std::to_string(e.ch);
 			s << std::setw(12) << std::to_string(e.note);
-			s << std::setw(12) << std::to_string(e.trackn);
+			s << std::setw(12) << std::to_string(e.trackn);*/
 			s << "\n";
 		}
 	}
 	if (orphan_off_events.size()>0) {
 		s << "FILE CONTAINS ORPHAN NOTE-OFF EVENTS:\n";
 		for (const auto& e : orphan_off_events) {
-			print_sounding_ev({0,0,0,0},e);
+			//print_sounding_ev({0,0,0,0},e);
+			linked_t curr_unmatched_link = make_linked(e,onoff_event_t {});
+			print_linked_ev(curr_unmatched_link);
+			s << "\n";
 		}
 	}
 
 	return s.str();
 }
 
+
+
+//linked_note_events_result_t link_note_events(const smf_t& smf)
+
+
+
+bool default_is_on_event(const mecsbo2_t& ev) {
+	auto md = ev.midi_data();
+	auto s = md.status_nybble;
+	return (s==0x90u && md.p2!=0x00u);
+}
+bool default_is_off_event(const mecsbo2_t& ev) {
+	auto md = ev.midi_data();
+	auto s = md.status_nybble;
+	return (s==0x80u || (s==0x90u && md.p2==0x00u));
+}
+bool default_is_linked_pair(const linked_event_t& ev_on, const linked_event_t& ev_off) {
+	auto md_on = ev_on.event_on.midi_data();
+	auto md_off = ev_off.event_off.midi_data();
+	return (ev_on.trackn==ev_off.trackn
+			&& md_on.ch==md_off.ch && md_on.p1==md_off.p1);
+}
