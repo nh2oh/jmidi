@@ -5,7 +5,7 @@
 #include <vector>
 
 
-
+class mecsbo2_t;
 class mtrk_event_container_sbo_t;
 class mtrk_view_t;
 class mtrk_event_view_t;
@@ -24,7 +24,7 @@ class mtrk_event_view_t;
 //
 class mtrk_iterator_t {
 public:
-	mtrk_event_container_sbo_t operator*() const;
+	mecsbo2_t operator*() const;
 	mtrk_iterator_t& operator++();
 	//mtrk_iterator_t& operator++(int);
 	bool operator==(const mtrk_iterator_t&) const;
@@ -255,16 +255,11 @@ midi_extract_t midi_extract(const mtrk_event_container_sbo_t&);
 
 class mecsbo2_t {
 public:
-
-	//
 	// Default ctor; creates a "small" object that is essentially invalid 
 	// (does not represent an mtrk event).  
-	//
 	mecsbo2_t();
-	//
 	// Ctor for callers who have pre-computed the exact size of the event and who
 	// can also supply a midi status byte if applicible, ex, an mtrk_container_iterator_t.  
-	// 
 	mecsbo2_t(const unsigned char*, uint32_t, unsigned char=0);
 	// Copy ctor
 	mecsbo2_t(const mecsbo2_t&);
@@ -277,6 +272,7 @@ public:
 	// Dtor
 	~mecsbo2_t();
 
+	// Bytes of this->data()+i returned by value
 	unsigned char operator[](uint32_t) const;
 	// Ptr to this->data_[0] if this->is_small(), big_ptr() if is_big()
 	const unsigned char *data() const;
@@ -289,9 +285,18 @@ public:
 	uint32_t data_size() const;  // Not indluding delta-t
 	uint32_t size() const;  // Includes delta-t
 
+	struct midi_data_t {
+		bool is_valid {false};
+		bool is_running_status {false};
+		uint8_t status_nybble {0x00u};  // most-significant nybble
+		uint8_t ch {0x00u};
+		uint8_t p1 {0x00u};
+		uint8_t p2 {0x00u};
+	};
+	midi_data_t midi_data() const;
+
 	bool is_big() const;
 	bool is_small() const;
-
 	bool validate() const;
 private:
 	enum class offs {
@@ -353,7 +358,8 @@ private:
 	smf_event_type big_smf_event_type(smf_event_type);
 };
 
-
+std::string print(const mecsbo2_t&,
+			mtrk_sbo_print_opts=mtrk_sbo_print_opts::normal);
 
 
 

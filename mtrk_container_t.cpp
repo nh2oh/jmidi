@@ -4,7 +4,8 @@
 #include <string>
 #include <cstdint>
 #include <iostream>
-#include <cstring>  // std::mempy
+#include <cstring>  // std::memcpy()
+#include <exception>
 
 
 
@@ -13,10 +14,10 @@ mtrk_iterator_t::mtrk_iterator_t(const unsigned char *p, unsigned char s) {
 	this->p_ = p;
 	this->s_ = s;
 }
-mtrk_event_container_sbo_t mtrk_iterator_t::operator*() const {
+mecsbo2_t mtrk_iterator_t::operator*() const {
 	// Note that this->s_ indicates the status of the event prior to this->p_.  
 	auto sz = mtrk_event_get_size_dtstart_unsafe(this->p_,this->s_);
-	return mtrk_event_container_sbo_t(this->p_,sz,this->s_);
+	return mecsbo2_t(this->p_,sz,this->s_);
 }
 mtrk_iterator_t& mtrk_iterator_t::operator++() {
 	auto dt = midi_interpret_vl_field(this->p_);
@@ -599,6 +600,26 @@ uint32_t mecsbo2_t::data_size() const {  // Not indluding delta-t
 uint32_t mecsbo2_t::size() const {  // Includes the contrib from delta-t
 	return mtrk_event_get_size_dtstart_unsafe(this->data(),this->midi_status_);
 }
+mecsbo2_t::midi_data_t mecsbo2_t::midi_data() const {
+	mecsbo2_t::midi_data_t result {};
+	result.is_valid = false;
+
+	if (this->type()==smf_event_type::channel_mode
+				|| this->type()==smf_event_type::channel_voice) {
+		result.is_valid = true;
+		
+		auto dt = midi_interpret_vl_field(this->data());
+		auto p = this->data()+dt.N;
+		result.is_running_status = *p!=this->midi_status_;
+
+		result.status_nybble = this->midi_status_&0xF0u;
+		result.ch = this->midi_status_&0x0Fu;
+		result.p1 = mtrk_event_get_midi_p1_dtstart_unsafe(this->data(),this->midi_status_);
+		result.p2 = mtrk_event_get_midi_p2_dtstart_unsafe(this->data(),this->midi_status_);
+	}
+
+	return result;
+}
 bool mecsbo2_t::validate() const {
 	bool tf = true;
 
@@ -720,6 +741,37 @@ smf_event_type mecsbo2_t::big_smf_event_type(smf_event_type t) {
 	uint64_t o = static_cast<uint64_t>(offs::type);
 	std::memcpy(&(this->d_[o]),&t,sizeof(smf_event_type));
 	return t;
+}
+
+
+std::string print(const mecsbo2_t& evnt, mtrk_sbo_print_opts opts) {
+	std::string s {};
+	s += ("delta_time == " + std::to_string(evnt.delta_time()) + ", ");
+	s += ("type == " + print(evnt.type()) + ", ");
+	s += ("data_size == " + std::to_string(evnt.data_size()) + ", ");
+	s += ("size == " + std::to_string(evnt.size()) + "\n\t");
+
+	auto ss = evnt.size();
+	auto ds = evnt.data_size();
+	auto n = ss-ds;
+
+	s += ("[" + dbk::print_hexascii(evnt.data(), evnt.size()-evnt.data_size(), ' ') + "] ");
+	s += dbk::print_hexascii(evnt.data()+n, evnt.data_size(), ' ');
+
+	if (opts == mtrk_sbo_print_opts::debug) {
+		s += "\n\t";
+		if (evnt.is_small()) {
+			s += "sbo=>small == ";
+		} else {
+			s += "sbo=>big   == ";
+		}
+		s += "{";
+		s += dbk::print_hexascii(evnt.raw_data(), sizeof(mecsbo2_t), ' ');
+		s += "}; \n";
+		s += "\tbigsmall_flag==";
+		s += dbk::print_hexascii(evnt.raw_flag(), 1, ' ');
+	}
+	return s;
 }
 
 

@@ -97,7 +97,7 @@ struct track_state_t {
 struct smf_event_t {
 	uint16_t trackn;
 	int32_t tick_onset;  // cumulative (TODO: ?)
-	mtrk_event_container_sbo_t event;
+	mecsbo2_t event;
 };
 class smf_chrono_iterator_t {
 public:
