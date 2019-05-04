@@ -4,6 +4,9 @@
 #include <string>
 #include <cstdint>
 #include <iostream>
+#include <cstring>  // std::mempy
+
+
 
 // Private ctor used by friend class mtrk_view_t.begin(),.end()
 mtrk_iterator_t::mtrk_iterator_t(const unsigned char *p, unsigned char s) {
@@ -434,6 +437,287 @@ midi_extract_t midi_extract(const mtrk_event_container_sbo_t& ev) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//
+// For callers who have pre-computed the exact size of the event and who
+// can also supply a midi status byte if applicible, ex, an mtrk_container_iterator_t.  
+//
+mecsbo2_t::mecsbo2_t(const unsigned char *p, uint32_t sz, unsigned char s) {
+	if (sz<=22) {  // small
+		this->set_flag_small();
+
+		auto end = std::copy(p,p+sz,this->d_.begin());
+		while (end!=this->d_.end()) {
+			*end++ = 0x00u;
+		}
+		this->midi_status_ = mtrk_event_get_midi_status_byte_dtstart_unsafe(p,s);
+	} else {  // big
+		this->set_flag_big();
+
+		this->big_ptr(new unsigned char[sz]);
+		this->big_size(sz);
+		this->big_cap(sz);
+		std::copy(p,p+sz,this->big_ptr());
+
+		auto ev = parse_mtrk_event_type(p,s,sz);
+		this->big_delta_t(ev.delta_t.val);
+		this->big_smf_event_type(ev.type);
+		this->midi_status_ = mtrk_event_get_midi_status_byte_dtstart_unsafe(p,s);
+	}
+}
+//
+// Copy ctor
+//
+mecsbo2_t::mecsbo2_t(const mecsbo2_t& rhs) {
+	this->d_ = rhs.d_;
+	this->midi_status_ = rhs.midi_status_;
+	this->flags_ = rhs.flags_;
+	if (rhs.is_big()) {
+		// At this point, this is a clone of rhs; both rhs.big_ptr() and
+		// this.big_ptr() are pointing at the same memory.  
+		unsigned char *new_p = new unsigned char[rhs.big_cap()];
+		std::copy(this->big_ptr(),this->big_ptr()+this->big_cap(),new_p);
+		this->big_ptr(new_p);
+	}
+}
+//
+// Copy assignment; overwrites a pre-existing lhs 'this' w/ rhs
+//
+mecsbo2_t& mecsbo2_t::operator=(const mecsbo2_t& rhs) {
+	if (this->is_big()) {
+		delete this->big_ptr();
+	}
+	this->d_ = rhs.d_;
+	this->midi_status_ = rhs.midi_status_;
+	this->flags_ = rhs.flags_;
+
+	if (this->is_big()) {
+		// At this point, this is a clone of rhs; both rhs.big_ptr() and
+		// this.big_ptr() are pointing at the same memory. 
+		// Deep copy the pointed-at range
+		unsigned char *new_p = new unsigned char[rhs.big_cap()];
+		std::copy(this->big_ptr(),this->big_ptr()+this->big_cap(),new_p);
+		this->big_ptr(new_p);
+	}
+	return *this;
+}
+//
+// Move ctor
+//
+mecsbo2_t::mecsbo2_t(mecsbo2_t&& rhs) {
+	this->d_ = rhs.d_;
+	this->midi_status_ = rhs.midi_status_;
+	this->flags_ = rhs.flags_;
+	if (this->is_big()) {
+		rhs.set_flag_small();  // prevents ~rhs() from freeing its memory
+		// Note that this state of rhs is invalid as it almost certinally does
+		// not contain a valid "small" mtrk event
+	}
+}
+//
+// Move assignment
+//
+mecsbo2_t& mecsbo2_t::operator=(mecsbo2_t&& rhs) {
+	if (this->is_big()) {
+		delete this->big_ptr();
+	}
+
+	this->d_ = rhs.d_;
+	this->midi_status_ = rhs.midi_status_;
+	this->flags_ = rhs.flags_;
+	if (rhs.is_big()) {
+		rhs.set_flag_small();  // prevents ~rhs() from freeing its memory
+		// Note that this state of rhs is invalid as it almost certinally does
+		// not contain a valid "small" mtrk event
+	}
+	return *this;
+}
+mecsbo2_t::~mecsbo2_t() {
+	if (this->is_big()) {
+		delete this->big_ptr();
+	}
+}
+
+unsigned char mecsbo2_t::operator[](uint32_t i) const {
+	if (this->is_small()) {
+		return this->d_[i];
+	} else {
+		return *(this->big_ptr()+i);
+	}
+};
+const unsigned char *mecsbo2_t::raw_data() const {
+	return &(this->d_[0]);
+}
+// TODO:  If small, this returns a ptr to a stack-allocated object...  Bad?
+const unsigned char *mecsbo2_t::data() const {
+	if (this->is_small()) {
+		return &(this->d_[0]);
+	} else {
+		return this->big_ptr();
+	}
+}
+const unsigned char *mecsbo2_t::raw_flag() const {
+	return &(this->flags_);
+}
+int32_t mecsbo2_t::delta_time() const {
+	if (this->is_small()) {
+		return midi_interpret_vl_field(&(this->d_[0])).val;
+	} else {
+		return this->big_delta_t();
+	}
+}
+smf_event_type mecsbo2_t::type() const {
+	if (is_small()) {
+		return detect_mtrk_event_type_dtstart_unsafe(&(this->d_[0]),this->midi_status_);
+	} else {
+		return this->big_smf_event_type();
+	}
+}
+int32_t mecsbo2_t::data_size() const {  // Not indluding delta-t
+	if (this->is_small()) {
+		auto sz = mtrk_event_get_size_dtstart_unsafe(&(this->d_[0]),this->midi_status_);
+		auto data_sz = sz-midi_interpret_vl_field(&(this->d_[0])).N;
+		return data_sz;
+	} else {
+		auto sz = mtrk_event_get_size_dtstart_unsafe(this->big_ptr(),this->midi_status_);
+		auto data_sz = sz-midi_interpret_vl_field(this->big_ptr()).N;
+		return data_sz;
+	}
+}
+int32_t mecsbo2_t::size() const {  // Includes delta-t
+	if (this->is_small()) {
+		auto sz = mtrk_event_get_size_dtstart_unsafe(&(this->d_[0]),this->midi_status_);
+		return sz;
+	} else {
+		auto sz = mtrk_event_get_size_dtstart_unsafe(this->big_ptr(),this->midi_status_);
+		return sz;
+	}
+}
+bool mecsbo2_t::validate() const {
+	bool tf = true;
+	if (this->is_small()) {
+		auto sz = mtrk_event_get_size_dtstart_unsafe(&(this->d_[0]),this->midi_status_);
+		tf &= sz==this->size();
+	} else {
+		auto sz = mtrk_event_get_size_dtstart_unsafe(this->big_ptr(),this->midi_status_);
+		tf &= sz==this->big_size();
+		tf &= sz==this->size();
+	}
+
+	return tf;
+}
+
+
+bool mecsbo2_t::is_big() const {
+	return (this->flags_&0x80u)==0x00u;
+}
+bool mecsbo2_t::is_small() const {
+	return !(this->is_big());
+}
+void mecsbo2_t::set_flag_big() {
+	this->flags_ &= 0x7Fu;
+}
+void mecsbo2_t::set_flag_small() {
+	this->flags_ |= 0x80u;
+}
+
+unsigned char *mecsbo2_t::big_ptr() const {
+	if (this->is_small()) {
+		std::abort();
+	}
+	unsigned char *p {nullptr};
+	std::memcpy(&p,&(this->d_[0]),sizeof(p));
+	return p;
+}
+unsigned char *mecsbo2_t::big_ptr(unsigned char *p) {
+	if (this->is_small()) {
+		std::abort();
+	}
+	std::memcpy(&(this->d_[0]),&p,sizeof(p));
+	return p;
+}
+uint32_t mecsbo2_t::big_size() const {
+	if (this->is_small()) {
+		std::abort();
+	}
+	uint32_t sz {0};
+	std::memcpy(&sz,&(this->d_[0+sizeof(unsigned char*)]),sizeof(uint32_t));
+	return sz;
+}
+uint32_t mecsbo2_t::big_size(uint32_t sz) {
+	if (this->is_small()) {
+		std::abort();
+	}
+	std::memcpy(&(this->d_[0+sizeof(unsigned char*)]),&sz,sizeof(uint32_t));
+	return sz;
+}
+uint32_t mecsbo2_t::big_cap() const {
+	if (this->is_small()) {
+		std::abort();
+	}
+	uint32_t c {0};
+	std::memcpy(&c,&(this->d_[0+sizeof(unsigned char*)+sizeof(uint32_t)]),sizeof(uint32_t));
+	return c;
+}
+uint32_t mecsbo2_t::big_cap(uint32_t c) {
+	if (this->is_small()) {
+		std::abort();
+	}
+	std::memcpy(&(this->d_[0+sizeof(unsigned char*)+sizeof(uint32_t)]),&c,sizeof(uint32_t));
+	return c;
+}
+uint32_t mecsbo2_t::big_delta_t() const {
+	if (this->is_small()) {
+		std::abort();
+	}
+	uint32_t dt {0};
+	auto offset = sizeof(unsigned char*)+sizeof(uint32_t)+sizeof(uint32_t);
+	std::memcpy(&dt,&(this->d_[0+offset]),sizeof(uint32_t));
+	return dt;
+}
+uint32_t mecsbo2_t::big_delta_t(uint32_t dt) {
+	if (this->is_small()) {
+		std::abort();
+	}
+	auto offset = sizeof(unsigned char*)+sizeof(uint32_t)+sizeof(uint32_t);
+	std::memcpy(&(this->d_[0+offset]),&dt,sizeof(uint32_t));
+	return dt;
+}
+smf_event_type mecsbo2_t::big_smf_event_type() const {
+	if (this->is_small()) {
+		std::abort();
+	}
+	smf_event_type t {smf_event_type::invalid};
+	auto offset = sizeof(unsigned char*)+sizeof(uint32_t)+sizeof(uint32_t)+sizeof(uint32_t);
+	std::memcpy(&t,&(this->d_[0+offset]),sizeof(smf_event_type));
+	return t;
+}
+smf_event_type mecsbo2_t::big_smf_event_type(smf_event_type t) {
+	if (this->is_small()) {
+		std::abort();
+	}
+	auto offset = sizeof(unsigned char*)+sizeof(uint32_t)+sizeof(uint32_t)+sizeof(uint32_t);
+	std::memcpy(&(this->d_[0+offset]),&t,sizeof(smf_event_type));
+	return t;
+}
 
 
 

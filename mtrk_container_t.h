@@ -236,3 +236,106 @@ midi_extract_t midi_extract(const mtrk_event_container_sbo_t&);
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class mecsbo2_t {
+public:
+	//
+	// Ctor for callers who have pre-computed the exact size of the event and who
+	// can also supply a midi status byte if applicible, ex, an mtrk_container_iterator_t.  
+	// 
+	mecsbo2_t(const unsigned char*, uint32_t, unsigned char=0);
+	// Copy ctor
+	mecsbo2_t(const mecsbo2_t&);
+	// Copy assignment; overwrites a pre-existing lhs 'this' w/ rhs
+	mecsbo2_t& operator=(const mecsbo2_t&);
+	// Move ctor
+	mecsbo2_t(mecsbo2_t&&);
+	// Move assignment
+	mecsbo2_t& operator=(mecsbo2_t&&);
+	// Dtor
+	~mecsbo2_t();
+
+	unsigned char operator[](uint32_t) const;
+	const unsigned char *data() const;  // Ptr to this->data_[0], w/o regard to this->is_small()
+	const unsigned char *raw_data() const;
+	const unsigned char *raw_flag() const;
+	int32_t delta_time() const;
+	smf_event_type type() const;
+	int32_t data_size() const;  // Not indluding delta-t
+	int32_t size() const;  // Includes delta-t
+
+	bool is_big() const;
+	bool is_small() const;
+
+	bool validate() const;
+private:
+	// 
+	// Case big:  Probably meta, sysex_f0/f7, but _could_ be midi (rs or 
+	// non-rs).  
+	// d_ ~ { 
+	//     unsigned char *;
+	//     unit32_t size;
+	//     uint32_t capacity;  // cum sizeof()==16
+	//
+	//     uint32_t delta_t.val;  // fixed size version of the vl quantity
+	//     smf_event_type b21;  // 
+	//     unsigned char b22;  // unused
+	// };  // sizeof() => 22
+	//
+	//
+	// Case small:  meta, sysex_f0/f7, midi (rs or non-rs), unknown.  
+	// If a midi event and b1 is a valid status byte, b1 and midi_status must
+	// match.  Otherwise, if a midi event and b1 is a data byte, midi_status
+	// is the running-status value.  midi_status is always the value of the
+	// midi status applic. to the present event, no matter what the state of
+	// b1.  
+	// d_ ~ {
+	//     midi-vl-field delta_t;
+	//     unsigned char b(delta_t.N+1);  // byte 1 following the vl dt field
+	//     unsigned char b(delta_t.N+2);  // byte 2 following the vl dt field
+	//     unsigned char b(delta_t.N+3);  // byte 3 following the vl dt field
+	//     ...
+	//     unsigned char b22;  // byte n-1 following the vl event start
+	// };  // sizeof() => 22
+	std::array<unsigned char,22> d_ {0x00u};
+	unsigned char midi_status_;  // always the applic. midi status
+	unsigned char flags_ {0x00u};
+	// flags&0b10000000 == 0x00u=>big
+
+
+	
+	void set_flag_small();
+	void set_flag_big();
+
+	unsigned char *big_ptr() const;  // getter
+	unsigned char *big_ptr(unsigned char *p);  // setter
+	uint32_t big_size() const;  // getter
+	uint32_t big_size(uint32_t);  // setter
+	uint32_t big_cap() const;  // getter
+	uint32_t big_cap(uint32_t);  // setter
+	uint32_t big_delta_t() const;  // shortcut to determining the ft if is_big()
+	uint32_t big_delta_t(uint32_t);
+	smf_event_type big_smf_event_type() const;  // shortcut to determining the type if is_big()
+	smf_event_type big_smf_event_type(smf_event_type);
+};
+
+
+
+
+
