@@ -5,8 +5,7 @@
 #include <vector>
 
 
-class mecsbo2_t;
-class mtrk_event_container_sbo_t;
+class mtrk_event_t;
 class mtrk_view_t;
 class mtrk_event_view_t;
 
@@ -24,7 +23,7 @@ class mtrk_event_view_t;
 //
 class mtrk_iterator_t {
 public:
-	mecsbo2_t operator*() const;
+	mtrk_event_t operator*() const;
 	mtrk_iterator_t& operator++();
 	//mtrk_iterator_t& operator++(int);
 	bool operator==(const mtrk_iterator_t&) const;
@@ -137,117 +136,6 @@ private:
 std::string print(const mtrk_view_t&);
 
 
-
-
-//
-//
-//
-class mtrk_event_container_sbo_t {  // sizeof() == 24
-private:
-	//
-	// Of the smf_event_types, only sysex_f0/f7 & meta events can be large enough to
-	// overflow the small buffer.  Hence, any midi message (channel_voice or 
-	// channel_mode) will fit in the small buffer.  These messages may or may not be
-	// in running_status so may or may not contain an explicit midi status byte.  
-	//
-	// For sysex_f0/f7 or meta events that overflow the small buffer, some of the
-	// fields presently in big_t make no sense; these messges overwrite any 
-	// running status, so the midi_status field makes no sense.  But, OTOH, see
-	// the MIDI Channel Prefix meta event (p.138)
-	// ->  big.capacity >= big.size
-	//
-	struct big_t {  // sizeof() == 24
-		unsigned char *p;
-		uint32_t size;
-		uint32_t capacity;
-		uint32_t dt_fixed;
-		smf_event_type sevt;  // "smf_event_type"
-		unsigned char midi_status;
-		uint8_t unused;
-		unsigned char bigsmall_flag;  // ==1u => small; ==0u => big
-	};
-	struct small_t {
-		std::array<unsigned char, sizeof(big_t)> arry;
-	};
-	union bigsmall_t {
-		big_t b;
-		small_t s;
-	};
-	
-	bigsmall_t d_;
-
-	static_assert(sizeof(small_t)==sizeof(big_t),"sizeof(small_t)!=sizeof(big_t)");
-	static_assert(sizeof(bigsmall_t)==sizeof(big_t),"sizeof(bigsmall_t)!=sizeof(big_t)");
-	static_assert(sizeof(bigsmall_t)==24,"sizeof(bigsmall_t)!=24");
-
-	void set_flag_big();
-	void set_flag_small();
-public:
-	// Default ctor
-	mtrk_event_container_sbo_t()=delete;
-	//
-	// Ctor for callers who have pre-computed the exact size of the event and who
-	// can also supply a midi status byte if applicible, ex, an mtrk_container_iterator_t.  
-	// 
-	mtrk_event_container_sbo_t(const unsigned char*, uint32_t, unsigned char=0);
-	// Copy ctor
-	mtrk_event_container_sbo_t(const mtrk_event_container_sbo_t&);
-	// Copy assignment; overwrites a pre-existing lhs 'this' w/ rhs
-	mtrk_event_container_sbo_t& operator=(const mtrk_event_container_sbo_t&);
-	// Move ctor
-	mtrk_event_container_sbo_t(mtrk_event_container_sbo_t&&);
-	// Move assignment
-	mtrk_event_container_sbo_t& operator=(mtrk_event_container_sbo_t&&);
-	// Dtor
-	~mtrk_event_container_sbo_t();
-
-	unsigned char operator[](int32_t) const;
-	const unsigned char *data() const;
-	bool is_small() const;
-	bool is_big() const;
-	// Ptr to this->data_[0], w/o regard to this->is_small()
-	const unsigned char *raw_data() const;
-	const unsigned char *raw_flag() const;
-	int32_t delta_time() const;
-	smf_event_type type() const;
-	int32_t data_size() const;  // Not indluding delta-t
-	int32_t size() const;  // Includes delta-t
-
-	//uint8_t status_byte() const;
-	//bool running_status() const;
-};
-
-enum class mtrk_sbo_print_opts {
-	normal,
-	debug
-};
-std::string print(const mtrk_event_container_sbo_t&,
-			mtrk_sbo_print_opts=mtrk_sbo_print_opts::normal);
-
-
-struct midi_extract_t {
-	bool is_valid {false};
-	uint8_t status_nybble {0x00u};  // MSBits of the status byte
-	uint8_t ch {0xFFu};  // LSBits of the status byte
-	uint8_t p1 {0xFFu};
-	uint8_t p2 {0xFFu};
-};
-midi_extract_t midi_extract(const mtrk_event_container_sbo_t&);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 //
 // A side effect of always storing the midi-status byte applic. to the event
 // in midi_status_ is that running-status events extracted from a file can 
@@ -257,24 +145,24 @@ midi_extract_t midi_extract(const mtrk_event_container_sbo_t&);
 //
 //
 //
-class mecsbo2_t {
+class mtrk_event_t {
 public:
 	// Default ctor; creates a "small" object that is essentially invalid 
 	// (does not represent an mtrk event).  
-	mecsbo2_t();
+	mtrk_event_t();
 	// Ctor for callers who have pre-computed the exact size of the event and who
 	// can also supply a midi status byte if applicible, ex, an mtrk_container_iterator_t.  
-	mecsbo2_t(const unsigned char*, uint32_t, unsigned char=0);
+	mtrk_event_t(const unsigned char*, uint32_t, unsigned char=0);
 	// Copy ctor
-	mecsbo2_t(const mecsbo2_t&);
+	mtrk_event_t(const mtrk_event_t&);
 	// Copy assignment; overwrites a pre-existing lhs 'this' w/ rhs
-	mecsbo2_t& operator=(const mecsbo2_t&);
+	mtrk_event_t& operator=(const mtrk_event_t&);
 	// Move ctor
-	mecsbo2_t(mecsbo2_t&&);
+	mtrk_event_t(mtrk_event_t&&);
 	// Move assignment
-	mecsbo2_t& operator=(mecsbo2_t&&);
+	mtrk_event_t& operator=(mtrk_event_t&&);
 	// Dtor
-	~mecsbo2_t();
+	~mtrk_event_t();
 
 	// Bytes of this->data()+i returned by value
 	unsigned char operator[](uint32_t) const;
@@ -362,7 +250,11 @@ private:
 	smf_event_type big_smf_event_type(smf_event_type);
 };
 
-std::string print(const mecsbo2_t&,
+enum class mtrk_sbo_print_opts {
+	normal,
+	debug
+};
+std::string print(const mtrk_event_t&,
 			mtrk_sbo_print_opts=mtrk_sbo_print_opts::normal);
 
 

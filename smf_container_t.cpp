@@ -341,7 +341,7 @@ std::string print_tied_events(const smf_t& smf) {
 
 	auto smf_end = smf.event_iterator_end();
 	for (auto smf_it=smf.event_iterator_begin(); smf_it!=smf_end; ++smf_it) {
-		mecsbo2_t::midi_data_t curr_ev_midi_data;
+		mtrk_event_t::midi_data_t curr_ev_midi_data;
 		{	// Prevent curr_smf_event from entering the main loop scope; 
 			// is slightly cleaner
 			auto curr_smf_event = *smf_it;  // {trackn, tick_onset, event}
@@ -477,7 +477,7 @@ std::string print_tied_events(const smf_t& smf) {
 
 
 
-bool is_on_event(const mecsbo2_t& ev) {
+bool is_on_event(const mtrk_event_t& ev) {
 	auto md = ev.midi_data();
 	auto s = md.status_nybble;
 	// md.p2!=0x00u to obey the convention that a note-on (s==0x90u) event
@@ -485,7 +485,7 @@ bool is_on_event(const mecsbo2_t& ev) {
 	// event.  
 	return (s==0x90u && md.p2!=0x00u);
 }
-bool is_off_event(const mecsbo2_t& ev) {
+bool is_off_event(const mtrk_event_t& ev) {
 	auto md = ev.midi_data();
 	auto s = md.status_nybble;
 	// md.p2==0x00u to obey the convention that a note-on (s==0x90u) event
@@ -493,7 +493,7 @@ bool is_off_event(const mecsbo2_t& ev) {
 	// event.  
 	return (s==0x80u || (s==0x90u && md.p2==0x00u));
 }
-bool is_multioff_event(const mecsbo2_t& ev) {
+bool is_multioff_event(const mtrk_event_t& ev) {
 	// Can ev potentially affect more than one on-event?  Ex, maybe ev is
 	// an all-notes-off meta event or a system reset event
 	auto md = ev.midi_data();
@@ -593,6 +593,7 @@ linked_note_events_result_t link_note_events(const smf_t& smf) {
 
 std::string print(const linked_note_events_result_t& evs) {
 	struct width_t {
+		int def {12};  // "default"
 		int p1p2 {10};
 		int ch {10};
 		int sep {3};
@@ -605,16 +606,16 @@ std::string print(const linked_note_events_result_t& evs) {
 	ss << std::setw(w.ch) << "Ch (on)";
 	ss << std::setw(w.p1p2) << "p1 (on)";
 	ss << std::setw(w.p1p2) << "p2 (on)";
-	ss << std::setw(12) << "Tick (on)";
+	ss << std::setw(w.def) << "Tick (on)";
 	ss << std::setw(w.trk) << "Trk (on)";
 	ss << std::setw(w.sep) << " ";
 	ss << std::setw(w.ch) << "Ch (off)";
 	ss << std::setw(w.p1p2) << "p1 (off)";
 	ss << std::setw(w.p1p2) << "p2 (off)";
-	ss << std::setw(12) << "Tick off";
+	ss << std::setw(w.def) << "Tick off";
 	ss << std::setw(w.trk) << "Trk (off)";
 	ss << std::setw(w.sep) << " ";
-	ss << std::setw(12) << "Duration";
+	ss << std::setw(w.def) << "Duration";
 	ss << "\n";
 
 	auto half = [&ss,&w](const orphan_event_t& ev)->void {
@@ -622,7 +623,7 @@ std::string print(const linked_note_events_result_t& evs) {
 		ss << std::setw(w.ch) << std::to_string(md.ch);
 		ss << std::setw(w.p1p2) << std::to_string(md.p1);
 		ss << std::setw(w.p1p2) << std::to_string(md.p2);
-		ss << std::setw(12) << std::to_string(ev.tk);
+		ss << std::setw(w.def) << std::to_string(ev.tk);
 		ss << std::setw(w.trk) << std::to_string(ev.trackn);
 	};
 	
