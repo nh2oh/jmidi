@@ -44,6 +44,19 @@ private:
 	friend class mtrk_view_t;
 };
 
+
+//
+// Not used at present.  One idea is to make a ctor from a pair of 
+// mtrk_event_iterator_t's.  This way a user processing an mtrk can inspect
+// event properties w/o derefing the iterator (and possibly causing
+// allocation) to get an mtrk_event_t owning-type.  OTOH, maybe a user
+// who wants to do this should instead iterate over an mtrk_view_t type,
+// and a user wanting the other behavior should opt to iterate over some
+// type of "owning" mtrk container type:  
+//
+// *(mtrk_view_t::iterator == mtrk_view_iterator_t) == mtrk_event_view_t
+// *(mtrk_t::iterator == mtrk_iterator_t) == mtrk_event_t
+//
 class mtrk_event_view_t {
 public:
 	smf_event_type type() const;
@@ -136,6 +149,8 @@ private:
 std::string print(const mtrk_view_t&);
 
 
+//
+// mtrk_event_t:  An sbo-featured container for mtrk events
 //
 // A side effect of always storing the midi-status byte applic. to the event
 // in midi_status_ is that running-status events extracted from a file can 
@@ -257,5 +272,17 @@ enum class mtrk_sbo_print_opts {
 std::string print(const mtrk_event_t&,
 			mtrk_sbo_print_opts=mtrk_sbo_print_opts::normal);
 
+
+/*
+class midi_event_t : mtrk_event_t {
+public:
+private:
+};
+class meta_event_t : mtrk_event_t {
+public:
+private:
+};
+//...
+*/
 
 

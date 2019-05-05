@@ -97,7 +97,7 @@ struct track_state_t {
 struct smf_event_t {
 	uint16_t trackn;
 	int32_t tick_onset;  // cumulative (TODO: ?)
-	mecsbo2_t event;
+	mtrk_event_t event;
 };
 class smf_chrono_iterator_t {
 public:
@@ -147,7 +147,7 @@ std::string print_tied_events(const smf_t&);
 struct orphan_event_t {  // this is an smf_event_t
 	uint16_t trackn {0};
 	int32_t tk {0};
-	mecsbo2_t event;
+	mtrk_event_t event;
 };
 struct linked_event_t {
 	orphan_event_t on;
@@ -161,11 +161,11 @@ struct linked_note_events_result_t {
 // TODO:  Maybe these shoudl take orphan_event_t instead of mecsbo_t's.
 // Is there a situation where the user would want to use trackn or tick
 // info to decide if an event qualifies as as on/off?
-bool is_on_event(const mecsbo2_t&);
-bool is_off_event(const mecsbo2_t&);
+bool is_on_event(const mtrk_event_t&);
+bool is_off_event(const mtrk_event_t&);
 // Can the event potentially affect more than one on-event?  For example,
 // maybe ev is an all-notes-off meta event or a system reset event.  
-bool is_multioff_event(const mecsbo2_t&);
+bool is_multioff_event(const mtrk_event_t&);
 // Logic that requires the two matching events be on the same track,
 // follow eachother in time, have the same ch, note-num, etc is 
 // implemented here.  

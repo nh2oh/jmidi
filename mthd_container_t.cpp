@@ -71,6 +71,15 @@ uint16_t interpret_tpq_field(uint16_t division_field) {
 midi_smpte_field interpret_smpte_field(uint16_t division_field) {
 	midi_smpte_field result {};
 	result.time_code_fmt = static_cast<int8_t>(division_field>>8);
+	// To get the magnitude-value of result.time_code_fmt (ex, if 
+	// time_code_fmt==-30, get the number 30), do: 
+	// (~(division_field>>8))+1;
+	
+	// Number of "subframes" per frame; also => midi-ticks per frame
 	result.units_per_frame = static_cast<uint8_t>(division_field&0xFF);
+
 	return result;
 }
+
+
+
