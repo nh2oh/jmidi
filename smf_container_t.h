@@ -171,5 +171,5 @@ bool is_multioff_event(const mecsbo2_t&);
 // implemented here.  
 bool is_linked_pair(const orphan_event_t&, const orphan_event_t&);
 linked_note_events_result_t link_note_events(const smf_t&);
-
+std::string print(const linked_note_events_result_t&);
 

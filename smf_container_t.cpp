@@ -508,7 +508,9 @@ bool is_linked_pair(const orphan_event_t& ev_on, const orphan_event_t& ev_off) {
 	// across tracks.  
 	return (ev_on.trackn==ev_off.trackn
 			&& ev_on.tk<=ev_off.tk
-			&& md_on.ch==md_off.ch && md_on.p1==md_off.p1);
+			&& md_on.ch==md_off.ch
+			&& ((md_on.p1==md_off.p1)
+				|| (md_off.status_nybble==0xB0u && md_off.p1==0x7Du)));
 }
 
 linked_note_events_result_t link_note_events(const smf_t& smf) {
@@ -575,8 +577,80 @@ linked_note_events_result_t link_note_events(const smf_t& smf) {
 		}  // else if (is_multioff_event(curr_event.event)) {
 	}  // To next smf-event
 
+	auto lt_oe = [](const orphan_event_t& rhs,const orphan_event_t& lhs)->bool {
+		return rhs.tk<lhs.tk;
+	};
+	auto lt_le = [](const linked_event_t& rhs,const linked_event_t& lhs)->bool {
+		return rhs.on.tk<lhs.on.tk;
+	};
+	std::sort(orphans_on.begin(),orphans_on.end(),lt_oe);
+	std::sort(orphans_on.begin(),orphans_on.end(),lt_oe);
+	std::sort(linked.begin(),linked.end(),lt_le);
+
 	return linked_note_events_result_t {linked, orphans_on, orphans_off};
 }
 
+
+std::string print(const linked_note_events_result_t& evs) {
+	struct width_t {
+		int p1p2 {10};
+		int ch {10};
+		int sep {3};
+		int trk {10};
+	};
+	width_t w {};
+
+	std::stringstream ss {};
+	ss << std::left;
+	ss << std::setw(w.ch) << "Ch (on)";
+	ss << std::setw(w.p1p2) << "p1 (on)";
+	ss << std::setw(w.p1p2) << "p2 (on)";
+	ss << std::setw(12) << "Tick (on)";
+	ss << std::setw(w.trk) << "Trk (on)";
+	ss << std::setw(w.sep) << " ";
+	ss << std::setw(w.ch) << "Ch (off)";
+	ss << std::setw(w.p1p2) << "p1 (off)";
+	ss << std::setw(w.p1p2) << "p2 (off)";
+	ss << std::setw(12) << "Tick off";
+	ss << std::setw(w.trk) << "Trk (off)";
+	ss << std::setw(w.sep) << " ";
+	ss << std::setw(12) << "Duration";
+	ss << "\n";
+
+	auto half = [&ss,&w](const orphan_event_t& ev)->void {
+		auto md = ev.event.midi_data();
+		ss << std::setw(w.ch) << std::to_string(md.ch);
+		ss << std::setw(w.p1p2) << std::to_string(md.p1);
+		ss << std::setw(w.p1p2) << std::to_string(md.p2);
+		ss << std::setw(12) << std::to_string(ev.tk);
+		ss << std::setw(w.trk) << std::to_string(ev.trackn);
+	};
+	
+	for (const auto& e : evs.linked) {
+		half(e.on);
+		ss << std::setw(w.sep) << " ";
+		half(e.off);
+		ss << std::setw(w.sep) << " ";
+		ss << std::to_string(e.off.tk-e.on.tk);
+		ss << "\n";
+	}
+
+	if (evs.orphan_on.size()>0) {
+		ss << "FILE CONTAINS ORPHAN NOTE-ON EVENTS:\n";
+		for (const auto& e : evs.orphan_on) {
+			half(e);
+			ss << std::setw(w.sep) << "\n";
+		}
+	}
+	if (evs.orphan_off.size()>0) {
+		ss << "FILE CONTAINS ORPHAN NOTE-OFF EVENTS:\n";
+		for (const auto& e : evs.orphan_off) {
+			half(e);
+			ss << std::setw(w.sep) << "\n";
+		}
+	}
+
+	return ss.str();
+}
 
 
