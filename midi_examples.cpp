@@ -20,9 +20,9 @@ int midi_example() {
 	//testdata::print_midi_test_cases();
 
 	//std::string fn = "D:\\cpp\\nh2oh\\au\\gt_aulib\\test_data\\tc_a_rs.mid";
-	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\CLEMENTI.MID";
+	std::string fn = "C:\\Users\\ben\\Desktop\\scr\\CLEMENTI.MID";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\test.mid";
-	std::string fn = "C:\\Users\\ben\\Desktop\\scr\\hallelujah_joy_to_the_world.mid";
+	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\hallelujah_joy_to_the_world.mid";
 	auto rawfiledata = dbk::readfile(fn).d;
 	//auto rawfiledata = dbk::readfile("C:\\Users\\ben\\Desktop\\scr\\test.mid").d;
 	auto rawfile_check_result = validate_smf(&rawfiledata[0],rawfiledata.size(),fn);

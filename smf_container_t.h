@@ -138,189 +138,38 @@ private:
 std::string print_tied_events(const smf_t&);
 
 
-struct linked_event_t {
-	// -1 is used to signify "empty" or "not found" for the orphan_on/off
-	// members of linked_events_result_t.  
+// NB:  If there is >1 note-on event (perhaps @ different dt) for a single
+// ch,note pair w/o any intervening note-off events, followed at some point 
+// by 1 or more matching note-off events, this function will match the
+// _first_ note-off event w/ the _first_ note-on event and the _second_ note-on
+// w/ the _second_ note off and so on.  It is ambiguous what the user intends in
+// such a situation.  
+struct orphan_event_t {  // this is an smf_event_t
 	uint16_t trackn {0};
-	int32_t tk_on {-1};  // cumulative
-	int32_t tk_off {-1};
-	mecsbo2_t event_on {};
-	mecsbo2_t event_off {};
+	int32_t tk {0};
+	mecsbo2_t event;
+};
+struct linked_event_t {
+	orphan_event_t on;
+	orphan_event_t off;
 };
 struct linked_note_events_result_t {
 	std::vector<linked_event_t> linked {};
-	std::vector<linked_event_t> orphan_on {};
-	std::vector<linked_event_t> orphan_off {};
+	std::vector<orphan_event_t> orphan_on {};
+	std::vector<orphan_event_t> orphan_off {};
 };
-bool example_is_on_event(const mecsbo2_t&);
-bool example_is_off_event(const mecsbo2_t&);
-bool default_is_linked_pair(const linked_event_t&, const linked_event_t&);
-template <typename F_is_on_event, typename F_is_off_event, typename F_is_linked_pair>
-linked_note_events_result_t link_note_events(const smf_t& smf, F_is_on_event is_on, F_is_off_event is_off) {
-	struct unlinked_event_t {
-		uint16_t trackn {0};
-		int32_t tk {0};
-		mecsbo2_t event;
-	};
-	// Holds data for all note-on midi events for which a corresponing note-off
-	// event has not yet occured.  
-	std::vector<linked_event_t> orphan_on {};
-	// Holds midi data for any note-off events unable to be matched w/a 
-	// corresponding note-on event.  
-	std::vector<linked_event_t> orphan_off {};
-	// Holds all the linked events
-	std::vector<linked_event_t> linked {};
-
-	//mecsbo2_t curr_off_ev;
-	smf_event_t curr_smf_event;
-	auto matching_on_event = [&curr_smf_event](const linked_event_t& on_ev)->bool {
-		// NB:  If there is >1 note-on event (perhaps @ different dt) for a single
-		// ch,note pair w/o any intervening note-off events, followed at some point 
-		// by 1 or more matching note-off events, this function will match the
-		// _first_ note-off event w/ the _first_ note-on event and the _second_ note-on
-		// w/ the _second_ note off and so on.  It is ambiguous what the user intends in
-		// such a situation.  
-		return (on_ev.trackn==curr_smf_event.trackn
-			&& F_is_linked_pair(curr_off_ev,on_ev);
-	};
-
-	auto smf_end = smf.event_iterator_end();
-	for (auto smf_it=smf.event_iterator_begin(); smf_it!=smf_end; ++smf_it) {
-		curr_smf_event = *smf_it;
-
-		if (F_is_on_event(curr_smf_event.event)) {
-			// curr_smf_event is an "on" event; add it to orphan_on.  
-			orphan_on.push_back(curr_onoff_ev);
-		} else if (F_is_off_event(curr_smf_event.event)) {
-			// curr_smf_event is an "off" event; try to find a matching "on"
-			// event in orphan_on.  Lambda matching_on_event captures 
-			// curr_smf_event by ref and takes a const linked_event_t& as
-			// its only arg.  
-			auto it_matched_on_ev = 
-				std::find_if(orphan_on.begin(),orphan_on.end(),matching_on_event);
-			if (it_matched_on_ev==orphan_on.end()) {
-				// curr_smf_event is an "off" event but does not match any
-				// entry in orphan_on.  Weird.  
-				orphan_off.push_back({curr_smf_event.trackn,
-					curr_smf_event.tick_onset,curr_smf_event.event});
-			} else {
-				// The event in orphan_on pointed to by it_matched_on_ev matches
-				// the off-event curr_smf_event.  Add the event pair to linked and 
-				// delete the entry in orphan_on pointed to by it_matched_on_ev.
-				linked.push_back({curr_smf_event.trackn,
-					*it_matched_on_ev.tk,  // tk_on
-					curr_smf_event.tick_onset,  // tk_off
-					*it_matched_on_ev.event,  // event_on
-					curr_smf_event.event});  // event_off
-
-				orphan_on.erase(it_matched_on_ev);
-			}
-		} else if (curr_ev_midi_data.status_nybble==0xB0u 
-			&& curr_ev_midi_data.p1==0x7Du) {  // p1==0x7D => all notes off
-			// Find all entries in sounding for which trackn==curr_sounding.trackn;
-			// print the event w/ curr_sounding as the value for the note-off
-			// event, then delete the entry in sounding.  The complexity here arises
-			// b/c calling sounding.erase(it-to-on-event) invalidates the iterator 
-			// it-to-on-event pointing to the on event i just printed and now wish
-			// to delete.  
-			while (true) {
-				std::vector<onoff_event_t>::iterator it;
-				bool found_event = false;
-				for (it=sounding.begin(); it!=sounding.end(); ++it) {
-					if ((*it).trackn==curr_onoff_ev.trackn) {
-						found_event = true;
-						linked.push_back(make_linked(*it,curr_onoff_ev));
-						sounding.erase(it);  // Invalidates it
-						break;
-					}
-				}
-				if (!found_event) {
-					break;
-					// Don't do:  if (it==sounding.end());
-					// calling erase() may => true even if events still exist
-				}
-			}  // while (true)
-		}  // else if (curr_ev_midi_data.status_nybble==0xB0u)  {  // all notes off
-	}  // To next smf-event
-
-	//
-	// Printing
-	//
-	std::stringstream s {};
-
-	auto print_linked_ev = [&s](const linked_t& ev)->void {
-		bool missing_ev_on = (ev.tk_on==-1);
-		s << std::setw(12) << std::to_string(ev.tk_on);
-		s << std::setw(12) << std::to_string(ev.tk_off);
-		s << std::setw(12) << std::to_string(ev.tk_off-ev.tk_on);
-		s << std::setw(12) << std::to_string(ev.ch);
-		s << std::setw(12) << std::to_string(ev.note);  // p1
-		s << std::setw(12) << std::to_string(ev.velocity_on);  // p2
-		s << std::setw(12) << std::to_string(ev.velocity_off);  // p2
-		s << std::setw(12) << std::to_string(ev.trackn);
-	};
-
-	
-	s << smf.fname() << "\n";
-	s << std::left;
-	s << std::setw(12) << "Tick on";
-	s << std::setw(12) << "Tick off";
-	s << std::setw(12) << "Duration";
-	s << std::setw(12) << "Ch (off)";
-	s << std::setw(12) << "p1 (off)";
-	s << std::setw(12) << "p2 (on)";
-	s << std::setw(12) << "p2 (off)";
-	s << std::setw(12) << "Trk (off)";
-	s << "\n";
-
-	if (linked.size()>0) {
-		std::sort(linked.begin(),linked.end(),
-			[](const linked_t& r, const linked_t& l)->bool {
-				return r.tk_on<l.tk_on;
-			});
-		s << "LINKED EVENTS:\n";
-		for (const auto& e : linked) {
-			print_linked_ev(e);
-			/*s << std::setw(12) << std::to_string(e.tk_on);
-			s << std::setw(12) << std::to_string(e.tk_off);
-			s << std::setw(12) << std::to_string(e.duration);
-			s << std::setw(12) << std::to_string(e.ch);
-			s << std::setw(12) << std::to_string(e.note);
-			s << std::setw(12) << std::to_string(e.velocity_on);
-			s << std::setw(12) << std::to_string(e.velocity_off);
-			s << std::setw(12) << std::to_string(e.trackn);*/
-			s << "\n";
-		}
-	}
-	if (sounding.size()>0) {
-		s << "FILE CONTAINS ORPHAN NOTE-ON EVENTS:\n";
-		for (const auto& e : sounding) {
-			linked_t curr_unmatched_link;
-			curr_unmatched_link = make_linked(e,onoff_event_t {});
-			print_linked_ev(curr_unmatched_link);
-			/*s << std::setw(12) << std::to_string(e.tk);
-			s << std::setw(12) << "?";
-			s << std::setw(12) << "?";
-			s << std::setw(12) << std::to_string(e.ch);
-			s << std::setw(12) << std::to_string(e.note);
-			s << std::setw(12) << std::to_string(e.trackn);*/
-			s << "\n";
-		}
-	}
-	if (orphan_off_events.size()>0) {
-		s << "FILE CONTAINS ORPHAN NOTE-OFF EVENTS:\n";
-		for (const auto& e : orphan_off_events) {
-			//print_sounding_ev({0,0,0,0},e);
-			linked_t curr_unmatched_link = make_linked(e,onoff_event_t {});
-			print_linked_ev(curr_unmatched_link);
-			s << "\n";
-		}
-	}
-
-	return s.str();
-};
-
-
-
+// TODO:  Maybe these shoudl take orphan_event_t instead of mecsbo_t's.
+// Is there a situation where the user would want to use trackn or tick
+// info to decide if an event qualifies as as on/off?
+bool is_on_event(const mecsbo2_t&);
+bool is_off_event(const mecsbo2_t&);
+// Can the event potentially affect more than one on-event?  For example,
+// maybe ev is an all-notes-off meta event or a system reset event.  
+bool is_multioff_event(const mecsbo2_t&);
+// Logic that requires the two matching events be on the same track,
+// follow eachother in time, have the same ch, note-num, etc is 
+// implemented here.  
+bool is_linked_pair(const orphan_event_t&, const orphan_event_t&);
+linked_note_events_result_t link_note_events(const smf_t&);
 
 

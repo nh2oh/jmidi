@@ -475,23 +475,108 @@ std::string print_tied_events(const smf_t& smf) {
 
 
 
-//linked_note_events_result_t link_note_events(const smf_t& smf)
 
 
-
-bool default_is_on_event(const mecsbo2_t& ev) {
+bool is_on_event(const mecsbo2_t& ev) {
 	auto md = ev.midi_data();
 	auto s = md.status_nybble;
+	// md.p2!=0x00u to obey the convention that a note-on (s==0x90u) event
+	// w/a zero velocity (p2==0x00u) is to be interpreted as a note-off 
+	// event.  
 	return (s==0x90u && md.p2!=0x00u);
 }
-bool default_is_off_event(const mecsbo2_t& ev) {
+bool is_off_event(const mecsbo2_t& ev) {
 	auto md = ev.midi_data();
 	auto s = md.status_nybble;
+	// md.p2==0x00u to obey the convention that a note-on (s==0x90u) event
+	// w/a zero velocity (p2==0x00u) is to be interpreted as a note-off 
+	// event.  
 	return (s==0x80u || (s==0x90u && md.p2==0x00u));
 }
-bool default_is_linked_pair(const linked_event_t& ev_on, const linked_event_t& ev_off) {
-	auto md_on = ev_on.event_on.midi_data();
-	auto md_off = ev_off.event_off.midi_data();
+bool is_multioff_event(const mecsbo2_t& ev) {
+	// Can ev potentially affect more than one on-event?  Ex, maybe ev is
+	// an all-notes-off meta event or a system reset event
+	auto md = ev.midi_data();
+	auto s = md.status_nybble;
+	return (s==0xB0u && md.p1==0x7Du);
+}
+bool is_linked_pair(const orphan_event_t& ev_on, const orphan_event_t& ev_off) {
+	auto md_on = ev_on.event.midi_data();
+	auto md_off = ev_off.event.midi_data();
+	// TODO:  Supplement w/ additional conditions to match meta events such as
+	// all notes off, system reset, etc.  Some such events can have effects
+	// across tracks.  
 	return (ev_on.trackn==ev_off.trackn
+			&& ev_on.tk<=ev_off.tk
 			&& md_on.ch==md_off.ch && md_on.p1==md_off.p1);
 }
+
+linked_note_events_result_t link_note_events(const smf_t& smf) {
+	std::vector<orphan_event_t> orphans_on {}; 
+	std::vector<orphan_event_t> orphans_off {};
+	std::vector<linked_event_t> linked {};
+
+	orphan_event_t curr_event;
+	auto matching_on_event = [&curr_event](const orphan_event_t& on_ev)->bool {
+		// Defined purely for convenience.  Captures curr_event for use in
+		// std::find_if(orphans_on.begin(),orphans_on.end(),...)
+		// to find a matching on-event when curr_event is an off/multioff
+		// event.  
+		// Do not put any complicated logic in here (trackn matching etc);
+		// leave that for is_linked_pair().  
+		return is_linked_pair(on_ev,curr_event);
+	};
+	
+	auto smf_end = smf.event_iterator_end();
+	for (auto smf_it=smf.event_iterator_begin(); smf_it!=smf_end; ++smf_it) {
+		auto curr_smf_event = *smf_it;
+		curr_event.trackn=curr_smf_event.trackn;
+		curr_event.tk=curr_smf_event.tick_onset,
+		curr_event.event=curr_smf_event.event;
+
+		if (is_on_event(curr_event.event)) {
+			orphans_on.push_back(curr_event);
+		} else if (is_off_event(curr_event.event)) {
+			// curr_event is an "off" event; try to find a matching "on"
+			// event in orphan_on.  
+			auto it_matching_on_ev = 
+				std::find_if(orphans_on.begin(),orphans_on.end(),matching_on_event);
+			if (it_matching_on_ev==orphans_on.end()) {
+				// curr_event does not match anything in orphans_on; weird.  
+				orphans_off.push_back(curr_event);
+			} else {
+				// The event in orphans_on pointed to by it_matching_on_ev matches
+				// the off-event curr_event.  
+				linked.push_back({*it_matching_on_ev,curr_event});
+				orphans_on.erase(it_matching_on_ev);
+			}
+		} else if (is_multioff_event(curr_event.event)) {
+			// Find all entries in orphans_on matching the multioff event 
+			// curr_event.  
+			// Initially, orphans_on==
+			// [.begin()==ev1,2,...,.end())
+			// after std::remove_if(), orphans_on==
+			// [.begin()==!matchingev1,2,...,it_matching_on_ev==matchingev1,2,...,.end())
+			// orphans_on events [it_matching_on_ev,...,orphans_on.end())
+			// match curr_event.  
+			auto it_matching_on_ev =
+				std::remove_if(orphans_on.begin(),orphans_on.end(),matching_on_event);
+			if (it_matching_on_ev==orphans_on.end()) {
+				// curr_event does not match anything in orphans_on.
+				orphans_off.push_back(curr_event);
+			} else {
+				auto it_new_end = it_matching_on_ev;
+				while (it_matching_on_ev!=orphans_on.end()) {
+					linked.push_back({*it_matching_on_ev,curr_event});
+					++it_matching_on_ev;
+				}
+				orphans_on.erase(it_new_end,orphans_on.end());
+			}
+		}  // else if (is_multioff_event(curr_event.event)) {
+	}  // To next smf-event
+
+	return linked_note_events_result_t {linked, orphans_on, orphans_off};
+}
+
+
+

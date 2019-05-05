@@ -248,11 +248,15 @@ midi_extract_t midi_extract(const mtrk_event_container_sbo_t&);
 
 
 
-
-
-
-
-
+//
+// A side effect of always storing the midi-status byte applic. to the event
+// in midi_status_ is that running-status events extracted from a file can 
+// be stored elsewhere and interpreted correctly later.  For example, in 
+// linking note pairs, pairs of corresponding on and off events are collected
+// into a vector of linked events.  
+//
+//
+//
 class mecsbo2_t {
 public:
 	// Default ctor; creates a "small" object that is essentially invalid 
