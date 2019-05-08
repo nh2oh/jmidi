@@ -62,19 +62,21 @@ std::string print_events_chrono2(const smf_t&);
 // holds an end iterator, an iterator to the _next_ event scheduled on that
 // track, and the cumulative tick value, which is the onset time (tick) 
 // corresponding to the _previous_ event in the track (one event prior to 
-// the next-event iterator).  The event indicated by an iterator object, ie,
+// the next-event iterator).  
+//
+// The event indicated by an smf_chrono_iterator_t object, ie,
 // the mtrk event that the iterator is currently "pointing to" is encoded 
-// implictly:  it is the event for which the quantity 
+// implictly:  it is the event i in trks_[i] for which the quantity 
 // tonset = trks_[i].cumtk + (*trks_[i].next).delta_time()
-// is minimum.  
-// This has to me calculated for all i on every call to operator++() and
+// is minimum (over i ~ [0,trks_.size()).  
+// This has to be calculated for all i on every call to operator++() and
 // operator*().  
 //
 // In an alternate design, which is probably simpler, trks_[i].cumtk holds 
 // the tonset for trks_[i].next.  When trks_[i].next==trks_[i].end, however,
 // trks_[i].cumtk has a different meaning.  
 //
-// TODO:  MIDI tracks are indeiendent midi streams; events on diff mtrks do
+// TODO:  MIDI tracks are independent midi streams; events on diff mtrks do
 // not crosstalk.  
 //
 // TODO:  Need to incorporate an understanding of tick units and respond

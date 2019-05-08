@@ -13,6 +13,7 @@
 
 
 class smf_t;
+class mthd_t;
 
 //
 // mthd_view_t
@@ -51,10 +52,32 @@ private:
 	uint32_t size_ {0};
 
 	friend class smf_t;
+	friend class mthd_t;
 };
 std::string print(const mthd_view_t&);
 
 
+//
+// Owns the underlying data
+// Methods alias to those in mthd_view_t & simply use the embedded
+// view object v_ to call the corresponding view functions.  
+//
+class mthd_t {
+public:
+	mthd_t();
+	uint16_t format() const;
+	uint16_t ntrks() const;
+	uint16_t division() const;
+
+	// Does not include the 4 byte "MThd" and 4 byte data-length fields
+	uint32_t data_length() const;
+	// Includes the "MThd" and 4-byte data-length fields; not d_.size(),
+	// since d_ could easily be over-allocated
+	uint32_t size() const;	
+private:
+	mthd_view_t v_;
+	std::vector<unsigned char> d_;
+};
 
 
 
