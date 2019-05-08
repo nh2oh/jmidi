@@ -5,7 +5,6 @@
 #include "mtrk_container_t.h"
 #include "smf_container_t.h"
 #include "midi_container.h"
-#include "midi_utils.h"
 #include "dbklib\binfile.h"
 #include "dbklib\byte_manipulation.h"
 #include <iostream>
@@ -15,8 +14,14 @@
 #include <algorithm>
 #include <exception>
 #include <fstream>
+#include <optional>
+
 
 int midi_example() {
+
+	constexpr auto x = sizeof(int64_t);
+	constexpr auto y = sizeof(std::optional<int64_t>);
+
 	//testdata::print_midi_test_cases();
 	auto tfield = interpret_smpte_field(0xE250u);
 	std::string fn = "D:\\cpp\\nh2oh\\au\\gt_aulib\\test_data\\clementi_no_rs.mid";

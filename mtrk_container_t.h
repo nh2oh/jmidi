@@ -273,16 +273,10 @@ std::string print(const mtrk_event_t&,
 			mtrk_sbo_print_opts=mtrk_sbo_print_opts::normal);
 
 
-/*
-class midi_event_t : mtrk_event_t {
-public:
-private:
-};
-class meta_event_t : mtrk_event_t {
-public:
-private:
-};
-//...
-*/
+
+
+
+
+
 
 
