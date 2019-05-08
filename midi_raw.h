@@ -92,15 +92,24 @@ It midi_write_vl_field(It beg, It end, T val) {
 	
 	auto vlval = midi_vl_field_equiv_value(val);
 	
+	uint8_t bytepos = 3;
 	uint32_t mask=0xFF000000;
-	while (vlval&mask==0 && mask>0) {
+	while (((vlval&mask)==0) && (mask>0)) {
 		mask>>=8;
+		--bytepos;
 	}
 
-	while (mask>0 && beg!=end) {
-		*beg = vlval&mask;
-		mask>>=8;
+	if (mask==0 && beg!=end) {
+		// This means that vlval==0; it is still necessary to write out a
+		// 0x00 and increment beg.  
+		*beg = 0x00u;
 		++beg;
+	} else {
+		while (mask>0 && beg!=end) {
+			*beg = (vlval&mask)>>(8*bytepos);
+			mask>>=8;  --bytepos;
+			++beg;
+		}
 	}
 
 	return beg;

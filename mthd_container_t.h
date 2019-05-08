@@ -128,6 +128,40 @@ private:
 };
 
 
+class SMPTE_time_div_t {
+public:
+	SMPTE_time_div_t()=default;
+	SMPTE_time_div_t(uint8_t,uint8_t);
+
+	// Default arg gives the # of us per quarter-note (the payload of a 
+	// set-tempo meta msg: FF 51 03 tttttt).  This value is used to convert 
+	// ticks/sec (the interpretation of the SMPTE payload) to ticks/quarter
+	// note.
+	uint16_t ticks_per_quarter(uint16_t=120) const;
+	// Returns the product of ticks_per_frame() and frames_per_sec().  
+	uint16_t ticks_per_sec() const;
+	// Return the values of the first and second bytes, respectively.  
+	uint8_t ticks_per_frame() const;
+	uint8_t frames_per_sec() const;
+private:
+	uint16_t d_ {0x8000u};
+};
+
+
+class tpq_time_div_t {
+public:
+	tpq_time_div_t()=default;
+	explicit tpq_time_div_t(uint8_t);
+
+	uint16_t ticks_per_quarter() const;
+	// The default-arg (which represents the payload of a set-tempo meta msg
+	// => usec/quarter nt) is used to convert from ticks-per-quarter to 
+	// ticks-per-sec.  
+	uint16_t ticks_per_sec(uint16_t=120) const;
+private:
+	uint16_t d_ {120};
+};
+
 
 
 
