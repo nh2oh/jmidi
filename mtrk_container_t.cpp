@@ -517,10 +517,7 @@ text_event_t::text_event_t(const std::string& s) {
 	} else {
 		payload_sz = static_cast<uint32_t>(s.size());
 	}
-	auto sz_fld = midi_encode_vl_field(payload_sz);
-	for (int i=0; i<midi_vl_field_size(payload_sz); ++i) {
-		data.push_back(sz_fld[i]);
-	}
+	midi_write_vl_field(std::back_inserter(data),payload_sz);
 
 	for (const auto& e: s) {
 		data.push_back(e);

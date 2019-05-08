@@ -7,9 +7,6 @@
 #include <cstdint>
 
 
-
-
-
 //
 // TODO:  validate_, parse_, detect_ naming inconsistency
 //
@@ -26,8 +23,6 @@ struct midi_vl_field_interpreted {
 	bool is_valid {false};
 };
 midi_vl_field_interpreted midi_interpret_vl_field(const unsigned char*);
-
-
 //
 // Returns an integer with the bit representation of the input encoded as a midi
 // vl quantity.  Ex for:
@@ -62,12 +57,10 @@ constexpr uint32_t midi_vl_field_equiv_value(T val) {
 
 	return res;
 }
-
-
 //
-// Computes the size (in bytes) of the field required to encode a given number as
-// a vl-quantity.  
-// TODO:  Is shifting a signed value UB/ID ???
+// Computes the size (in bytes) of the field required to encode a given 
+// number as a vl-quantity.  
+// TODO:  Shifting a signed value is UB/ID
 //
 template<typename T>
 constexpr int midi_vl_field_size(T val) {
@@ -80,18 +73,20 @@ constexpr int midi_vl_field_size(T val) {
 
 	return n;
 }
-
-
+// 
+// Encode a value in vl form and write it out into the range [beg,end).  
 //
-// TODO: untested
-// TODO:  Need an overload so it's possible to use std::back_inseter(some_vector)
+// If end-beg is not large enough to accomodate the number of bytes required
+// to encode the value, only end-beg bytes will be written, and the field 
+// will be invalid, since the last byte written will not have its MSB==0.  
 //
 template<typename It, typename T>
 It midi_write_vl_field(It beg, It end, T val) {
 	static_assert(CHAR_BIT == 8);
-	
+	static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value);
 	auto vlval = midi_vl_field_equiv_value(val);
-	
+	static_assert(std::is_same<decltype(vlval),uint32_t>::value);
+
 	uint8_t bytepos = 3;
 	uint32_t mask=0xFF000000;
 	while (((vlval&mask)==0) && (mask>0)) {
@@ -114,40 +109,34 @@ It midi_write_vl_field(It beg, It end, T val) {
 
 	return beg;
 }
-
-
 //
-// Encodes T in the form of a VL quantity, the maximum size of which, according
-// to the MIDI std is 4 bytes.  For values requiring less than 4 bytes in 
-// encoded form, the rightmost bytes of the array will be 0.  
+// Overload that can take a std::back_inseter(some_container)
 //
-template<typename T, typename = typename std::enable_if<std::is_integral<T>::value,T>::type>
-std::array<unsigned char,4> midi_encode_vl_field(T val) {
-	static_assert(sizeof(T)<=4);  // The max size of a vl field is 4 bytes
-	std::array<unsigned char,4> result {0x00,0x00,0x00,0x00};
-
-	int i = 3;
-	result[i] = val & 0x7F;
-	while (i>0 && (val >>= 7) > 0) {
-		--i;
-		result[i] |= 0x80;
-		result[i] += (val & 0x7F);
+template<typename OutIt, typename T>
+OutIt midi_write_vl_field(OutIt it, T val) {
+	static_assert(CHAR_BIT == 8);
+	static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value);
+	auto vlval = midi_vl_field_equiv_value(val);  // requires integral, unsigned
+	
+	uint8_t bytepos = 3;
+	uint32_t mask = 0xFF000000;
+	while (((vlval&mask)==0) && (mask>0)) {
+		mask>>=8;  --bytepos;
 	}
 
-	// Shift the elements of result to the left so that result[0] contains 
-	// the first nonzero byte and any zero bytes are at the end of result (beyond
-	// the first byte w/ bit 7 == 0).  
-	for (int j=0; j<4; ++j) { 
-		if (i<=3) {
-			result[j] = result[i];
-			++i;
-		} else {
-			result[j] = 0x00;
+	if (mask==0) {
+		// This means that vlval==0; it is still necessary to write out an
+		// 0x00u
+		it=0x00u;
+	} else {
+		while (mask>0) {
+			it = (vlval&mask)>>(8*bytepos);
+			mask>>=8;  --bytepos;
 		}
 	}
 
-	return result;
-};
+	return it;
+}
 
 
 //
