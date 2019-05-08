@@ -5,9 +5,10 @@
 
 
 //
-// Why not a generic midi_chunk_container_t<T> template?  Because MThd and MTrk containers
-// are radically different and it really does not make sense to write generic functions to 
-// operate on either type.  
+// Why not a generic midi_chunk_container_t<T> template?  
+// Because MThd and MTrk chunks are radically different and it does not make
+// sense to write generic containers to store either type; their 
+// functionality is completely orthogonal.  
 //
 
 
@@ -54,6 +55,11 @@ private:
 std::string print(const mthd_view_t&);
 
 
+
+
+
+
+
 //
 // SMPTE => Society of Motion Picture and Television Engineers 
 // 16-bit:  [[1] frames-per-second] [resolution-within-frame]
@@ -82,6 +88,49 @@ midi_smpte_field interpret_smpte_field(uint16_t);  // assumes midi_time_division
 
 double ticks_per_second();
 double seconds_per_tick();
+
+
+
+
+
+
+
+
+
+class time_div_t {
+public:
+	enum class type {
+		ticks_per_quarter,
+		SMPTE
+	};
+	time_div_t::type type() const;
+
+	// Default arg gives the # of us per quarter-note (the payload of a 
+	// set-tempo meta msg: FF 51 03 tttttt).  If type()==SMPTE, this value
+	// is used to convert ticks/sec (the interpretation of the SMPTE 
+	// payload) to ticks/quarter.
+	uint16_t ticks_per_quarter(uint16_t=120) const;
+	
+	// If SMPTE, returns the product of ticks_per_frame() and 
+	// frames_per_sec().  
+	// If type()==ticks_per_quarter, the default-arg (which represents the
+	// payload of a set-tempo meta msg => usec/quarter nt) is used to convert.  
+	uint16_t ticks_per_sec(uint16_t=120) const;
+
+	// If type()==SMPTE, these return the values of the first and second bytes,
+	// respectively.  If type()==ticks_per_quarter, i could convert given
+	// a tempo (us/quarter) and a ticks/frame (==24, 30, ...), but for now
+	// I am just going to return 0.  
+	uint8_t ticks_per_frame() const;
+	uint8_t frames_per_sec() const;
+private:
+	uint16_t d_;
+};
+
+
+
+
+
 
 //
 //

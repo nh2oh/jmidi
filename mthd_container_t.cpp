@@ -55,6 +55,9 @@ std::string print(const mthd_view_t& mthd) {
 }
 
 
+//
+// time-division field stuff
+//
 
 midi_time_division_field_type_t detect_midi_time_division_type(uint16_t division_field) {
 	if ((division_field>>15) == 1) {

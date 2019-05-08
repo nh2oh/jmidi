@@ -438,6 +438,48 @@ bool is_midi_data_byte(const unsigned char s) {
 	return ((s&0x80u)==0x80u);
 }
 
+
+
+
+unsigned char mtrk_event_get_meta_type_byte_dtstart_unsafe(const unsigned char *p) {
+	p += midi_interpret_vl_field(p).N;
+	p += 1;  // Skip the 0xFF;
+	return *p;
+}
+midi_vl_field_interpreted mtrk_event_get_meta_length_field_dtstart_unsafe(const unsigned char *p) {
+	p += midi_interpret_vl_field(p).N;
+	p += 2;  // Skip the 0xFF and type byte;
+	return  midi_interpret_vl_field(p);
+}
+uint32_t mtrk_event_get_meta_payload_offset_dtstart_undafe(const unsigned char *p) {
+	uint32_t o = midi_interpret_vl_field(p).N;
+	p += o;  // inc past the delta-time
+	o += 2;  p += o;  // inc past the 0xFF and type byte;
+	o += midi_interpret_vl_field(p).N;  // inc past the length field
+	return o;
+}
+parse_meta_event_unsafe_result_t mtrk_event_parse_meta_dtstart_unsafe(const unsigned char *p) {
+	parse_meta_event_unsafe_result_t result {0x00u,0x00u,0x00u,0x00u};
+	auto dt = midi_interpret_vl_field(p);
+	result.dt = dt.val;
+	p += dt.N;
+	result.payload_offset += dt.N;
+
+	p += 1;  // Skip the 0xFF
+	result.payload_offset += 1;
+	result.type = *p;
+	p += 1;
+	result.payload_offset += 1;
+
+	auto len = midi_interpret_vl_field(p);
+	result.length = len.val;
+	result.payload_offset += len.N;
+
+	return result;
+}
+
+
+
 //
 // Pointer to the first data byte following the delta-time, _not_ to the start of
 // the delta-time.  This function may have to increment the pointer by 1 byte

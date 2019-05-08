@@ -257,6 +257,27 @@ mtrk_event_t::~mtrk_event_t() {
 	}
 }
 
+const unsigned char *mtrk_event_t::payload() const {
+	const unsigned char *result = this->data();
+	result += midi_interpret_vl_field(result).N;
+
+	if (this->type()==smf_event_type::channel_mode
+				|| this->type()==smf_event_type::channel_voice) {
+		//result is pointing at either an event-local status byte or
+		// the first data byte of the midi msg. 
+	} else if (this->type()==smf_event_type::meta) {
+		// result is pointing at an 0xFF
+		result += 2;  // Skip the 0xFF and the type byte
+		result += midi_interpret_vl_field(result).N;  // Skip the length field
+	} else if (this->type()==smf_event_type::sysex_f0
+				|| this->type()==smf_event_type::sysex_f7) {
+		result += 1; // Skips the 0xF0 or 0xF7
+		result += midi_interpret_vl_field(result).N;  // Skip the length field
+	} else {  // Invalid
+		result = nullptr;
+	}
+	return result;
+}
 unsigned char mtrk_event_t::operator[](uint32_t i) const {
 	return *(this->data()+i);
 };
@@ -473,5 +494,61 @@ std::string print(const mtrk_event_t& evnt, mtrk_sbo_print_opts opts) {
 	return s;
 }
 
+
+
+
+
+
+
+//
+// Meta events
+//
+text_event_t::text_event_t() {
+	std::array<unsigned char,13> data {0xFFu,0x01u,0x0A,
+		't','e','x','t',' ','e','v','e','n','t'};
+	d_ = mtrk_event_t(&(data[0]),data.size(),0x00u);
+}
+text_event_t::text_event_t(const std::string& s) {
+	std::vector<unsigned char> data {0xFFu,0x01u};
+
+	uint32_t payload_sz = 0;
+	if (s.size() > std::numeric_limits<uint32_t>::max()) {
+		payload_sz = std::numeric_limits<uint32_t>::max();
+	} else {
+		payload_sz = static_cast<uint32_t>(s.size());
+	}
+	auto sz_fld = midi_encode_vl_field(payload_sz);
+	for (int i=0; i<midi_vl_field_size(payload_sz); ++i) {
+		data.push_back(sz_fld[i]);
+	}
+
+	for (const auto& e: s) {
+		data.push_back(e);
+	};
+	
+	d_ = mtrk_event_t(&(data[0]),data.size(),0x00u);
+}
+std::string text_event_t::text() const {
+	const unsigned char *p = this->d_.data();
+	auto mt = mtrk_event_parse_meta_dtstart_unsafe(p);
+	p += mt.payload_offset;
+	std::string result(reinterpret_cast<const char*>(p),mt.length);
+	return result;
+}
+uint32_t text_event_t::delta_time() const {
+	return this->d_.delta_time();
+}
+uint32_t text_event_t::size() const {
+	return this->d_.size();
+}
+uint32_t text_event_t::data_size() const {
+	return this->d_.data_size();
+}
+
+bool text_event_t::set_text(const std::string& s) {
+	text_event_t txtev(s);
+	this->d_ = txtev.d_;
+	return true;
+}
 
 

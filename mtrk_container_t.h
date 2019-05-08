@@ -179,6 +179,9 @@ public:
 	// Dtor
 	~mtrk_event_t();
 
+	// For midi events, ptr to first byte following the delta_time
+	// For meta,sysex eveents, ptr to first byte following the length
+	const unsigned char *payload() const;
 	// Bytes of this->data()+i returned by value
 	unsigned char operator[](uint32_t) const;
 	// Ptr to this->data_[0] if this->is_small(), big_ptr() if is_big()
@@ -275,8 +278,27 @@ std::string print(const mtrk_event_t&,
 
 
 
+//
+// Meta events
+//
+class text_event_t {
+public:
+	// Creates an event w/ payload=="text event"
+	text_event_t();
+	explicit text_event_t(const std::string&);
 
+	std::string text() const;
+	uint32_t delta_time() const;
+	uint32_t size() const;
+	uint32_t data_size() const;
 
+	// Setters return false upon failure (ex, if the caller attempts to
+	// pass a value too large).  
+	bool set_text(const std::string&);
+	//bool set_delta_time(uint32_t);
+private:
+	mtrk_event_t d_;
+};
 
 
 
