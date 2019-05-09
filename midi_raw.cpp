@@ -857,20 +857,21 @@ unsigned char *midi_rewrite_dt_field_unsafe(uint32_t dt, unsigned char *p, unsig
 	auto old_size = mtrk_event_get_size_dtstart_unsafe(p,s);
 	auto old_data_size = old_size-old_dt.N;
 
-	unsigned char *p_new_datastart;
+	//unsigned char *p_new_datastart;
 	if (old_dt.N==new_dt_size) {
-		p_new_datastart = midi_write_vl_field(p,dt);
+		//p_new_datastart = midi_write_vl_field(p,dt);
 	} else if (old_dt.N>new_dt_size) {
-		p_new_datastart = midi_write_vl_field(p,dt);
-		auto p_new_dataend = std::copy(p+old_dt.N,p+old_size,p_new_datastart);
+		//p_new_datastart = midi_write_vl_field(p,dt);
+		//auto p_new_dataend = std::copy(p+old_dt.N,p+old_size,p_new_datastart);
+		auto p_new_dataend = std::copy(p+old_dt.N,p+old_size,p+new_dt_size);
 		std::fill(p_new_dataend,p+old_size,0x00u);
 	} else if (old_dt.N<new_dt_size) {
 		auto new_size = new_dt_size+old_data_size;
 		std::copy_backward(p+old_dt.N,p+old_size,p+new_size);
-		p_new_datastart = midi_write_vl_field(p,dt);
+		//p_new_datastart = midi_write_vl_field(p,dt);
 	}
 
-	return p_new_datastart;
+	return midi_write_vl_field(p,dt);
 }
 
 

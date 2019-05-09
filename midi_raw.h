@@ -132,11 +132,13 @@ OutIt midi_write_vl_field(OutIt it, T val) {
 	if (mask==0) {
 		// This means that vlval==0; it is still necessary to write out an
 		// 0x00u
-		it=0x00u;
+		*it=0x00u;
+		++it;
 	} else {
 		while (mask>0) {
-			it = (vlval&mask)>>(8*bytepos);
+			*it = (vlval&mask)>>(8*bytepos);
 			mask>>=8;  --bytepos;
+			++it;
 		}
 	}
 
