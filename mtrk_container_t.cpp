@@ -6,7 +6,9 @@
 #include <iostream>
 #include <cstring>  // std::memcpy()
 #include <exception>
-
+#include <algorithm>
+#include <vector>
+#include <iterator>
 
 
 // Private ctor used by friend class mtrk_view_t.begin(),.end()
@@ -320,6 +322,51 @@ uint32_t mtrk_event_t::data_size() const {  // Not indluding delta-t
 uint32_t mtrk_event_t::size() const {  // Includes the contrib from delta-t
 	return mtrk_event_get_size_dtstart_unsafe(this->data(),this->midi_status_);
 }
+bool mtrk_event_t::set_delta_time(uint32_t dt) {
+	if (this->is_big()) {
+		this->big_delta_t(dt);
+		// TODO:  There is the possibility that the new dt is smaller than
+		// the old dt, and this causes the object now to fit in the sbo.
+	} else {  // small
+		auto curr_dt_size = midi_interpret_vl_field(&(this->d_[0])).N;
+		auto new_dt_size = midi_vl_field_size(dt);
+		if (new_dt_size==curr_dt_size) {
+			midi_write_vl_field(this->d_.begin(),this->d_.end(),dt);
+		} else if (new_dt_size<curr_dt_size) {
+			auto it_currdatastart = this->d_.begin()+curr_dt_size;
+			auto it_newdatastart = midi_write_vl_field(this->d_.begin(),this->d_.end(),dt);
+			auto it_newdataend = std::copy(it_currdatastart,this->d_.end(),it_newdatastart);
+			std::fill(it_newdataend,this->d_.end(),0x00u);
+		} else if (new_dt_size>curr_dt_size) {
+			uint64_t sbo_sz = static_cast<uint64_t>(offs::max_size_sbo);
+			if ((new_dt_size+this->data_size())<=sbo_sz) {  // Fits
+				auto olddata = this->d_;
+				auto olddata_size = this->data_size();
+				auto it = midi_write_vl_field(this->d_.begin(),this->d_.end(),dt);
+				std::copy(olddata.begin()+curr_dt_size,olddata.begin()+olddata_size,it);
+			} else {  // Does not fit
+				auto olddata = this->d_;
+				auto new_size = new_dt_size+this->data_size();
+
+				this->set_flag_big();
+				auto p = this->big_ptr(new unsigned char[new_size]);
+				this->big_size(new_size);
+				this->big_cap(new_size);
+				p = midi_write_vl_field(p,dt);
+				std::copy(olddata.begin()+curr_dt_size,olddata.end(),p);
+
+				auto ev = parse_mtrk_event_type(this->data(),this->midi_status_,this->size());
+				this->big_delta_t(ev.delta_t.val);
+				this->big_smf_event_type(ev.type);
+				this->midi_status_ = 
+					mtrk_event_get_midi_status_byte_dtstart_unsafe(this->data(),this->midi_status_);
+			}
+			auto olddata = this->d_;
+		}
+	}
+
+	return true;
+}
 mtrk_event_t::midi_data_t mtrk_event_t::midi_data() const {
 	mtrk_event_t::midi_data_t result {};
 	result.is_valid = false;
@@ -352,7 +399,7 @@ bool mtrk_event_t::validate() const {
 
 		auto sz = mtrk_event_get_size_dtstart_unsafe(&(this->d_[0]),this->midi_status_);
 		tf &= sz==this->size();
-	} else {
+	} else {  // big
 		tf &= this->big_delta_t()==dt_val;
 
 		auto sz = mtrk_event_get_size_dtstart_unsafe(this->big_ptr(),this->midi_status_);
@@ -504,12 +551,12 @@ std::string print(const mtrk_event_t& evnt, mtrk_sbo_print_opts opts) {
 // Meta events
 //
 text_event_t::text_event_t() {
-	std::array<unsigned char,13> data {0xFFu,0x01u,0x0A,
+	std::array<unsigned char,14> data {0x00u,0xFFu,0x01u,0x0A,
 		't','e','x','t',' ','e','v','e','n','t'};
 	d_ = mtrk_event_t(&(data[0]),data.size(),0x00u);
 }
 text_event_t::text_event_t(const std::string& s) {
-	std::vector<unsigned char> data {0xFFu,0x01u};
+	std::vector<unsigned char> data {0x00u,0xFFu,0x01u};
 
 	uint32_t payload_sz = 0;
 	if (s.size() > std::numeric_limits<uint32_t>::max()) {

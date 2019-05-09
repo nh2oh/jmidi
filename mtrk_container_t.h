@@ -195,6 +195,8 @@ public:
 	uint32_t data_size() const;  // Not indluding delta-t
 	uint32_t size() const;  // Includes delta-t
 
+	bool set_delta_time(uint32_t);
+
 	struct midi_data_t {
 		bool is_valid {false};
 		bool is_running_status {false};
