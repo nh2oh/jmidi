@@ -185,7 +185,7 @@ public:
 	// Bytes of this->data()+i returned by value
 	unsigned char operator[](uint32_t) const;
 	// Ptr to this->data_[0] if this->is_small(), big_ptr() if is_big()
-	const unsigned char *data() const;
+	unsigned char *data() const;
 	// Ptr to this->data_[0], w/o regard to this->is_small()
 	const unsigned char *raw_data() const;
 	// ptr to this->flags_
@@ -195,7 +195,8 @@ public:
 	uint32_t data_size() const;  // Not indluding delta-t
 	uint32_t size() const;  // Includes delta-t
 
-	bool set_delta_time(uint32_t);
+	bool set_delta_time2(uint32_t);
+	//bool set_delta_time(uint32_t);
 
 	struct midi_data_t {
 		bool is_valid {false};
@@ -252,22 +253,30 @@ private:
 	std::array<unsigned char,22> d_ {0x00u};
 	unsigned char midi_status_ {0x00u};  // always the applic. midi status
 	unsigned char flags_ {0x80u};  // 0x00u=>big; NB:  defaults to "small"
-
 	static_assert(static_cast<uint64_t>(offs::max_size_sbo)==sizeof(d_));
-	
+	// ptr, size, cap, running status
+	bool init_big(unsigned char *, uint32_t, uint32_t, unsigned char); 
+	bool small2big(uint32_t);  // If is_small(), make big.  arg=>capacity
+	bool big_resize(uint32_t);
+
+	// Zero all data members.  No attempt to query the state of the object
+	// is made; if is_big() the memory will leak.  
+	void clear_nofree();
+
 	void set_flag_small();
 	void set_flag_big();
 
 	unsigned char *big_ptr() const;  // getter
-	unsigned char *big_ptr(unsigned char *p);  // setter
+	unsigned char *small_ptr() const;  // getter
+	unsigned char *set_big_ptr(unsigned char *p);  // setter
 	uint32_t big_size() const;  // getter
-	uint32_t big_size(uint32_t);  // setter
+	uint32_t set_big_size(uint32_t);  // setter
 	uint32_t big_cap() const;  // getter
-	uint32_t big_cap(uint32_t);  // setter
+	uint32_t set_big_cap(uint32_t);  // setter
 	uint32_t big_delta_t() const;  // shortcut to determining the ft if is_big()
-	uint32_t big_delta_t(uint32_t);
+	uint32_t set_big_cached_delta_t(uint32_t);
 	smf_event_type big_smf_event_type() const;  // shortcut to determining the type if is_big()
-	smf_event_type big_smf_event_type(smf_event_type);
+	smf_event_type set_big_cached_smf_event_type(smf_event_type);
 };
 
 enum class mtrk_sbo_print_opts {

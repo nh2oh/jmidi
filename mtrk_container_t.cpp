@@ -173,23 +173,43 @@ mtrk_event_t::mtrk_event_t(const unsigned char *p, uint32_t sz, unsigned char s)
 		}
 		this->midi_status_ = mtrk_event_get_midi_status_byte_dtstart_unsafe(p,s);
 	} else {  // big
+		auto new_p = new unsigned char[sz];
+		std::copy(p,p+sz,new_p);
+		this->init_big(new_p,sz,sz,s);  // adopts new_p
+		/*
 		this->set_flag_big();
 
-		this->big_ptr(new unsigned char[sz]);
-		this->big_size(sz);
-		this->big_cap(sz);
+		this->set_big_ptr(new unsigned char[sz]);
+		this->set_big_size(sz);
+		this->set_big_cap(sz);
 		std::copy(p,p+sz,this->big_ptr());
 
 		auto ev = parse_mtrk_event_type(p,s,sz);
-		this->big_delta_t(ev.delta_t.val);
-		this->big_smf_event_type(ev.type);
+		this->set_big_cached_delta_t(ev.delta_t.val);
+		this->set_big_cached_smf_event_type(ev.type);
 		this->midi_status_ = mtrk_event_get_midi_status_byte_dtstart_unsafe(p,s);
+		*/
 	}
 }
 //
 // Copy ctor
 //
 mtrk_event_t::mtrk_event_t(const mtrk_event_t& rhs) {
+	if (rhs.is_big()) {
+		unsigned char *new_p = new unsigned char[rhs.size()];
+		std::copy(rhs.big_ptr(),rhs.big_ptr()+rhs.size(),new_p);
+		this->init_big(new_p,rhs.size(),rhs.size(),rhs.midi_status_);
+	} else {  // rhs is small
+		this->d_ = rhs.d_;
+	}
+
+	// init_big() calls set_big_flag(), but in the future, other flags may be
+	// defined for this field other than just big/small, thus, overwrite 
+	// this->flags_ w/ rhs.flags_
+	this->flags_ = rhs.flags_;  
+	this->midi_status_ = rhs.midi_status_;  // also set by init_big()
+
+	/*
 	this->d_ = rhs.d_;
 	this->midi_status_ = rhs.midi_status_;
 	this->flags_ = rhs.flags_;
@@ -198,13 +218,47 @@ mtrk_event_t::mtrk_event_t(const mtrk_event_t& rhs) {
 		// this.big_ptr() are pointing at the same memory.  
 		unsigned char *new_p = new unsigned char[rhs.big_cap()];
 		std::copy(this->big_ptr(),this->big_ptr()+this->big_cap(),new_p);
-		this->big_ptr(new_p);
+		this->set_big_ptr(new_p);
 	}
+	*/
 }
 //
 // Copy assignment; overwrites a pre-existing lhs 'this' w/ rhs
 //
 mtrk_event_t& mtrk_event_t::operator=(const mtrk_event_t& rhs) {
+	if (rhs.is_big()) {
+		if (this->is_small() || (this->is_big()&&this->big_cap()<rhs.size())) {
+			// this is small or is big but w/ insufficient capacity
+			// init_big() w/ new buffer, cap set to rhs.size().  
+			unsigned char *new_p = new unsigned char[rhs.big_size()];
+			std::copy(rhs.data(),rhs.data()+rhs.size(),new_p);
+			if (this->is_big()) {
+				delete this->big_ptr();
+			}
+			this->init_big(new_p,rhs.size(),rhs.size(),rhs.midi_status_);
+		} else if (this->is_big() && this->big_cap()>=rhs.size()) {
+			// this is big and the present capacity _is_ sufficient.  
+			// init_big() w/ present ptr, cap, but rhs size() and midi_status_
+			std::fill(this->data(),this->data()+this->big_cap(),0x00u);
+			std::copy(rhs.data(),rhs.data()+rhs.size(),this->data());
+			this->init_big(this->data(),rhs.size(),this->big_cap(),rhs.midi_status_);
+		}
+	} else {  // rhs is small
+		if (this->is_big()) {
+			delete this->big_ptr();
+		}
+		this->d_ = rhs.d_;
+	}
+
+	// init_big() calls set_big_flag(), but in the future, other flags may be
+	// defined for this field other than just big/small, thus, overwrite 
+	// this->flags_ w/ rhs.flags_
+	this->flags_ = rhs.flags_;  
+	this->midi_status_ = rhs.midi_status_;  // also set by init_big()
+
+	return *this;
+
+	/*
 	if (this->is_big()) {
 		delete this->big_ptr();
 	}
@@ -218,27 +272,15 @@ mtrk_event_t& mtrk_event_t::operator=(const mtrk_event_t& rhs) {
 		// Deep copy the pointed-at range
 		unsigned char *new_p = new unsigned char[rhs.big_cap()];
 		std::copy(this->big_ptr(),this->big_ptr()+this->big_cap(),new_p);
-		this->big_ptr(new_p);
+		this->set_big_ptr(new_p);
 	}
 	return *this;
+	*/
 }
 //
 // Move ctor
 //
 mtrk_event_t::mtrk_event_t(mtrk_event_t&& rhs) {
-	this->d_ = rhs.d_;
-	this->midi_status_ = rhs.midi_status_;
-	this->flags_ = rhs.flags_;
-	if (this->is_big()) {
-		rhs.set_flag_small();  // prevents ~rhs() from freeing its memory
-		// Note that this state of rhs is invalid as it almost certinally does
-		// not contain a valid "small" mtrk event
-	}
-}
-//
-// Move assignment
-//
-mtrk_event_t& mtrk_event_t::operator=(mtrk_event_t&& rhs) {
 	if (this->is_big()) {
 		delete this->big_ptr();
 	}
@@ -247,11 +289,10 @@ mtrk_event_t& mtrk_event_t::operator=(mtrk_event_t&& rhs) {
 	this->midi_status_ = rhs.midi_status_;
 	this->flags_ = rhs.flags_;
 	if (rhs.is_big()) {
-		rhs.set_flag_small();  // prevents ~rhs() from freeing its memory
-		// Note that this state of rhs is invalid as it almost certinally does
-		// not contain a valid "small" mtrk event
+		rhs.clear_nofree();  // prevents ~rhs() from freeing its memory
+		// Note that this state of rhs is invalid as everything is set to
+		// 0x00u.  
 	}
-	return *this;
 }
 mtrk_event_t::~mtrk_event_t() {
 	if (this->is_big()) {
@@ -287,9 +328,9 @@ const unsigned char *mtrk_event_t::raw_data() const {
 	return &(this->d_[0]);
 }
 // TODO:  If small, this returns a ptr to a stack-allocated object...  Bad?
-const unsigned char *mtrk_event_t::data() const {
+unsigned char *mtrk_event_t::data() const {
 	if (this->is_small()) {
-		return &(this->d_[0]);
+		return this->small_ptr();
 	} else {
 		return this->big_ptr();
 	}
@@ -322,6 +363,28 @@ uint32_t mtrk_event_t::data_size() const {  // Not indluding delta-t
 uint32_t mtrk_event_t::size() const {  // Includes the contrib from delta-t
 	return mtrk_event_get_size_dtstart_unsafe(this->data(),this->midi_status_);
 }
+bool mtrk_event_t::set_delta_time2(uint32_t dt) {
+	uint64_t sbo_sz = static_cast<uint64_t>(offs::max_size_sbo);
+	auto new_dt_size = midi_vl_field_size(dt);
+	auto new_size = this->data_size() + new_dt_size;
+	if ((this->is_small() && new_size<=sbo_sz)
+				|| (this->is_big() && new_size<=this->big_cap())) {
+		// The new value fits in whatever storage was holding the old
+		// value.   
+		// TODO:  It's possible that the present value is_big() but
+		// w/ the new dt the size() is such that it will fit in the sbo.  
+		midi_rewrite_dt_field_unsafe(dt,this->data(),this->midi_status_);
+	} else if (this->is_small() && new_size>sbo_sz) {
+		// Present value fits in the sbo, but the new value does not.  
+		this->small2big(new_size);
+		midi_rewrite_dt_field_unsafe(dt,this->data(),this->midi_status_);
+	} else if (this->is_big() && new_size>this->big_cap()) {
+		this->big_resize(new_size);
+		midi_rewrite_dt_field_unsafe(dt,this->data(),this->midi_status_);
+	}
+	return true;
+}
+/*
 bool mtrk_event_t::set_delta_time(uint32_t dt) {
 	if (this->is_big()) {
 		this->big_delta_t(dt);
@@ -367,6 +430,7 @@ bool mtrk_event_t::set_delta_time(uint32_t dt) {
 
 	return true;
 }
+*/
 mtrk_event_t::midi_data_t mtrk_event_t::midi_data() const {
 	mtrk_event_t::midi_data_t result {};
 	result.is_valid = false;
@@ -417,6 +481,72 @@ bool mtrk_event_t::is_big() const {
 bool mtrk_event_t::is_small() const {
 	return !(this->is_big());
 }
+
+void mtrk_event_t::clear_nofree() {
+	std::fill(this->d_.begin(),this->d_.end(),0x00u);
+	this->midi_status_ = 0x00u;
+	this->flags_ = 0x00u;
+}
+
+// p (which already contains the object data) is adpoted by the container.  
+// The caller should _not_ delete p, as the contents are not copied out into
+// a newly created "owned" buffer.  This function does not rely on any 
+// local object data members either directly or indirectly through getters
+// (midi_status_, this->delta_time(), etc).  It is perfectly fine for the 
+// object to be initially in a completely invalid state.  
+// If the object is initially big, init_big() does not free the old buffer,
+// it merely overwrites the existing ptr, size, cap with their new values.  
+// It is the responsibility of the caller to delete the old big_ptr() before
+// calling init_big() w/ the ptr to the new buffer, or memory will leak.  
+// ptr, size, capacity, running-status
+bool mtrk_event_t::init_big(unsigned char *p, uint32_t sz, uint32_t c, unsigned char s) {
+	this->set_flag_big();
+
+	// Set the 3 big-container parameters to point to the remote data
+	this->set_big_ptr(p);
+	this->set_big_size(sz);
+	this->set_big_cap(c);
+	
+	// Set the local "cached" values of delta-time and event type from the
+	// remote data.  These values are stored in the d_ array, so setters
+	// that know the offsets and can do the serialization correctly are used.  
+	this->set_big_cached_delta_t(midi_interpret_vl_field(p).val);
+	this->set_big_cached_smf_event_type(detect_mtrk_event_type_dtstart_unsafe(p,s));
+
+	// The two d_-external values to set are midi_status_ and flags
+	this->midi_status_ = mtrk_event_get_midi_status_byte_dtstart_unsafe(p,s);
+
+	// TODO:  Error checking for dt fields etc; perhaps call clear_nofree()
+	// and return false
+	return true;
+}
+bool mtrk_event_t::small2big(uint32_t c) {
+	if (!is_small()) {
+		std::abort();
+	}
+	unsigned char *p = new unsigned char[c];
+	std::copy(this->d_.begin(),this->d_.end(),p);
+	init_big(p,this->size(),c,this->midi_status_);
+
+	return true;
+}
+// Allocates a new unsigned char[] w/ capacity as supplied, copies the
+// present data into the new array, frees the old array, and sets the "big"
+// params as necessary.  
+bool mtrk_event_t::big_resize(uint32_t c) {
+	if (!is_big()) {
+		std::abort();
+	}
+
+	unsigned char *p = new unsigned char[c];
+	std::copy(this->data(),this->data()+this->size(),p);
+	delete this->big_ptr();
+	init_big(p,this->size(),c,this->midi_status_);
+
+	return true;
+}
+
+
 void mtrk_event_t::set_flag_big() {
 	this->flags_ &= 0x7Fu;
 }
@@ -433,7 +563,13 @@ unsigned char *mtrk_event_t::big_ptr() const {
 	std::memcpy(&p,&(this->d_[o]),sizeof(p));
 	return p;
 }
-unsigned char *mtrk_event_t::big_ptr(unsigned char *p) {
+unsigned char *mtrk_event_t::small_ptr() const {
+	if (!this->is_small()) {
+		std::abort();
+	}
+	return const_cast<unsigned char*>(&(this->d_[0]));
+}
+unsigned char *mtrk_event_t::set_big_ptr(unsigned char *p) {
 	if (this->is_small()) {
 		std::abort();
 	}
@@ -450,7 +586,7 @@ uint32_t mtrk_event_t::big_size() const {
 	std::memcpy(&sz,&(this->d_[o]),sizeof(uint32_t));
 	return sz;
 }
-uint32_t mtrk_event_t::big_size(uint32_t sz) {
+uint32_t mtrk_event_t::set_big_size(uint32_t sz) {
 	if (this->is_small()) {
 		std::abort();
 	}
@@ -467,7 +603,7 @@ uint32_t mtrk_event_t::big_cap() const {
 	std::memcpy(&c,&(this->d_[o]),sizeof(uint32_t));
 	return c;
 }
-uint32_t mtrk_event_t::big_cap(uint32_t c) {
+uint32_t mtrk_event_t::set_big_cap(uint32_t c) {
 	if (this->is_small()) {
 		std::abort();
 	}
@@ -484,10 +620,13 @@ uint32_t mtrk_event_t::big_delta_t() const {
 	std::memcpy(&dt,&(this->d_[o]),sizeof(uint32_t));
 	return dt;
 }
-uint32_t mtrk_event_t::big_delta_t(uint32_t dt) {
+// TODO:  This is incorrect.  It sets the local "cached" dt value, 
+// but does not update the remote value.  
+uint32_t mtrk_event_t::set_big_cached_delta_t(uint32_t dt) {
 	if (this->is_small()) {
 		std::abort();
 	}
+	// Sets the local "cached" dt value
 	uint64_t o = static_cast<uint64_t>(offs::dt);
 	std::memcpy(&(this->d_[o]),&dt,sizeof(uint32_t));
 	return dt;
@@ -501,7 +640,7 @@ smf_event_type mtrk_event_t::big_smf_event_type() const {
 	std::memcpy(&t,&(this->d_[o]),sizeof(smf_event_type));
 	return t;
 }
-smf_event_type mtrk_event_t::big_smf_event_type(smf_event_type t) {
+smf_event_type mtrk_event_t::set_big_cached_smf_event_type(smf_event_type t) {
 	if (this->is_small()) {
 		std::abort();
 	}

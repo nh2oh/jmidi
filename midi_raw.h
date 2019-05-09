@@ -429,7 +429,10 @@ int8_t channel_number_from_status_byte_unsafe(unsigned char);
 // status byte is not legit.  
 channel_msg_type channel_msg_type_from_status_byte(unsigned char, unsigned char=0);
 
-
+// It is assumed that the buffer is large enough to accomodate the new dt
+// value.  Returns a ptr to one past the end of the new dt value (ie, the
+// first msg data byte).  
+unsigned char *midi_rewrite_dt_field_unsafe(uint32_t, unsigned char*, unsigned char=0);
 
 
 //
