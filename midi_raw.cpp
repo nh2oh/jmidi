@@ -365,7 +365,43 @@ uint32_t mtrk_event_get_size_dtstart_unsafe(const unsigned char *p, unsigned cha
 	auto dt = midi_interpret_vl_field(p);
 	sz += dt.N;
 	p += sz;
+	return sz + mtrk_event_get_data_size_unsafe(p,s);
+	/*
+	s = mtrk_event_get_midi_status_byte_unsafe(p,s);
 
+	if (s==0x00u) {  // Event is either invalid, meta, or sysex_f0/f7
+		if (*p==0xF0u || *p==0xF7u) {  // sysex_f0/f7
+			sz += 1;
+			++p;  // count & step past the 0xF0||0xF7
+		} else if (*p==0xFFu) {  // meta
+			sz += 2;
+			p += 2;  // count & step past the 0xFF and then the meta-event type-byte
+		} else {  // Invalid event
+			std::abort();
+			//return 0;
+		}
+		auto data_len = midi_interpret_vl_field(p);
+		sz += (data_len.N + data_len.val);
+	} else {  // s is a midi status byte applicable to the event indicated by p
+		if ((s&0xF0)==0xD0u || (s&0xF0)==0xC0u) {
+			sz += 1;
+		} else {
+			sz += 2;
+		}
+		if (*p==s) {  // event-local status byte (not in running status)
+			sz += 1;
+		}
+	}
+
+	return sz;*/
+}
+
+uint32_t mtrk_event_get_data_size_dtstart_unsafe(const unsigned char *p, unsigned char s) {
+	p += midi_interpret_vl_field(p).N;
+	return mtrk_event_get_data_size_unsafe(p,s);
+}
+uint32_t mtrk_event_get_data_size_unsafe(const unsigned char *p, unsigned char s) {
+	uint32_t sz {0};
 	s = mtrk_event_get_midi_status_byte_unsafe(p,s);
 
 	if (s==0x00u) {  // Event is either invalid, meta, or sysex_f0/f7
@@ -435,7 +471,7 @@ bool is_midi_status_byte(const unsigned char s) {
 	return ((sm>=0x80u) && (sm!=0xF0u));
 }
 bool is_midi_data_byte(const unsigned char s) {
-	return ((s&0x80u)==0x80u);
+	return ((s&0x80u)!=0x80u);
 }
 
 

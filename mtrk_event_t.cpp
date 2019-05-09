@@ -179,15 +179,25 @@ smf_event_type mtrk_event_t::type() const {
 	}
 }
 uint32_t mtrk_event_t::data_size() const {  // Not indluding delta-t
-		auto sz = mtrk_event_get_size_dtstart_unsafe(this->data(),this->midi_status_);
-		auto dt = midi_interpret_vl_field(this->data());
-		if (dt.N >= sz) {
-			std::abort();
-		}
-		return sz-dt.N;
+	if (this->is_small()) {
+		return mtrk_event_get_data_size_dtstart_unsafe(this->small_ptr(),this->midi_status_);
+	} else {
+		return mtrk_event_get_data_size_dtstart_unsafe(this->big_ptr(),this->midi_status_);
+	}
 }
 uint32_t mtrk_event_t::size() const {  // Includes the contrib from delta-t
-	return mtrk_event_get_size_dtstart_unsafe(this->data(),this->midi_status_);
+	if (this->is_small()) {
+		return mtrk_event_get_size_dtstart_unsafe(this->small_ptr(),this->midi_status_);
+	} else {
+		return this->big_size();
+	}
+}
+uint32_t mtrk_event_t::capacity() const {
+	if (this->is_small()) {
+		return static_cast<uint32_t>(offs::max_size_sbo);
+	} else {
+		return this->big_cap();
+	}
 }
 bool mtrk_event_t::set_delta_time(uint32_t dt) {
 	uint64_t sbo_sz = static_cast<uint64_t>(offs::max_size_sbo);
@@ -210,52 +220,6 @@ bool mtrk_event_t::set_delta_time(uint32_t dt) {
 	}
 	return true;
 }
-/*
-bool mtrk_event_t::set_delta_time(uint32_t dt) {
-	if (this->is_big()) {
-		this->big_delta_t(dt);
-		// TODO:  There is the possibility that the new dt is smaller than
-		// the old dt, and this causes the object now to fit in the sbo.
-	} else {  // small
-		auto curr_dt_size = midi_interpret_vl_field(&(this->d_[0])).N;
-		auto new_dt_size = midi_vl_field_size(dt);
-		if (new_dt_size==curr_dt_size) {
-			midi_write_vl_field(this->d_.begin(),this->d_.end(),dt);
-		} else if (new_dt_size<curr_dt_size) {
-			auto it_currdatastart = this->d_.begin()+curr_dt_size;
-			auto it_newdatastart = midi_write_vl_field(this->d_.begin(),this->d_.end(),dt);
-			auto it_newdataend = std::copy(it_currdatastart,this->d_.end(),it_newdatastart);
-			std::fill(it_newdataend,this->d_.end(),0x00u);
-		} else if (new_dt_size>curr_dt_size) {
-			uint64_t sbo_sz = static_cast<uint64_t>(offs::max_size_sbo);
-			if ((new_dt_size+this->data_size())<=sbo_sz) {  // Fits
-				auto olddata = this->d_;
-				auto olddata_size = this->data_size();
-				auto it = midi_write_vl_field(this->d_.begin(),this->d_.end(),dt);
-				std::copy(olddata.begin()+curr_dt_size,olddata.begin()+olddata_size,it);
-			} else {  // Does not fit
-				auto olddata = this->d_;
-				auto new_size = new_dt_size+this->data_size();
-
-				this->set_flag_big();
-				auto p = this->big_ptr(new unsigned char[new_size]);
-				this->big_size(new_size);
-				this->big_cap(new_size);
-				p = midi_write_vl_field(p,dt);
-				std::copy(olddata.begin()+curr_dt_size,olddata.end(),p);
-
-				auto ev = parse_mtrk_event_type(this->data(),this->midi_status_,this->size());
-				this->big_delta_t(ev.delta_t.val);
-				this->big_smf_event_type(ev.type);
-				this->midi_status_ = 
-					mtrk_event_get_midi_status_byte_dtstart_unsafe(this->data(),this->midi_status_);
-			}
-			auto olddata = this->d_;
-		}
-	}
-	return true;
-}
-*/
 mtrk_event_t::midi_data_t mtrk_event_t::midi_data() const {
 	mtrk_event_t::midi_data_t result {};
 	result.is_valid = false;
@@ -279,21 +243,89 @@ mtrk_event_t::midi_data_t mtrk_event_t::midi_data() const {
 bool mtrk_event_t::validate() const {
 	bool tf = true;
 
-	auto dt_val = this->delta_time();
-	tf &= dt_val>=0;
 	if (this->is_small()) {
-		auto dt_raw_interp = midi_interpret_vl_field(this->data());
-		tf &= dt_raw_interp.N > 0 && dt_raw_interp.N <= 4;
-		tf &= dt_raw_interp.val==dt_val;
+		tf &= !this->is_big();
+		tf &= (this->small_ptr()==&(this->d_[0]));
+		tf &= (this->small_ptr()==this->data());
+		tf &= (this->small_ptr()==this->raw_data());
 
-		auto sz = mtrk_event_get_size_dtstart_unsafe(&(this->d_[0]),this->midi_status_);
-		tf &= sz==this->size();
+		auto dt_loc = midi_interpret_vl_field(this->small_ptr());
+		tf &= (dt_loc.val==this->delta_time());
+		tf &= (dt_loc.N==midi_vl_field_size(this->delta_time()));
+
+		auto size_loc = mtrk_event_get_size_dtstart_unsafe(this->small_ptr(),this->midi_status_);
+		tf &= (size_loc==this->size());
+
+		auto type_loc = detect_mtrk_event_type_dtstart_unsafe(this->small_ptr(),this->midi_status_);
+		tf &= (type_loc==this->type());
+
+		// data_size() must be consistent w/ manual examination of the remote array
+		auto data_size_loc = mtrk_event_get_data_size_dtstart_unsafe(this->small_ptr(),this->midi_status_);
+		tf &= (data_size_loc==this->data_size());
+
+		// Capacity must == the size of the sbo
+		tf &= (this->capacity()==static_cast<uint32_t>(offs::max_size_sbo));
 	} else {  // big
-		tf &= this->big_delta_t()==dt_val;
+		tf &= this->is_big();
+		tf &= !this->is_small();
+		tf &= this->big_ptr()==this->data();
+		tf &= this->big_ptr()!=this->raw_data();
 
-		auto sz = mtrk_event_get_size_dtstart_unsafe(this->big_ptr(),this->midi_status_);
-		tf &= sz==this->big_size();
-		tf &= sz==this->size();
+		// Compare the local "cached" dt, size, type w/ that obtained from
+		// reading the remote array.  
+		auto dtval_loc = this->big_delta_t();
+		auto dt_remote = midi_interpret_vl_field(this->big_ptr());
+		tf &= (dt_remote.val==dtval_loc);
+		tf &= (dt_remote.N==midi_vl_field_size(dtval_loc));
+		tf &= (dt_remote.val==this->delta_time());
+
+		auto size_loc = this->big_size();
+		auto size_remote = mtrk_event_get_size_dtstart_unsafe(this->big_ptr(),this->midi_status_);
+		tf &= (size_loc==size_remote);
+		tf &= (size_loc==this->size());
+
+		auto type_loc = this->big_smf_event_type();
+		auto type_remote = detect_mtrk_event_type_dtstart_unsafe(this->big_ptr(),this->midi_status_);
+		tf &= (type_loc==type_remote);
+		tf &= (this->type()==type_loc);
+
+		// data_size() must be consistent w/ manual examination of the remote array
+		auto data_size_remote = mtrk_event_get_data_size_dtstart_unsafe(this->big_ptr(),this->midi_status_);
+		tf &= (this->data_size()==data_size_remote);
+
+		// Sanity checks for size, capacity values
+		tf &= (this->big_size() >= 0);
+		tf &= (this->big_cap() >= this->big_size());
+	}
+
+	// Local midi_status_ field:  Tests are independent of is_big()/small()
+	// For midi events, this->midi_status_ must be == the status byte 
+	// applic to the event
+	if (this->type()==smf_event_type::channel_voice 
+			|| this->type()==smf_event_type::channel_mode) {
+		// Present event is a midi event
+		auto p = this->data()+midi_vl_field_size(this->delta_time());
+		if (is_midi_status_byte(*p)) {  // not running status
+			// The event-local status byte must match this->midi_status_
+			tf &= (*p==this->midi_status_);
+		} else {  // running status
+			// this->midi_status_ must accurately describe the # of midi
+			// data bytes.  
+			tf &= (is_midi_status_byte(this->midi_status_));
+			auto nbytesmsg = midi_channel_event_n_bytes(this->midi_status_,0x00u)-1;
+			tf &= (is_midi_data_byte(*p));
+			if (nbytesmsg==2) {
+				tf &= (is_midi_data_byte(*++p));
+			}
+		}
+	}
+	// For non-midi-events, this->midi_status must ==0x00u
+	if (this->type()==smf_event_type::sysex_f0 
+			|| this->type()==smf_event_type::sysex_f7
+			|| this->type()==smf_event_type::meta
+			|| this->type()==smf_event_type::invalid) {
+		// Present event is _not_ a midi event
+		tf &= (this->midi_status_==0x00u);
 	}
 
 	return tf;
@@ -445,8 +477,6 @@ uint32_t mtrk_event_t::big_delta_t() const {
 	std::memcpy(&dt,&(this->d_[o]),sizeof(uint32_t));
 	return dt;
 }
-// TODO:  This is incorrect.  It sets the local "cached" dt value, 
-// but does not update the remote value.  
 uint32_t mtrk_event_t::set_big_cached_delta_t(uint32_t dt) {
 	if (this->is_small()) {
 		std::abort();

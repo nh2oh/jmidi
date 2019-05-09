@@ -346,6 +346,11 @@ smf_event_type detect_mtrk_event_type_dtstart_unsafe(const unsigned char*, unsig
 unsigned char mtrk_event_get_midi_status_byte_dtstart_unsafe(const unsigned char*, unsigned char=0x00u);
 unsigned char mtrk_event_get_midi_status_byte_unsafe(const unsigned char*, unsigned char=0x00u);
 uint32_t mtrk_event_get_size_dtstart_unsafe(const unsigned char*, unsigned char=0x00u);
+// Does not include the dlta-t field
+uint32_t mtrk_event_get_data_size_dtstart_unsafe(const unsigned char*, unsigned char=0x00u);
+// Does not include the delta-t field, ptr points at the first
+// byte past the end of the dt field
+uint32_t mtrk_event_get_data_size_unsafe(const unsigned char*, unsigned char=0x00u);
 // If p is not a valid midi event, returns 0x80u, which is an invalid data
 // byte.  For ..._p2_...(), also returns 0x80u if the event has status byte
 // ~ 0xC0u || 0xD0u (single-byte midi messages).  

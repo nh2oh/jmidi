@@ -49,11 +49,13 @@ public:
 	const unsigned char *raw_flag() const;
 	uint32_t delta_time() const;
 	smf_event_type type() const;
-	uint32_t data_size() const;  // Not indluding delta-t
+	uint32_t data_size() const;  // Not indluding the delta-t
 	uint32_t size() const;  // Includes delta-t
+	// If is_small(), reports the size of the d_ array, which is the maximum
+	// size of an event that the 'small' state can contain.  
+	uint32_t capacity() const;
 
 	bool set_delta_time(uint32_t);
-	//bool set_delta_time(uint32_t);
 
 	struct midi_data_t {
 		bool is_valid {false};
@@ -64,10 +66,10 @@ public:
 		uint8_t p2 {0x00u};
 	};
 	midi_data_t midi_data() const;
-
+	
+	bool validate() const;
 	bool is_big() const;
 	bool is_small() const;
-	bool validate() const;
 private:
 	enum class offs {
 		ptr = 0,
@@ -110,7 +112,9 @@ private:
 	std::array<unsigned char,22> d_ {0x00u};
 	unsigned char midi_status_ {0x00u};  // always the applic. midi status
 	unsigned char flags_ {0x80u};  // 0x00u=>big; NB:  defaults to "small"
-	static_assert(static_cast<uint64_t>(offs::max_size_sbo)==sizeof(d_));
+	static_assert(static_cast<uint32_t>(offs::max_size_sbo)==sizeof(d_));
+	static_assert(sizeof(d_)==22);
+	static_assert(static_cast<uint32_t>(offs::max_size_sbo)==22);
 	// ptr, size, cap, running status
 	bool init_big(unsigned char *, uint32_t, uint32_t, unsigned char); 
 	// If is_small(), make big with capacity as specified.  All data from the 
