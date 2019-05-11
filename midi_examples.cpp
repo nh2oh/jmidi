@@ -19,14 +19,14 @@
 
 
 int midi_example() {
-	auto mt_tests = testdata::make_random_meta_tests(100);
-	testdata::print_meta_tests(mt_tests);
+	//auto mt_tests = testdata::make_random_meta_tests(100);
+	//testdata::print_meta_tests(mt_tests);
 	//testdata::print_midi_test_cases();
 
-	auto tfield = interpret_smpte_field(0xE250u);
 	//std::string fn = "D:\\cpp\\nh2oh\\au\\gt_aulib\\test_data\\clementi_no_rs.mid";
 	//std::string fn = "D:\\cpp\\nh2oh\\au\\gt_aulib\\test_data\\tc_a_rs.mid";
-	std::string fn = "C:\\Users\\ben\\Desktop\\scr\\CLEMENTI.MID";
+	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\CLEMENTI.MID";
+	std::string fn = "C:\\Users\\ben\\Desktop\\A7.mid";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\test.mid";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\hallelujah_joy_to_the_world.mid";
 	auto rawfiledata = dbk::readfile(fn).d;

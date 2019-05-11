@@ -216,6 +216,8 @@ bool mtrk_event_t::set_delta_time(uint32_t dt) {
 		// value.   
 		// TODO:  It's possible that the present value is_big() but
 		// w/ the new dt the size() is such that it will fit in the sbo.  
+		// TODO:  If shrinking the size, does this leave trash at the end
+		// of the event?
 		midi_rewrite_dt_field_unsafe(dt,this->data(),this->midi_status_);
 	} else if (this->is_small() && new_size>sbo_sz) {
 		// Present value fits in the sbo, but the new value does not.  
@@ -354,9 +356,6 @@ void mtrk_event_t::clear_nofree() {
 	this->midi_status_ = 0x00;
 	this->flags_ = 0x00;
 	this->set_flag_small();
-	//std::fill(this->d_.begin(),this->d_.end(),0x00u);
-	//this->midi_status_ = 0x00u;
-	//this->flags_ = 0x00u;
 }
 
 // p (which already contains the object data) is adpoted by the container.  
@@ -426,18 +425,12 @@ void mtrk_event_t::set_flag_small() {
 }
 
 unsigned char *mtrk_event_t::big_ptr() const {
-	if (this->is_small()) {
-		std::abort();
-	}
 	unsigned char *p {nullptr};
 	uint64_t o = static_cast<uint64_t>(offs::ptr);
 	std::memcpy(&p,&(this->d_[o]),sizeof(p));
 	return p;
 }
 unsigned char *mtrk_event_t::small_ptr() const {
-	if (!this->is_small()) {
-		std::abort();
-	}
 	return const_cast<unsigned char*>(&(this->d_[0]));
 }
 unsigned char *mtrk_event_t::set_big_ptr(unsigned char *p) {
@@ -449,9 +442,6 @@ unsigned char *mtrk_event_t::set_big_ptr(unsigned char *p) {
 	return p;
 }
 uint32_t mtrk_event_t::big_size() const {
-	if (this->is_small()) {
-		std::abort();
-	}
 	uint32_t sz {0};
 	uint64_t o = static_cast<uint64_t>(offs::size);
 	std::memcpy(&sz,&(this->d_[o]),sizeof(uint32_t));
@@ -466,53 +456,35 @@ uint32_t mtrk_event_t::set_big_size(uint32_t sz) {
 	return sz;
 }
 uint32_t mtrk_event_t::big_cap() const {
-	if (this->is_small()) {
-		std::abort();
-	}
 	uint32_t c {0};
 	uint64_t o = static_cast<uint64_t>(offs::cap);
 	std::memcpy(&c,&(this->d_[o]),sizeof(uint32_t));
 	return c;
 }
 uint32_t mtrk_event_t::set_big_cap(uint32_t c) {
-	if (this->is_small()) {
-		std::abort();
-	}
 	uint64_t o = static_cast<uint64_t>(offs::cap);
 	std::memcpy(&(this->d_[o]),&c,sizeof(uint32_t));
 	return c;
 }
 uint32_t mtrk_event_t::big_delta_t() const {
-	if (this->is_small()) {
-		std::abort();
-	}
 	uint32_t dt {0};
 	uint64_t o = static_cast<uint64_t>(offs::dt);
 	std::memcpy(&dt,&(this->d_[o]),sizeof(uint32_t));
 	return dt;
 }
 uint32_t mtrk_event_t::set_big_cached_delta_t(uint32_t dt) {
-	if (this->is_small()) {
-		std::abort();
-	}
 	// Sets the local "cached" dt value
 	uint64_t o = static_cast<uint64_t>(offs::dt);
 	std::memcpy(&(this->d_[o]),&dt,sizeof(uint32_t));
 	return dt;
 }
 smf_event_type mtrk_event_t::big_smf_event_type() const {
-	if (this->is_small()) {
-		std::abort();
-	}
 	smf_event_type t {smf_event_type::invalid};
 	uint64_t o = static_cast<uint64_t>(offs::type);
 	std::memcpy(&t,&(this->d_[o]),sizeof(smf_event_type));
 	return t;
 }
 smf_event_type mtrk_event_t::set_big_cached_smf_event_type(smf_event_type t) {
-	if (this->is_small()) {
-		std::abort();
-	}
 	uint64_t o = static_cast<uint64_t>(offs::type);
 	std::memcpy(&(this->d_[o]),&t,sizeof(smf_event_type));
 	return t;

@@ -81,17 +81,37 @@ private:
 		max_size_sbo = sizeof(unsigned char*) + 3*sizeof(uint32_t) + 2
 	};
 
+	//
+	// Private data:  Overall object size is 24 bytes
+	// std::array<unsigned char,22> d_;
+	// unsigned char midi_status_;
+	// unsigned char flags_;
 	// 
-	// Case big:  Probably meta, sysex_f0/f7, but _could_ be midi (rs or 
-	// non-rs).  
+	// midi_status_ is _always_ the status applicable to the object.  Thus, if
+	// the object stores a midi event w/ no status byte (ie, the event is in
+	// running-status), the value of midi_status_ is the corresponding running
+	// status byte.  For midi messages w/ an event-local status byte, 
+	// midi_status_ is a copy of this value.  For meta or sysex events, 
+	// midi_status_ == 0x00u.  
+	//
+	// Case big:  Probably meta or sysex_f0/f7, but _could_ be midi (rs or 
+	// non-rs); after all, there is no reason an event w/ size() < 22 bytes 
+	// can not be put on the heap.  
+	// Following the three "buffer parameters" ptr, size, capacity are two 
+	// data members redundant w/ the data at p.  These are object-local 
+	// "cached" versions of the remote data that prevent an indirection when
+	// a user calls delta_time() or type().  The object must take care to keep
+	// these in sync w/ the remote raw data (ex, on a call to 
+	// set_delta_time()).  
+	// 
 	// d_ ~ { 
-	//     unsigned char *;
-	//     unit32_t size;
-	//     uint32_t capacity;  // cum sizeof()==16
+	//     unsigned char *p;      // cum sizeof()==8
+	//     unit32_t size sz;      // cum sizeof()==12
+	//     uint32_t capacity c;   // cum sizeof()==16
 	//
 	//     uint32_t delta_t.val;  // fixed size version of the vl quantity
-	//     smf_event_type b21;  // 
-	//     unsigned char b22;  // unused
+	//     smf_event_type b21;    // 
+	//     unsigned char b22;     // unused
 	// };  // sizeof() => 22
 	//
 	//
@@ -109,13 +129,24 @@ private:
 	//     ...
 	//     unsigned char b22;  // byte n-1 following the vl event start
 	// };  // sizeof() => 22
+	//
 	std::array<unsigned char,22> d_ {0x00u};
 	unsigned char midi_status_ {0x00u};  // always the applic. midi status
 	unsigned char flags_ {0x80u};  // 0x00u=>big; NB:  defaults to "small"
 	static_assert(static_cast<uint32_t>(offs::max_size_sbo)==sizeof(d_));
 	static_assert(sizeof(d_)==22);
 	static_assert(static_cast<uint32_t>(offs::max_size_sbo)==22);
-	// ptr, size, cap, running status
+	
+	// Causes the container to "adopt" the data at p (writes p and the 
+	// associated size, capacity into this->d_).  Note: data at p is _not_
+	// copied into a new buffer.  Caller should not delete p after calling.  
+	// The initial state of the container is completely overwritten w/o 
+	// discretion; if is_big(), big_ptr() is _not_ freed.  Callers not wanting
+	// to leak memory should first check is_big() and free big_ptr() as 
+	// necessary.  This function does not rely in any way on the initial
+	// state of the object; it is perfectly fine for the object to be 
+	// initially in a completely invalid state.  
+	// args:  ptr, size, cap, running status
 	bool init_big(unsigned char *, uint32_t, uint32_t, unsigned char); 
 	// If is_small(), make big with capacity as specified.  All data from the 
 	// local d_ array is copied into the new remote buffer.  
@@ -129,9 +160,16 @@ private:
 	void set_flag_small();
 	void set_flag_big();
 
+	// Getters {big,small}_ptr() get a pointer to the first byte of
+	// the underlying data array (the first byte of the dt field).  Neither
+	// checks for the container size; the caller must be careful to call the
+	// correct function.  These are the "unsafe" versions of .data().  
 	unsigned char *big_ptr() const;  // getter
 	unsigned char *small_ptr() const;  // getter
 	unsigned char *set_big_ptr(unsigned char *p);  // setter
+	// Getters to read the locally-cached size() field in the case of 
+	// this->is_big().  Does not check if this->is_big(); must not be called
+	// if this->is_small().  This is the unsafe version of .size().  
 	uint32_t big_size() const;  // getter
 	uint32_t set_big_size(uint32_t);  // setter
 	uint32_t big_cap() const;  // getter
