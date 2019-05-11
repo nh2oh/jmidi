@@ -324,6 +324,146 @@ std::array<unsigned char,4> random_dt_field(int n_digits) {
 };
 
 
+std::vector<meta_test_t> make_random_meta_tests(int n) {
+	struct type_len_pair_t {
+		uint8_t type;
+		int32_t len;  // a len < 0 => variable length
+	};
+	std::vector<type_len_pair_t> meta_db {
+		{0x00,0x02},  // seq #
+		{0x01,-1},  // txt event
+		{0x02,-1},  // copyright
+		{0x03,-1},  // seq/track name
+		{0x04,-1},  // Inst. name
+		{0x05,-1},  // lyric
+		{0x06,-1},  // Marker
+		{0x07,-1},  // cue point
+		{0x20,0x01},  // midi ch prefix
+		{0x2F,0x00},  // end of track
+		{0x51,0x03},  // set tempo
+		{0x54,0x05},  // smpte offset
+		{0x58,0x04},  // time sig
+		{0x59,0x02},  // key sig
+		{0x7F,-1}  // sequencer-specific meta event
+	};
+	// A bunch of "random" type bytes that do are not part of the 
+	// "known" set
+	std::vector<uint8_t> unknown_meta_type {
+		0x08u,0x09u,0x0Au,0x0Bu,0x0Eu,0x0Fu,
+		0x10u,0x11u,
+		0xA1u,0xAFu,
+		0xF7u,0xFFu};
+	std::string rand_txt = "Lorem ipsum sodales nunc vulputate accumsan "
+		"                             maecenas vitae, elit eleifend "
+		"convallis neque fames diam consequat,porta curae gravida leo "
+		"faucibus cursus quis rhoncus varius vehicula taciti in accumsan."
+		"  metus faucibus per.";
+	
+	std::random_device rdev;
+	std::mt19937 re(rdev());
+	std::uniform_int_distribution<uint32_t> rd(0x00u,0xFFFFFFFFu);
+	
+	auto make_known_evtype = [&re]()->bool {
+		std::uniform_int_distribution rd_make_known_event(0,10);
+		return rd_make_known_event(re)<=8;
+	};
+	auto make_random_size = [&re,&rand_txt]()->int {
+		std::uniform_int_distribution rd_payload_size(0,static_cast<int>(rand_txt.size()));
+		return rd_payload_size(re);
+	};
+	auto make_rand_dtval = [&re]()->uint32_t {
+		std::uniform_int_distribution rd_dt_size(0,4);
+		auto fld = random_dt_field(rd_dt_size(re));
+		return midi_interpret_vl_field(&(fld[0])).val;
+
+		/*
+		std::uniform_int_distribution<uint32_t> rd_rand_dt(0x00u,0xFFFFFFFFu);
+		uint32_t val = rd_rand_dt(re)&0x7FFFFFFF;
+		if (val%2==0) {
+			return 0;
+		} else {
+			return val;
+		}*/
+	};
+	
+
+	std::vector<meta_test_t> result {};
+	for (int i=0; i<n; ++i) {
+		meta_test_t curr;
+
+		curr.dt_value = make_rand_dtval();
+		midi_write_vl_field(std::back_inserter(curr.data),curr.dt_value);
+
+		curr.data.push_back(0xFFu);
+
+		//
+		// Random type and (possibly) payload length
+		//
+		if (make_known_evtype()) {
+			type_len_pair_t curr_tlp = meta_db[rd(re)%meta_db.size()];
+			if (curr_tlp.len < 0) {
+				curr_tlp.len = make_random_size();
+			}
+			curr.type_byte = curr_tlp.type;
+			curr.payload_length = curr_tlp.len;
+		} else {
+			curr.type_byte = unknown_meta_type[rd(re)%unknown_meta_type.size()];
+			curr.payload_length = make_random_size();
+		}
+		curr.data.push_back(curr.type_byte);
+		midi_write_vl_field(std::back_inserter(curr.data),curr.payload_length);
+		
+		//
+		// Random payload
+		//
+		if (curr.payload_length <= 10) {
+			for (int j=0; j<curr.payload_length; ++j) {
+				curr.data.push_back(rd(re));
+			}
+		} else {
+			std::copy(rand_txt.begin(),rand_txt.begin()+curr.payload_length,
+				std::back_inserter(curr.data));
+		}
+
+		curr.data_size = curr.data.size()-midi_vl_field_size(curr.dt_value);
+
+		result.push_back(curr);
+	}
+	
+	return result;
+}
+
+
+void print_meta_tests(const std::vector<meta_test_t>& tests) {
+	std::cout << "// data, dt_val, type_byte, payload_len, data_size\n";
+	for (const auto& tc : tests) {
+		std::cout << "{{";
+		for (int i=0; i<tc.data.size(); ++i) {
+			std::cout << "0x" << dbk::print_hexascii(&(tc.data[i]),1);
+			if (i!=(tc.data.size()-1)) {
+				std::cout << ",";
+			}
+			if (i>0 && i%14==0) {
+				std::cout << "\n\t";
+			}
+		}
+		std::cout << "},\n";
+		std::cout << std::to_string(tc.dt_value) << ",";
+		std::cout << "0x" << dbk::print_hexascii(&(tc.type_byte),1) << "u,";
+		std::cout << std::to_string(tc.payload_length) << ",";
+		std::cout << std::to_string(tc.data_size) << "},";
+		std::cout << std::endl;
+	}
+	std::cout << std::endl;
+}
+
+
+
+
+
+
+
+
 };  // namespace testdata
 
 

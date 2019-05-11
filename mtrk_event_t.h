@@ -19,8 +19,8 @@
 //
 class mtrk_event_t {
 public:
-	// Default ctor; creates a "small" object that is essentially invalid 
-	// (does not represent an mtrk event).  
+	// Default ctor; creates a "small" object representing a meta-text event
+	// w/ a payload length of 0.  
 	mtrk_event_t();
 	// Ctor for callers who have pre-computed the exact size of the event and who
 	// can also supply a midi status byte if applicible, ex, an mtrk_container_iterator_t.  
@@ -30,9 +30,9 @@ public:
 	// Copy assignment; overwrites a pre-existing lhs 'this' w/ rhs
 	mtrk_event_t& operator=(const mtrk_event_t&);
 	// Move ctor
-	mtrk_event_t(mtrk_event_t&&);
+	mtrk_event_t(mtrk_event_t&&) noexcept;
 	// Move assignment
-	mtrk_event_t& operator=(mtrk_event_t&&);
+	mtrk_event_t& operator=(mtrk_event_t&&) noexcept;
 	// Dtor
 	~mtrk_event_t();
 
@@ -119,7 +119,7 @@ private:
 	bool init_big(unsigned char *, uint32_t, uint32_t, unsigned char); 
 	// If is_small(), make big with capacity as specified.  All data from the 
 	// local d_ array is copied into the new remote buffer.  
-	bool small2big(uint32_t);  
+	bool small2big(uint32_t);
 	bool big_resize(uint32_t);
 
 	// Zero all data members.  No attempt to query the state of the object

@@ -60,6 +60,23 @@ void print_midi_test_cases();
 uint8_t random_midi_status_byte(int=0);
 uint8_t random_midi_data_byte(bool=false);  // true => (result&0b01111000u)==true
 std::array<unsigned char,4> random_dt_field(int=0);
+
+
+struct meta_test_t {
+	std::vector<unsigned char> data {};  // data.size()==dt_field_size+data_length
+	uint32_t dt_value {};
+	uint8_t type_byte {};
+	uint32_t payload_length {};
+	uint32_t data_size {};  // 2 + length-vl-field.N + length-vl-field.val
+};
+// this function hardcodes a database of known meta msg type-bytes and 
+// payload-length pairs
+std::vector<meta_test_t> make_random_meta_tests(int);
+void print_meta_tests(const std::vector<meta_test_t>&);
+
+
+
+
 };  // namespace testdata
 
 

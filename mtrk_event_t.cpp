@@ -9,10 +9,16 @@
 #include <algorithm>
 #include <vector>
 #include <iterator>
-
+#include <utility>  // std::move()
 
 
 mtrk_event_t::mtrk_event_t() {
+	// A meta text-event of length 0 
+	this->d_ = {0x00,0xFF,0x01,0x00,
+		0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+		0x00,0x00,0x00,0x00,0x00};
+	this->midi_status_ = 0x00;
+	this->flags_ = 0x00;
 	this->set_flag_small();
 }
 //
@@ -91,7 +97,7 @@ mtrk_event_t& mtrk_event_t::operator=(const mtrk_event_t& rhs) {
 //
 // Move ctor
 //
-mtrk_event_t::mtrk_event_t(mtrk_event_t&& rhs) {
+mtrk_event_t::mtrk_event_t(mtrk_event_t&& rhs) noexcept {
 	this->d_ = rhs.d_;
 	this->midi_status_ = rhs.midi_status_;
 	this->flags_ = rhs.flags_;
@@ -104,7 +110,7 @@ mtrk_event_t::mtrk_event_t(mtrk_event_t&& rhs) {
 //
 // Move assign
 //
-mtrk_event_t& mtrk_event_t::operator=(mtrk_event_t&& rhs) {
+mtrk_event_t& mtrk_event_t::operator=(mtrk_event_t&& rhs) noexcept {
 	if (this->is_big()) {
 		delete this->big_ptr();
 	}
@@ -112,11 +118,12 @@ mtrk_event_t& mtrk_event_t::operator=(mtrk_event_t&& rhs) {
 	this->d_ = rhs.d_;
 	this->midi_status_ = rhs.midi_status_;
 	this->flags_ = rhs.flags_;
-	if (rhs.is_big()) {
-		rhs.clear_nofree();  // prevents ~rhs() from freeing its memory
-		// Note that this state of rhs is invalid as everything is set to
-		// 0x00u.  
-	}
+
+	// Overwrite everything in rhs w/ values for the default-constructed
+	// state.  rhs.d_,rhs.midi_status_,rhs.flags_ are simply overwritten;
+	// no resources are freed if initially rhs.is_big().  This prevents
+	// ~rhs() from freeing its resources (if big).  
+	rhs.clear_nofree();
 
 	return *this;
 }
@@ -340,9 +347,16 @@ bool mtrk_event_t::is_small() const {
 }
 
 void mtrk_event_t::clear_nofree() {
-	std::fill(this->d_.begin(),this->d_.end(),0x00u);
-	this->midi_status_ = 0x00u;
-	this->flags_ = 0x00u;
+	// A meta text-event of length 0 
+	this->d_ = {0x00,0xFF,0x01,0x00,
+		0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+		0x00,0x00,0x00,0x00,0x00};
+	this->midi_status_ = 0x00;
+	this->flags_ = 0x00;
+	this->set_flag_small();
+	//std::fill(this->d_.begin(),this->d_.end(),0x00u);
+	//this->midi_status_ = 0x00u;
+	//this->flags_ = 0x00u;
 }
 
 // p (which already contains the object data) is adpoted by the container.  
