@@ -1,4 +1,5 @@
 #include "midi_raw.h"
+#include "midi_vlq.h"
 #include "dbklib\byte_manipulation.h"
 #include <string>
 #include <array>
@@ -6,28 +7,6 @@
 #include <exception>
 #include <cstdint>
 #include <iostream>
-
-
-midi_vl_field_interpreted midi_interpret_vl_field(const unsigned char* p) {
-	midi_vl_field_interpreted result {};
-	result.val = 0;
-
-	while (true) {
-		result.val += (*p & 0x7F);
-		++(result.N);
-		if (!(*p & 0x80) || result.N==4) { // the high-bit is not set
-			break;
-		} else {
-			result.val <<= 7;  // result.val << 7;
-			++p;
-		}
-	}
-
-	result.is_valid = !(*p & 0x80);
-
-	return result;
-};
-
 
 
 detect_chunk_type_result_t detect_chunk_type(const unsigned char *p, uint32_t max_size) {
@@ -38,25 +17,9 @@ detect_chunk_type_result_t detect_chunk_type(const unsigned char *p, uint32_t ma
 		return result;
 	}
 
-	// All chunks begin w/ A 4-char ASCII identifier
-	uint32_t id = dbk::be_2_native<uint32_t>(p);
-	if (id == 0x4D546864) {  // Mthd
-		result.type = chunk_type::header;
-		p+=4;
-	} else if (id == 0x4D54726B) {  // MTrk
-		result.type = chunk_type::track;
-		p+=4;
-	} else {
-		result.type = chunk_type::unknown;
-		int n = 0;
-		while (n<4) {
-			if (*p>=127 || *p<32) {
-				result.type = chunk_type::invalid;
-				result.error = chunk_validation_error::invalid_type_field;
-				return result;
-			}
-			++p; ++n;
-		}
+	result.type = chunk_type_from_id(p);
+	if (result.type == chunk_type::invalid) {
+		result.error = chunk_validation_error::invalid_type_field;
 	}
 
 	result.data_length = dbk::be_2_native<uint32_t>(p);
@@ -71,14 +34,18 @@ detect_chunk_type_result_t detect_chunk_type(const unsigned char *p, uint32_t ma
 	result.error = chunk_validation_error::no_error;
 	return result;
 }
-// NB:  Never returns "invalid"
-chunk_type detect_chunk_type_unsafe(const unsigned char *p) {
+chunk_type chunk_type_from_id(const unsigned char *p) {
 	uint32_t id = dbk::be_2_native<uint32_t>(p);
-	if (id == 0x4D546864) {  // Mthd
+	if (id == 0x4D546864u) {  // Mthd
 		return chunk_type::header;
-	} else if (id == 0x4D54726B) {  // MTrk
+	} else if (id == 0x4D54726Bu) {  // MTrk
 		return chunk_type::track;
 	} else {
+		for (int n=0; n<4; ++n) {
+			if (*p>=127 || *p<32) {
+				return chunk_type::invalid;
+			}
+		}
 		return chunk_type::unknown;
 	}
 }

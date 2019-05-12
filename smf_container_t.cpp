@@ -31,7 +31,7 @@ smf_t::smf_t(const validate_smf_result_t& maybe_smf) {
 uint16_t smf_t::ntrks() const {
 	uint16_t ntracks {0};
 	for (const auto& e : this->d_) {
-		if (detect_chunk_type_unsafe(e.data())==chunk_type::track) {
+		if (chunk_type_from_id(e.data())==chunk_type::track) {
 			++ntracks;
 		}
 	}
@@ -55,7 +55,7 @@ uint32_t smf_t::mthd_data_length() const {
 mtrk_view_t smf_t::get_track_view(int n) const {
 	int curr_trackn {0};
 	for (const auto& e : this->d_) {
-		if (detect_chunk_type_unsafe(e.data())==chunk_type::track) {
+		if (chunk_type_from_id(e.data())==chunk_type::track) {
 			if (n == curr_trackn) {
 				return mtrk_view_t(e.data(), e.size());
 			}
@@ -66,7 +66,7 @@ mtrk_view_t smf_t::get_track_view(int n) const {
 }
 mthd_view_t smf_t::get_header_view() const {
 	for (const auto& e : this->d_) {
-		if (detect_chunk_type_unsafe(e.data())==chunk_type::header) {
+		if (chunk_type_from_id(e.data())==chunk_type::header) {
 			return mthd_view_t(e.data(),e.size());
 		}
 	}
