@@ -8,7 +8,7 @@
 
 
 mthd_view_t::mthd_view_t(const validate_mthd_chunk_result_t& mthd) {
-	if (!mthd.is_valid) {
+	if (mthd.error != mthd_validation_error::no_error) {
 		std::abort();
 	}
 	this->p_=mthd.p;

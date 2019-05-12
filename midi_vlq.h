@@ -17,6 +17,10 @@ struct midi_vl_field_interpreted {
 	bool is_valid {false};
 };
 midi_vl_field_interpreted midi_interpret_vl_field(const unsigned char*);
+// Specify the max number of bytes allowed to be read.  If the terminating
+// byte is not encountered after reading max_size bytes, returns w/ 
+// !is_valid
+midi_vl_field_interpreted midi_interpret_vl_field(const unsigned char*, uint32_t);
 //
 // Returns an integer with the bit representation of the input encoded as a midi
 // vl quantity.  Ex for:

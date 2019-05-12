@@ -20,7 +20,27 @@ midi_vl_field_interpreted midi_interpret_vl_field(const unsigned char* p) {
 	result.is_valid = !(*p & 0x80);
 
 	return result;
-};
+}
 
 
+midi_vl_field_interpreted midi_interpret_vl_field(const unsigned char* p, uint32_t max_size) {
+	midi_vl_field_interpreted result {};
+	result.val = 0;  result.N = 0;
+
+	bool found_field_end = false;
+	while (max_size>0 || result.N<4) {
+		result.val += (*p & 0x7Fu);
+		++(result.N);
+		--max_size;
+		if (!(*p&0x80u)) {
+			found_field_end = true;
+			break;
+		} else {
+			result.val <<= 7;
+			++p;
+		}
+	}
+	result.is_valid = found_field_end;
+	return result;
+}
 

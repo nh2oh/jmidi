@@ -101,7 +101,7 @@ uint8_t mtrk_event_view_t::p2() const {
 
 
 mtrk_view_t::mtrk_view_t(const validate_mtrk_chunk_result_t& mtrk) {
-	if (!mtrk.is_valid) {
+	if (mtrk.error!=mtrk_validation_error::no_error) {
 		std::abort();
 	}
 
@@ -140,7 +140,7 @@ bool mtrk_view_t::validate() const {
 	tf = tf && (this->size_-8 == dbk::be_2_native<uint32_t>(this->p_+4));
 
 	auto mtrk = validate_mtrk_chunk(this->p_,this->size_);
-	tf = tf && mtrk.is_valid;
+	tf = tf && (mtrk.error==mtrk_validation_error::no_error);
 
 	return tf;
 }

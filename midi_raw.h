@@ -115,30 +115,38 @@ enum class mtrk_validation_error : uint8_t {
 	non_track_chunk,  // *p != "MTrk"
 	data_length_not_match,  // Reported length does not match length of track
 	event_error,  // some sort of error w/an internal event
+	delta_time_error,
+	no_end_of_track,
 	unknown_error,
 	no_error
 };
 struct validate_mtrk_chunk_result_t {
+	// points at the 'M' of "MTrk"...
+	const unsigned char *p {nullptr};  
+	// Always == reported size (data_length) + 8
+	uint32_t size {0};  
+	// The reported length; !including the "MTrk" and length fields
+	uint32_t data_size {0};  
 	mtrk_validation_error error {mtrk_validation_error::unknown_error};
-	bool is_valid {false};
-	std::string msg {};
-	int32_t data_length {0};  // the reported length; does not include the "MTrk" and length fields
-	int32_t size {0};  //  Always == reported size (data_length) + 8
-	const unsigned char *p {};  // points at the 'M' of "MTrk"...
 };
-validate_mtrk_chunk_result_t validate_mtrk_chunk(const unsigned char*, int32_t=0);
+// ptr, max_size
+validate_mtrk_chunk_result_t validate_mtrk_chunk(const unsigned char*, uint32_t=0);
 std::string print_error(const validate_mtrk_chunk_result_t&);
 
+
 //
-// There are no sys_realtime messages in an mtrk event stream.  The set of valid sys_realtime 
-// status bytes includes 0xFF, which is the leading byte for a "meta" event.  
+// There are no sys_realtime messages in an mtrk event stream.  The set of 
+// valid sys_realtime status bytes includes 0xFF, the identifier byte for a 
+// "meta" event.  
 //
-// Why do i include "invalid," which is clearly not a member of the "class" of things-that-are-
-// smf-events?  Because users switch behavior on functions that return a value of this type (ex,
-// while iterating through an mtrk chunk, the type of event at the present position in the chunk
-// is detected by parse_mtrk_event()).  I want to force users to deal with the error case rather
-// than relying on the convention that some kind of parse_mtrk_event_result.is_valid field be 
-// checked before moving forward with parse_mtrk_event_result.detected_type.  
+// Why do i include "invalid," which is clearly not a member of the "class
+// " of things-that-are-smf-events"?  Because users switch behavior on 
+// functions that return a value of this type (ex, while iterating through
+// an mtrk chunk, the type of event at the present position in the chunk
+// is detected by parse_mtrk_event()).  I want to force users to deal with 
+// the error case rather than relying on the convention that some kind of
+// validate_mtrk_event_result.is_valid field be checked before moving forward 
+// with validate_mtrk_event_result.detected_type.  
 //
 // Sysex events and meta-events cancel any running status which was in effect.  Running status
 // does not apply to and may not be used for these messages (p.136).  
@@ -151,7 +159,13 @@ enum class smf_event_type : uint8_t {  // MTrk events
 	meta,
 	invalid
 };
-
+struct validate_mtrk_event_result_t {
+	uint32_t delta_t {0};
+	uint32_t size {0};
+	smf_event_type type {smf_event_type::invalid};
+};
+// ptr, running-status, max_size
+validate_mtrk_event_result_t validate_mtrk_event_dtstart(const unsigned char *, unsigned char, uint32_t=0);
 std::string print(const smf_event_type&);
 //
 // arg 1:  Pointer to the first byte of a delta-t field
