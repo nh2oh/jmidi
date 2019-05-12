@@ -30,7 +30,11 @@ enum class chunk_type : uint8_t {
 	unknown,  // The std requires that unrecognized chunk types be permitted
 	invalid
 };
-
+// Reads only the first 4 bytes, matches for 'MThd' or 'MTrk', and returns
+// chunk_type::header, ::track, ::unknown or ::invalid as appropriate.  
+// The only way to get ::invalid is for one or more of the first 4 bytes
+// to be non-ASCII (<32 || >127).  
+chunk_type chunk_type_from_id(const unsigned char*);
 //
 // Checks for the 4-char ASCII id and the 4-byte size.  Verifies that 
 // the id + size field + the reported size does not exceed the max_size 
@@ -44,22 +48,17 @@ enum class chunk_validation_error : uint8_t {
 	unknown_error,
 	no_error
 };
-struct detect_chunk_type_result_t {
-	chunk_type type {chunk_type::invalid};
+struct validate_chunk_header_result_t {
 	// 4-byte ASCII header + 4-byte length field + reported length
 	uint32_t size {0};
 	// The length field following the 4-ASCII char chunk "name;" the 
-	// reported length of the data section.  
-	uint32_t data_length {0};
+	// reported size of the data section.  
+	uint32_t data_size {0};
+	chunk_type type {chunk_type::invalid};
 	chunk_validation_error error {chunk_validation_error::unknown_error};
 };
-detect_chunk_type_result_t detect_chunk_type(const unsigned char*, uint32_t=0);
-// Reads only the first 4 bytes, matches for 'MThd' or 'MTrk', and returns
-// chunk_type::header, ::track, ::unknown or ::invalid as appropriate.  
-// The only way to get ::invalid is for one or more of the first 4 bytes
-// to be non-ASCII (<32 || >127).  
-chunk_type chunk_type_from_id(const unsigned char*);
-std::string print_error(const detect_chunk_type_result_t&);
+validate_chunk_header_result_t validate_chunk_header(const unsigned char*, uint32_t=0);
+std::string print_error(const validate_chunk_header_result_t&);
 
 //
 // <Header Chunk> = <chunk type> <length> <format> <ntrks> <division>  

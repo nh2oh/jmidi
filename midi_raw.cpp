@@ -9,8 +9,8 @@
 #include <iostream>
 
 
-detect_chunk_type_result_t detect_chunk_type(const unsigned char *p, uint32_t max_size) {
-	detect_chunk_type_result_t result {};
+validate_chunk_header_result_t validate_chunk_header(const unsigned char *p, uint32_t max_size) {
+	validate_chunk_header_result_t result {};
 	if (max_size < 8) {
 		result.type = chunk_type::invalid;
 		result.error = chunk_validation_error::size_exceeds_underlying;
@@ -22,8 +22,8 @@ detect_chunk_type_result_t detect_chunk_type(const unsigned char *p, uint32_t ma
 		result.error = chunk_validation_error::invalid_type_field;
 	}
 
-	result.data_length = dbk::be_2_native<uint32_t>(p);
-	result.size = 8 + result.data_length;
+	result.data_size = dbk::be_2_native<uint32_t>(p);
+	result.size = 8 + result.data_size;
 
 	if (result.size>max_size) {
 		result.type = chunk_type::invalid;
@@ -40,7 +40,7 @@ chunk_type chunk_type_from_id(const unsigned char *p) {
 		return chunk_type::header;
 	} else if (id == 0x4D54726Bu) {  // MTrk
 		return chunk_type::track;
-	} else {
+	} else {  // Verify all 4 bytes are valid ASCII
 		for (int n=0; n<4; ++n) {
 			if (*p>=127 || *p<32) {
 				return chunk_type::invalid;
@@ -50,22 +50,21 @@ chunk_type chunk_type_from_id(const unsigned char *p) {
 	}
 }
 
-std::string print_error(const detect_chunk_type_result_t& chunk) {
-	std::string result {};
-
+std::string print_error(const validate_chunk_header_result_t& chunk) {
+	std::string result ="Invalid chunk header:  ";
 	switch (chunk.error) {
 		case chunk_validation_error::size_exceeds_underlying:
-			result += "Invalid chunk header:  the calculated chunk size exceeds "
+			result += "The calculated chunk size exceeds "
 				"the size of the underlying array.";
 			break;
 		case chunk_validation_error::invalid_type_field:
-			result += "Invalid chunk header:  The 4-char ASCII 'type' field is missing.";
+			result += "The first 4 bytes of an SMF chunk must be valid ASCII "
+				"(>=32 && <= 127).  ";
 			break;
 		case chunk_validation_error::unknown_error:
-			result += "Invalid chunk header:  Unknown error.";
+			result += "Unknown error.";
 			break;
 	}
-
 	return result;
 }
 
@@ -73,7 +72,7 @@ std::string print_error(const detect_chunk_type_result_t& chunk) {
 validate_mthd_chunk_result_t validate_mthd_chunk(const unsigned char *p, uint32_t max_size) {
 	validate_mthd_chunk_result_t result {};
 
-	detect_chunk_type_result_t chunk_detect = detect_chunk_type(p,max_size);
+	auto chunk_detect = validate_chunk_header(p,max_size);
 	if (chunk_detect.type != chunk_type::header) {
 		result.is_valid = false;
 		if (chunk_detect.type==chunk_type::invalid) {
@@ -84,7 +83,7 @@ validate_mthd_chunk_result_t validate_mthd_chunk(const unsigned char *p, uint32_
 		return result;
 	}
 
-	if (chunk_detect.data_length < 6) {
+	if (chunk_detect.data_size < 6) {
 		result.is_valid = false;
 		result.error = mthd_validation_error::data_length_invalid;
 		return result;
@@ -145,7 +144,7 @@ std::string print_error(const validate_mthd_chunk_result_t& mthd) {
 validate_mtrk_chunk_result_t validate_mtrk_chunk(const unsigned char *p, int32_t max_size) {
 	validate_mtrk_chunk_result_t result {};
 
-	detect_chunk_type_result_t chunk_detect = detect_chunk_type(p,max_size);
+	auto chunk_detect = validate_chunk_header(p,max_size);
 	if (chunk_detect.type != chunk_type::track) {
 		if (chunk_detect.type==chunk_type::invalid) {
 			result.error = mtrk_validation_error::invalid_chunk;
@@ -891,7 +890,7 @@ validate_smf_result_t validate_smf(const unsigned char *p, int32_t offset_end,
 
 	int32_t offset {0};
 	while (offset<offset_end) {  // For each chunk...
-		detect_chunk_type_result_t curr_chunk = detect_chunk_type(p+offset,offset_end-offset);
+		auto curr_chunk = validate_chunk_header(p+offset,offset_end-offset);
 		if (curr_chunk.type == chunk_type::invalid) {
 			result.is_valid = false;
 			result.msg += "curr_chunk.type == chunk_type::invalid\ncurr_chunk_type.msg== ";
