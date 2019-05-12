@@ -74,7 +74,6 @@ validate_mthd_chunk_result_t validate_mthd_chunk(const unsigned char *p, uint32_
 
 	auto chunk_detect = validate_chunk_header(p,max_size);
 	if (chunk_detect.type != chunk_type::header) {
-		result.is_valid = false;
 		if (chunk_detect.type==chunk_type::invalid) {
 			result.error = mthd_validation_error::invalid_chunk;
 		} else {
@@ -84,7 +83,6 @@ validate_mthd_chunk_result_t validate_mthd_chunk(const unsigned char *p, uint32_
 	}
 
 	if (chunk_detect.data_size < 6) {
-		result.is_valid = false;
 		result.error = mthd_validation_error::data_length_invalid;
 		return result;
 	}
@@ -94,42 +92,45 @@ validate_mthd_chunk_result_t validate_mthd_chunk(const unsigned char *p, uint32_
 	uint16_t format = dbk::be_2_native<uint16_t>(p+8);
 	uint16_t ntrks = dbk::be_2_native<uint16_t>(p+10);
 
-	// Note that i am making it legal to have 0 tracks, for example, to represent 
-	// an smf under construction.
-	if (format==0 && ntrks>1) {
+	if (ntrks==0) {
+		result.error = mthd_validation_error::zero_tracks;
+		return result;
+	}
+	if (format==0 && ntrks!=1) {
 		result.error = mthd_validation_error::inconsistent_ntrks_format_zero;
-		result.is_valid = false;
 		return result;
 	}
 
-	result.is_valid = true;
 	result.error = mthd_validation_error::no_error;
 	result.size = chunk_detect.size;
 	result.p = p;  // pointer to the 'M' of "MThd"..., ie the _start_ of the mthd chunk
 	return result;
 }
 
-
 std::string print_error(const validate_mthd_chunk_result_t& mthd) {
-	std::string result {};
+	std::string result ="Invalid MThd chunk:  ";
 
 	switch (mthd.error) {
 		case mthd_validation_error::invalid_chunk:
-			result += "Not a valid SMF chunk.  The 4-char ASCII 'type' field may be "
-				"missing, or the calculated chunk size may exceed the size of the "
-				"underlying array.";
+			result += "Not a valid SMF chunk.  The 4-char ASCII 'type' field "
+				"may be missing, or the calculated chunk size may exceed the "
+				" size of the underlying array.";
 			break;
 		case mthd_validation_error::non_header_chunk:
 			result += "chunk_detect.type != chunk_type::header.";
 			break;
 		case mthd_validation_error::data_length_invalid:
-			result += "MThd chunks must have a data length >= 6";
+			result += "MThd chunks must have a data length >= 6.";
+			break;
+		case mthd_validation_error::zero_tracks:
+			result += "MThd chunks must report at least 1 track.";
 			break;
 		case mthd_validation_error::inconsistent_ntrks_format_zero:
-			result += "format==0 but ntrks>1; format 0 smf's have exactly 1 track.";
+			result += "The value of field 'format' == 0, but ntrks > 1; "
+				"format 0 SMF's must have exactly 1 track.";
 			break;
 		case mthd_validation_error::unknown_error:
-			result += "Invalid MThd chunk:  Unknown error.";
+			result += "Unknown error.";
 			break;
 	}
 

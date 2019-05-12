@@ -18,6 +18,8 @@
 //
 
 //
+// Validation & processing of generic SMF chunk headers
+//
 // There are two types of chunks: the Header chunk, containing data
 // pertaining to the entire file (only one per file), and the Track chunk
 // (possibly >1 per file).  Both have a length field that is is always 4
@@ -61,6 +63,8 @@ validate_chunk_header_result_t validate_chunk_header(const unsigned char*, uint3
 std::string print_error(const validate_chunk_header_result_t&);
 
 //
+// Validation & processing of MThd chunks
+//
 // <Header Chunk> = <chunk type> <length> <format> <ntrks> <division>  
 //
 // Checks that:
@@ -71,14 +75,14 @@ std::string print_error(const validate_chunk_header_result_t&);
 //    p 134:  "Also, more parameters may be added to the MThd chunk in the 
 //    future: it is important to read and honor the length, even if it is 
 //    longer than 6.")
-// -> ntrks<=1 if format==0
-//    ntrks==0 is allowed though it is debatable if a valid smf may have 0
-//    tracks.  
+// -> ntrks==1 if format==0
+//    ntrks==0 is not allowed.  
 //
 enum class mthd_validation_error : uint8_t {
 	invalid_chunk,
 	non_header_chunk,
 	data_length_invalid,
+	zero_tracks,
 	inconsistent_ntrks_format_zero,
 	unknown_error,
 	no_error
@@ -87,7 +91,6 @@ struct validate_mthd_chunk_result_t {
 	const unsigned char *p {};  // points at the 'M' of "MThd"...
 	uint32_t size {0};  //  Always == reported size (data_length) + 8
 	mthd_validation_error error {mthd_validation_error::unknown_error};
-	bool is_valid {false};  // TODO:  Get rid of this; callers should check error
 };
 validate_mthd_chunk_result_t validate_mthd_chunk(const unsigned char*, uint32_t=0);
 std::string print_error(const validate_mthd_chunk_result_t&);
