@@ -267,9 +267,8 @@ std::string print_error(const validate_mtrk_chunk_result_t& mtrk) {
 	}
 	return result;
 }
-
 validate_mtrk_event_result_t validate_mtrk_event_dtstart(
-			const unsigned char *p, unsigned char s, uint32_t max_size) {
+			const unsigned char *p, unsigned char rs, uint32_t max_size) {
 	validate_mtrk_event_result_t result {};
 	// All mtrk events begin with a delta-time occupying a maximum of 4 bytes
 	// and a minimum of 1 byte.  Note that even a delta-time of 0 occupies 1
@@ -277,10 +276,12 @@ validate_mtrk_event_result_t validate_mtrk_event_dtstart(
 	auto dt = midi_interpret_vl_field(p,max_size);
 	if (!dt.is_valid) {
 		result.type = smf_event_type::invalid;
+		result.error = mtrk_event_validation_error::invalid_dt_field;
 		return result;
 	}
 	if (dt.N >= max_size) {
 		result.type = smf_event_type::invalid;
+		result.error = mtrk_event_validation_error::event_size_exceeds_max;
 		return result;
 	}
 	result.delta_t = dt.val;
@@ -288,66 +289,103 @@ validate_mtrk_event_result_t validate_mtrk_event_dtstart(
 	result.size += dt.N;
 	p += dt.N;
 
-	// At this point, max_size is at minimum == 1.  A value of 1 is ok if 
-	// the present event is a single-data-byte midi msg in running-status: 
-	// (s&0xF0 == 0xC0 || 0xD0) && (*p&0x80!=0x80).  
-	if (((*p&0xF0u)==0xB0u && max_size<2) 
-			|| ((s&0xF0u)==0xB0u && (*p&0x80u)!=0x80 && max_size<1)) {
-		// if p is a control_change msg w/ an event-local status byte or
-		// a control_change msg w/o an event-local status byte,
-		// detect_mtrk_event_type_unsafe(p,s) will increment p by 1 or 0, 
-		// respectively, to classify the event as channel_voice or channel_mode.  
-		// Obv this is a problem if the array is to short.  
-		result.type = smf_event_type::invalid;
-		return result;
-	}
-	result.type = detect_mtrk_event_type_unsafe(p,s);
-
-	if (result.type == smf_event_type::meta) {
+	auto s = get_status_byte(*p,rs);
+	result.type = classify_mtrk_event(*p,rs);
+	if (result.type==smf_event_type::channel_mode 
+						|| result.type==smf_event_type::channel_voice) {
+		uint8_t event_length = 0;
+		auto n_data_bytes = channel_status_byte_n_data_bytes(s);
+		event_length += n_data_bytes;
+		if (is_channel_status_byte(*p)) {  // not running status; *p==status-byte
+			event_length += 1;
+			++p;
+		}
+		if (event_length > max_size) {
+			result.type = smf_event_type::invalid;
+			result.error = mtrk_event_validation_error::event_size_exceeds_max;
+			return result;
+		}
+		max_size -= event_length;
+		result.size += event_length;
+		// At this point, *p is the first data byte
+		for (int i=0; i<n_data_bytes; ++i) {
+			if (!is_data_byte(*p)) {
+				result.type = smf_event_type::invalid;
+				result.error = mtrk_event_validation_error::channel_event_missing_data_byte;
+				return result;
+			}
+			++p;
+		}
+		// p now points one _past_ the final data byte
+	} else if (result.type==smf_event_type::meta) {
 		if (max_size < 3) {  // 0xFF,type,len (len is @ least 1 byte)
 			result.type = smf_event_type::invalid;
+			result.error = mtrk_event_validation_error::event_size_exceeds_max;
 			return result;
 		}
 		p += 2;  // 0xFF, type-byte
 		result.size += 2;
 		max_size -= 2;
 		auto length_field = midi_interpret_vl_field(p,max_size);
+		if (!length_field.is_valid) {
+			result.type = smf_event_type::invalid;
+			result.error = mtrk_event_validation_error::sysex_or_meta_invalid_length_field;
+			return result;
+		}
 		if (max_size < (length_field.N + length_field.val)) {
 			result.type = smf_event_type::invalid;
+			result.error = mtrk_event_validation_error::event_size_exceeds_max;
 			return result;
 		}
 		result.size += (length_field.N + length_field.val);
 		max_size -= (length_field.N + length_field.val);
 	} else if (result.type == smf_event_type::sysex_f0 
-				|| result.type == smf_event_type::sysex_f7) {
+						|| result.type == smf_event_type::sysex_f7) {
 		if (max_size < 2) {  // 0xF0||0xF7,len (len is @ least 1 byte)
 			result.type = smf_event_type::invalid;
+			result.error = mtrk_event_validation_error::event_size_exceeds_max;
 			return result;
 		}
 		++p;  // 0xF0 || 0xF7
 		result.size += 1;
 		max_size -= 1;
 		auto length_field = midi_interpret_vl_field(p,max_size);
+		if (!length_field.is_valid) {
+			result.type = smf_event_type::invalid;
+			result.error = mtrk_event_validation_error::sysex_or_meta_invalid_length_field;
+			return result;
+		}
 		if (max_size < (length_field.N + length_field.val)) {
 			result.type = smf_event_type::invalid;
+			result.error = mtrk_event_validation_error::event_size_exceeds_max;
 			return result;
 		}
 		result.size += (length_field.N + length_field.val);
 		max_size -= (length_field.N + length_field.val);
-	} else if (result.type == smf_event_type::channel_mode 
-				|| result.type == smf_event_type::channel_voice) {
-		auto event_length = midi_channel_event_n_bytes(*p,s);
-		if (event_length > max_size) {
-			result.type = smf_event_type::invalid;
-			return result;
-		}
-		result.size += event_length;
-		max_size -= event_length;
+	} else if (result.type == smf_event_type::unrecognized) {
+		result.type = smf_event_type::invalid;
+		result.error = mtrk_event_validation_error::unable_to_determine_size;
+		return result;
+	} else {
+		result.type = smf_event_type::invalid;
+		result.error = mtrk_event_validation_error::unknown_error;
+		return result;
 	}
 
+	result.error = mtrk_event_validation_error::no_error;
 	return result;
 }
-
+uint8_t channel_status_byte_n_data_bytes(unsigned char s) {
+	if (is_channel_status_byte(s)) {
+		if ((s&0xF0u)==0xC0u || (s&0xF0u)==0xD0u) {
+			return 1;
+		} else {
+			return 2;
+		}
+	} else {
+		return 0;
+	}
+}
 
 std::string print(const smf_event_type& et) {
 	if (et == smf_event_type::meta) {
@@ -369,6 +407,51 @@ std::string print(const smf_event_type& et) {
 
 
 
+
+smf_event_type classify_mtrk_event(unsigned char s, unsigned char rs) {
+	s = get_status_byte(s,rs);
+	if (is_channel_status_byte(s)) {
+		if (s&0xF0u==0xB0u) {
+			return smf_event_type::channel_mode;
+		} else {
+			return smf_event_type::channel_voice;
+		}
+	} else if (is_meta_status_byte(s)) {
+		return smf_event_type::meta;
+	} else if (is_sysex_status_byte(s)) {
+		if (s==0xF0u) {
+			return smf_event_type::sysex_f0;
+		} else if (s==0xF7u) {
+			return smf_event_type::sysex_f7;
+		}
+	} else if (is_unrecognized_status_byte(s)) {
+		return smf_event_type::unrecognized;
+	} else {
+		smf_event_type::invalid;
+	}
+}
+unsigned char get_running_status_byte(unsigned char s, unsigned char rs) {
+	if (is_channel_status_byte(s)) {
+		return s;  // channel event w/ event-local status byte
+	}
+	if (is_data_byte(s) && is_channel_status_byte(rs)) {
+		return rs;  // channel event in running-status
+	}
+	return 0x00u;  // An invalid status byte
+}
+unsigned char get_status_byte(unsigned char s, unsigned char rs) {
+	if (is_status_byte(s)) {
+		return s;
+	} else {
+		if (is_channel_status_byte(rs)) {
+			// Overall, this is equivalent to testing:
+			// if (is_channel_status_byte(rs) && is_data_byte(s)); the outter
+			// !is_status_byte(s) => is_data_byte(s).  
+			return rs;
+		}
+	}
+	return 0x00u;  // An invalid status byte
+}
 
 
 smf_event_type detect_mtrk_event_type_dtstart_unsafe(const unsigned char *p, unsigned char s) {
@@ -566,7 +649,7 @@ unsigned char mtrk_event_get_midi_p2_dtstart_unsafe(const unsigned char *p, unsi
 bool is_status_byte(const unsigned char s) {
 	return (s&0x80u) == 0x80u;
 }
-bool is_unregognized_status_byte(const unsigned char s) {
+bool is_unrecognized_status_byte(const unsigned char s) {
 	// Returns true for things like 0xF1u that are "status bytes" but
 	// that are invalid in an smf.  
 	return is_status_byte(s) 

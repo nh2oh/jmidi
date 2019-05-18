@@ -185,21 +185,46 @@ enum class smf_event_type : uint8_t {  // MTrk events
 	sysex_f0,
 	sysex_f7,
 	meta,
-	invalid
+	invalid,  // !is_status_byte() 
+	// is_status_byte() && (!is_channel_status_byte() && !is_meta_or_sysex_status_byte())
+	unrecognized  
+};
+enum class mtrk_event_validation_error : uint8_t {
+	invalid_dt_field,
+	// ex, if classify_mtrk_event returns smf_event_type::unrecognized, which
+	// in itself is not an error.  
+	unable_to_determine_size,
+	channel_event_missing_data_byte,
+	sysex_or_meta_invalid_length_field,
+	event_size_exceeds_max,
+	unknown_error,
+	no_error
 };
 struct validate_mtrk_event_result_t {
 	uint32_t delta_t {0};
 	uint32_t size {0};
 	smf_event_type type {smf_event_type::invalid};
+	mtrk_event_validation_error error {mtrk_event_validation_error::unknown_error};
 };
 // ptr, running-status, max_size
 validate_mtrk_event_result_t validate_mtrk_event_dtstart(const unsigned char *,
 													unsigned char, uint32_t=0);
 std::string print(const smf_event_type&);
 
-
-
-
+// The status byte applicible to the present event; for meta && sysex
+// events, will return 0xFFu, 0xF0u, 0xF7u as appropriate.  Returns
+// 0x00u where no status byte can be determined for the event, which 
+// occurs if !is_status_byte(*p) && !is_channel_status_byte(s).  
+unsigned char get_status_byte(unsigned char, unsigned char=0x00u);
+// The status byte that the present event imparts to the stream.  For meta
+// or sysex events, returns 0x00u (these events reset the running-status).  
+// For channel events, returns the status byte applicible to the event as
+// determined by get_status_byte(p,rs).  
+unsigned char get_running_status_byte(unsigned char, unsigned char=0x00u);
+// The most lightweight status-byte classifier in the lib
+smf_event_type classify_mtrk_event(unsigned char, unsigned char=0x00u);
+// Implements table I of the midi std
+uint8_t channel_status_byte_n_data_bytes(unsigned char);
 
 //
 // Pointer to the first data byte following the delta-time, _not_ to the start of the delta-time.  
@@ -212,6 +237,7 @@ std::string print(const smf_event_type&);
 // the status byte is not validated.  It *only* classifies the status byte (and if neessary to make
 // the classification, reads the first data byte).  
 //
+smf_event_type classify_mtrk_event_type(unsigned char, unsigned char=0);
 smf_event_type detect_mtrk_event_type_unsafe(const unsigned char*, unsigned char=0);
 smf_event_type detect_mtrk_event_type_dtstart_unsafe(const unsigned char*, unsigned char=0);
 //
@@ -235,6 +261,7 @@ smf_event_type detect_mtrk_event_type_dtstart_unsafe(const unsigned char*, unsig
 //   2) p indicates something that looks like a midi _data_ byte, but s is
 //     invalid.  
 //
+/*mtrk_event_get_status_byte(unsigned char, unsigned char);*/
 unsigned char mtrk_event_get_midi_status_byte_dtstart_unsafe(const unsigned char*, unsigned char=0x00u);
 unsigned char mtrk_event_get_midi_status_byte_unsafe(const unsigned char*, unsigned char=0x00u);
 uint32_t mtrk_event_get_size_dtstart_unsafe(const unsigned char*, unsigned char=0x00u);
@@ -252,7 +279,7 @@ unsigned char mtrk_event_get_midi_p2_dtstart_unsafe(const unsigned char*, unsign
 
 
 // True for status bytes invalid in an smf, ex, 0xF1u
-bool is_unregognized_status_byte(const unsigned char);
+bool is_unrecognized_status_byte(const unsigned char);
 // _any_ "status" byte, including sysex, meta, or channel_{voice,mode}.  
 // Returns true even for things like 0xF1u that are invalid in an smf.  
 // Same as !is_data_byte()
