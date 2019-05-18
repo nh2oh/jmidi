@@ -221,8 +221,9 @@ unsigned char get_status_byte(unsigned char, unsigned char=0x00u);
 // For channel events, returns the status byte applicible to the event as
 // determined by get_status_byte(p,rs).  
 unsigned char get_running_status_byte(unsigned char, unsigned char=0x00u);
-// The most lightweight status-byte classifier in the lib
+// The most lightweight status-byte classifiers in the lib
 smf_event_type classify_mtrk_event(unsigned char, unsigned char=0x00u);
+smf_event_type classify_mtrk_event_dtstart(const unsigned char *, unsigned char=0x00u, uint32_t=0);
 // Implements table I of the midi std
 uint8_t channel_status_byte_n_data_bytes(unsigned char);
 
@@ -237,9 +238,8 @@ uint8_t channel_status_byte_n_data_bytes(unsigned char);
 // the status byte is not validated.  It *only* classifies the status byte (and if neessary to make
 // the classification, reads the first data byte).  
 //
-smf_event_type classify_mtrk_event_type(unsigned char, unsigned char=0);
-smf_event_type detect_mtrk_event_type_unsafe(const unsigned char*, unsigned char=0);
-smf_event_type detect_mtrk_event_type_dtstart_unsafe(const unsigned char*, unsigned char=0);
+
+
 //
 // args:  ptr to first byte _following_ the dt, running status
 //
@@ -261,7 +261,7 @@ smf_event_type detect_mtrk_event_type_dtstart_unsafe(const unsigned char*, unsig
 //   2) p indicates something that looks like a midi _data_ byte, but s is
 //     invalid.  
 //
-/*mtrk_event_get_status_byte(unsigned char, unsigned char);*/
+
 unsigned char mtrk_event_get_midi_status_byte_dtstart_unsafe(const unsigned char*, unsigned char=0x00u);
 unsigned char mtrk_event_get_midi_status_byte_unsafe(const unsigned char*, unsigned char=0x00u);
 uint32_t mtrk_event_get_size_dtstart_unsafe(const unsigned char*, unsigned char=0x00u);

@@ -181,7 +181,8 @@ uint32_t mtrk_event_t::delta_time() const {
 }
 smf_event_type mtrk_event_t::type() const {
 	if (is_small()) {
-		return detect_mtrk_event_type_dtstart_unsafe(this->data(),this->midi_status_);
+		// TODO:  Arbitary max_size==6
+		return classify_mtrk_event_dtstart(this->data(),this->midi_status_,6);
 	} else {
 		return this->big_smf_event_type();
 	}
@@ -266,7 +267,8 @@ bool mtrk_event_t::validate() const {
 		auto size_loc = mtrk_event_get_size_dtstart_unsafe(this->small_ptr(),this->midi_status_);
 		tf &= (size_loc==this->size());
 
-		auto type_loc = detect_mtrk_event_type_dtstart_unsafe(this->small_ptr(),this->midi_status_);
+		// TODO:  arbitrary max_size==6
+		auto type_loc = classify_mtrk_event_dtstart(this->small_ptr(),this->midi_status_,6);
 		tf &= (type_loc==this->type());
 
 		// data_size() must be consistent w/ manual examination of the remote array
@@ -295,7 +297,8 @@ bool mtrk_event_t::validate() const {
 		tf &= (size_loc==this->size());
 
 		auto type_loc = this->big_smf_event_type();
-		auto type_remote = detect_mtrk_event_type_dtstart_unsafe(this->big_ptr(),this->midi_status_);
+		// TODO:  Arbitrary max_size==6
+		auto type_remote = classify_mtrk_event_dtstart(this->big_ptr(),this->midi_status_,6);
 		tf &= (type_loc==type_remote);
 		tf &= (this->type()==type_loc);
 
@@ -382,7 +385,8 @@ bool mtrk_event_t::init_big(unsigned char *p, uint32_t sz, uint32_t c, unsigned 
 	// remote data.  These values are stored in the d_ array, so setters
 	// that know the offsets and can do the serialization correctly are used.  
 	this->set_big_cached_delta_t(midi_interpret_vl_field(p).val);
-	this->set_big_cached_smf_event_type(detect_mtrk_event_type_dtstart_unsafe(p,s));
+	//TODO:  Arbitrary max_size==6
+	this->set_big_cached_smf_event_type(classify_mtrk_event_dtstart(p,s,6));
 
 	// The two d_-external values to set are midi_status_ and flags
 	this->midi_status_ = mtrk_event_get_midi_status_byte_dtstart_unsafe(p,s);

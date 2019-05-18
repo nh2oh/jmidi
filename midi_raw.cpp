@@ -430,6 +430,16 @@ smf_event_type classify_mtrk_event(unsigned char s, unsigned char rs) {
 		smf_event_type::invalid;
 	}
 }
+smf_event_type classify_mtrk_event_dtstart(const unsigned char *p,
+									unsigned char rs, uint32_t max_sz) {
+	auto dt = midi_interpret_vl_field(p,max_sz);
+	if (dt.N >= max_sz) {
+		return smf_event_type::invalid;
+	}
+	p += dt.N;
+	max_sz -= dt.N;
+	return classify_mtrk_event(*p,rs);
+}
 unsigned char get_running_status_byte(unsigned char s, unsigned char rs) {
 	if (is_channel_status_byte(s)) {
 		return s;  // channel event w/ event-local status byte
@@ -451,61 +461,6 @@ unsigned char get_status_byte(unsigned char s, unsigned char rs) {
 		}
 	}
 	return 0x00u;  // An invalid status byte
-}
-
-
-smf_event_type detect_mtrk_event_type_dtstart_unsafe(const unsigned char *p, unsigned char s) {
-	auto dt = midi_interpret_vl_field(p);
-	p += dt.N;
-	return detect_mtrk_event_type_unsafe(p,s);
-}
-// Pointer to the first data byte following the delta-time, _not_ to the start of
-// the delta-time.  This function may have to increment the pointer by 1 byte
-smf_event_type detect_mtrk_event_type_unsafe(const unsigned char *p, unsigned char s) {
-	// The tests below are made on s, not p.  If p is a valid status byte (high bit is set),
-	// the value of s is overwritten with *p.  If p is _not_ a valid status byte, ::invalid is 
-	// returned if s == FF || F0 || F7; although these are valid status bytes, they are not
-	// valid _running_-status bytes.  
-	//
-	// If p _is_ a valid status byte (high bit set), overwrite s with *p, then attempt to 
-	// classify s as channel_mode or channel_voice
-	if ((*p & 0x80) != 0x80) {  // *p is _not_ a valid status byte
-		if (s == 0xFF || s == 0xF0 || s == 0xF7) {
-			return smf_event_type::invalid;
-		}
-	} else {  // *p _is_ a valid status byte
-		s = *p;
-	}
-
-	if ((s & 0xF0) >= 0x80 && (s & 0xF0) <= 0xE0) {  // channel msg
-		if ((s & 0xF0) == 0xB0) {
-			// The first data byte should not have its high bit set.  
-			// I need the first data byte.  If we're using s, *p is the first data byte; if
-			// we're using *p, *++p is the first data byte.  
-			if ((*p & 0x80) == 0x80) {  // We're using *p
-				++p;
-			}
-			if ((*p & 0x80) == 0x80) {  // First data byte has its high bit set
-				return smf_event_type::invalid;
-			}
-			if (*p >= 121 && *p <= 127) {
-				return smf_event_type::channel_mode;
-			} else {
-				return smf_event_type::channel_voice;
-			}
-		}
-		return smf_event_type::channel_voice;
-	} else if (s == 0xFF) { 
-		// meta event in an smf; system_realtime in a stream.  All system_realtime messages
-		// are single byte events (status byte only); in a meta-event, the status byte is followed
-		// by an "event type" byte then a vl-field giving the number of subsequent data bytes.
-		return smf_event_type::meta;
-	} else if (s == 0xF7) {
-		return smf_event_type::sysex_f7;
-	} else if (s == 0xF0) {
-		return smf_event_type::sysex_f0;
-	}
-	return smf_event_type::invalid;
 }
 
 // p points at the first byte of the dt

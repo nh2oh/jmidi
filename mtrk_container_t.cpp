@@ -61,7 +61,8 @@ mtrk_event_view_t mtrk_iterator_t::operator->() const {
 
 
 smf_event_type mtrk_event_view_t::type() const {
-	return detect_mtrk_event_type_dtstart_unsafe(this->p_,this->s_);
+	// TODO:  Arbitrary max_size==6
+	return classify_mtrk_event_dtstart(this->p_,this->s_,6);
 }
 uint32_t mtrk_event_view_t::size() const {
 	return mtrk_event_get_size_dtstart_unsafe(this->p_,this->s_);

@@ -15,7 +15,7 @@
 // linking note pairs, pairs of corresponding on and off events are collected
 // into a vector of linked events.  
 //
-//
+// 
 //
 class mtrk_event_t {
 public:
