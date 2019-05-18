@@ -211,33 +211,45 @@ validate_mtrk_event_result_t validate_mtrk_event_dtstart(const unsigned char *,
 													unsigned char, uint32_t=0);
 std::string print(const smf_event_type&);
 
-// The status byte applicible to the present event; for meta && sysex
+// get_status_byte(s,rs)
+// The status byte applicible to the present event.  For meta && sysex
 // events, will return 0xFFu, 0xF0u, 0xF7u as appropriate.  Returns
 // 0x00u where no status byte can be determined for the event, which 
-// occurs if !is_status_byte(*p) && !is_channel_status_byte(s).  
+// occurs if !is_status_byte(s) && !is_channel_status_byte(rs).  
 unsigned char get_status_byte(unsigned char, unsigned char=0x00u);
 // The status byte that the present event imparts to the stream.  For meta
 // or sysex events, returns 0x00u (these events reset the running-status).  
 // For channel events, returns the status byte applicible to the event as
-// determined by get_status_byte(p,rs).  
+// determined by get_status_byte(s,rs).  
 unsigned char get_running_status_byte(unsigned char, unsigned char=0x00u);
 // The most lightweight status-byte classifiers in the lib
 smf_event_type classify_mtrk_event(unsigned char, unsigned char=0x00u);
+// Returns smf_event_type::invalid if the dt field is invalid or if there is
+// a size-overrun error (ex, if the dt field is valid but dt.N==max_size).  
+// Only the status byte is examined; in no case are the data bytes of the
+// message evaluated.  An channel_voice w/a valid midi-status byte followed 
+// by two invalid data bytes will evaluate to smf_event_type::channel_voice.  
 smf_event_type classify_mtrk_event_dtstart(const unsigned char *, unsigned char=0x00u, uint32_t=0);
 // Implements table I of the midi std
 uint8_t channel_status_byte_n_data_bytes(unsigned char);
 
-//
-// Pointer to the first data byte following the delta-time, _not_ to the start of the delta-time.  
-// This is the most lightweight status-byte classifier that i have in this lib.  The pointer may
-// have to be incremented by 1 byte to classify an 0xB0 status byte as channel_voice or 
-// channel_mode.  In this case, will return smf_event_type::invalid if said data byte is an  
-// invalid data byte (has its high bit set).  
-//
-// For meta and sysex_f0 messages (status byte == 0xFF, 0xF0 or 0xF7) the length field subsequent to
-// the status byte is not validated.  It *only* classifies the status byte (and if neessary to make
-// the classification, reads the first data byte).  
-//
+
+// True for status bytes invalid in an smf, ex, 0xF1u
+bool is_unrecognized_status_byte(const unsigned char);
+// _any_ "status" byte, including sysex, meta, or channel_{voice,mode}.  
+// Returns true even for things like 0xF1u that are invalid in an smf.  
+// Same as !is_data_byte()
+bool is_status_byte(const unsigned char);
+bool is_channel_status_byte(const unsigned char);
+bool is_sysex_status_byte(const unsigned char);
+bool is_meta_status_byte(const unsigned char);
+bool is_sysex_or_meta_status_byte(const unsigned char);
+bool is_data_byte(const unsigned char);
+
+
+
+
+
 
 
 //
@@ -261,7 +273,6 @@ uint8_t channel_status_byte_n_data_bytes(unsigned char);
 //   2) p indicates something that looks like a midi _data_ byte, but s is
 //     invalid.  
 //
-
 unsigned char mtrk_event_get_midi_status_byte_dtstart_unsafe(const unsigned char*, unsigned char=0x00u);
 unsigned char mtrk_event_get_midi_status_byte_unsafe(const unsigned char*, unsigned char=0x00u);
 uint32_t mtrk_event_get_size_dtstart_unsafe(const unsigned char*, unsigned char=0x00u);
@@ -278,17 +289,7 @@ unsigned char mtrk_event_get_midi_p2_dtstart_unsafe(const unsigned char*, unsign
 // Does not consider 0xFnu to be valid
 
 
-// True for status bytes invalid in an smf, ex, 0xF1u
-bool is_unrecognized_status_byte(const unsigned char);
-// _any_ "status" byte, including sysex, meta, or channel_{voice,mode}.  
-// Returns true even for things like 0xF1u that are invalid in an smf.  
-// Same as !is_data_byte()
-bool is_status_byte(const unsigned char);
-bool is_channel_status_byte(const unsigned char);
-bool is_sysex_status_byte(const unsigned char);
-bool is_meta_status_byte(const unsigned char);
-bool is_sysex_or_meta_status_byte(const unsigned char);
-bool is_data_byte(const unsigned char);
+
 
 
 

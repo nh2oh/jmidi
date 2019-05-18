@@ -26,7 +26,7 @@ mtrk_event_t::mtrk_event_t() {
 // For callers who have pre-computed the exact size of the event and who
 // can also supply a midi status byte if applicible, ex, an mtrk_container_iterator_t.  
 //
-mtrk_event_t::mtrk_event_t(const unsigned char *p, uint32_t sz, unsigned char s) {
+mtrk_event_t::mtrk_event_t(const unsigned char *p, uint32_t sz, unsigned char rs) {
 	if (sz<=static_cast<uint64_t>(offs::max_size_sbo)) {  // small
 		this->set_flag_small();
 
@@ -34,11 +34,13 @@ mtrk_event_t::mtrk_event_t(const unsigned char *p, uint32_t sz, unsigned char s)
 		while (end!=this->d_.end()) {
 			*end++ = 0x00u;
 		}
-		this->midi_status_ = mtrk_event_get_midi_status_byte_dtstart_unsafe(p,s);
+		auto dt = midi_interpret_vl_field(this->d_.data(),sz);
+		this->midi_status_ = get_running_status_byte(*(p+dt.N),rs);
+		//this->midi_status_ = mtrk_event_get_midi_status_byte_dtstart_unsafe(p,s);
 	} else {  // big
 		auto new_p = new unsigned char[sz];
 		std::copy(p,p+sz,new_p);
-		this->init_big(new_p,sz,sz,s);  // adopts new_p
+		this->init_big(new_p,sz,sz,rs);  // adopts new_p
 	}
 }
 //
@@ -373,7 +375,7 @@ void mtrk_event_t::clear_nofree() {
 // It is the responsibility of the caller to delete the old big_ptr() before
 // calling init_big() w/ the ptr to the new buffer, or memory will leak.  
 // ptr, size, capacity, running-status
-bool mtrk_event_t::init_big(unsigned char *p, uint32_t sz, uint32_t c, unsigned char s) {
+bool mtrk_event_t::init_big(unsigned char *p, uint32_t sz, uint32_t c, unsigned char rs) {
 	this->set_flag_big();
 
 	// Set the 3 big-container parameters to point to the remote data
@@ -384,12 +386,14 @@ bool mtrk_event_t::init_big(unsigned char *p, uint32_t sz, uint32_t c, unsigned 
 	// Set the local "cached" values of delta-time and event type from the
 	// remote data.  These values are stored in the d_ array, so setters
 	// that know the offsets and can do the serialization correctly are used.  
-	this->set_big_cached_delta_t(midi_interpret_vl_field(p).val);
+	auto dt = midi_interpret_vl_field(p);
+	this->set_big_cached_delta_t(dt.val);
 	//TODO:  Arbitrary max_size==6
-	this->set_big_cached_smf_event_type(classify_mtrk_event_dtstart(p,s,6));
+	this->set_big_cached_smf_event_type(classify_mtrk_event_dtstart(p,rs,6));
 
 	// The two d_-external values to set are midi_status_ and flags
-	this->midi_status_ = mtrk_event_get_midi_status_byte_dtstart_unsafe(p,s);
+	this->midi_status_ = get_running_status_byte(*(p+dt.N),rs);
+	//this->midi_status_ = mtrk_event_get_midi_status_byte_dtstart_unsafe(p,rs);
 
 	// TODO:  Error checking for dt fields etc; perhaps call clear_nofree()
 	// and return false

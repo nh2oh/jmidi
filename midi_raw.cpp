@@ -411,7 +411,7 @@ std::string print(const smf_event_type& et) {
 smf_event_type classify_mtrk_event(unsigned char s, unsigned char rs) {
 	s = get_status_byte(s,rs);
 	if (is_channel_status_byte(s)) {
-		if (s&0xF0u==0xB0u) {
+		if ((s&0xF0u)==0xB0u) {
 			return smf_event_type::channel_mode;
 		} else {
 			return smf_event_type::channel_voice;
@@ -433,7 +433,11 @@ smf_event_type classify_mtrk_event(unsigned char s, unsigned char rs) {
 smf_event_type classify_mtrk_event_dtstart(const unsigned char *p,
 									unsigned char rs, uint32_t max_sz) {
 	auto dt = midi_interpret_vl_field(p,max_sz);
-	if (dt.N >= max_sz) {
+	if (dt.N >= max_sz || !dt.is_valid) {
+		// dt.N==max_sz => 0 bytes following the delta-time field, but the 
+		// smallest running-status channel_voice events have at least 1 data 
+		// byte.  The smallest meta, sysex events are 3 and 2 bytes 
+		// respectively.  
 		return smf_event_type::invalid;
 	}
 	p += dt.N;
@@ -462,6 +466,24 @@ unsigned char get_status_byte(unsigned char s, unsigned char rs) {
 	}
 	return 0x00u;  // An invalid status byte
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // p points at the first byte of the dt
 unsigned char mtrk_event_get_midi_status_byte_dtstart_unsafe(const unsigned char *p, unsigned char s) {
@@ -751,8 +773,10 @@ parse_sysex_event_result_t parse_sysex_event(const unsigned char *p, int32_t max
 
 
 channel_msg_type mtrk_event_get_ch_msg_type_dtstart_unsafe(const unsigned char *p, unsigned char s) {
-	s = mtrk_event_get_midi_status_byte_dtstart_unsafe(p,s);
-	
+	//s = mtrk_event_get_midi_status_byte_dtstart_unsafe(p,s);
+	auto dt = midi_interpret_vl_field(p);
+	s = get_status_byte(*(p+dt.N),s);
+
 	channel_msg_type result = channel_msg_type::invalid;
 	if ((s&0xF0u) != 0xB0u) {
 		switch (s&0xF0u) {

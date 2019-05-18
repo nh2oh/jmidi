@@ -83,7 +83,9 @@ uint8_t mtrk_event_view_t::velocity() const {
 	return mtrk_event_get_midi_p1_dtstart_unsafe(this->p_,this->s_);
 }
 uint8_t mtrk_event_view_t::chn() const {
-	auto s = mtrk_event_get_midi_status_byte_dtstart_unsafe(this->p_,this->s_);
+	auto dt = midi_interpret_vl_field(this->p_);
+	auto s = get_running_status_byte(*(this->p_+dt.N),this->s_);
+	//auto s = mtrk_event_get_midi_status_byte_dtstart_unsafe(this->p_,this->s_);
 	return channel_number_from_status_byte_unsafe(s);
 }
 uint8_t mtrk_event_view_t::note() const {
