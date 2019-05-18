@@ -271,11 +271,6 @@ std::string print_error(const validate_mtrk_chunk_result_t& mtrk) {
 validate_mtrk_event_result_t validate_mtrk_event_dtstart(
 			const unsigned char *p, unsigned char s, uint32_t max_size) {
 	validate_mtrk_event_result_t result {};
-	/*if (max_size==0) {
-		// Illegal b/c even a delta-time of 0 must occupy 1 byte
-		result.type = smf_event_type::invalid;
-		return result;
-	}*/
 	// All mtrk events begin with a delta-time occupying a maximum of 4 bytes
 	// and a minimum of 1 byte.  Note that even a delta-time of 0 occupies 1
 	// byte.  
@@ -293,8 +288,8 @@ validate_mtrk_event_result_t validate_mtrk_event_dtstart(
 	result.size += dt.N;
 	p += dt.N;
 
-	// At this point, max_size is at minimum == 1.  This is ok, if the present
-	// event is a single-data-byte midi msg in running-status 
+	// At this point, max_size is at minimum == 1.  A value of 1 is ok if 
+	// the present event is a single-data-byte midi msg in running-status: 
 	// (s&0xF0 == 0xC0 || 0xD0) && (*p&0x80!=0x80).  
 	if (((*p&0xF0u)==0xB0u && max_size<2) 
 			|| ((s&0xF0u)==0xB0u && (*p&0x80u)!=0x80 && max_size<1)) {
@@ -536,13 +531,13 @@ uint32_t mtrk_event_get_data_size_unsafe(const unsigned char *p, unsigned char s
 unsigned char mtrk_event_get_midi_p1_dtstart_unsafe(const unsigned char *p, unsigned char s) {
 	p += midi_interpret_vl_field(p).N;
 	s = mtrk_event_get_midi_status_byte_unsafe(p,s);
-	if (!is_midi_status_byte(s)) { // p does not indicate a midi event
+	if (!is_channel_status_byte(s)) { // p does not indicate a midi event
 		return 0x80u;  // Invalid data byte
 	}
 	
 	// p _does_ indicate a valid midi event; running-status may (=>*p is not
 	// a status byte) or may not (=> *p is a status byte) be in effect
-	if (is_midi_status_byte(*p)) {
+	if (is_channel_status_byte(*p)) {
 		return *++p;  // Not in running status
 	} else {
 		return *p;  // In running status; p is the first data byte
@@ -551,7 +546,7 @@ unsigned char mtrk_event_get_midi_p1_dtstart_unsafe(const unsigned char *p, unsi
 unsigned char mtrk_event_get_midi_p2_dtstart_unsafe(const unsigned char *p, unsigned char s) {
 	p += midi_interpret_vl_field(p).N;
 	s = mtrk_event_get_midi_status_byte_unsafe(p,s);
-	if (!is_midi_status_byte(s)) { // p does not indicate a midi event
+	if (!is_channel_status_byte(s)) { // p does not indicate a midi event
 		return 0x80u;  // Invalid data byte
 	}
 	
@@ -561,20 +556,40 @@ unsigned char mtrk_event_get_midi_p2_dtstart_unsafe(const unsigned char *p, unsi
 		// This type of midi event has no p2
 		return 0x80u;  // Invalid data byte
 	}
-	if (is_midi_status_byte(*p)) {
+	if (is_channel_status_byte(*p)) {
 		return *(p+=2);  // Not in running status
 	} else {
 		return *++p;  // In running status; p is the first data byte
 	}
 }
 
-bool is_midi_status_byte(const unsigned char s) {
+bool is_status_byte(const unsigned char s) {
+	return (s&0x80u) == 0x80u;
+}
+bool is_unregognized_status_byte(const unsigned char s) {
+	// Returns true for things like 0xF1u that are "status bytes" but
+	// that are invalid in an smf.  
+	return is_status_byte(s) 
+		&& !is_channel_status_byte(s)
+		&& !is_sysex_or_meta_status_byte(s);
+}
+bool is_channel_status_byte(const unsigned char s) {
 	unsigned char sm = s&0xF0u;
 	return ((sm>=0x80u) && (sm!=0xF0u));
 }
-bool is_midi_data_byte(const unsigned char s) {
+bool is_sysex_status_byte(const unsigned char s) {
+	return ((s==0xF0u) || (s==0xF7u));
+}
+bool is_meta_status_byte(const unsigned char s) {
+	return (s==0xFFu);
+}
+bool is_sysex_or_meta_status_byte(const unsigned char s) {
+	return (is_sysex_status_byte(s) || is_meta_status_byte(s));
+}
+bool is_data_byte(const unsigned char s) {
 	return ((s&0x80u)!=0x80u);
 }
+
 
 
 

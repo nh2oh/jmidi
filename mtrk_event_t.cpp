@@ -315,17 +315,17 @@ bool mtrk_event_t::validate() const {
 			|| this->type()==smf_event_type::channel_mode) {
 		// Present event is a midi event
 		auto p = this->data()+midi_vl_field_size(this->delta_time());
-		if (is_midi_status_byte(*p)) {  // not running status
+		if (is_channel_status_byte(*p)) {  // not running status
 			// The event-local status byte must match this->midi_status_
 			tf &= (*p==this->midi_status_);
 		} else {  // running status
 			// this->midi_status_ must accurately describe the # of midi
 			// data bytes.  
-			tf &= (is_midi_status_byte(this->midi_status_));
+			tf &= (is_channel_status_byte(this->midi_status_));
 			auto nbytesmsg = midi_channel_event_n_bytes(this->midi_status_,0x00u)-1;
-			tf &= (is_midi_data_byte(*p));
+			tf &= (is_data_byte(*p));
 			if (nbytesmsg==2) {
-				tf &= (is_midi_data_byte(*++p));
+				tf &= (is_data_byte(*++p));
 			}
 		}
 	}

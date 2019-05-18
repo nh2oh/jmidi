@@ -141,24 +141,43 @@ struct validate_mtrk_chunk_result_t {
 validate_mtrk_chunk_result_t validate_mtrk_chunk(const unsigned char*, uint32_t=0);
 std::string print_error(const validate_mtrk_chunk_result_t&);
 
-
 //
-// There are no sys_realtime messages in an mtrk event stream.  The set of 
-// valid sys_realtime status bytes includes 0xFF, the identifier byte for a 
-// "meta" event.  
+// validate_mtrk_event_dtstart()
+//
+// arg 1:  Pointer to the first byte of a delta-t field
+// arg 2:  MIDI status byte set by the prior event if part of an event stream
+//         (ie, the value of the running-status).  
+// arg 3:  The maximum number of times p can be incremented.  
+//
+// validate_mtrk_event_dtstart() will parse & validate the delta-t field and
+// then examine byte immediately following (in the context of the 
+// running-status) to classify the event and calculate its size.  If the 
+// event is a MIDI event as dictated either by an event-local status byte or
+// by virtue of the running-status, the event size calculation is based on 
+// the value of this status see the MIDI std Table I "Summary of Status 
+// Bytes").  If the event is a meta or sysex-f0/f7 type (by an event-local 
+// 0xF0, 0xF7, or 0xFF following the delta-time), the subsequent <length> 
+// field parsed and validated to calculate the event size.  
+// 
+// In no case are the data bytes of the message evaluated.  
+//
+// Will return smf_event_type::invalid under the following circumstances:
+// -> the delta_t field is invalid (ex: > 4 bytes) or > max_size
+// -> the size of the delta_t field + the calculated num-data/status-bytes
+//    is > max_size.  
+// -> for the byte *p immediately following the delta_t field, 
+//    !is_midi_status_byte(*p) && !is_midi_status_byte(s)
+//
 //
 // Why do i include "invalid," which is clearly not a member of the "class
 // " of things-that-are-smf-events"?  Because users switch behavior on 
 // functions that return a value of this type (ex, while iterating through
 // an mtrk chunk, the type of event at the present position in the chunk
-// is detected by parse_mtrk_event()).  I want to force users to deal with 
-// the error case rather than relying on the convention that some kind of
-// validate_mtrk_event_result.is_valid field be checked before moving forward 
-// with validate_mtrk_event_result.detected_type.  
-//
-// Sysex events and meta-events cancel any running status which was in 
-// effect.  Running status does not apply to and may not be used for these
-// messages (p.136).  
+// is detected by validate_mtrk_event_dtstart()).  I want to force users to 
+// deal with the error case rather than relying on the convention that some
+// kind of validate_mtrk_event_result.is_valid field be checked before 
+// moving forward.  
+
 //
 enum class smf_event_type : uint8_t {  // MTrk events
 	channel_voice,
@@ -177,33 +196,6 @@ struct validate_mtrk_event_result_t {
 validate_mtrk_event_result_t validate_mtrk_event_dtstart(const unsigned char *,
 													unsigned char, uint32_t=0);
 std::string print(const smf_event_type&);
-//
-// arg 1:  Pointer to the first byte of a delta-t field
-// arg 2:  MIDI status byte to be applied to the present event if, for the first byte
-//         following the delta-t field, !(*p&0x80) (ie, if the first byte following the
-//         delta-t field is not an 0xFF,0xF0,0xF7 or a midi status byte).  
-// arg 3:  The maximum number of times p can be incremented.  
-//
-// parse_mtrk_event_type() will parse & validate the delta-t field and evaluate the status
-// byte immediately following.  If the event is a MIDI event, either by a status byte
-// local to the event or by virtue of the running-status byte (arg 2), the event size 
-// calculation is based on the status of this byte; data bytes beyond the status byte are
-// not evaluated.  If the event is a meta or sysex-f0/f7 type, the <length> field following
-// the byte following the delta-t field is parsed and validated; bytes subsequent to the 
-// <length> field are _not_ evaluated.  
-//
-// Will return smf_event_type::invalid under the following circumstances:
-// -> the delta_t field is invalid (ex: > 4 bytes) or > max_size
-// -> the size of the delta_t field + the calculated num-data/status-bytes > max_size
-// -> the byte immediately following the delta_t field is not a status byte AND (s is not
-//    a status byte, or is a disallowed running_status status byte such as FF, F0, F7).  
-// -> an 0xB0 status byte is not followed by a valid data byte
-// Note that except in the one limited case above, the data bytes are not validated as plausible
-// data bytes.  This is up to the relevant parse_() function.  
-//
-//
-// TODO:  Rename to "detect_...()" ?
-//
 
 
 
@@ -224,6 +216,11 @@ smf_event_type detect_mtrk_event_type_unsafe(const unsigned char*, unsigned char
 smf_event_type detect_mtrk_event_type_dtstart_unsafe(const unsigned char*, unsigned char=0);
 //
 // args:  ptr to first byte _following_ the dt, running status
+//
+// Sysex events and meta-events cancel any running status which was in 
+// effect.  Running status does not apply to and may not be used for these
+// messages (p.136).  
+//
 // If *arg1 is a midi status byte, 
 //   returns *arg1; it does not matter what arg2 is.  
 // If *arg1 is _not_ a midi status byte and == 0xF0u||0xF7u||0xFFu,
@@ -252,8 +249,23 @@ uint32_t mtrk_event_get_data_size_unsafe(const unsigned char*, unsigned char=0x0
 unsigned char mtrk_event_get_midi_p1_dtstart_unsafe(const unsigned char*, unsigned char=0x00u);
 unsigned char mtrk_event_get_midi_p2_dtstart_unsafe(const unsigned char*, unsigned char=0x00u);
 // Does not consider 0xFnu to be valid
-bool is_midi_status_byte(const unsigned char);
-bool is_midi_data_byte(const unsigned char);
+
+
+// True for status bytes invalid in an smf, ex, 0xF1u
+bool is_unregognized_status_byte(const unsigned char);
+// _any_ "status" byte, including sysex, meta, or channel_{voice,mode}.  
+// Returns true even for things like 0xF1u that are invalid in an smf.  
+// Same as !is_data_byte()
+bool is_status_byte(const unsigned char);
+bool is_channel_status_byte(const unsigned char);
+bool is_sysex_status_byte(const unsigned char);
+bool is_meta_status_byte(const unsigned char);
+bool is_sysex_or_meta_status_byte(const unsigned char);
+bool is_data_byte(const unsigned char);
+
+
+
+
 
 unsigned char mtrk_event_get_meta_type_byte_dtstart_unsafe(const unsigned char*);
 midi_vl_field_interpreted mtrk_event_get_meta_length_field_dtstart_unsafe(const unsigned char*);
