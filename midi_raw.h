@@ -89,26 +89,33 @@ enum class mthd_validation_error : uint8_t {
 };
 struct validate_mthd_chunk_result_t {
 	const unsigned char *p {};  // points at the 'M' of "MThd"...
-	uint32_t size {0};  //  Always == reported size (data_length) + 8
+	uint32_t size {0};  // Always == reported size (data_length) + 8
 	mthd_validation_error error {mthd_validation_error::unknown_error};
 };
 validate_mthd_chunk_result_t validate_mthd_chunk(const unsigned char*, uint32_t=0);
 std::string print_error(const validate_mthd_chunk_result_t&);
 
 //
-// Checks that p points to the start of a valid MTrk chunk (ie, the 'M' of MTrk...),
-// then moves through the all events in the track and validates that each begins with a
-// valid vl delta-time, is one of midi_channel, meta, or sysex f0/f7, and that for each such event a
-// valid mtrk_event_container_t object can be created if necessary (it must be possible to
-// determine the size in bytes of each event).  
+// Validation & processing of MTrk chunks
 //
-// If the input is a valid MTrk chunk, the validate_mtrk_chunk_result_t returned can be
-// passed to the ctor of mtrk_container_t to instantiate a valid object.  
+// validate_mtrk_chunk(const unsigned char*, uint32_t=0) checks that p
+// points to the start of a valid MTrk chunk (ie, the 'M' of MTrk...),
+// then iterates through the all events in the track and verifies that
+// each begins with a valid delta-time vlq and can be classified as one
+// of channel_voice, channel_mode, meta, or sysex f0/f7 (any event 
+// classifying as smf_event_type::invalid returns w/ 
+// error==mtrk_validation_error::event_error.  A return value with
+// error==mtrk_validation_error::no_error ensures that an mtrk_event_t 
+// can be constructed from all the events in the track.  
 //
-// All the rules of the midi standard as regards sequences of MTrk events are validated
-// here for the case of the single track indicated by the input.  Ex, that each midi 
-// event has a status byte (either as part of the event or implictly through running 
-// status), etc.  
+// If the input is a valid MTrk chunk, the validate_mtrk_chunk_result_t
+// returned can be passed to the ctor of mtrk_container_t to instantiate
+// a valid object.  
+//
+// All the rules of the midi standard as regards sequences of MTrk events
+// are validated here for the case of the single track indicated by the 
+// input.  Ex, that each midi event has a status byte (either as part of 
+// the event or implictly through running status), etc.  
 //
 enum class mtrk_validation_error : uint8_t {
 	invalid_chunk,  // No 4-char ASCII header, reported size exceeds max-size, ...
@@ -126,6 +133,7 @@ struct validate_mtrk_chunk_result_t {
 	// Always == reported size (data_length) + 8
 	uint32_t size {0};  
 	// The reported length; !including the "MTrk" and length fields
+	// Thus, always == size-8.  
 	uint32_t data_size {0};  
 	mtrk_validation_error error {mtrk_validation_error::unknown_error};
 };
@@ -148,8 +156,9 @@ std::string print_error(const validate_mtrk_chunk_result_t&);
 // validate_mtrk_event_result.is_valid field be checked before moving forward 
 // with validate_mtrk_event_result.detected_type.  
 //
-// Sysex events and meta-events cancel any running status which was in effect.  Running status
-// does not apply to and may not be used for these messages (p.136).  
+// Sysex events and meta-events cancel any running status which was in 
+// effect.  Running status does not apply to and may not be used for these
+// messages (p.136).  
 //
 enum class smf_event_type : uint8_t {  // MTrk events
 	channel_voice,
@@ -165,7 +174,8 @@ struct validate_mtrk_event_result_t {
 	smf_event_type type {smf_event_type::invalid};
 };
 // ptr, running-status, max_size
-validate_mtrk_event_result_t validate_mtrk_event_dtstart(const unsigned char *, unsigned char, uint32_t=0);
+validate_mtrk_event_result_t validate_mtrk_event_dtstart(const unsigned char *,
+													unsigned char, uint32_t=0);
 std::string print(const smf_event_type&);
 //
 // arg 1:  Pointer to the first byte of a delta-t field
@@ -194,15 +204,11 @@ std::string print(const smf_event_type&);
 //
 // TODO:  Rename to "detect_...()" ?
 //
-struct parse_mtrk_event_result_t {
-	midi_vl_field_interpreted delta_t {};
-	smf_event_type type {smf_event_type::invalid};
 
-	// Added 030919
-	int32_t size {0};  // Includes the size of the delta_t field
-	int32_t data_length {0};
-};
-parse_mtrk_event_result_t parse_mtrk_event_type(const unsigned char*, unsigned char, int32_t=0);
+
+
+
+
 //
 // Pointer to the first data byte following the delta-time, _not_ to the start of the delta-time.  
 // This is the most lightweight status-byte classifier that i have in this lib.  The pointer may

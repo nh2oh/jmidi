@@ -216,14 +216,18 @@ validate_mtrk_chunk_result_t validate_mtrk_chunk(const unsigned char *p, uint32_
 		p += curr_event.size;
 	}
 
-	// Note that i am allowing for the possibility that i<mtrk_data_size, 
-	// which would perhaps => that the track is 0-padded after the end-of-track 
-	// msg
+	// The track data must not overrun the reported size in the MTrk header,
+	// and the final event must be a meta-end-of-track msg.  
+	// Note that it is possible that found_eot==true even though 
+	// i<mtrk_data_size.  I am allowing for the possibility that 
+	// i<mtrk_data_size (which could perhaps => that the track is 0-padded 
+	// after the end-of-track msg), but forbidding i>mtrk_data_size.  In any 
+	// case, the 'length' field in the MTrk header section must be >= than
+	// the actual amount of track data preceeding the EOT message.  
 	if (i>mtrk_data_size) {
 		result.error = mtrk_validation_error::data_length_not_match;
 		return result;
 	}
-	// The final event must be a meta-end-of-track msg
 	if (!found_eot) {
 		result.error = mtrk_validation_error::no_end_of_track;
 		return result;
@@ -267,12 +271,14 @@ std::string print_error(const validate_mtrk_chunk_result_t& mtrk) {
 validate_mtrk_event_result_t validate_mtrk_event_dtstart(
 			const unsigned char *p, unsigned char s, uint32_t max_size) {
 	validate_mtrk_event_result_t result {};
-	if (max_size==0) {
+	/*if (max_size==0) {
+		// Illegal b/c even a delta-time of 0 must occupy 1 byte
 		result.type = smf_event_type::invalid;
 		return result;
-	}
+	}*/
 	// All mtrk events begin with a delta-time occupying a maximum of 4 bytes
-	// and a minimum of 1 byte
+	// and a minimum of 1 byte.  Note that even a delta-time of 0 occupies 1
+	// byte.  
 	auto dt = midi_interpret_vl_field(p,max_size);
 	if (!dt.is_valid) {
 		result.type = smf_event_type::invalid;
@@ -290,7 +296,6 @@ validate_mtrk_event_result_t validate_mtrk_event_dtstart(
 	// At this point, max_size is at minimum == 1.  This is ok, if the present
 	// event is a single-data-byte midi msg in running-status 
 	// (s&0xF0 == 0xC0 || 0xD0) && (*p&0x80!=0x80).  
-
 	if (((*p&0xF0u)==0xB0u && max_size<2) 
 			|| ((s&0xF0u)==0xB0u && (*p&0x80u)!=0x80 && max_size<1)) {
 		// if p is a control_change msg w/ an event-local status byte or
@@ -612,67 +617,6 @@ parse_meta_event_unsafe_result_t mtrk_event_parse_meta_dtstart_unsafe(const unsi
 }
 
 
-
-
-
-//
-// Takes a pointer to the first byte of the vl delta-time field.
-//
-// TODO:  Should return an error if the reported length exceeds the max_inc
-parse_mtrk_event_result_t parse_mtrk_event_type(const unsigned char *p, unsigned char s, int32_t max_inc) {
-	parse_mtrk_event_result_t result {};
-	if (max_inc == 0) {
-		result.type = smf_event_type::invalid;
-		return result;
-	}
-	// All mtrk events begin with a delta-time occupying a maximum of 4 bytes
-	result.delta_t = midi_interpret_vl_field(p);
-	if (result.delta_t.N > 4) {
-		result.type = smf_event_type::invalid;
-		return result;
-	}
-	p += result.delta_t.N;
-
-	max_inc -= result.delta_t.N;
-	if (max_inc <= 0) {
-		result.type = smf_event_type::invalid;
-		return result;
-	}
-
-	if (((*p & 0xF0)==0xB0 && max_inc<2) || ((*p & 0x80)!=0x80 && (s & 0xF0)==0xB0 && max_inc < 1)) {
-		// indicates a channel_mode or channel_voice message, both of which have 2 data bytes
-		// following the status byte *p.  detect_mtrk_event_type_unsafe(p) will increment p to
-		// the first data byte to classify this type of event, which is obv a problem if the
-		// array is to short.  
-		result.type = smf_event_type::invalid;
-	}
-	result.type = detect_mtrk_event_type_unsafe(p,s);
-
-	//
-	// TODO:  Compute size, data_length ...
-	//
-	if (result.type == smf_event_type::meta) {
-		// *p == 0xFF || 0xF0 || 0xF7; running-status is not allowed for these values
-		++p;  // 0xFF
-		++p;  // type-byte
-		auto length_field = midi_interpret_vl_field(p);
-		result.size = result.delta_t.N + 2 + length_field.N + length_field.val;
-		result.data_length = result.size - result.delta_t.N;
-	} else if (result.type == smf_event_type::sysex_f0 
-		|| result.type == smf_event_type::sysex_f7) {
-		++p;  // 0xF0 || 0xF7
-		auto length_field = midi_interpret_vl_field(p);
-		result.size = result.delta_t.N + 1+ length_field.N + length_field.val;
-		result.data_length = result.size - result.delta_t.N;
-	} else if (result.type == smf_event_type::channel_mode 
-		|| result.type == smf_event_type::channel_voice) {
-		//...
-		result.data_length = midi_channel_event_n_bytes(*p,s);
-		result.size = result.data_length + result.delta_t.N;
-	}
-
-	return result;
-}
 
 
 
