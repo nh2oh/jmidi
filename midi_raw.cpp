@@ -267,6 +267,82 @@ std::string print_error(const validate_mtrk_chunk_result_t& mtrk) {
 	}
 	return result;
 }
+validate_mtrk_event_result_t validate_mtrk_event_dtstart2(
+			const unsigned char *p, unsigned char rs, uint32_t max_size) {
+	validate_mtrk_event_result_t result {};
+	// All mtrk events begin with a delta-time occupying a maximum of 4 bytes
+	// and a minimum of 1 byte.  Note that even a delta-time of 0 occupies 1
+	// byte.  
+	auto dt = midi_interpret_vl_field(p,max_size);
+	if (!dt.is_valid) {
+		result.type = smf_event_type::invalid;
+		result.error = mtrk_event_validation_error::invalid_dt_field;
+		return result;
+	}
+	if (dt.N >= max_size) {
+		result.type = smf_event_type::invalid;
+		result.error = mtrk_event_validation_error::event_size_exceeds_max;
+		return result;
+	}
+	p+=dt.N;  max_size-=dt.N;
+	
+	auto result_nodt = validate_mtrk_event2(p,rs,max_size);
+	result.delta_t = dt.val;
+	result.type = result_nodt.type;
+	result.size = (dt.N + result_nodt.size);
+	result.error = result_nodt.error;
+	
+	return result;
+}
+validate_mtrk_event_result_t validate_mtrk_event2(
+			const unsigned char *p, unsigned char rs, uint32_t max_size) {
+	// TODO:  result.dt is left uninitialized
+	validate_mtrk_event_result_t result {};
+	
+	result.type = classify_mtrk_event(*p,rs);
+	if (result.type == smf_event_type::unrecognized
+					|| result.type == smf_event_type::invalid) {
+		result.type = smf_event_type::invalid;
+		result.error = mtrk_event_validation_error::unable_to_determine_size;
+		return result;
+	}
+
+	auto sz = mtrk_event_get_data_size(p,rs,max_size);
+	if (sz==0) {
+		// sz > max_size will never happen.  If mtrk_event_get_data_size()
+		// can't calculate the size for some reason, or if the size it determines
+		// exceeds max_size, it will return 0.  This signals an error, since
+		// no event can have a data_size of 0.  Since it is known at this point
+		// that classify_mtrk_event() was successfull, the only possibilities are
+		// 1) a max_size error, or
+		// 2) for sysex & meta events, the length field could be malformed.  
+		if (result.type==smf_event_type::meta && max_size>=3) {
+			p+=2;  max_size-=2;  // 0xFF,type
+			auto len = midi_interpret_vl_field(p,max_size);
+			if (!len.is_valid) {
+				result.type = smf_event_type::invalid;
+				result.error = mtrk_event_validation_error::sysex_or_meta_invalid_length_field;
+				return result;
+			}
+		} else if ((result.type==smf_event_type::sysex_f0 
+						|| result.type==smf_event_type::sysex_f7)
+					&& max_size>=2) {
+			++p;  max_size-=1;  // 0xF0 || 0xF7
+			auto len = midi_interpret_vl_field(p,max_size);
+			if (!len.is_valid) {
+				result.type = smf_event_type::invalid;
+				result.error = mtrk_event_validation_error::sysex_or_meta_invalid_length_field;
+				return result;
+			}
+		}
+		result.type = smf_event_type::invalid;
+		result.error = mtrk_event_validation_error::event_size_exceeds_max;
+		return result;
+	}  // if (sz==0) {
+
+	result.size += sz;
+	return result;
+}
 validate_mtrk_event_result_t validate_mtrk_event_dtstart(
 			const unsigned char *p, unsigned char rs, uint32_t max_size) {
 	validate_mtrk_event_result_t result {};
@@ -472,7 +548,7 @@ unsigned char get_status_byte(unsigned char s, unsigned char rs) {
 
 
 
-uint32_t mtrk_event_get_size(const unsigned char *p, unsigned char rs,
+uint32_t mtrk_event_get_data_size(const unsigned char *p, unsigned char rs,
 								uint32_t max_size) {
 	uint32_t result = 0;
 	auto ev_type = classify_mtrk_event(*p,rs);  
@@ -522,9 +598,9 @@ uint32_t mtrk_event_get_size_dtstart(const unsigned char *p, unsigned char rs,
 		return 0;
 	}
 	max_size-=dt.N;  p+=dt.N;
-	return (dt.N + mtrk_event_get_size(p,rs,max_size));
+	return (dt.N + mtrk_event_get_data_size(p,rs,max_size));
 }
-uint32_t mtrk_event_get_size_unsafe(const unsigned char *p, unsigned char rs) {
+uint32_t mtrk_event_get_data_size_unsafe(const unsigned char *p, unsigned char rs) {
 	uint32_t result = 0;
 	auto ev_type = classify_mtrk_event(*p,rs);  
 	if (ev_type==smf_event_type::channel_mode 
@@ -552,12 +628,12 @@ uint32_t mtrk_event_get_size_unsafe(const unsigned char *p, unsigned char rs) {
 uint32_t mtrk_event_get_size_dtstart_unsafe(const unsigned char *p, unsigned char rs) {
 	auto dt = midi_interpret_vl_field(p);
 	p+=dt.N;
-	return (dt.N + mtrk_event_get_size_unsafe(p,rs));
+	return (dt.N + mtrk_event_get_data_size_unsafe(p,rs));
 }
 uint32_t mtrk_event_get_data_size_dtstart_unsafe(const unsigned char *p, unsigned char rs) {
 	auto dt = midi_interpret_vl_field(p);
 	p+=dt.N;
-	return mtrk_event_get_size_unsafe(p,rs);
+	return mtrk_event_get_data_size_unsafe(p,rs);
 }
 
 

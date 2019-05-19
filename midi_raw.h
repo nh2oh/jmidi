@@ -214,6 +214,12 @@ struct validate_mtrk_event_result_t {
 	mtrk_event_validation_error error {mtrk_event_validation_error::unknown_error};
 };
 // ptr, running-status, max_size
+// TODO:  This duplicates mtrk_event_get_data_size() & friends.  I attempt
+// to fix this a little in version 2
+validate_mtrk_event_result_t validate_mtrk_event_dtstart2(const unsigned char *,
+													unsigned char, uint32_t=0);
+validate_mtrk_event_result_t validate_mtrk_event2(const unsigned char *,
+													unsigned char, uint32_t=0);
 validate_mtrk_event_result_t validate_mtrk_event_dtstart(const unsigned char *,
 													unsigned char, uint32_t=0);
 std::string print(const smf_event_type&);
@@ -270,12 +276,12 @@ uint8_t channel_status_byte_n_data_bytes(unsigned char);
 // the .is_valid field returned from midi_interpret_vl_field().  Behavior
 // is undefined if the input points at invalid data.  
 //
-uint32_t mtrk_event_get_size(const unsigned char*, unsigned char=0x00u, uint32_t=0);
+uint32_t mtrk_event_get_data_size(const unsigned char*, unsigned char=0x00u, uint32_t=0);
 uint32_t mtrk_event_get_size_dtstart(const unsigned char*, unsigned char=0x00u, uint32_t=0);
-uint32_t mtrk_event_get_size_unsafe(const unsigned char*, unsigned char=0x00u);
+uint32_t mtrk_event_get_data_size_unsafe(const unsigned char*, unsigned char=0x00u);
 uint32_t mtrk_event_get_size_dtstart_unsafe(const unsigned char*, unsigned char=0x00u);
 uint32_t mtrk_event_get_data_size_dtstart_unsafe(const unsigned char*, unsigned char=0x00u);
-
+//uint32_t mtrk_event_get_data_size_unsafe(const unsigned char*, unsigned char=0x00u);
 
 
 

@@ -35,10 +35,17 @@ int midi_example() {
 
 	smf_t mf(rawfile_check_result);
 	
-	std::cout << print(mf) << std::endl << std::endl;
+	/*std::cout << print(mf) << std::endl << std::endl;
 	std::cout << print_tied_events(mf) << std::endl << std::endl;
 	auto lkdevs = link_note_events(mf);
-	std::cout << print(lkdevs) << std::endl;
+	std::cout << print(lkdevs) << std::endl;*/
+
+	auto s1 = print(mf);
+	auto s2 = print_tied_events(mf);
+	auto lkdevs = link_note_events(mf);
+	auto s3 = print(lkdevs);
+	std::cout << s1[s1.size()-2] << " " << s2[s2.size()-2] << " " << s3[s3.size()-2];
+
 	//std::cout << print_events_chrono2(mf) << std::endl << std::endl;
 	//std::cout << print_notelist(mf.get_track(1)) << std::endl << std::endl;
 
