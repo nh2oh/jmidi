@@ -308,6 +308,7 @@ validate_mtrk_event_result_t validate_mtrk_event_dtstart(
 		max_size -= event_length;
 		result.size += event_length;
 		// At this point, *p is the first data byte
+		// TODO:  Maybe this is best moved into validate_channel_event()?
 		for (int i=0; i<n_data_bytes; ++i) {
 			if (!is_data_byte(*p)) {
 				result.type = smf_event_type::invalid;
@@ -483,40 +484,6 @@ unsigned char get_status_byte(unsigned char s, unsigned char rs) {
 
 
 
-
-
-// p points at the first byte of the dt
-unsigned char mtrk_event_get_midi_status_byte_dtstart_unsafe(const unsigned char *p, unsigned char s) {
-	auto dt = midi_interpret_vl_field(p);
-	p += dt.N;
-	return mtrk_event_get_midi_status_byte_unsafe(p,s);
-}
-
-// p points at the first byte _past_ the dt
-// TODO:  Is this right??  *p!=0xF0u && *p!=0xF7u && *p!= 0xFFu
-//     Shouldn't i mask off the low bits???
-//
-unsigned char mtrk_event_get_midi_status_byte_unsafe(const unsigned char *p, unsigned char s) {
-	if (((*p)>>7)) {
-		if (*p!=0xF0u && *p!=0xF7u && *p!= 0xFFu) {
-			// *p is a valid midi status byte
-			return *p;
-		} else {
-			// *p indicates a sysex_f0/f7 or meta event, which resets the running status
-			return 0x00u;
-		}
-	}
-
-	// p does not indicate a midi status byte, nor is it the first byte of a sysex_f0/f7
-	// or meta event.  p *may* be the first data byte of a midi msg in running status.  
-	if ((s>>7) && s!=0xF0u && s!=0xF7u && s!= 0xFFu) {
-		// s is a valid midi status byte
-		return s;
-	}
-
-	return 0x00u;
-}
-
 uint32_t mtrk_event_get_size_dtstart_unsafe(const unsigned char *p, unsigned char s) {
 	uint32_t sz {0};
 	auto dt = midi_interpret_vl_field(p);
@@ -524,7 +491,7 @@ uint32_t mtrk_event_get_size_dtstart_unsafe(const unsigned char *p, unsigned cha
 	p += sz;
 	return sz + mtrk_event_get_data_size_unsafe(p,s);
 	/*
-	s = mtrk_event_get_midi_status_byte_unsafe(p,s);
+	s = mtrk_ev//ent_get_midi_sta//tus_byte_unsafe(p,s);
 
 	if (s==0x00u) {  // Event is either invalid, meta, or sysex_f0/f7
 		if (*p==0xF0u || *p==0xF7u) {  // sysex_f0/f7
@@ -559,7 +526,8 @@ uint32_t mtrk_event_get_data_size_dtstart_unsafe(const unsigned char *p, unsigne
 }
 uint32_t mtrk_event_get_data_size_unsafe(const unsigned char *p, unsigned char s) {
 	uint32_t sz {0};
-	s = mtrk_event_get_midi_status_byte_unsafe(p,s);
+	s = get_running_status_byte(*p,s);  
+	// TODO:  akaward to ask for the rs when want the ev-loc status
 
 	if (s==0x00u) {  // Event is either invalid, meta, or sysex_f0/f7
 		if (*p==0xF0u || *p==0xF7u) {  // sysex_f0/f7
@@ -590,7 +558,7 @@ uint32_t mtrk_event_get_data_size_unsafe(const unsigned char *p, unsigned char s
 
 unsigned char mtrk_event_get_midi_p1_dtstart_unsafe(const unsigned char *p, unsigned char s) {
 	p += midi_interpret_vl_field(p).N;
-	s = mtrk_event_get_midi_status_byte_unsafe(p,s);
+	s = get_status_byte(*p,s);
 	if (!is_channel_status_byte(s)) { // p does not indicate a midi event
 		return 0x80u;  // Invalid data byte
 	}
@@ -605,7 +573,7 @@ unsigned char mtrk_event_get_midi_p1_dtstart_unsafe(const unsigned char *p, unsi
 }
 unsigned char mtrk_event_get_midi_p2_dtstart_unsafe(const unsigned char *p, unsigned char s) {
 	p += midi_interpret_vl_field(p).N;
-	s = mtrk_event_get_midi_status_byte_unsafe(p,s);
+	s = get_status_byte(*p,s);
 	if (!is_channel_status_byte(s)) { // p does not indicate a midi event
 		return 0x80u;  // Invalid data byte
 	}
@@ -773,7 +741,6 @@ parse_sysex_event_result_t parse_sysex_event(const unsigned char *p, int32_t max
 
 
 channel_msg_type mtrk_event_get_ch_msg_type_dtstart_unsafe(const unsigned char *p, unsigned char s) {
-	//s = mtrk_event_get_midi_status_byte_dtstart_unsafe(p,s);
 	auto dt = midi_interpret_vl_field(p);
 	s = get_status_byte(*(p+dt.N),s);
 

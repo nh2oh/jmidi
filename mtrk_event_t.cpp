@@ -36,7 +36,6 @@ mtrk_event_t::mtrk_event_t(const unsigned char *p, uint32_t sz, unsigned char rs
 		}
 		auto dt = midi_interpret_vl_field(this->d_.data(),sz);
 		this->midi_status_ = get_running_status_byte(*(p+dt.N),rs);
-		//this->midi_status_ = mtrk_event_get_midi_status_byte_dtstart_unsafe(p,s);
 	} else {  // big
 		auto new_p = new unsigned char[sz];
 		std::copy(p,p+sz,new_p);
@@ -393,7 +392,6 @@ bool mtrk_event_t::init_big(unsigned char *p, uint32_t sz, uint32_t c, unsigned 
 
 	// The two d_-external values to set are midi_status_ and flags
 	this->midi_status_ = get_running_status_byte(*(p+dt.N),rs);
-	//this->midi_status_ = mtrk_event_get_midi_status_byte_dtstart_unsafe(p,rs);
 
 	// TODO:  Error checking for dt fields etc; perhaps call clear_nofree()
 	// and return false

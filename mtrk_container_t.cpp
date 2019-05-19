@@ -24,13 +24,13 @@ mtrk_event_t mtrk_iterator_t::operator*() const {
 }
 mtrk_iterator_t& mtrk_iterator_t::operator++() {
 	auto dt = midi_interpret_vl_field(this->p_);
-	this->s_ = mtrk_event_get_midi_status_byte_unsafe(this->p_+dt.N,this->s_);
+	this->s_ = get_running_status_byte(*(this->p_+dt.N),this->s_);
 	auto sz = mtrk_event_get_size_dtstart_unsafe(this->p_,this->s_);
 	this->p_+=sz;
 	// Note that this->s_ now indicates the status of the *prior* event.  
-	// Were I to attempt to update it to correspond to the present event(
-	// that indicated by this->p_), ex:
-	// this->s_ = mtrk_event_get_midi_status_byte_unsafe(this->p_,this->s_);
+	// Were I to attempt to update it to correspond to the present event
+	// (that indicated by this->p_), ex:
+	// this->s_ = get_running_status_byte(this->p_,this->s_);
 	// i will dereference an invalid this->p_ in the case that the prior event
 	// was the last in the mtrk sequence and this->p_ is now pointing one past
 	// the end of the valid range.  
@@ -85,7 +85,6 @@ uint8_t mtrk_event_view_t::velocity() const {
 uint8_t mtrk_event_view_t::chn() const {
 	auto dt = midi_interpret_vl_field(this->p_);
 	auto s = get_running_status_byte(*(this->p_+dt.N),this->s_);
-	//auto s = mtrk_event_get_midi_status_byte_dtstart_unsafe(this->p_,this->s_);
 	return channel_number_from_status_byte_unsafe(s);
 }
 uint8_t mtrk_event_view_t::note() const {
