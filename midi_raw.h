@@ -191,8 +191,10 @@ enum class smf_event_type : uint8_t {  // MTrk events
 	sysex_f7,
 	meta,
 	invalid,  // !is_status_byte() 
-	// is_status_byte() && (!is_channel_status_byte() && !is_meta_or_sysex_status_byte())
-	unrecognized  
+	// is_status_byte() 
+	//     && (!is_channel_status_byte() && !is_meta_or_sysex_status_byte())
+	// Ex, s==0xF1u
+	unrecognized
 };
 enum class mtrk_event_validation_error : uint8_t {
 	invalid_dt_field,
@@ -216,24 +218,19 @@ validate_mtrk_event_result_t validate_mtrk_event_dtstart(const unsigned char *,
 													unsigned char, uint32_t=0);
 std::string print(const smf_event_type&);
 
-
-
-
 //
-// Sysex events and meta-events cancel any running status which was in 
-// effect.  Running status does not apply to and may not be used for these
-// messages (p.136).  
+// True for status bytes invalid in an smf, ex, 0xF1u
+bool is_unrecognized_status_byte(const unsigned char);
+// _any_ "status" byte, including sysex, meta, or channel_{voice,mode}.  
+// Returns true even for things like 0xF1u that are invalid in an smf.  
+// Same as !is_data_byte()
+bool is_status_byte(const unsigned char);
+bool is_channel_status_byte(const unsigned char);
+bool is_sysex_status_byte(const unsigned char);
+bool is_meta_status_byte(const unsigned char);
+bool is_sysex_or_meta_status_byte(const unsigned char);
+bool is_data_byte(const unsigned char);
 //
-// If *arg1 is a midi status byte, 
-//   returns *arg1; it does not matter what arg2 is.  
-// If *arg1 is _not_ a midi status byte and == 0xF0u||0xF7u||0xFFu,
-//   returns 0x00u; it does not matter what arg2 is.  
-// if *arg1 is _not_ a midi status byte and not 0xF0u||0xF7u||0xFFu,
-//   returns arg2 iff arg2 is a midi status byte.  
-//   returns 0x00u otherwise.  
-
-//
-
 // get_status_byte(s,rs)
 // The status byte applicible to the present event.  For meta && sysex
 // events, will return 0xFFu, 0xF0u, 0xF7u as appropriate.  Returns
@@ -248,10 +245,10 @@ unsigned char get_status_byte(unsigned char, unsigned char=0x00u);
 // Hence, always returns either a valid channel_{voice,mode} status byte 
 // apparently applicable to the event at p, or returns 0x00u.  If 0x00u, 
 // either:
-//   1) s indicates a sysex_f0/f7 or meta event (=> s==0xF0u||0xF7u||0xFFu)
-//   or,
-//   2) s indicates something that looks like a midi _data_ byte 
-//   (!(s&0x80u)), but !is_channel_status_byte(rs).  
+// 1) s indicates a sysex_f0/f7 or meta event (=> s==0xF0u||0xF7u||0xFFu)
+// or,
+// 2) s indicates something that looks like a midi _data_ byte 
+//    (!(s&0x80u)), but !is_channel_status_byte(rs).  
 unsigned char get_running_status_byte(unsigned char, unsigned char=0x00u);
 // The most lightweight status-byte classifiers in the lib
 smf_event_type classify_mtrk_event(unsigned char, unsigned char=0x00u);
@@ -264,48 +261,33 @@ smf_event_type classify_mtrk_event_dtstart(const unsigned char *, unsigned char=
 // Implements table I of the midi std
 uint8_t channel_status_byte_n_data_bytes(unsigned char);
 
-
-// True for status bytes invalid in an smf, ex, 0xF1u
-bool is_unrecognized_status_byte(const unsigned char);
-// _any_ "status" byte, including sysex, meta, or channel_{voice,mode}.  
-// Returns true even for things like 0xF1u that are invalid in an smf.  
-// Same as !is_data_byte()
-bool is_status_byte(const unsigned char);
-bool is_channel_status_byte(const unsigned char);
-bool is_sysex_status_byte(const unsigned char);
-bool is_meta_status_byte(const unsigned char);
-bool is_sysex_or_meta_status_byte(const unsigned char);
-bool is_data_byte(const unsigned char);
-
-
-
-
-
-
-
 //
-// args:  ptr to first byte _following_ the dt, running status
-
-
-
+// Returns 0 if p points at smf_event_type::invalid || ::unrecognized, or
+// if the size of the event would exceed max_size.  Note that 0 is always
+// an invalid size for an smf event.  
+//
+// The _unsafe() versions perform no overflow checks, nor do they examine
+// the .is_valid field returned from midi_interpret_vl_field().  Behavior
+// is undefined if the input points at invalid data.  
+//
+uint32_t mtrk_event_get_size(const unsigned char*, unsigned char=0x00u, uint32_t=0);
+uint32_t mtrk_event_get_size_dtstart(const unsigned char*, unsigned char=0x00u, uint32_t=0);
+uint32_t mtrk_event_get_size_unsafe(const unsigned char*, unsigned char=0x00u);
 uint32_t mtrk_event_get_size_dtstart_unsafe(const unsigned char*, unsigned char=0x00u);
-// Does not include the dlta-t field
 uint32_t mtrk_event_get_data_size_dtstart_unsafe(const unsigned char*, unsigned char=0x00u);
-// Does not include the delta-t field, ptr points at the first
-// byte past the end of the dt field
-uint32_t mtrk_event_get_data_size_unsafe(const unsigned char*, unsigned char=0x00u);
+
+
+
+
+
+
+
 // If p is not a valid midi event, returns 0x80u, which is an invalid data
 // byte.  For ..._p2_...(), also returns 0x80u if the event has status byte
 // ~ 0xC0u || 0xD0u (single-byte midi messages).  
 unsigned char mtrk_event_get_midi_p1_dtstart_unsafe(const unsigned char*, unsigned char=0x00u);
 unsigned char mtrk_event_get_midi_p2_dtstart_unsafe(const unsigned char*, unsigned char=0x00u);
 // Does not consider 0xFnu to be valid
-
-
-
-
-
-
 
 
 unsigned char mtrk_event_get_meta_type_byte_dtstart_unsafe(const unsigned char*);

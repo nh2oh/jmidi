@@ -472,89 +472,96 @@ unsigned char get_status_byte(unsigned char s, unsigned char rs) {
 
 
 
+uint32_t mtrk_event_get_size(const unsigned char *p, unsigned char rs,
+								uint32_t max_size) {
+	uint32_t result = 0;
+	auto ev_type = classify_mtrk_event(*p,rs);  
+	if (ev_type==smf_event_type::channel_mode 
+						|| ev_type==smf_event_type::channel_voice) {
+		auto s = get_status_byte(*p,rs);
+		auto n = channel_status_byte_n_data_bytes(s);
+		if (*p==s) {  // event-local status byte (not in running-status)
+			n += 1;
+		}
+		if (n > max_size) {
+			return 0;
+		}
+		max_size-=n;  result+=n;
+	} else if (ev_type==smf_event_type::meta) {
+		if (2>=max_size) {  // 0xFFu,type-byte
+			return 0;
+		}
+		p+=2;  result+=2;  max_size-=2;
+		auto len = midi_interpret_vl_field(p,max_size);
+		if ((!len.is_valid) || (len.N > max_size)) {
+			return 0;
+		}
+		result += (len.N + len.val);
+	} else if (ev_type==smf_event_type::sysex_f0
+						|| ev_type==smf_event_type::sysex_f7) {
+		if (1>=max_size) {  // 0xF0u||0xF7u
+			return 0;
+		}
+		p+=1;  result+=1;  max_size-=1;
+		auto len = midi_interpret_vl_field(p,max_size);
+		if ((!len.is_valid) || (len.N > max_size)) {
+			return 0;
+		}
+		result += (len.N + len.val);
+	} else {
+		// smf_event_type::invalid || ::unrecognized
+		return 0;
+	}
 
-
-
-
-
-
-
-
-
-
-
-
-uint32_t mtrk_event_get_size_dtstart_unsafe(const unsigned char *p, unsigned char s) {
-	uint32_t sz {0};
+	return result;
+}
+uint32_t mtrk_event_get_size_dtstart(const unsigned char *p, unsigned char rs,
+								uint32_t max_size) {
+	auto dt = midi_interpret_vl_field(p,max_size);
+	if ((!dt.is_valid) || (dt.N >= max_size)) {
+		return 0;
+	}
+	max_size-=dt.N;  p+=dt.N;
+	return (dt.N + mtrk_event_get_size(p,rs,max_size));
+}
+uint32_t mtrk_event_get_size_unsafe(const unsigned char *p, unsigned char rs) {
+	uint32_t result = 0;
+	auto ev_type = classify_mtrk_event(*p,rs);  
+	if (ev_type==smf_event_type::channel_mode 
+						|| ev_type==smf_event_type::channel_voice) {
+		auto s = get_status_byte(*p,rs);
+		result += channel_status_byte_n_data_bytes(s);
+		if (*p==s) {  // event-local status byte (not in running-status)
+			result += 1;
+		}
+	} else if (ev_type==smf_event_type::meta) {
+		p+=2;  result+=2;  // 0xFFu,type-byte
+		auto len = midi_interpret_vl_field(p);
+		result += (len.N + len.val);
+	} else if (ev_type==smf_event_type::sysex_f0
+						|| ev_type==smf_event_type::sysex_f7) {
+		p+=1;  result+=1;  // 0xF0u||0xF7u
+		auto len = midi_interpret_vl_field(p);
+		result += (len.N + len.val);
+	} else {
+		// smf_event_type::invalid || ::unrecognized
+		return 0;
+	}
+	return result;
+}
+uint32_t mtrk_event_get_size_dtstart_unsafe(const unsigned char *p, unsigned char rs) {
 	auto dt = midi_interpret_vl_field(p);
-	sz += dt.N;
-	p += sz;
-	return sz + mtrk_event_get_data_size_unsafe(p,s);
-	/*
-	s = mtrk_ev//ent_get_midi_sta//tus_byte_unsafe(p,s);
-
-	if (s==0x00u) {  // Event is either invalid, meta, or sysex_f0/f7
-		if (*p==0xF0u || *p==0xF7u) {  // sysex_f0/f7
-			sz += 1;
-			++p;  // count & step past the 0xF0||0xF7
-		} else if (*p==0xFFu) {  // meta
-			sz += 2;
-			p += 2;  // count & step past the 0xFF and then the meta-event type-byte
-		} else {  // Invalid event
-			std::abort();
-			//return 0;
-		}
-		auto data_len = midi_interpret_vl_field(p);
-		sz += (data_len.N + data_len.val);
-	} else {  // s is a midi status byte applicable to the event indicated by p
-		if ((s&0xF0)==0xD0u || (s&0xF0)==0xC0u) {
-			sz += 1;
-		} else {
-			sz += 2;
-		}
-		if (*p==s) {  // event-local status byte (not in running status)
-			sz += 1;
-		}
-	}
-
-	return sz;*/
+	p+=dt.N;
+	return (dt.N + mtrk_event_get_size_unsafe(p,rs));
+}
+uint32_t mtrk_event_get_data_size_dtstart_unsafe(const unsigned char *p, unsigned char rs) {
+	auto dt = midi_interpret_vl_field(p);
+	p+=dt.N;
+	return mtrk_event_get_size_unsafe(p,rs);
 }
 
-uint32_t mtrk_event_get_data_size_dtstart_unsafe(const unsigned char *p, unsigned char s) {
-	p += midi_interpret_vl_field(p).N;
-	return mtrk_event_get_data_size_unsafe(p,s);
-}
-uint32_t mtrk_event_get_data_size_unsafe(const unsigned char *p, unsigned char s) {
-	uint32_t sz {0};
-	s = get_running_status_byte(*p,s);  
-	// TODO:  akaward to ask for the rs when want the ev-loc status
 
-	if (s==0x00u) {  // Event is either invalid, meta, or sysex_f0/f7
-		if (*p==0xF0u || *p==0xF7u) {  // sysex_f0/f7
-			sz += 1;
-			++p;  // count & step past the 0xF0||0xF7
-		} else if (*p==0xFFu) {  // meta
-			sz += 2;
-			p += 2;  // count & step past the 0xFF and then the meta-event type-byte
-		} else {  // Invalid event
-			std::abort();
-			//return 0;
-		}
-		auto data_len = midi_interpret_vl_field(p);
-		sz += (data_len.N + data_len.val);
-	} else {  // s is a midi status byte applicable to the event indicated by p
-		if ((s&0xF0)==0xD0u || (s&0xF0)==0xC0u) {
-			sz += 1;
-		} else {
-			sz += 2;
-		}
-		if (*p==s) {  // event-local status byte (not in running status)
-			sz += 1;
-		}
-	}
 
-	return sz;
-}
 
 unsigned char mtrk_event_get_midi_p1_dtstart_unsafe(const unsigned char *p, unsigned char s) {
 	p += midi_interpret_vl_field(p).N;
