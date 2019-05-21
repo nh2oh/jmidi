@@ -140,7 +140,6 @@ std::string print_error(const validate_mthd_chunk_result_t& mthd) {
 }
 
 
-
 validate_mtrk_chunk_result_t validate_mtrk_chunk(const unsigned char *p, uint32_t max_size) {
 	validate_mtrk_chunk_result_t result {};
 	auto chunk_detect = validate_chunk_header(p,max_size);
@@ -156,7 +155,7 @@ validate_mtrk_chunk_result_t validate_mtrk_chunk(const unsigned char *p, uint32_
 	// Process the data section of the mtrk chunk until the number of bytes
 	// processed == chunk_detect.data_size, or an end-of-track meta event is
 	// encountered.  Note that an end-of-track could be hit before processing
-	// chunk_detect.data_size bytes if the chunk is passed past the end of 
+	// chunk_detect.data_size bytes if the chunk is 0-padded past the end of 
 	// the end-of-track msg.  
 	bool found_eot = false;
 	uint32_t mtrk_data_size = chunk_detect.data_size;
@@ -166,40 +165,14 @@ validate_mtrk_chunk_result_t validate_mtrk_chunk(const unsigned char *p, uint32_
 	validate_mtrk_event_result_t curr_event;
 	while ((i<mtrk_data_size) && !found_eot) {
 		curr_event = validate_mtrk_event_dtstart(p,rs,mtrk_data_size-i);
-		if (curr_event.type==smf_event_type::invalid) {
+		if (curr_event.error!=mtrk_event_validation_error::no_error) {
 			result.error = mtrk_validation_error::event_error;
 			return result;
 		}
-		
-		// TODO:  What is below can be replaced w/ something like:
-		// rs = get_running_status(p+=curr_event.delta_t.N,rs,mtrk_data_size-i-dt.N)
-		// if (curr_event.error != no_error) { result.error=...; return error; }
-		// i += curr_event.size;
-		// p += curr_event.size;
-		// This removes the update-rs-logic into get_running_status(), where it
-		// should be.  
 
-		if (curr_event.type == smf_event_type::sysex_f0 
-					|| curr_event.type == smf_event_type::sysex_f7) {
-			// From the std (p.136):
-			// Sysex events and meta-events cancel any running status which was in effect.  
-			// Running status does not apply to and may not be used for these messages.
-			rs = 0x00u;
-			auto sx = parse_sysex_event(p,mtrk_data_size);
-			if (!sx.is_valid) {
-				result.error = mtrk_validation_error::event_error;
-				return result;
-			}
-		} else if (curr_event.type == smf_event_type::meta) {
-			// From the std (p.136):
-			// Sysex events and meta-events cancel any running status which was in effect.  
-			// Running status does not apply to and may not be used for these messages.
-			rs = 0x00u;
-			auto mt = parse_meta_event(p,mtrk_data_size);
-			if (!mt.is_valid) {
-				result.error = mtrk_validation_error::event_error;
-				return result;
-			}
+		rs = curr_event.running_status;
+
+		if (curr_event.type==smf_event_type::meta) {
 			// Test for end-of-track msg
 			if (curr_event.size>=4) {
 				uint32_t last_four = dbk::be_2_native<uint32_t>(p+curr_event.size-4);
@@ -207,18 +180,7 @@ validate_mtrk_chunk_result_t validate_mtrk_chunk(const unsigned char *p, uint32_
 					found_eot = true;
 				}
 			}
-		} else if (curr_event.type == smf_event_type::channel) {
-			auto md = parse_channel_event(p,rs,mtrk_data_size);
-			if (!md.is_valid) {
-				result.error = mtrk_validation_error::event_error;
-				return result;
-			}
-			rs = md.status_byte;
-		} else {
-			result.error = mtrk_validation_error::unknown_error;
-			return result;
 		}
-
 		i += curr_event.size;
 		p += curr_event.size;
 	}
@@ -353,6 +315,7 @@ validate_mtrk_event_result_t validate_mtrk_event_dtstart(
 
 	// No errors
 	result.type = ev_type;
+	result.running_status = get_running_status_byte(*p,rs);
 	result.size += sz;
 	result.error = mtrk_event_validation_error::no_error;
 	return result;
@@ -432,6 +395,9 @@ unsigned char get_running_status_byte(unsigned char s, unsigned char rs) {
 }
 unsigned char get_status_byte(unsigned char s, unsigned char rs) {
 	if (is_status_byte(s)) {
+		// s could be a valid, but "unrecognized" status byte, ex, 0xF1u.
+		// In such a case, the event-local byte wins over the rs,
+		// get_running_status_byte(s,rs) will return 0x00u as the rs.  
 		return s;
 	} else {
 		if (is_channel_status_byte(rs)) {

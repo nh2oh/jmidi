@@ -138,7 +138,8 @@ struct validate_mtrk_chunk_result_t {
 	mtrk_validation_error error {mtrk_validation_error::unknown_error};
 };
 // ptr, max_size
-validate_mtrk_chunk_result_t validate_mtrk_chunk(const unsigned char*, uint32_t=0);
+validate_mtrk_chunk_result_t validate_mtrk_chunk(const unsigned char*, uint32_t);
+//validate_mtrk_chunk_result_t validate_mtrk_chunk(const unsigned char*, uint32_t=0);
 std::string print_error(const validate_mtrk_chunk_result_t&);
 
 //
@@ -150,28 +151,18 @@ std::string print_error(const validate_mtrk_chunk_result_t&);
 // arg 3:  The maximum number of times p can be incremented.  
 //
 // validate_mtrk_event_dtstart() will parse & validate the delta-t field and
-// then examine the fewest number of bytes immediately following (in the 
-// context of the running-status) to classify the event and calculate its 
-// size.  If the event is a channel_{voice,mode} event as dictated either 
-// by an event-local status byte or the running-status (and the lack of an
-// event-local status byte), the event size calculation is based on 
-// the value of this status and the MIDI std Table I "Summary of Status 
-// Bytes".  If the event is a meta or sysex-f0/f7 type (by an event-local 
-// 0xF0u, 0xF7u, or 0xFFu following the delta-time), the subsequent <length> 
-// field parsed and validated to calculate the event size.  
+// then examine the fewest number of bytes immediately following needed to
+// classify the event (in the context of the running-status) and calculate 
+// its size.  For channel events, the size calculation is based on  the value
+// of the status byte returned by get_status_byte(s,rs) and the MIDI std 
+// Table I "Summary of Status Bytes".  For meta or sysex_{f0,f7} events, the 
+// <length> field is validated and parsed.  
 // 
-// In no case are the data bytes of the message evaluated; detailed
-// validation of the event is left to the 
+// In no case are other data bytes of the message evaluated; detailed
+// validation of the event payload is left to the 
 // validate_{channel,sysex,meta}_event() family of functions.  
 //
-// Will return smf_event_type::invalid under the following circumstances:
-// -> the delta_t field is invalid (ex: > 4 bytes) or > max_size
-// -> the size of the delta_t field + the calculated event-size
-//    is > max_size.  
-// -> for the byte *p immediately following the delta_t field and the 
-//    caller-supplied running-status rs, 
-//    !is_status_byte(get_status_byte(*p,rs)).  
-//
+// For any error condition whatsoever, returns smf_event_type::invalid.  
 // smf_event_type::unrecognized is _never_ returned.  Events that classify
 // as smf_event_type::unrecognized are reported as smf_event_type::invalid.  
 //
@@ -192,6 +183,7 @@ enum class smf_event_type : uint8_t {  // MTrk events
 	invalid,  // !is_status_byte() 
 	// is_status_byte() 
 	//     && (!is_channel_status_byte() && !is_meta_or_sysex_status_byte())
+	// Also, is_unrecognized_status_byte()
 	// Ex, s==0xF1u
 	unrecognized
 };
@@ -210,12 +202,11 @@ enum class mtrk_event_validation_error : uint8_t {
 struct validate_mtrk_event_result_t {
 	uint32_t delta_t {0};
 	uint32_t size {0};
+	unsigned char running_status {0x00u};
 	smf_event_type type {smf_event_type::invalid};
 	mtrk_event_validation_error error {mtrk_event_validation_error::unknown_error};
 };
 // ptr, running-status, max_size
-// TODO:  This duplicates mtrk_event_get_data_size() & friends.  I attempt
-// to fix this a little in version 2
 validate_mtrk_event_result_t validate_mtrk_event_dtstart(const unsigned char *,
 													unsigned char, uint32_t=0);
 std::string print(const smf_event_type&);
@@ -240,28 +231,30 @@ bool is_data_byte(const unsigned char);
 // events, will return 0xFFu, 0xF0u, 0xF7u as appropriate.  Returns
 // 0x00u where no status byte can be determined for the event, which 
 // occurs if !is_status_byte(s) && !is_channel_status_byte(rs).  
-unsigned char get_status_byte(unsigned char, unsigned char=0x00u);
+unsigned char get_status_byte(unsigned char, unsigned char);
 // get_running_status_byte(s,rs)
 // The status byte that the present event imparts to the stream.  For meta
 // or sysex events, returns 0x00u (these events reset the running-status).  
+// Also returns 0x00u where the event-local status byte is valid, but 
+// "unrecognized," ex, 0xF1u.  
 // For channel events, returns the status byte applicible to the event as
 // determined by get_status_byte(s,rs).  
-// Hence, always returns either a valid channel_{voice,mode} status byte 
-// apparently applicable to the event at p, or returns 0x00u.  If 0x00u, 
-// either:
-// 1) s indicates a sysex_f0/f7 or meta event (=> s==0xF0u||0xF7u||0xFFu)
+// Hence, always returns either a valid channel status byte, or returns 
+// 0x00u.  If 0x00u, either:
+// 1) s indicates a sysex_f0/f7 or meta event (=> s==0xF0u||0xF7u||0xFFu),
+//    or s is a valid but unrecognized status byte, ex, s==0xF1u.
 // or,
-// 2) s indicates something that looks like a midi _data_ byte 
-//    (!(s&0x80u)), but !is_channel_status_byte(rs).  
-unsigned char get_running_status_byte(unsigned char, unsigned char=0x00u);
+// 2) s is a midi _data_ byte (!(s&0x80u)), and 
+//    !is_channel_status_byte(rs).  
+unsigned char get_running_status_byte(unsigned char, unsigned char);
 // Returns smf_event_type::invalid if the dt field is invalid or if there is
 // a size-overrun error (ex, if the dt field is valid but dt.N==max_size).  
 // Only the status byte is examined; in no case are the data bytes of the
-// message evaluated.  An channel_voice w/a valid midi-status byte followed 
+// message evaluated.  A channel event w/a valid midi-status byte followed 
 // by two invalid data bytes will evaluate to smf_event_type::channel_voice.  
-smf_event_type classify_mtrk_event_dtstart(const unsigned char *, unsigned char=0x00u, uint32_t=0);
-// Implements table I of the midi std
-uint8_t channel_status_byte_n_data_bytes(unsigned char);
+smf_event_type classify_mtrk_event_dtstart(const unsigned char *, 
+										unsigned char=0x00u, uint32_t=0);
+
 
 //
 // Returns 0 if p points at smf_event_type::invalid || ::unrecognized, or
@@ -272,12 +265,13 @@ uint8_t channel_status_byte_n_data_bytes(unsigned char);
 // the .is_valid field returned from midi_interpret_vl_field().  Behavior
 // is undefined if the input points at invalid data.  
 //
-uint32_t mtrk_event_get_data_size(const unsigned char*, unsigned char=0x00u, uint32_t=0);
-uint32_t mtrk_event_get_size_dtstart(const unsigned char*, unsigned char=0x00u, uint32_t=0);
-uint32_t mtrk_event_get_data_size_unsafe(const unsigned char*, unsigned char=0x00u);
-uint32_t mtrk_event_get_size_dtstart_unsafe(const unsigned char*, unsigned char=0x00u);
-uint32_t mtrk_event_get_data_size_dtstart_unsafe(const unsigned char*, unsigned char=0x00u);
-//uint32_t mtrk_event_get_data_size_unsafe(const unsigned char*, unsigned char=0x00u);
+uint32_t mtrk_event_get_data_size(const unsigned char*, unsigned char, uint32_t);
+uint32_t mtrk_event_get_size_dtstart(const unsigned char*, unsigned char, uint32_t);
+uint32_t mtrk_event_get_data_size_unsafe(const unsigned char*, unsigned char);
+uint32_t mtrk_event_get_size_dtstart_unsafe(const unsigned char*, unsigned char);
+uint32_t mtrk_event_get_data_size_dtstart_unsafe(const unsigned char*, unsigned char);
+// Implements table I of the midi std
+uint8_t channel_status_byte_n_data_bytes(unsigned char);
 
 // The most lightweight data_size calculators in the lib.  No error 
 // checking (other than will not read past max_size).  Behavior is 
