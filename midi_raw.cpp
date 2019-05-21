@@ -374,10 +374,6 @@ std::string print(const smf_event_type& et) {
 		return "meta";
 	} else if (et == smf_event_type::channel) {
 		return "channel";
-	//} else if (et == smf_event_type::channel_voice) {
-	//	return "channel_voice";
-	//} else if (et == smf_event_type::channel_mode) {
-	//	return "channel_mode";
 	} else if (et == smf_event_type::sysex_f0) {
 		return "sysex_f0";
 	} else if (et == smf_event_type::sysex_f7) {
@@ -390,16 +386,9 @@ std::string print(const smf_event_type& et) {
 }
 
 
-// TODO:  Tjis is wrong.  Classification can not be made w/o checking
-// the first data byte
 smf_event_type classify_status_byte(unsigned char s) {
 	if (is_channel_status_byte(s)) {
 		return smf_event_type::channel;
-		//if ((s&0xF0u)==0xB0u) {
-		//	return smf_event_type::channel_mode;
-		//} else {
-		//	return smf_event_type::channel_voice;
-		//}
 	} else if (is_meta_status_byte(s)) {
 		return smf_event_type::meta;
 	} else if (is_sysex_status_byte(s)) {

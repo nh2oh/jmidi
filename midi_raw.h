@@ -186,8 +186,6 @@ std::string print_error(const validate_mtrk_chunk_result_t&);
 //
 enum class smf_event_type : uint8_t {  // MTrk events
 	channel,
-	//channel_voice,
-	//channel_mode,
 	sysex_f0,
 	sysex_f7,
 	meta,
