@@ -267,82 +267,6 @@ std::string print_error(const validate_mtrk_chunk_result_t& mtrk) {
 	}
 	return result;
 }
-validate_mtrk_event_result_t validate_mtrk_event_dtstart2(
-			const unsigned char *p, unsigned char rs, uint32_t max_size) {
-	validate_mtrk_event_result_t result {};
-	// All mtrk events begin with a delta-time occupying a maximum of 4 bytes
-	// and a minimum of 1 byte.  Note that even a delta-time of 0 occupies 1
-	// byte.  
-	auto dt = midi_interpret_vl_field(p,max_size);
-	if (!dt.is_valid) {
-		result.type = smf_event_type::invalid;
-		result.error = mtrk_event_validation_error::invalid_dt_field;
-		return result;
-	}
-	if (dt.N >= max_size) {
-		result.type = smf_event_type::invalid;
-		result.error = mtrk_event_validation_error::event_size_exceeds_max;
-		return result;
-	}
-	p+=dt.N;  max_size-=dt.N;
-	
-	auto result_nodt = validate_mtrk_event2(p,rs,max_size);
-	result.delta_t = dt.val;
-	result.type = result_nodt.type;
-	result.size = (dt.N + result_nodt.size);
-	result.error = result_nodt.error;
-	
-	return result;
-}
-validate_mtrk_event_result_t validate_mtrk_event2(
-			const unsigned char *p, unsigned char rs, uint32_t max_size) {
-	// TODO:  result.dt is left uninitialized
-	validate_mtrk_event_result_t result {};
-	
-	result.type = classify_status_byte(*p,rs);
-	if (result.type == smf_event_type::unrecognized
-					|| result.type == smf_event_type::invalid) {
-		result.type = smf_event_type::invalid;
-		result.error = mtrk_event_validation_error::unable_to_determine_size;
-		return result;
-	}
-
-	auto sz = mtrk_event_get_data_size(p,rs,max_size);
-	if (sz==0) {
-		// sz > max_size will never happen.  If mtrk_event_get_data_size()
-		// can't calculate the size for some reason, or if the size it determines
-		// exceeds max_size, it will return 0.  This signals an error, since
-		// no event can have a data_size of 0.  Since it is known at this point
-		// that classify_mtrk_event() was successfull, the only possibilities are
-		// 1) a max_size error, or
-		// 2) for sysex & meta events, the length field could be malformed.  
-		if (result.type==smf_event_type::meta && max_size>=3) {
-			p+=2;  max_size-=2;  // 0xFF,type
-			auto len = midi_interpret_vl_field(p,max_size);
-			if (!len.is_valid) {
-				result.type = smf_event_type::invalid;
-				result.error = mtrk_event_validation_error::sysex_or_meta_invalid_length_field;
-				return result;
-			}
-		} else if ((result.type==smf_event_type::sysex_f0 
-						|| result.type==smf_event_type::sysex_f7)
-					&& max_size>=2) {
-			++p;  max_size-=1;  // 0xF0 || 0xF7
-			auto len = midi_interpret_vl_field(p,max_size);
-			if (!len.is_valid) {
-				result.type = smf_event_type::invalid;
-				result.error = mtrk_event_validation_error::sysex_or_meta_invalid_length_field;
-				return result;
-			}
-		}
-		result.type = smf_event_type::invalid;
-		result.error = mtrk_event_validation_error::event_size_exceeds_max;
-		return result;
-	}  // if (sz==0) {
-
-	result.size += sz;
-	return result;
-}
 validate_mtrk_event_result_t validate_mtrk_event_dtstart(
 			const unsigned char *p, unsigned char rs, uint32_t max_size) {
 	validate_mtrk_event_result_t result {};
@@ -360,95 +284,67 @@ validate_mtrk_event_result_t validate_mtrk_event_dtstart(
 		result.error = mtrk_event_validation_error::event_size_exceeds_max;
 		return result;
 	}
+	p+=dt.N;  max_size-=dt.N;
 	result.delta_t = dt.val;
-	max_size -= dt.N;
 	result.size += dt.N;
-	p += dt.N;
 
-	auto s = get_status_byte(*p,rs);
-	result.type = classify_status_byte(*p,rs);
-	if (result.type==smf_event_type::channel_mode 
-						|| result.type==smf_event_type::channel_voice) {
-		uint8_t event_length = 0;
-		auto n_data_bytes = channel_status_byte_n_data_bytes(s);
-		event_length += n_data_bytes;
-		if (is_channel_status_byte(*p)) {  // not running status; *p==status-byte
-			event_length += 1;
-			++p;
-		}
-		if (event_length > max_size) {
-			result.type = smf_event_type::invalid;
-			result.error = mtrk_event_validation_error::event_size_exceeds_max;
-			return result;
-		}
-		max_size -= event_length;
-		result.size += event_length;
-		// At this point, *p is the first data byte
-		// TODO:  Maybe this is best moved into validate_channel_event()?
-		for (int i=0; i<n_data_bytes; ++i) {
-			if (!is_data_byte(*p)) {
-				result.type = smf_event_type::invalid;
-				result.error = mtrk_event_validation_error::channel_event_missing_data_byte;
-				return result;
-			}
-			++p;
-		}
-		// p now points one _past_ the final data byte
-	} else if (result.type==smf_event_type::meta) {
-		if (max_size < 3) {  // 0xFF,type,len (len is @ least 1 byte)
-			result.type = smf_event_type::invalid;
-			result.error = mtrk_event_validation_error::event_size_exceeds_max;
-			return result;
-		}
-		p += 2;  // 0xFF, type-byte
-		result.size += 2;
-		max_size -= 2;
-		auto length_field = midi_interpret_vl_field(p,max_size);
-		if (!length_field.is_valid) {
-			result.type = smf_event_type::invalid;
-			result.error = mtrk_event_validation_error::sysex_or_meta_invalid_length_field;
-			return result;
-		}
-		if (max_size < (length_field.N + length_field.val)) {
-			result.type = smf_event_type::invalid;
-			result.error = mtrk_event_validation_error::event_size_exceeds_max;
-			return result;
-		}
-		result.size += (length_field.N + length_field.val);
-		max_size -= (length_field.N + length_field.val);
-	} else if (result.type == smf_event_type::sysex_f0 
-						|| result.type == smf_event_type::sysex_f7) {
-		if (max_size < 2) {  // 0xF0||0xF7,len (len is @ least 1 byte)
-			result.type = smf_event_type::invalid;
-			result.error = mtrk_event_validation_error::event_size_exceeds_max;
-			return result;
-		}
-		++p;  // 0xF0 || 0xF7
-		result.size += 1;
-		max_size -= 1;
-		auto length_field = midi_interpret_vl_field(p,max_size);
-		if (!length_field.is_valid) {
-			result.type = smf_event_type::invalid;
-			result.error = mtrk_event_validation_error::sysex_or_meta_invalid_length_field;
-			return result;
-		}
-		if (max_size < (length_field.N + length_field.val)) {
-			result.type = smf_event_type::invalid;
-			result.error = mtrk_event_validation_error::event_size_exceeds_max;
-			return result;
-		}
-		result.size += (length_field.N + length_field.val);
-		max_size -= (length_field.N + length_field.val);
-	} else if (result.type == smf_event_type::unrecognized) {
+	auto ev_type = classify_status_byte(*p,rs);
+	if (ev_type == smf_event_type::unrecognized
+			|| ev_type == smf_event_type::invalid) {
 		result.type = smf_event_type::invalid;
-		result.error = mtrk_event_validation_error::unable_to_determine_size;
-		return result;
-	} else {
-		result.type = smf_event_type::invalid;
-		result.error = mtrk_event_validation_error::unknown_error;
+		result.error = mtrk_event_validation_error::invalid_or_unrecognized_status_byte;
 		return result;
 	}
 
+	auto sz = mtrk_event_get_data_size(p,rs,max_size);
+	if ((sz==0) || (sz>max_size)) {  // Error condition
+		// There is no such thing as a 0-sized event.  
+		// mtrk_event_get_data_size() returns 0 in the event of an error 
+		// condition, ex, overflow of max_size.  
+		result.type = smf_event_type::invalid;
+		result.error = mtrk_event_validation_error::unknown_error;
+		
+		// Attempt to troubleshoot the error and set result.error to 
+		// something informative.  
+		if (ev_type == smf_event_type::channel_voice 
+						|| ev_type == smf_event_type::channel_mode) {
+			result.error = mtrk_event_validation_error::event_size_exceeds_max;
+		} else if (ev_type==smf_event_type::meta) {
+			if (max_size<2) {  // overflow in header
+				result.error = mtrk_event_validation_error::sysex_or_meta_overflow_in_header;
+			} else {  // no overflow in header
+				p+=2;  max_size-=2;  // 0xFF,type
+				auto len = midi_interpret_vl_field(p,max_size);
+				if (!len.is_valid) {
+					result.error = mtrk_event_validation_error::sysex_or_meta_invalid_length_field;
+				} else {
+					if ((len.N+len.val)>max_size) {
+						result.error = mtrk_event_validation_error::sysex_or_meta_length_implies_overflow;
+					}
+				}
+			}
+		} else if (ev_type==smf_event_type::sysex_f0 
+						|| ev_type==smf_event_type::sysex_f7) {
+			if (max_size < 1) {  // overflow in header
+				result.error = mtrk_event_validation_error::sysex_or_meta_overflow_in_header;
+			} else {  // no overflow in header
+				++p;  max_size-=1;  // 0xF0 || 0xF7
+				auto len = midi_interpret_vl_field(p,max_size);
+				if (!len.is_valid) {
+					result.error = mtrk_event_validation_error::sysex_or_meta_invalid_length_field;
+				} else {  // len field is valid
+					if ((len.N+len.val)>max_size) {
+						result.error = mtrk_event_validation_error::sysex_or_meta_length_implies_overflow;
+					}
+				}
+			}  // if (max_size < 1) 
+		}  // ev_type == sysex of some sort
+		return result;
+	}  // if ((sz==0) || (sz>max_size)) {  // Error condition
+
+	// No errors
+	result.type = ev_type;
+	result.size += sz;
 	result.error = mtrk_event_validation_error::no_error;
 	return result;
 }
@@ -547,6 +443,34 @@ unsigned char get_status_byte(unsigned char s, unsigned char rs) {
 
 
 
+uint32_t channel_event_get_data_size(const unsigned char *p, unsigned char rs) {
+	auto s = get_status_byte(*p,rs);
+	auto n = channel_status_byte_n_data_bytes(s);
+	if (*p==s) {
+		++n;  // Event-local status byte (not in running-status)
+	}
+	return n;
+}
+uint32_t meta_event_get_data_size(const unsigned char *p, uint32_t max_size) {
+	uint32_t n = 0;
+	if (max_size <= 2) {
+		return 0;
+	}
+	p += 2;  n += 2;  max_size -= 2;
+	auto len = midi_interpret_vl_field(p,max_size);
+	n += (len.N + len.val);
+	return n;
+}
+uint32_t sysex_event_get_data_size(const unsigned char *p, uint32_t max_size) {
+	uint32_t n = 0;
+	if (max_size <= 1) {
+		return 0;
+	}
+	p += 1;  n += 1;  max_size -= 1;
+	auto len = midi_interpret_vl_field(p,max_size);
+	n += (len.N + len.val);
+	return n;
+}
 
 uint32_t mtrk_event_get_data_size(const unsigned char *p, unsigned char rs,
 								uint32_t max_size) {
@@ -554,41 +478,15 @@ uint32_t mtrk_event_get_data_size(const unsigned char *p, unsigned char rs,
 	auto ev_type = classify_status_byte(*p,rs);  
 	if (ev_type==smf_event_type::channel_mode 
 						|| ev_type==smf_event_type::channel_voice) {
-		auto s = get_status_byte(*p,rs);
-		auto n = channel_status_byte_n_data_bytes(s);
-		if (*p==s) {  // event-local status byte (not in running-status)
-			n += 1;
-		}
-		if (n > max_size) {
-			return 0;
-		}
-		max_size-=n;  result+=n;
+		result += channel_event_get_data_size(p,rs);
 	} else if (ev_type==smf_event_type::meta) {
-		if (2>=max_size) {  // 0xFFu,type-byte
-			return 0;
-		}
-		p+=2;  result+=2;  max_size-=2;
-		auto len = midi_interpret_vl_field(p,max_size);
-		if ((!len.is_valid) || (len.N > max_size)) {
-			return 0;
-		}
-		result += (len.N + len.val);
+		result += meta_event_get_data_size(p,max_size);
 	} else if (ev_type==smf_event_type::sysex_f0
 						|| ev_type==smf_event_type::sysex_f7) {
-		if (1>=max_size) {  // 0xF0u||0xF7u
-			return 0;
-		}
-		p+=1;  result+=1;  max_size-=1;
-		auto len = midi_interpret_vl_field(p,max_size);
-		if ((!len.is_valid) || (len.N > max_size)) {
-			return 0;
-		}
-		result += (len.N + len.val);
-	} else {
-		// smf_event_type::invalid || ::unrecognized
+		result += sysex_event_get_data_size(p,max_size);
+	} else {  // smf_event_type::invalid || ::unrecognized
 		return 0;
 	}
-
 	return result;
 }
 uint32_t mtrk_event_get_size_dtstart(const unsigned char *p, unsigned char rs,
@@ -600,6 +498,7 @@ uint32_t mtrk_event_get_size_dtstart(const unsigned char *p, unsigned char rs,
 	max_size-=dt.N;  p+=dt.N;
 	return (dt.N + mtrk_event_get_data_size(p,rs,max_size));
 }
+// TODO:  Should deprecate this
 uint32_t mtrk_event_get_data_size_unsafe(const unsigned char *p, unsigned char rs) {
 	uint32_t result = 0;
 	auto ev_type = classify_status_byte(*p,rs);  

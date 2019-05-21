@@ -198,11 +198,12 @@ enum class smf_event_type : uint8_t {  // MTrk events
 };
 enum class mtrk_event_validation_error : uint8_t {
 	invalid_dt_field,
-	// ex, if classify_mtrk_event returns smf_event_type::unrecognized, which
-	// in itself is not an error.  
+	invalid_or_unrecognized_status_byte,
 	unable_to_determine_size,
 	channel_event_missing_data_byte,
+	sysex_or_meta_overflow_in_header,
 	sysex_or_meta_invalid_length_field,
+	sysex_or_meta_length_implies_overflow,
 	event_size_exceeds_max,
 	unknown_error,
 	no_error
@@ -216,10 +217,6 @@ struct validate_mtrk_event_result_t {
 // ptr, running-status, max_size
 // TODO:  This duplicates mtrk_event_get_data_size() & friends.  I attempt
 // to fix this a little in version 2
-validate_mtrk_event_result_t validate_mtrk_event_dtstart2(const unsigned char *,
-													unsigned char, uint32_t=0);
-validate_mtrk_event_result_t validate_mtrk_event2(const unsigned char *,
-													unsigned char, uint32_t=0);
 validate_mtrk_event_result_t validate_mtrk_event_dtstart(const unsigned char *,
 													unsigned char, uint32_t=0);
 std::string print(const smf_event_type&);
@@ -282,9 +279,13 @@ uint32_t mtrk_event_get_size_dtstart_unsafe(const unsigned char*, unsigned char=
 uint32_t mtrk_event_get_data_size_dtstart_unsafe(const unsigned char*, unsigned char=0x00u);
 //uint32_t mtrk_event_get_data_size_unsafe(const unsigned char*, unsigned char=0x00u);
 
-
-
-
+// The most lightweight data_size calculators in the lib.  No error 
+// checking (other than will not read past max_size).  Behavior is 
+// undefined if the input is otherwise invalid.  
+// ptr to the first byte past the delta-time field
+uint32_t channel_event_get_data_size(const unsigned char *, unsigned char);
+uint32_t meta_event_get_data_size(const unsigned char *, uint32_t);
+uint32_t sysex_event_get_data_size(const unsigned char *, uint32_t);
 
 
 // If p is not a valid midi event, returns 0x80u, which is an invalid data
