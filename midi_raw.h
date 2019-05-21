@@ -185,8 +185,9 @@ std::string print_error(const validate_mtrk_chunk_result_t&);
 // moving forward.  
 //
 enum class smf_event_type : uint8_t {  // MTrk events
-	channel_voice,
-	channel_mode,
+	channel,
+	//channel_voice,
+	//channel_mode,
 	sysex_f0,
 	sysex_f7,
 	meta,
@@ -222,7 +223,8 @@ validate_mtrk_event_result_t validate_mtrk_event_dtstart(const unsigned char *,
 std::string print(const smf_event_type&);
 
 // The most lightweight status-byte classifiers in the lib
-smf_event_type classify_status_byte(unsigned char, unsigned char=0x00u);
+smf_event_type classify_status_byte(unsigned char);
+smf_event_type classify_status_byte(unsigned char,unsigned char);
 // _any_ "status" byte, including sysex, meta, or channel_{voice,mode}.  
 // Returns true even for things like 0xF1u that are invalid in an smf.  
 // Same as !is_data_byte()

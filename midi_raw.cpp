@@ -171,6 +171,14 @@ validate_mtrk_chunk_result_t validate_mtrk_chunk(const unsigned char *p, uint32_
 			return result;
 		}
 		
+		// TODO:  What is below can be replaced w/ something like:
+		// rs = get_running_status(p+=curr_event.delta_t.N,rs,mtrk_data_size-i-dt.N)
+		// if (curr_event.error != no_error) { result.error=...; return error; }
+		// i += curr_event.size;
+		// p += curr_event.size;
+		// This removes the update-rs-logic into get_running_status(), where it
+		// should be.  
+
 		if (curr_event.type == smf_event_type::sysex_f0 
 					|| curr_event.type == smf_event_type::sysex_f7) {
 			// From the std (p.136):
@@ -199,8 +207,7 @@ validate_mtrk_chunk_result_t validate_mtrk_chunk(const unsigned char *p, uint32_
 					found_eot = true;
 				}
 			}
-		} else if (curr_event.type == smf_event_type::channel_voice 
-					|| curr_event.type == smf_event_type::channel_mode) {
+		} else if (curr_event.type == smf_event_type::channel) {
 			auto md = parse_channel_event(p,rs,mtrk_data_size);
 			if (!md.is_valid) {
 				result.error = mtrk_validation_error::event_error;
@@ -296,6 +303,9 @@ validate_mtrk_event_result_t validate_mtrk_event_dtstart(
 		return result;
 	}
 
+	// TODO:  mtrk_event_get_data_size() classifies the status byte, which
+	// i have already done.  Should switch on ev_type and call the appropriate
+	// size calc func.  
 	auto sz = mtrk_event_get_data_size(p,rs,max_size);
 	if ((sz==0) || (sz>max_size)) {  // Error condition
 		// There is no such thing as a 0-sized event.  
@@ -306,8 +316,7 @@ validate_mtrk_event_result_t validate_mtrk_event_dtstart(
 		
 		// Attempt to troubleshoot the error and set result.error to 
 		// something informative.  
-		if (ev_type == smf_event_type::channel_voice 
-						|| ev_type == smf_event_type::channel_mode) {
+		if (ev_type == smf_event_type::channel) {
 			result.error = mtrk_event_validation_error::event_size_exceeds_max;
 		} else if (ev_type==smf_event_type::meta) {
 			if (max_size<2) {  // overflow in header
@@ -363,10 +372,12 @@ uint8_t channel_status_byte_n_data_bytes(unsigned char s) {
 std::string print(const smf_event_type& et) {
 	if (et == smf_event_type::meta) {
 		return "meta";
-	} else if (et == smf_event_type::channel_voice) {
-		return "channel_voice";
-	} else if (et == smf_event_type::channel_mode) {
-		return "channel_mode";
+	} else if (et == smf_event_type::channel) {
+		return "channel";
+	//} else if (et == smf_event_type::channel_voice) {
+	//	return "channel_voice";
+	//} else if (et == smf_event_type::channel_mode) {
+	//	return "channel_mode";
 	} else if (et == smf_event_type::sysex_f0) {
 		return "sysex_f0";
 	} else if (et == smf_event_type::sysex_f7) {
@@ -379,16 +390,16 @@ std::string print(const smf_event_type& et) {
 }
 
 
-
-
-smf_event_type classify_status_byte(unsigned char s, unsigned char rs) {
-	s = get_status_byte(s,rs);
+// TODO:  Tjis is wrong.  Classification can not be made w/o checking
+// the first data byte
+smf_event_type classify_status_byte(unsigned char s) {
 	if (is_channel_status_byte(s)) {
-		if ((s&0xF0u)==0xB0u) {
-			return smf_event_type::channel_mode;
-		} else {
-			return smf_event_type::channel_voice;
-		}
+		return smf_event_type::channel;
+		//if ((s&0xF0u)==0xB0u) {
+		//	return smf_event_type::channel_mode;
+		//} else {
+		//	return smf_event_type::channel_voice;
+		//}
 	} else if (is_meta_status_byte(s)) {
 		return smf_event_type::meta;
 	} else if (is_sysex_status_byte(s)) {
@@ -400,8 +411,12 @@ smf_event_type classify_status_byte(unsigned char s, unsigned char rs) {
 	} else if (is_unrecognized_status_byte(s)) {
 		return smf_event_type::unrecognized;
 	} else {
-		smf_event_type::invalid;
+		return smf_event_type::invalid;
 	}
+}
+smf_event_type classify_status_byte(unsigned char s, unsigned char rs) {
+	s = get_status_byte(s,rs);
+	return classify_status_byte(s);
 }
 smf_event_type classify_mtrk_event_dtstart(const unsigned char *p,
 									unsigned char rs, uint32_t max_sz) {
@@ -476,8 +491,7 @@ uint32_t mtrk_event_get_data_size(const unsigned char *p, unsigned char rs,
 								uint32_t max_size) {
 	uint32_t result = 0;
 	auto ev_type = classify_status_byte(*p,rs);  
-	if (ev_type==smf_event_type::channel_mode 
-						|| ev_type==smf_event_type::channel_voice) {
+	if (ev_type==smf_event_type::channel) {
 		result += channel_event_get_data_size(p,rs);
 	} else if (ev_type==smf_event_type::meta) {
 		result += meta_event_get_data_size(p,max_size);
@@ -502,8 +516,7 @@ uint32_t mtrk_event_get_size_dtstart(const unsigned char *p, unsigned char rs,
 uint32_t mtrk_event_get_data_size_unsafe(const unsigned char *p, unsigned char rs) {
 	uint32_t result = 0;
 	auto ev_type = classify_status_byte(*p,rs);  
-	if (ev_type==smf_event_type::channel_mode 
-						|| ev_type==smf_event_type::channel_voice) {
+	if (ev_type==smf_event_type::channel) {
 		auto s = get_status_byte(*p,rs);
 		result += channel_status_byte_n_data_bytes(s);
 		if (*p==s) {  // event-local status byte (not in running-status)

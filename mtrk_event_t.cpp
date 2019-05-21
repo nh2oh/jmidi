@@ -139,8 +139,7 @@ const unsigned char *mtrk_event_t::payload() const {
 	const unsigned char *result = this->data();
 	result += midi_interpret_vl_field(result).N;
 
-	if (this->type()==smf_event_type::channel_mode
-				|| this->type()==smf_event_type::channel_voice) {
+	if (this->type()==smf_event_type::channel) {
 		//result is pointing at either an event-local status byte or
 		// the first data byte of the midi msg. 
 	} else if (this->type()==smf_event_type::meta) {
@@ -236,8 +235,7 @@ mtrk_event_t::midi_data_t mtrk_event_t::midi_data() const {
 	mtrk_event_t::midi_data_t result {};
 	result.is_valid = false;
 
-	if (this->type()==smf_event_type::channel_mode
-				|| this->type()==smf_event_type::channel_voice) {
+	if (this->type()==smf_event_type::channel) {
 		result.is_valid = true;
 		
 		auto dt = midi_interpret_vl_field(this->data());
@@ -315,8 +313,7 @@ bool mtrk_event_t::validate() const {
 	// Local midi_status_ field:  Tests are independent of is_big()/small()
 	// For midi events, this->midi_status_ must be == the status byte 
 	// applic to the event
-	if (this->type()==smf_event_type::channel_voice 
-			|| this->type()==smf_event_type::channel_mode) {
+	if (this->type()==smf_event_type::channel) {
 		// Present event is a midi event
 		auto p = this->data()+midi_vl_field_size(this->delta_time());
 		if (is_channel_status_byte(*p)) {  // not running status
