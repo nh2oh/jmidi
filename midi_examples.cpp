@@ -25,26 +25,26 @@ int midi_example() {
 
 	//std::string fn = "D:\\cpp\\nh2oh\\au\\gt_aulib\\test_data\\clementi_no_rs.mid";
 	//std::string fn = "D:\\cpp\\nh2oh\\au\\gt_aulib\\test_data\\tc_a_rs.mid";
-	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\CLEMENTI.MID";
+	std::string fn = "C:\\Users\\ben\\Desktop\\scr\\CLEMENTI.MID";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\A7.mid";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\test.mid";
-	std::string fn = "C:\\Users\\ben\\Desktop\\scr\\hallelujah_joy_to_the_world.mid";
+	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\hallelujah_joy_to_the_world.mid";
 	auto rawfiledata = dbk::readfile(fn).d;
 	//auto rawfiledata = dbk::readfile("C:\\Users\\ben\\Desktop\\scr\\test.mid").d;
 	auto rawfile_check_result = validate_smf(&rawfiledata[0],rawfiledata.size(),fn);
 
 	smf_t mf(rawfile_check_result);
 	
-	/*std::cout << print(mf) << std::endl << std::endl;
+	std::cout << print(mf) << std::endl << std::endl;
 	std::cout << print_tied_events(mf) << std::endl << std::endl;
 	auto lkdevs = link_note_events(mf);
-	std::cout << print(lkdevs) << std::endl;*/
+	std::cout << print(lkdevs) << std::endl;
 
-	auto s1 = print(mf);
+	/*auto s1 = print(mf);
 	auto s2 = print_tied_events(mf);
 	auto lkdevs = link_note_events(mf);
 	auto s3 = print(lkdevs);
-	std::cout << s1[s1.size()-2] << " " << s2[s2.size()-2] << " " << s3[s3.size()-2];
+	std::cout << s1[s1.size()-2] << " " << s2[s2.size()-2] << " " << s3[s3.size()-2];*/
 
 	//std::cout << print_events_chrono2(mf) << std::endl << std::endl;
 	//std::cout << print_notelist(mf.get_track(1)) << std::endl << std::endl;

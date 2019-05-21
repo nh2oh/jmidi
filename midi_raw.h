@@ -224,13 +224,14 @@ validate_mtrk_event_result_t validate_mtrk_event_dtstart(const unsigned char *,
 													unsigned char, uint32_t=0);
 std::string print(const smf_event_type&);
 
-//
-// True for status bytes invalid in an smf, ex, 0xF1u
-bool is_unrecognized_status_byte(const unsigned char);
+// The most lightweight status-byte classifiers in the lib
+smf_event_type classify_status_byte(unsigned char, unsigned char=0x00u);
 // _any_ "status" byte, including sysex, meta, or channel_{voice,mode}.  
 // Returns true even for things like 0xF1u that are invalid in an smf.  
 // Same as !is_data_byte()
 bool is_status_byte(const unsigned char);
+// True for status bytes invalid in an smf, ex, 0xF1u
+bool is_unrecognized_status_byte(const unsigned char);
 bool is_channel_status_byte(const unsigned char);
 bool is_sysex_status_byte(const unsigned char);
 bool is_meta_status_byte(const unsigned char);
@@ -256,8 +257,6 @@ unsigned char get_status_byte(unsigned char, unsigned char=0x00u);
 // 2) s indicates something that looks like a midi _data_ byte 
 //    (!(s&0x80u)), but !is_channel_status_byte(rs).  
 unsigned char get_running_status_byte(unsigned char, unsigned char=0x00u);
-// The most lightweight status-byte classifiers in the lib
-smf_event_type classify_mtrk_event(unsigned char, unsigned char=0x00u);
 // Returns smf_event_type::invalid if the dt field is invalid or if there is
 // a size-overrun error (ex, if the dt field is valid but dt.N==max_size).  
 // Only the status byte is examined; in no case are the data bytes of the

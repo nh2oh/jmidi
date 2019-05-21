@@ -299,7 +299,7 @@ validate_mtrk_event_result_t validate_mtrk_event2(
 	// TODO:  result.dt is left uninitialized
 	validate_mtrk_event_result_t result {};
 	
-	result.type = classify_mtrk_event(*p,rs);
+	result.type = classify_status_byte(*p,rs);
 	if (result.type == smf_event_type::unrecognized
 					|| result.type == smf_event_type::invalid) {
 		result.type = smf_event_type::invalid;
@@ -366,7 +366,7 @@ validate_mtrk_event_result_t validate_mtrk_event_dtstart(
 	p += dt.N;
 
 	auto s = get_status_byte(*p,rs);
-	result.type = classify_mtrk_event(*p,rs);
+	result.type = classify_status_byte(*p,rs);
 	if (result.type==smf_event_type::channel_mode 
 						|| result.type==smf_event_type::channel_voice) {
 		uint8_t event_length = 0;
@@ -485,7 +485,7 @@ std::string print(const smf_event_type& et) {
 
 
 
-smf_event_type classify_mtrk_event(unsigned char s, unsigned char rs) {
+smf_event_type classify_status_byte(unsigned char s, unsigned char rs) {
 	s = get_status_byte(s,rs);
 	if (is_channel_status_byte(s)) {
 		if ((s&0xF0u)==0xB0u) {
@@ -519,7 +519,7 @@ smf_event_type classify_mtrk_event_dtstart(const unsigned char *p,
 	}
 	p += dt.N;
 	max_sz -= dt.N;
-	return classify_mtrk_event(*p,rs);
+	return classify_status_byte(*p,rs);
 }
 unsigned char get_running_status_byte(unsigned char s, unsigned char rs) {
 	if (is_channel_status_byte(s)) {
@@ -551,7 +551,7 @@ unsigned char get_status_byte(unsigned char s, unsigned char rs) {
 uint32_t mtrk_event_get_data_size(const unsigned char *p, unsigned char rs,
 								uint32_t max_size) {
 	uint32_t result = 0;
-	auto ev_type = classify_mtrk_event(*p,rs);  
+	auto ev_type = classify_status_byte(*p,rs);  
 	if (ev_type==smf_event_type::channel_mode 
 						|| ev_type==smf_event_type::channel_voice) {
 		auto s = get_status_byte(*p,rs);
@@ -602,7 +602,7 @@ uint32_t mtrk_event_get_size_dtstart(const unsigned char *p, unsigned char rs,
 }
 uint32_t mtrk_event_get_data_size_unsafe(const unsigned char *p, unsigned char rs) {
 	uint32_t result = 0;
-	auto ev_type = classify_mtrk_event(*p,rs);  
+	auto ev_type = classify_status_byte(*p,rs);  
 	if (ev_type==smf_event_type::channel_mode 
 						|| ev_type==smf_event_type::channel_voice) {
 		auto s = get_status_byte(*p,rs);
