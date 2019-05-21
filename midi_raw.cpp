@@ -2,11 +2,8 @@
 #include "midi_vlq.h"
 #include "dbklib\byte_manipulation.h"
 #include <string>
-#include <array>
-#include <vector>
 #include <exception>
 #include <cstdint>
-#include <iostream>
 
 
 validate_chunk_header_result_t validate_chunk_header(const unsigned char *p, uint32_t max_size) {
@@ -343,6 +340,8 @@ std::string print(const smf_event_type& et) {
 		return "sysex_f7";
 	} else if (et == smf_event_type::invalid) {
 		return "invalid";
+	} else if (et == smf_event_type::unrecognized) {
+		return "unrecognized";
 	} else {
 		return "? smf_event_type";
 	}
@@ -370,28 +369,32 @@ smf_event_type classify_status_byte(unsigned char s, unsigned char rs) {
 	s = get_status_byte(s,rs);
 	return classify_status_byte(s);
 }
-smf_event_type classify_mtrk_event_dtstart(const unsigned char *p,
-									unsigned char rs, uint32_t max_sz) {
-	auto dt = midi_interpret_vl_field(p,max_sz);
-	if (dt.N >= max_sz || !dt.is_valid) {
-		// dt.N==max_sz => 0 bytes following the delta-time field, but the 
-		// smallest running-status channel_voice events have at least 1 data 
-		// byte.  The smallest meta, sysex events are 3 and 2 bytes 
-		// respectively.  
-		return smf_event_type::invalid;
-	}
-	p += dt.N;
-	max_sz -= dt.N;
-	return classify_status_byte(*p,rs);
+
+bool is_status_byte(const unsigned char s) {
+	return (s&0x80u) == 0x80u;
 }
-unsigned char get_running_status_byte(unsigned char s, unsigned char rs) {
-	if (is_channel_status_byte(s)) {
-		return s;  // channel event w/ event-local status byte
-	}
-	if (is_data_byte(s) && is_channel_status_byte(rs)) {
-		return rs;  // channel event in running-status
-	}
-	return 0x00u;  // An invalid status byte
+bool is_unrecognized_status_byte(const unsigned char s) {
+	// Returns true for things like 0xF1u that are "status bytes" but
+	// that are invalid in an smf.  
+	return is_status_byte(s) 
+		&& !is_channel_status_byte(s)
+		&& !is_sysex_or_meta_status_byte(s);
+}
+bool is_channel_status_byte(const unsigned char s) {
+	unsigned char sm = s&0xF0u;
+	return ((sm>=0x80u) && (sm!=0xF0u));
+}
+bool is_sysex_status_byte(const unsigned char s) {
+	return ((s==0xF0u) || (s==0xF7u));
+}
+bool is_meta_status_byte(const unsigned char s) {
+	return (s==0xFFu);
+}
+bool is_sysex_or_meta_status_byte(const unsigned char s) {
+	return (is_sysex_status_byte(s) || is_meta_status_byte(s));
+}
+bool is_data_byte(const unsigned char s) {
+	return ((s&0x80u)!=0x80u);
 }
 unsigned char get_status_byte(unsigned char s, unsigned char rs) {
 	if (is_status_byte(s)) {
@@ -409,9 +412,29 @@ unsigned char get_status_byte(unsigned char s, unsigned char rs) {
 	}
 	return 0x00u;  // An invalid status byte
 }
-
-
-
+unsigned char get_running_status_byte(unsigned char s, unsigned char rs) {
+	if (is_channel_status_byte(s)) {
+		return s;  // channel event w/ event-local status byte
+	}
+	if (is_data_byte(s) && is_channel_status_byte(rs)) {
+		return rs;  // channel event in running-status
+	}
+	return 0x00u;  // An invalid status byte
+}
+smf_event_type classify_mtrk_event_dtstart(const unsigned char *p,
+									unsigned char rs, uint32_t max_sz) {
+	auto dt = midi_interpret_vl_field(p,max_sz);
+	if (dt.N >= max_sz || !dt.is_valid) {
+		// dt.N==max_sz => 0 bytes following the delta-time field, but the 
+		// smallest running-status channel_voice events have at least 1 data 
+		// byte.  The smallest meta, sysex events are 3 and 2 bytes 
+		// respectively.  
+		return smf_event_type::invalid;
+	}
+	p += dt.N;
+	max_sz -= dt.N;
+	return classify_status_byte(*p,rs);
+}
 
 uint32_t channel_event_get_data_size(const unsigned char *p, unsigned char rs) {
 	auto s = get_status_byte(*p,rs);
@@ -467,8 +490,11 @@ uint32_t mtrk_event_get_size_dtstart(const unsigned char *p, unsigned char rs,
 	max_size-=dt.N;  p+=dt.N;
 	return (dt.N + mtrk_event_get_data_size(p,rs,max_size));
 }
-// TODO:  Should deprecate this
-uint32_t mtrk_event_get_data_size_unsafe(const unsigned char *p, unsigned char rs) {
+uint32_t mtrk_event_get_data_size_unsafe(const unsigned char *p,
+										unsigned char rs) {
+	// TODO:  This duplicates functionality in the 
+	// {meta,channel,...}_event_get_data_size(p,max_size) family of funcs, 
+	// because this family has no _unsafe_ variant.  
 	uint32_t result = 0;
 	auto ev_type = classify_status_byte(*p,rs);  
 	if (ev_type==smf_event_type::channel) {
@@ -492,12 +518,14 @@ uint32_t mtrk_event_get_data_size_unsafe(const unsigned char *p, unsigned char r
 	}
 	return result;
 }
-uint32_t mtrk_event_get_size_dtstart_unsafe(const unsigned char *p, unsigned char rs) {
+uint32_t mtrk_event_get_size_dtstart_unsafe(const unsigned char *p,
+											unsigned char rs) {
 	auto dt = midi_interpret_vl_field(p);
 	p+=dt.N;
 	return (dt.N + mtrk_event_get_data_size_unsafe(p,rs));
 }
-uint32_t mtrk_event_get_data_size_dtstart_unsafe(const unsigned char *p, unsigned char rs) {
+uint32_t mtrk_event_get_data_size_dtstart_unsafe(const unsigned char *p,
+												unsigned char rs) {
 	auto dt = midi_interpret_vl_field(p);
 	p+=dt.N;
 	return mtrk_event_get_data_size_unsafe(p,rs);
@@ -506,7 +534,8 @@ uint32_t mtrk_event_get_data_size_dtstart_unsafe(const unsigned char *p, unsigne
 
 
 
-unsigned char mtrk_event_get_midi_p1_dtstart_unsafe(const unsigned char *p, unsigned char s) {
+unsigned char mtrk_event_get_midi_p1_dtstart_unsafe(const unsigned char *p,
+													unsigned char s) {
 	p += midi_interpret_vl_field(p).N;
 	s = get_status_byte(*p,s);
 	if (!is_channel_status_byte(s)) { // p does not indicate a midi event
@@ -541,32 +570,6 @@ unsigned char mtrk_event_get_midi_p2_dtstart_unsafe(const unsigned char *p, unsi
 	}
 }
 
-bool is_status_byte(const unsigned char s) {
-	return (s&0x80u) == 0x80u;
-}
-bool is_unrecognized_status_byte(const unsigned char s) {
-	// Returns true for things like 0xF1u that are "status bytes" but
-	// that are invalid in an smf.  
-	return is_status_byte(s) 
-		&& !is_channel_status_byte(s)
-		&& !is_sysex_or_meta_status_byte(s);
-}
-bool is_channel_status_byte(const unsigned char s) {
-	unsigned char sm = s&0xF0u;
-	return ((sm>=0x80u) && (sm!=0xF0u));
-}
-bool is_sysex_status_byte(const unsigned char s) {
-	return ((s==0xF0u) || (s==0xF7u));
-}
-bool is_meta_status_byte(const unsigned char s) {
-	return (s==0xFFu);
-}
-bool is_sysex_or_meta_status_byte(const unsigned char s) {
-	return (is_sysex_status_byte(s) || is_meta_status_byte(s));
-}
-bool is_data_byte(const unsigned char s) {
-	return ((s&0x80u)!=0x80u);
-}
 
 
 

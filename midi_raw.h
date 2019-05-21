@@ -2,7 +2,6 @@
 #include "midi_vlq.h"
 #include <string>
 #include <vector>
-#include <array>
 #include <limits> // CHAR_BIT
 #include <type_traits> // std::enable_if<>, is_integral<>, is_unsigned<>
 #include <cstdint>
@@ -129,19 +128,45 @@ enum class mtrk_validation_error : uint8_t {
 };
 struct validate_mtrk_chunk_result_t {
 	// points at the 'M' of "MTrk"...
-	const unsigned char *p {nullptr};  
+	const unsigned char *p {nullptr};
+	// TODO:  The size,data_size relations claimed below are not always true,
+	// for example, where the header-reported size is > than the number of
+	// bytes before the end-of-track msg.  
 	// Always == reported size (data_length) + 8
 	uint32_t size {0};  
 	// The reported length; !including the "MTrk" and length fields
-	// Thus, always == size-8.  
+	// Thus, always == size-8.
 	uint32_t data_size {0};  
 	mtrk_validation_error error {mtrk_validation_error::unknown_error};
 };
 // ptr, max_size
 validate_mtrk_chunk_result_t validate_mtrk_chunk(const unsigned char*, uint32_t);
-//validate_mtrk_chunk_result_t validate_mtrk_chunk(const unsigned char*, uint32_t=0);
 std::string print_error(const validate_mtrk_chunk_result_t&);
 
+
+//
+// Why do i include "invalid," which is clearly not a member of the "class
+// of things-that-are-smf-events"?  Because users switch behavior on 
+// functions that return a value of this type (ex, while iterating through
+// an mtrk chunk, the type of event at the present position in the chunk
+// is detected by validate_mtrk_event_dtstart()).  I want to force users to 
+// deal with the error case rather than relying on the convention that some
+// kind of validate_mtrk_event_result.is_valid field be checked before 
+// moving forward.  
+//
+enum class smf_event_type : uint8_t {  // MTrk events
+	channel,
+	sysex_f0,
+	sysex_f7,
+	meta,
+	invalid,  // !is_status_byte() 
+	// is_status_byte() 
+	//     && (!is_channel_status_byte() && !is_meta_or_sysex_status_byte())
+	// Also, is_unrecognized_status_byte()
+	// Ex, s==0xF1u
+	unrecognized
+};
+std::string print(const smf_event_type&);
 //
 // validate_mtrk_event_dtstart()
 //
@@ -165,28 +190,6 @@ std::string print_error(const validate_mtrk_chunk_result_t&);
 // For any error condition whatsoever, returns smf_event_type::invalid.  
 // smf_event_type::unrecognized is _never_ returned.  Events that classify
 // as smf_event_type::unrecognized are reported as smf_event_type::invalid.  
-//
-// Why do i include "invalid," which is clearly not a member of the "class
-// of things-that-are-smf-events"?  Because users switch behavior on 
-// functions that return a value of this type (ex, while iterating through
-// an mtrk chunk, the type of event at the present position in the chunk
-// is detected by validate_mtrk_event_dtstart()).  I want to force users to 
-// deal with the error case rather than relying on the convention that some
-// kind of validate_mtrk_event_result.is_valid field be checked before 
-// moving forward.  
-//
-enum class smf_event_type : uint8_t {  // MTrk events
-	channel,
-	sysex_f0,
-	sysex_f7,
-	meta,
-	invalid,  // !is_status_byte() 
-	// is_status_byte() 
-	//     && (!is_channel_status_byte() && !is_meta_or_sysex_status_byte())
-	// Also, is_unrecognized_status_byte()
-	// Ex, s==0xF1u
-	unrecognized
-};
 enum class mtrk_event_validation_error : uint8_t {
 	invalid_dt_field,
 	invalid_or_unrecognized_status_byte,
@@ -209,7 +212,6 @@ struct validate_mtrk_event_result_t {
 // ptr, running-status, max_size
 validate_mtrk_event_result_t validate_mtrk_event_dtstart(const unsigned char *,
 													unsigned char, uint32_t=0);
-std::string print(const smf_event_type&);
 
 // The most lightweight status-byte classifiers in the lib
 smf_event_type classify_status_byte(unsigned char);
@@ -233,19 +235,19 @@ bool is_data_byte(const unsigned char);
 // occurs if !is_status_byte(s) && !is_channel_status_byte(rs).  
 unsigned char get_status_byte(unsigned char, unsigned char);
 // get_running_status_byte(s,rs)
-// The status byte that the present event imparts to the stream.  For meta
-// or sysex events, returns 0x00u (these events reset the running-status).  
-// Also returns 0x00u where the event-local status byte is valid, but 
-// "unrecognized," ex, 0xF1u.  
-// For channel events, returns the status byte applicible to the event as
-// determined by get_status_byte(s,rs).  
+// The status byte that the present event imparts to the stream.  In
+// general, this is _not_ the status byte applicable to the event w/
+// status byte == s: for meta or sysex events, will return 0x00u instead
+// of 0xFFu, 0xF0u, 0xF7u, since these events reset the running-status.  
+// Also returns 0x00u where the event-local status byte s is valid but 
+// "unrecognized," ex, s==0xF1u.  Only for channel events is the byte
+// applicable to the event the same as the running-status imparted to the
+// stream.  
 // Hence, always returns either a valid channel status byte, or returns 
 // 0x00u.  If 0x00u, either:
-// 1) s indicates a sysex_f0/f7 or meta event (=> s==0xF0u||0xF7u||0xFFu),
-//    or s is a valid but unrecognized status byte, ex, s==0xF1u.
+// 1) s indicates a sysex_f0/f7, meta or valid but unrecognized status byte.  
 // or,
-// 2) s is a midi _data_ byte (!(s&0x80u)), and 
-//    !is_channel_status_byte(rs).  
+// 2) s is a midi _data_ byte (!(s&0x80u)), and !is_channel_status_byte(rs).  
 unsigned char get_running_status_byte(unsigned char, unsigned char);
 // Returns smf_event_type::invalid if the dt field is invalid or if there is
 // a size-overrun error (ex, if the dt field is valid but dt.N==max_size).  
@@ -255,7 +257,13 @@ unsigned char get_running_status_byte(unsigned char, unsigned char);
 smf_event_type classify_mtrk_event_dtstart(const unsigned char *, 
 										unsigned char=0x00u, uint32_t=0);
 
-
+// The most lightweight data_size calculators in the lib.  No error 
+// checking (other than will not read past max_size).  Behavior is 
+// undefined if the input is otherwise invalid.  
+// ptr to the first byte past the delta-time field
+uint32_t channel_event_get_data_size(const unsigned char *, unsigned char);
+uint32_t meta_event_get_data_size(const unsigned char *, uint32_t);
+uint32_t sysex_event_get_data_size(const unsigned char *, uint32_t);
 //
 // Returns 0 if p points at smf_event_type::invalid || ::unrecognized, or
 // if the size of the event would exceed max_size.  Note that 0 is always
@@ -273,13 +281,11 @@ uint32_t mtrk_event_get_data_size_dtstart_unsafe(const unsigned char*, unsigned 
 // Implements table I of the midi std
 uint8_t channel_status_byte_n_data_bytes(unsigned char);
 
-// The most lightweight data_size calculators in the lib.  No error 
-// checking (other than will not read past max_size).  Behavior is 
-// undefined if the input is otherwise invalid.  
-// ptr to the first byte past the delta-time field
-uint32_t channel_event_get_data_size(const unsigned char *, unsigned char);
-uint32_t meta_event_get_data_size(const unsigned char *, uint32_t);
-uint32_t sysex_event_get_data_size(const unsigned char *, uint32_t);
+
+
+
+
+
 
 
 // If p is not a valid midi event, returns 0x80u, which is an invalid data
@@ -334,10 +340,8 @@ enum class channel_msg_type : uint8_t {
 	channel_mode,
 	invalid
 };
-channel_msg_type mtrk_event_get_ch_msg_type_dtstart_unsafe(const unsigned char*, unsigned char=0x00u);
-// NB:  validate_mtrk_chunk() keeps track of the most recent status byte by assigning from the 
-// status_byte field of this struct.  Change this before adopting any sort of sign convention for
-// implied running_status.  
+channel_msg_type mtrk_event_get_ch_msg_type_dtstart_unsafe(const unsigned char*,
+	unsigned char=0x00u);
 struct parse_channel_event_result_t {
 	bool is_valid {false};
 	channel_msg_type type {channel_msg_type::invalid};

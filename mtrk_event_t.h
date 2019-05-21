@@ -2,7 +2,7 @@
 #include "midi_raw.h"
 #include <string>
 #include <cstdint>
-#include <vector>
+#include <array>
 
 
 
@@ -15,7 +15,11 @@
 // linking note pairs, pairs of corresponding on and off events are collected
 // into a vector of linked events.  
 //
-// 
+// If midi_status_ held the first byte following the delta-time in all cases
+// (including for sysex,meta,etc events), it would be _way_ more effecient to
+// determine the object type dynamically.  One would not have to process the
+// delta-time field.  Presumably .type() is the most common method called on
+// these objects.  
 //
 class mtrk_event_t {
 public:
