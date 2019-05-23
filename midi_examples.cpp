@@ -6,6 +6,7 @@
 #include "mtrk_event_t.h"
 #include "smf_container_t.h"
 #include "midi_container.h"
+#include "smf_t.h";
 #include "dbklib\binfile.h"
 #include "dbklib\byte_manipulation.h"
 #include <iostream>
@@ -23,9 +24,17 @@ int midi_example() {
 	//testdata::print_meta_tests(mt_tests);
 	//testdata::print_midi_test_cases();
 
+	std::string fn = "C:\\Users\\ben\\Desktop\\scr\\CLEMENTI.MID";
+	auto maybesmf2 = read_smf2(fn);
+	if (!maybesmf2) {
+		std::cout << "nope :(" << std::endl;
+		std::abort();
+	}
+
+
 	//std::string fn = "D:\\cpp\\nh2oh\\au\\gt_aulib\\test_data\\clementi_no_rs.mid";
 	//std::string fn = "D:\\cpp\\nh2oh\\au\\gt_aulib\\test_data\\tc_a_rs.mid";
-	std::string fn = "C:\\Users\\ben\\Desktop\\scr\\CLEMENTI.MID";
+	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\CLEMENTI.MID";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\A7.mid";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\test.mid";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\hallelujah_joy_to_the_world.mid";

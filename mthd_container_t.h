@@ -59,24 +59,27 @@ std::string print(const mthd_view_t&);
 
 //
 // Owns the underlying data
-// Methods alias to those in mthd_view_t & simply use the embedded
-// view object v_ to call the corresponding view functions.  
+// Methods create a temporary mthd_view_t & call the appropriate member
+// function.  
 //
 class mthd_t {
 public:
-	mthd_t();
 	uint16_t format() const;
 	uint16_t ntrks() const;
 	uint16_t division() const;
 
 	// Does not include the 4 byte "MThd" and 4 byte data-length fields
-	uint32_t data_length() const;
+	uint32_t data_size() const;
 	// Includes the "MThd" and 4-byte data-length fields; not d_.size(),
 	// since d_ could easily be over-allocated
-	uint32_t size() const;	
+	uint32_t size() const;
+
+	mthd_view_t get_view() const;
+
+	bool set(const std::vector<unsigned char>&);
+	bool set(const validate_mthd_chunk_result_t&);
 private:
-	mthd_view_t v_;
-	std::vector<unsigned char> d_;
+	std::vector<unsigned char> d_ {};
 };
 
 

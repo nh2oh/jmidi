@@ -44,13 +44,14 @@ private:
 };
 std::string print(const smf_t&);
 
+/*
 struct maybe_smf_t {
 	std::string error {"No error"};
 	smf_t smf;
 	operator bool() const;
 };
 maybe_smf_t read_smf(const std::string&);
-
+*/
 // Draft of the the chrono_iterator
 std::string print_events_chrono(const smf_t&);
 // Uses the iterator

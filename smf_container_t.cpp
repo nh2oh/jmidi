@@ -124,9 +124,9 @@ std::string print(const smf_t& smf) {
 	return s;
 }
 
-maybe_smf_t::operator bool() const {
+/*maybe_smf_t::operator bool() const {
 	return this->error == "No error";
-}
+}*/
 
 
 std::string print_events_chrono2(const smf_t& smf) {

@@ -2,8 +2,9 @@
 #include "dbklib\byte_manipulation.h"
 #include <cstdint>
 #include <string>
-
-
+#include <vector>
+#include <algorithm>
+#include <iterator>
 
 
 
@@ -53,6 +54,46 @@ std::string print(const mthd_view_t& mthd) {
 
 	return s;
 }
+
+
+
+uint16_t mthd_t::format() const {
+	auto tv = mthd_view_t(this->d_.data(),this->d_.size());
+	return tv.format();
+}
+uint16_t mthd_t::ntrks() const {
+	auto tv = mthd_view_t(this->d_.data(),this->d_.size());
+	return tv.ntrks();
+}
+uint16_t mthd_t::division() const {
+	auto tv = mthd_view_t(this->d_.data(),this->d_.size());
+	return tv.division();
+}
+uint32_t mthd_t::data_size() const {
+	auto tv = mthd_view_t(this->d_.data(),this->d_.size());
+	return tv.data_length();
+}
+uint32_t mthd_t::size() const {
+	return this->d_.size();
+}
+mthd_view_t mthd_t::get_view() const {
+	return mthd_view_t(this->d_.data(),this->d_.size());
+}
+bool mthd_t::set(const std::vector<unsigned char>& d) {
+	this->d_ = d;
+	return true;
+}
+bool mthd_t::set(const validate_mthd_chunk_result_t& mthd_val) {
+	if (mthd_val.error==mthd_validation_error::no_error) {
+		this->d_.clear();
+		this->d_.reserve(mthd_val.size);
+		std::copy(mthd_val.p,mthd_val.p+mthd_val.size,
+			std::back_inserter(this->d_));
+		return true;
+	}
+	return false;
+}
+
 
 
 //
