@@ -2,6 +2,7 @@
 #include "midi_raw.h"
 #include "mthd_container_t.h"
 #include "mtrk_event_t.h"
+#include "mtrk_t.h"
 #include <string>
 #include <cstdint>
 #include <vector>
@@ -27,16 +28,16 @@ public:
 	std::string fname() const;
 
 	mthd_view_t get_header_view() const;
-	const std::vector<mtrk_event_t>& get_track(int) const;
+	const mtrk_t& get_track(int) const;
 	
 	void set_fname(const std::string&);
 	void set_mthd(const validate_mthd_chunk_result_t&);
-	void append_mtrk(const std::vector<mtrk_event_t>&);
+	void append_mtrk(const mtrk_t&);
 	void append_uchk(const std::vector<unsigned char>&);
 private:
 	std::string fname_ {};
 	mthd_t mthd_ {};
-	std::vector<std::vector<mtrk_event_t>> mtrks_ {};
+	std::vector<mtrk_t> mtrks_ {};
 	std::vector<std::vector<unsigned char>> uchks_ {};
 };
 std::string print(const smf2_t&);
@@ -48,12 +49,12 @@ struct maybe_smf2_t {
 };
 maybe_smf2_t read_smf2(const std::string&);
 
-struct maybe_mtrk_vector_t {
+struct maybe_mtrk_t {
 	std::string error {"No error"};
-	std::vector<mtrk_event_t> mtrk;
+	mtrk_t mtrk;
 	operator bool() const;
 };
-maybe_mtrk_vector_t make_mtrk_event_vector(const unsigned char*, uint32_t);
+maybe_mtrk_t make_mtrk(const unsigned char*, uint32_t);
 
 
 

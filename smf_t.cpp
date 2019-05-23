@@ -69,7 +69,7 @@ std::string smf2_t::fname() const {
 mthd_view_t smf2_t::get_header_view() const {
 	return this->mthd_.get_view();
 }
-const std::vector<mtrk_event_t>& smf2_t::get_track(int trackn) const {
+const mtrk_t& smf2_t::get_track(int trackn) const {
 	return this->mtrks_[trackn];
 }
 
@@ -80,7 +80,7 @@ void smf2_t::set_fname(const std::string& fname) {
 void smf2_t::set_mthd(const validate_mthd_chunk_result_t& val_mthd) {
 	this->mthd_.set(val_mthd);
 }
-void smf2_t::append_mtrk(const std::vector<mtrk_event_t>& mtrk) {
+void smf2_t::append_mtrk(const mtrk_t& mtrk) {
 	this->mtrks_.push_back(mtrk);
 }
 void smf2_t::append_uchk(const std::vector<unsigned char>& uchk) {
@@ -105,17 +105,15 @@ std::string print(const smf2_t& smf) {
 
 	// where smf.get_track_view(i) => mtrk_view_t
 	for (int i=0; i<smf.ntrks(); ++i) {
-		const std::vector<mtrk_event_t>& curr_trk = smf.get_track(i);
+		const mtrk_t& curr_trk = smf.get_track(i);
 		s += ("Track (MTrk) " + std::to_string(i) 
 				+ "\t(data_size = " + std::to_string(curr_trk.size())
 				+ ", size = " + std::to_string(curr_trk.size()) + "):\n");
-		for (const auto& e : curr_trk) {
-			auto curr_trk = smf.get_track_view(i);
-			
-			s += print(curr_trk);
-			s += "\n";
-		}
+		s += print(curr_trk);
+		s += "\n";
 	}
+
+	return s;
 }
 
 
@@ -154,48 +152,44 @@ maybe_smf2_t read_smf2(const std::string& fn) {
 	//std::vector<std::vector<unsigned char>> mtrks_raw {};
 	//std::vector<std::vector<unsigned char>> uchks_raw {};
 
-	int32_t o {0};
+	uint32_t o {0};
+	const unsigned char *p = fdata.data();
+	auto curr_chunk = validate_chunk_header(p,fdata.size());
+	if (curr_chunk.type != chunk_type::header) {
+		result.error += "curr_chunk.type != chunk_type::header at offset 0.  ";
+		result.error += "A valid midi file must begin w/ an MThd chunk.  \n";
+		return result;
+	}
+	auto val_mthd = validate_mthd_chunk(p,curr_chunk.size-o);
+	if (val_mthd.error!=mthd_validation_error::no_error) {
+		result.error += "val_mthd.error!=mthd_validation_error::no_error\n";
+		return result;
+	}
+	result.smf.set_mthd(val_mthd);
+
+	o += curr_chunk.size;
 	while (o<fdata.size()) {
-		auto curr_chunk = validate_chunk_header(fdata.data()+o,fdata.size()-o);
-		if (curr_chunk.type == chunk_type::invalid) {
-			result.error += "curr_chunk.type == chunk_type::invalid\ncurr_chunk_type.msg== ";
-			result.error += print_error(curr_chunk);
-			return result;
-		} else if (curr_chunk.type == chunk_type::header) {
-			if (o > 0) {
-				result.error += "curr_chunk.type == chunk_type::header but offset > 0.  ";
-				result.error += "A valid midi file must contain only one MThd @ the very start.  \n";
-				return result;
-			}
-			auto val_mthd = validate_mthd_chunk(fdata.data()+o,curr_chunk.size);
-			if (val_mthd.error!=mthd_validation_error::no_error) {
-				result.error += "val_mthd.error!=mthd_validation_error::no_error\n";
-				return result;
-			}
-			result.smf.set_mthd(val_mthd);
-		} else if (curr_chunk.type == chunk_type::track) {
-			if (o == 0) {
-				result.error += "curr_chunk.type == chunk_type::track but offset == 0.  ";
-				result.error += "A valid midi file must begin w/an MThd chunk.  \n";
-				return result;
-			}
-			auto curr_mtrk = make_mtrk_event_vector(fdata.data()+o,curr_chunk.size);
+		const unsigned char *curr_p = p+o;
+		uint32_t curr_max_sz = fdata.size()-o;
+		auto curr_chunk = validate_chunk_header(curr_p,curr_max_sz);
+
+		if (curr_chunk.type == chunk_type::track) {
+			auto curr_mtrk = make_mtrk(curr_p,curr_max_sz);
 			if (!curr_mtrk) {
-				result.error = "!currmaybemtrk";
+				result.error = "!curr_mtrk";
 				return result;
 			}
 			result.smf.append_mtrk(curr_mtrk.mtrk);
 		} else if (curr_chunk.type == chunk_type::unknown) {
-			if (o == 0) {
-				result.error += "curr_chunk.type == chunk_type::unknown but offset == 0.  ";
-				result.error += "A valid midi file must begin w/an MThd chunk.  \n";
-				return result;
-			}
 			std::vector<unsigned char> curr_uchk {};
-			std::copy(fdata.data()+o,fdata.data()+o+curr_chunk.size,
+			std::copy(curr_p,curr_p+curr_chunk.size,
 				std::back_inserter(curr_uchk));
 			result.smf.append_uchk(curr_uchk);
+		} else {
+			result.error = "curr_chunk.type != track || unknown";
+			return result;
 		}
+
 		o += curr_chunk.size;
 	}
 	// Would indicate the file is zero-padded after the final mtrk
@@ -207,12 +201,12 @@ maybe_smf2_t read_smf2(const std::string& fn) {
 	return result;
 }
 
-maybe_mtrk_vector_t::operator bool() const {
+maybe_mtrk_t::operator bool() const {
 	return this->error=="No error";
 }
 
-maybe_mtrk_vector_t make_mtrk_event_vector(const unsigned char *p, uint32_t max_sz) {
-	maybe_mtrk_vector_t result {};
+maybe_mtrk_t make_mtrk(const unsigned char *p, uint32_t max_sz) {
+	maybe_mtrk_t result {};
 	auto chunk_detect = validate_chunk_header(p,max_sz);
 	if (chunk_detect.type != chunk_type::track) {
 		result.error = "chunk_detect.type != chunk_type::track";
@@ -225,22 +219,23 @@ maybe_mtrk_vector_t make_mtrk_event_vector(const unsigned char *p, uint32_t max_
 	// chunk_detect.data_size bytes if the chunk is 0-padded past the end of 
 	// the end-of-track msg.  
 	bool found_eot = false;
-	uint32_t mtrk_data_size = chunk_detect.data_size;
 	uint32_t o = 8;  // offset into the chunk data section; skip "MTrk" & the 4-byte length
 	unsigned char rs {0};  // value of the running-status
 	validate_mtrk_event_result_t curr_event;
-	while ((o<chunk_detect.data_size) && !found_eot) {
+	while ((o<chunk_detect.size) && !found_eot) {
 		const unsigned char *curr_p = p+o;  // ptr to start of present event
-		uint32_t curr_max_sz = chunk_detect.data_size-o;  // max excursion for present event beyond p
+		uint32_t curr_max_sz = chunk_detect.size-o;  // max excursion for present event beyond p
 		
-		curr_event = validate_mtrk_event_dtstart(curr_p,curr_max_sz,rs);
+		curr_event = validate_mtrk_event_dtstart(curr_p,rs,curr_max_sz);
 		if (curr_event.error!=mtrk_event_validation_error::no_error) {
 			result.error = "mtrk_validation_error::event_error";
 			return result;
 		}
 
 		rs = curr_event.running_status;
-		result.mtrk.push_back(mtrk_event_t(curr_p,rs,curr_max_sz));
+		auto curr_mtrk_event = mtrk_event_t(curr_p,curr_event.size,rs);
+		//std::cout << print(curr_mtrk_event) << std::endl;
+		result.mtrk.push_back(curr_mtrk_event);
 
 		if (curr_event.type==smf_event_type::meta) {  // Test for end-of-track msg
 			if (curr_event.size>=4) {
