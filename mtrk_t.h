@@ -5,6 +5,9 @@
 #include <vector>
 
 
+struct maybe_mtrk_t;
+class mtrk_t;
+
 //
 // mtrk_t
 //
@@ -24,13 +27,22 @@ public:
 
 	void push_back(const mtrk_event_t&);
 
+	friend maybe_mtrk_t make_mtrk(const unsigned char*, uint32_t);
+private:
+	uint32_t data_size_ {};
+	std::vector<mtrk_event_t> evnts_ {};
+
+	// "Unsafe" setters; set_events() does not update this->data_size_
 	void set_events(const std::vector<mtrk_event_t>&);
 	void set_data_size(uint32_t);
-private:
-	uint32_t hdr_data_size_ {};
-	std::vector<mtrk_event_t> evnts_ {};
 };
 std::string print(const mtrk_t&);
 
+maybe_mtrk_t make_mtrk(const unsigned char*, uint32_t);
+struct maybe_mtrk_t {
+	std::string error {"No error"};
+	mtrk_t mtrk;
+	operator bool() const;
+};
 
 

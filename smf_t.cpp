@@ -146,13 +146,7 @@ maybe_smf2_t read_smf2(const std::string& fn) {
 
 	result.smf.set_fname(fn);
 
-	// Run validate_chunk_header() on the fdata to find the chunk boundaries
-	// and verify sizes.  
-	//mthd_t mthd {};
-	//std::vector<std::vector<unsigned char>> mtrks_raw {};
-	//std::vector<std::vector<unsigned char>> uchks_raw {};
-
-	uint32_t o {0};
+	uint32_t o {0};  // Global offset into the fdata vector
 	const unsigned char *p = fdata.data();
 	auto curr_chunk = validate_chunk_header(p,fdata.size());
 	if (curr_chunk.type != chunk_type::header) {
@@ -168,7 +162,10 @@ maybe_smf2_t read_smf2(const std::string& fn) {
 	result.smf.set_mthd(val_mthd);
 
 	o += curr_chunk.size;
-	while (o<fdata.size()) {
+	// Note: Loop terminates based on fdata.size(), not on the number of 
+	// chunks read; mthd_.ntrks() reports the number of track chunks, but not
+	// the number of other chunk types.  
+	while (o<fdata.size()) {  
 		const unsigned char *curr_p = p+o;
 		uint32_t curr_max_sz = fdata.size()-o;
 		auto curr_chunk = validate_chunk_header(curr_p,curr_max_sz);
@@ -182,6 +179,7 @@ maybe_smf2_t read_smf2(const std::string& fn) {
 			result.smf.append_mtrk(curr_mtrk.mtrk);
 		} else if (curr_chunk.type == chunk_type::unknown) {
 			std::vector<unsigned char> curr_uchk {};
+			curr_uchk.reserve(curr_chunk.size);
 			std::copy(curr_p,curr_p+curr_chunk.size,
 				std::back_inserter(curr_uchk));
 			result.smf.append_uchk(curr_uchk);
@@ -192,68 +190,10 @@ maybe_smf2_t read_smf2(const std::string& fn) {
 
 		o += curr_chunk.size;
 	}
-	// Would indicate the file is zero-padded after the final mtrk
+	// If o<fdata.size(), might indicate the file is zero-padded after 
+	// the final mtrk chunk.  o>fdata.size() is clearly an error.  
 	if (o != fdata.size()) {
 		result.error = "offset != fdata.size().";
-		return result;
-	}
-
-	return result;
-}
-
-maybe_mtrk_t::operator bool() const {
-	return this->error=="No error";
-}
-
-maybe_mtrk_t make_mtrk(const unsigned char *p, uint32_t max_sz) {
-	maybe_mtrk_t result {};
-	auto chunk_detect = validate_chunk_header(p,max_sz);
-	if (chunk_detect.type != chunk_type::track) {
-		result.error = "chunk_detect.type != chunk_type::track";
-		return result;
-	}
-	
-	// Process the data section of the mtrk chunk until the number of bytes
-	// processed == chunk_detect.data_size, or an end-of-track meta event is
-	// encountered.  Note that an end-of-track could be hit before processing
-	// chunk_detect.data_size bytes if the chunk is 0-padded past the end of 
-	// the end-of-track msg.  
-	bool found_eot = false;
-	uint32_t o = 8;  // offset into the chunk data section; skip "MTrk" & the 4-byte length
-	unsigned char rs {0};  // value of the running-status
-	validate_mtrk_event_result_t curr_event;
-	while ((o<chunk_detect.size) && !found_eot) {
-		const unsigned char *curr_p = p+o;  // ptr to start of present event
-		uint32_t curr_max_sz = chunk_detect.size-o;  // max excursion for present event beyond p
-		
-		curr_event = validate_mtrk_event_dtstart(curr_p,rs,curr_max_sz);
-		if (curr_event.error!=mtrk_event_validation_error::no_error) {
-			result.error = "mtrk_validation_error::event_error";
-			return result;
-		}
-
-		rs = curr_event.running_status;
-		auto curr_mtrk_event = mtrk_event_t(curr_p,curr_event.size,rs);
-		//std::cout << print(curr_mtrk_event) << std::endl;
-		result.mtrk.push_back(curr_mtrk_event);
-
-		if (curr_event.type==smf_event_type::meta) {  // Test for end-of-track msg
-			if (curr_event.size>=4) {
-				uint32_t last_four = dbk::be_2_native<uint32_t>(curr_p+curr_event.size-4);
-				if ((last_four&0x00FFFFFFu)==0x00FF2F00u) {
-					found_eot = true;
-				}
-			}
-		}
-		o += curr_event.size;
-	}
-
-	// The final event must be a meta-end-of-track msg.  
-	// Note that it is possible that found_eot==true even though 
-	// o<mtrk_data_size.  I am allowing for this (which could perhaps => that 
-	// the track is 0-padded after the end-of-track msg).  
-	if (!found_eot) {
-		result.error = "mtrk_validation_error::no_end_of_track";
 		return result;
 	}
 

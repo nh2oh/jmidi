@@ -49,12 +49,7 @@ struct maybe_smf2_t {
 };
 maybe_smf2_t read_smf2(const std::string&);
 
-struct maybe_mtrk_t {
-	std::string error {"No error"};
-	mtrk_t mtrk;
-	operator bool() const;
-};
-maybe_mtrk_t make_mtrk(const unsigned char*, uint32_t);
+
 
 
 
