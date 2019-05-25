@@ -41,9 +41,11 @@ public:
 	uint16_t division() const;
 
 	// Does not include the 4 byte "MThd" and 4 byte data-length fields
-	uint32_t data_length() const;
+	uint32_t data_size() const;
 	// Includes the "MThd" and 4-byte data-length fields
-	uint32_t size() const;	
+	uint32_t size() const;
+
+	const unsigned char *raw_data() const;
 private:
 	// Second arg is the _exact_ size, not a max size
 	mthd_view_t(const unsigned char *, uint32_t);
@@ -81,7 +83,7 @@ public:
 private:
 	std::vector<unsigned char> d_ {};
 };
-
+std::string print(const mthd_t&);
 
 
 

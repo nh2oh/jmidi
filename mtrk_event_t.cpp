@@ -497,10 +497,10 @@ smf_event_type mtrk_event_t::set_big_cached_smf_event_type(smf_event_type t) {
 
 std::string print(const mtrk_event_t& evnt, mtrk_sbo_print_opts opts) {
 	std::string s {};
-	s += ("delta_time == " + std::to_string(evnt.delta_time()) + ", ");
-	s += ("type == " + print(evnt.type()) + ", ");
-	s += ("data_size == " + std::to_string(evnt.data_size()) + ", ");
-	s += ("size == " + std::to_string(evnt.size()) + "\n\t");
+	s += ("delta_time = " + std::to_string(evnt.delta_time()) + ", ");
+	s += ("type = " + print(evnt.type()) + ", ");
+	s += ("data_size = " + std::to_string(evnt.data_size()) + ", ");
+	s += ("size = " + std::to_string(evnt.size()) + "\n\t");
 
 	auto ss = evnt.size();
 	auto ds = evnt.data_size();
@@ -512,14 +512,14 @@ std::string print(const mtrk_event_t& evnt, mtrk_sbo_print_opts opts) {
 	if (opts == mtrk_sbo_print_opts::debug) {
 		s += "\n\t";
 		if (evnt.is_small()) {
-			s += "sbo=>small == ";
+			s += "sbo=>small = ";
 		} else {
-			s += "sbo=>big   == ";
+			s += "sbo=>big   = ";
 		}
 		s += "{";
 		s += dbk::print_hexascii(evnt.raw_data(), sizeof(mtrk_event_t), ' ');
 		s += "}; \n";
-		s += "\tbigsmall_flag==";
+		s += "\tbigsmall_flag = ";
 		s += dbk::print_hexascii(evnt.raw_flag(), 1, ' ');
 	}
 	return s;

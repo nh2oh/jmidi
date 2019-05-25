@@ -11,7 +11,7 @@ class mtrk_t;
 //
 // mtrk_t
 //
-// Holds an mtrk; owns the underlying data.  Stores the eent sequence as
+// Holds an mtrk; owns the underlying data.  Stores the event sequence as
 // a std::vector<mtrk_event_t>.  
 //
 class mtrk_t {
@@ -38,6 +38,8 @@ private:
 };
 std::string print(const mtrk_t&);
 
+// Declaration matches the in-class friend declaration to make the 
+// name visible for lookup outside the class.  
 maybe_mtrk_t make_mtrk(const unsigned char*, uint32_t);
 struct maybe_mtrk_t {
 	std::string error {"No error"};

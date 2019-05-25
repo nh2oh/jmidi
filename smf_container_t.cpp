@@ -50,7 +50,7 @@ uint32_t smf_t::mthd_size() const {
 	return this->get_header_view().size();
 }
 uint32_t smf_t::mthd_data_length() const {
-	return this->get_header_view().data_length();
+	return this->get_header_view().data_size();
 }
 mtrk_view_t smf_t::get_track_view(int n) const {
 	int curr_trackn {0};

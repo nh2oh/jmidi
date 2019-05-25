@@ -32,16 +32,22 @@ uint16_t mthd_view_t::division() const {
 uint32_t mthd_view_t::size() const {
 	return this->size_;
 }
-uint32_t mthd_view_t::data_length() const {
+uint32_t mthd_view_t::data_size() const {
 	return this->size_-8;
+}
+const unsigned char *mthd_view_t::raw_data() const {
+	return this->p_;
 }
 
 std::string print(const mthd_view_t& mthd) {
 	std::string s {};
-	s += ("Data size = " + std::to_string(mthd.data_length()) + "    \n");
-	s += ("Format type = " + std::to_string(mthd.format()) + "    \n");
-	s += ("Num Tracks = " + std::to_string(mthd.ntrks()) + "    \n");
 
+	s += "Header (MThd)\tdata_size = " 
+		+ std::to_string(mthd.data_size())
+		+ ", size = " + std::to_string(mthd.size()) + ":\n";
+
+	s += ("Format type = " + std::to_string(mthd.format()) + ", ");
+	s += ("Num Tracks = " + std::to_string(mthd.ntrks()) + ", ");
 	s += "Time Division = ";
 	auto timediv_type = detect_midi_time_division_type(mthd.division());
 	if (timediv_type == midi_time_division_field_type_t::SMPTE) {
@@ -50,7 +56,8 @@ std::string print(const mthd_view_t& mthd) {
 		s += "(ticks-per-quarter-note) ";
 		s += std::to_string(interpret_tpq_field(mthd.division()));
 	}
-	s += "\n";
+	s += "\n\t";
+	s += dbk::print_hexascii(mthd.raw_data(), mthd.size(), ' ');
 
 	return s;
 }
@@ -71,7 +78,7 @@ uint16_t mthd_t::division() const {
 }
 uint32_t mthd_t::data_size() const {
 	auto tv = mthd_view_t(this->d_.data(),this->d_.size());
-	return tv.data_length();
+	return tv.data_size();
 }
 uint32_t mthd_t::size() const {
 	return this->d_.size();
@@ -94,6 +101,9 @@ bool mthd_t::set(const validate_mthd_chunk_result_t& mthd_val) {
 	return false;
 }
 
+std::string print(const mthd_t& mthd) {
+	return print(mthd.get_view());
+}
 
 
 //

@@ -89,25 +89,21 @@ void smf2_t::append_uchk(const std::vector<unsigned char>& uchk) {
 
 std::string print(const smf2_t& smf) {
 	std::string s {};
+	s.reserve(20*smf.size());  // TODO: Magic constant 20
 
 	s += smf.fname();
-	s += "\n";
+	s += "\nsize = " + std::to_string(smf.size()) + ", "
+		"num chunks = " + std::to_string(smf.nchunks()) + ", "
+		"num tracks = " + std::to_string(smf.ntrks());
+	s += "\n\n";
 
-	s += "Header (MThd) \t(data_size = ";
-	//s += " smf_t has no get_header()-like method yet :(\n";
-	s += std::to_string(smf.mthd_data_size());
-	s += ", size = ";
-	s += std::to_string(smf.mthd_size());
-	s += "):\n";
-	auto mthd = smf.get_header_view();
-	s += print(mthd);
-	s += "\n";
+	s += print(smf.get_header_view());
+	s += "\n\n";
 
-	// where smf.get_track_view(i) => mtrk_view_t
 	for (int i=0; i<smf.ntrks(); ++i) {
 		const mtrk_t& curr_trk = smf.get_track(i);
 		s += ("Track (MTrk) " + std::to_string(i) 
-				+ "\t(data_size = " + std::to_string(curr_trk.size())
+				+ "\t(data_size = " + std::to_string(curr_trk.data_size())
 				+ ", size = " + std::to_string(curr_trk.size()) + "):\n");
 		s += print(curr_trk);
 		s += "\n";
