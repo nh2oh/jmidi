@@ -101,8 +101,8 @@ std::string print_events_chrono2(const smf_t&);
 
 
 struct track_state_t {
-	mtrk_iterator_t next;
-	mtrk_iterator_t end;
+	raw_mtrk_iterator_t next;
+	raw_mtrk_iterator_t end;
 	int32_t cumtk;  // The time at which the _previous_ event on the track initiated
 };
 struct smf_event_t {

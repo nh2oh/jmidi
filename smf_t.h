@@ -16,18 +16,19 @@
 //
 class smf2_t {
 public:
-	//smf_t(const validate_smf_result_t&);
-
 	uint32_t size() const;
 	uint16_t nchunks() const;
 	uint16_t format() const;  // mthd alias
 	uint16_t division() const;  // mthd alias
 	uint32_t mthd_size() const;  // mthd alias
 	uint32_t mthd_data_size() const;  // mthd alias
+	uint32_t track_size(int) const;
+	uint32_t track_data_size(int) const;
 	uint16_t ntrks() const;
 	std::string fname() const;
 
 	mthd_view_t get_header_view() const;
+	const mthd_t& get_header() const;
 	const mtrk_t& get_track(int) const;
 	
 	void set_fname(const std::string&);
@@ -50,6 +51,8 @@ struct maybe_smf2_t {
 maybe_smf2_t read_smf2(const std::string&);
 
 
-
-
-
+struct smf_simultanious_event_range_t {
+	std::vector<simultanious_event_range_t> trks;
+};
+smf_simultanious_event_range_t 
+make_smf_simultanious_event_range(mtrk_iterator_t beg, mtrk_iterator_t end);

@@ -10,7 +10,7 @@ class mtrk_view_t;
 class mtrk_event_view_t;
 
 //
-// mtrk_iterator_t
+// raw_mtrk_iterator_t
 //
 // Obtained from the begin() && end() methods of class mtrk_view_t.  
 //
@@ -21,19 +21,19 @@ class mtrk_event_view_t;
 // TODO:  "Sticky" status bits w/ meta event FF 20 ???  May need modifications
 // to the _unsafe_ lib funcs
 //
-class mtrk_iterator_t {
+class raw_mtrk_iterator_t {
 public:
 	mtrk_event_t operator*() const;
-	mtrk_iterator_t& operator++();
-	//mtrk_iterator_t& operator++(int);
-	bool operator==(const mtrk_iterator_t&) const;
-	bool operator!=(const mtrk_iterator_t&) const;
+	raw_mtrk_iterator_t& operator++();
+	//raw_mtrk_iterator_t& operator++(int);
+	bool operator==(const raw_mtrk_iterator_t&) const;
+	bool operator!=(const raw_mtrk_iterator_t&) const;
 	mtrk_event_view_t operator->() const;
 private:
 	// Ctor that takes a caller-specified p_ and midi status byte applicipable
 	// to the _prior_ event in the sequence (arg 2); only for trusted callers 
 	// (ex class mtrk_view_t)!
-	mtrk_iterator_t(const unsigned char*, unsigned char);
+	raw_mtrk_iterator_t(const unsigned char*, unsigned char);
 
 	// ptr to first byte of the delta-time
 	const unsigned char *p_ {nullptr};
@@ -82,7 +82,7 @@ private:
 	// _Not_ nec. the status byte applicable to the event at p_!
 	unsigned char s_ {0x00u};
 
-	friend class mtrk_iterator_t;
+	friend class raw_mtrk_iterator_t;
 };
 
 
@@ -138,8 +138,8 @@ public:
 	// ctor mtrk_iterator_t(mtrk_view_t) relies on this behavior.  
 	// TODO:  unsigned char or some sort of mtrk_event_t???
 	const unsigned char *data() const;
-	mtrk_iterator_t begin() const;
-	mtrk_iterator_t end() const;
+	raw_mtrk_iterator_t begin() const;
+	raw_mtrk_iterator_t end() const;
 
 	bool validate() const;
 private:

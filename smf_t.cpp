@@ -17,22 +17,7 @@
 #include <fstream>
 
 
-/*
-smf2_t::smf2_t(const validate_smf_result_t& maybe_smf) {
-	if (!maybe_smf.is_valid) {
-		std::abort();
-	}
 
-	this->fname_ = maybe_smf.fname;
-
-	const unsigned char *p = maybe_smf.p;
-	for (const auto& e : maybe_smf.chunk_idxs) {
-		std::vector<unsigned char> temp {};
-		std::copy(p+e.offset,p+e.offset+e.size,std::back_inserter(temp));
-		this->d_.push_back(temp);
-		temp.clear();
-	}
-}*/
 uint32_t smf2_t::size() const {
 	uint32_t n = 0;
 	n = this->mthd_.size();
@@ -65,9 +50,17 @@ uint32_t smf2_t::mthd_data_size() const {
 std::string smf2_t::fname() const {
 	return this->fname_;
 }
-
+uint32_t smf2_t::track_size(int trackn) const {
+	return this->mtrks_[trackn].size();
+}
+uint32_t smf2_t::track_data_size(int trackn) const {
+	return this->mtrks_[trackn].data_size();
+}
 mthd_view_t smf2_t::get_header_view() const {
 	return this->mthd_.get_view();
+}
+const mthd_t& smf2_t::get_header() const {
+	return this->mthd_;
 }
 const mtrk_t& smf2_t::get_track(int trackn) const {
 	return this->mtrks_[trackn];

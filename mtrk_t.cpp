@@ -14,23 +14,24 @@ uint32_t mtrk_t::data_size() const {
 uint32_t mtrk_t::nevents() const {
 	return this->evnts_.size();
 }
-std::vector<mtrk_event_t>::iterator mtrk_t::begin() {
-	return this->evnts_.begin();
+mtrk_iterator_t mtrk_t::begin() {
+	return mtrk_iterator_t(&(this->evnts_[0]));
 }
-std::vector<mtrk_event_t>::iterator mtrk_t::end() {
-	return this->evnts_.end();
+mtrk_iterator_t mtrk_t::end() {
+	auto p_last = &(this->evnts_.back());
+	return mtrk_iterator_t(++p_last);
 }
-std::vector<mtrk_event_t>::const_iterator mtrk_t::cbegin() const {
-	return this->evnts_.cbegin();
+mtrk_const_iterator_t mtrk_t::begin() const {
+	return mtrk_const_iterator_t(&(this->evnts_[0]));
 }
-std::vector<mtrk_event_t>::const_iterator mtrk_t::cend() const {
-	return this->evnts_.cend();
+mtrk_const_iterator_t mtrk_t::end() const {
+	auto p_last = &(this->evnts_.back());
+	return mtrk_const_iterator_t(++p_last);
 }
 void mtrk_t::push_back(const mtrk_event_t& ev) {
 	this->evnts_.push_back(ev);
 	this->data_size_ += ev.data_size();
 }
-
 // Private methods
 void mtrk_t::set_data_size(uint32_t data_size) {
 	this->data_size_=data_size;
@@ -42,7 +43,7 @@ void mtrk_t::set_events(const std::vector<mtrk_event_t>& evec) {
 std::string print(const mtrk_t& mtrk) {
 	std::string s {};
 	s.reserve(mtrk.nevents()*100);  // TODO:  Magic constant 100
-	for (auto it=mtrk.cbegin(); it!=mtrk.cend(); ++it) {
+	for (auto it=mtrk.begin(); it!=mtrk.end(); ++it) {
 		s += print(*it);
 		s += "\n";
 	}
@@ -112,5 +113,80 @@ maybe_mtrk_t make_mtrk(const unsigned char *p, uint32_t max_sz) {
 	result.mtrk.set_data_size(chunk_detect.data_size);
 
 	return result;
+}
+
+
+
+// Private ctor used by friend class mtrk_view_t.begin(),.end()
+mtrk_iterator_t::mtrk_iterator_t(mtrk_event_t *p) {
+	this->p_ = p;
+}
+mtrk_event_t& mtrk_iterator_t::operator*() const {
+	return *(this->p_);
+}
+mtrk_event_t* mtrk_iterator_t::operator->() const {
+	return this->p_;
+}
+mtrk_iterator_t& mtrk_iterator_t::operator++() {
+	++(this->p_);
+	return *this;
+}
+mtrk_iterator_t& mtrk_iterator_t::operator+=(int n) {
+	this->p_ += n;
+	return *this;
+}
+mtrk_iterator_t mtrk_iterator_t::operator+(int n) {
+	mtrk_iterator_t temp = *this;
+	return temp += n;
+}
+bool mtrk_iterator_t::operator==(const mtrk_iterator_t& rhs) const {
+	return this->p_ == rhs.p_;
+}
+bool mtrk_iterator_t::operator!=(const mtrk_iterator_t& rhs) const {
+	return this->p_ != rhs.p_;
+}
+
+// Private ctor used by friend class mtrk_view_t.begin(),.end()
+mtrk_const_iterator_t::mtrk_const_iterator_t(const mtrk_event_t *p) {
+	this->p_ = p;
+}
+const mtrk_event_t& mtrk_const_iterator_t::operator*() const {
+	return *(this->p_);
+}
+const mtrk_event_t *mtrk_const_iterator_t::operator->() const {
+	return this->p_;
+}
+mtrk_const_iterator_t& mtrk_const_iterator_t::operator++() {
+	++(this->p_);
+	return *this;
+}
+mtrk_const_iterator_t& mtrk_const_iterator_t::operator+=(int n) {
+	this->p_ += n;
+	return *this;
+}
+mtrk_const_iterator_t mtrk_const_iterator_t::operator+(int n) {
+	mtrk_const_iterator_t temp = *this;
+	return temp += n;
+}
+bool mtrk_const_iterator_t::operator==(const mtrk_const_iterator_t& rhs) const {
+	return this->p_ == rhs.p_;
+}
+bool mtrk_const_iterator_t::operator!=(const mtrk_const_iterator_t& rhs) const {
+	return !(*this==rhs);
+}
+
+
+simultanious_event_range_t 
+make_simultanious_event_range(mtrk_iterator_t beg, mtrk_iterator_t end) {
+	simultanious_event_range_t result {beg,end};
+	if (beg==end) {
+		return result;
+	}
+
+	++beg;
+	while ((beg!=end) && (beg->delta_time()==0)) {
+		++beg;
+	}
+	result.end=beg;
 }
 
