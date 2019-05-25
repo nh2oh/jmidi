@@ -1,11 +1,10 @@
 #include "midi_examples.h"
 #include "midi_raw.h"
 #include "midi_raw_test_parts.h"
-#include "mthd_container_t.h"
+#include "mthd_t.h"
 #include "mtrk_container_t.h"
 #include "mtrk_event_t.h"
 #include "smf_container_t.h"
-#include "midi_container.h"
 #include "smf_t.h";
 #include "dbklib\binfile.h"
 #include "dbklib\byte_manipulation.h"
