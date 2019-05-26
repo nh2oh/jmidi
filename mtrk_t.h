@@ -3,6 +3,7 @@
 #include <string>
 #include <cstdint>
 #include <vector>
+#include <cstddef>  // std::ptrdiff_t for difference_type in mtrk_iterator
 
 
 struct maybe_mtrk_t;
@@ -50,41 +51,42 @@ struct maybe_mtrk_t {
 };
 
 
-// TODO:  Template this & use inheritence so it isn't so repetitive
-// TODO:  The const_iterator should be obtainable from the non-const
-// version.  
-// TODO:  Need a - operator so can do things like:  
-// result.linked.reserve(end-beg);
+// TODO:  Template this + inheritence so it isn't so repetitive
 class mtrk_iterator_t {
 public:
+	mtrk_iterator_t(mtrk_event_t*);
 	mtrk_event_t& operator*() const;
 	mtrk_event_t *operator->() const;
 	mtrk_iterator_t& operator++();  // preincrement
+	mtrk_iterator_t operator++(int);  // postincrement
+	mtrk_iterator_t& operator--();  // pre
+	mtrk_iterator_t operator--(int);  // post
 	mtrk_iterator_t& operator+=(int);
 	mtrk_iterator_t operator+(int);
+	std::ptrdiff_t operator-(const mtrk_iterator_t&) const;
 	bool operator==(const mtrk_iterator_t&) const;
 	bool operator!=(const mtrk_iterator_t&) const;
 private:
-	mtrk_iterator_t(mtrk_event_t*);
 	mtrk_event_t *p_;
-	friend class mtrk_t;
-	friend class mtrk_const_iterator_t;
 };
 class mtrk_const_iterator_t {
 public:
+	mtrk_const_iterator_t(mtrk_event_t*);
+	mtrk_const_iterator_t(const mtrk_event_t*);
+	mtrk_const_iterator_t(const mtrk_iterator_t&);
 	const mtrk_event_t& operator*() const;
 	const mtrk_event_t *operator->() const;
 	mtrk_const_iterator_t& operator++();  // preincrement
+	mtrk_const_iterator_t operator++(int);  // postincrement
+	mtrk_const_iterator_t& operator--();  // pre
+	mtrk_const_iterator_t operator--(int);  // post
 	mtrk_const_iterator_t& operator+=(int);
 	mtrk_const_iterator_t operator+(int);
+	std::ptrdiff_t operator-(const mtrk_const_iterator_t& rhs) const;
 	bool operator==(const mtrk_const_iterator_t&) const;
 	bool operator!=(const mtrk_const_iterator_t&) const;
-
-	operator mtrk_iterator_t();
 private:
-	mtrk_const_iterator_t(const mtrk_event_t*);
 	const mtrk_event_t *p_;
-	friend class mtrk_t;
 };
 
 
@@ -109,7 +111,8 @@ struct linked_and_orphan_onoff_pairs_t {
 	std::vector<orphan_onoff_t> orphan_on {};
 	std::vector<orphan_onoff_t> orphan_off {};
 };
-linked_and_orphan_onoff_pairs_t get_linked_onoff_pairs(mtrk_iterator_t, mtrk_iterator_t);
+linked_and_orphan_onoff_pairs_t get_linked_onoff_pairs(mtrk_const_iterator_t,
+					mtrk_const_iterator_t);
 std::string print(const linked_and_orphan_onoff_pairs_t&);
 
 
