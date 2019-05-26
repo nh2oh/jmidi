@@ -65,6 +65,9 @@ const mthd_t& smf2_t::get_header() const {
 const mtrk_t& smf2_t::get_track(int trackn) const {
 	return this->mtrks_[trackn];
 }
+mtrk_t& smf2_t::get_track(int trackn) {
+	return this->mtrks_[trackn];
+}
 
 void smf2_t::set_fname(const std::string& fname) {
 	this->fname_ = fname;

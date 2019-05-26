@@ -49,7 +49,12 @@ struct maybe_mtrk_t {
 	operator bool() const;
 };
 
+
 // TODO:  Template this & use inheritence so it isn't so repetitive
+// TODO:  The const_iterator should be obtainable from the non-const
+// version.  
+// TODO:  Need a - operator so can do things like:  
+// result.linked.reserve(end-beg);
 class mtrk_iterator_t {
 public:
 	mtrk_event_t& operator*() const;
@@ -81,12 +86,28 @@ private:
 
 
 
-struct simultanious_event_range_t {
-	mtrk_iterator_t begin;
-	mtrk_iterator_t end;
+// Returns an iterator to one past the last simultanious event 
+// following beg.  
+mtrk_iterator_t get_simultanious_events(mtrk_iterator_t, mtrk_iterator_t);
+
+// TODO:  Really just an mtrk_event_t w/ an integrated delta-time
+struct orphan_onoff_t {
+	uint32_t cumtk;
+	mtrk_event_t ev;
 };
-simultanious_event_range_t 
-	make_simultanious_event_range(mtrk_iterator_t, mtrk_iterator_t);
+struct linked_onoff_pair_t {
+	uint32_t cumtk_on;
+	mtrk_event_t on;
+	uint32_t cumtk_off;
+	mtrk_event_t off;
+};
+struct linked_and_orphan_onoff_pairs_t {
+	std::vector<linked_onoff_pair_t> linked {};
+	std::vector<orphan_onoff_t> orphan_on {};
+	std::vector<orphan_onoff_t> orphan_off {};
+};
+linked_and_orphan_onoff_pairs_t get_linked_onoff_pairs(mtrk_iterator_t, mtrk_iterator_t);
+
 
 
 

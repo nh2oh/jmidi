@@ -5,7 +5,7 @@
 #include <limits> // CHAR_BIT
 #include <type_traits> // std::enable_if<>, is_integral<>, is_unsigned<>
 #include <cstdint>
-
+#include <typeinfo>
 
 //
 // TODO:  I have to include midi_vlq.h to get a dfn of 
@@ -399,4 +399,97 @@ struct validate_smf_result_t {
 	std::vector<chunk_idx_t> chunk_idxs {};
 };
 validate_smf_result_t validate_smf(const unsigned char*, int32_t, const std::string&);
+
+
+
+/*
+template<typename T> 
+class iterator_base_t {
+public:
+	static_assert(!std::is_reference<T>::value);
+	using value_t = typename T;  // remove cvref...
+	using ptr_t = typename std::add_pointer<T>::type;
+	using reference_t = value_t&;
+
+	reference_t operator*() const {
+		return *(this->p_);
+	};
+	ptr_t operator->() const {
+		return this->p_;
+	};
+	iterator_base_t<T>& operator++() {  // preincrement
+		++(this->p_);
+		return *this;
+	};
+	iterator_base_t<T>& operator+=(int n) {
+		this->p_ += n;
+		return *this;
+	};
+	iterator_base_t<T> operator+(int n) {
+		auto temp = *this;
+		return temp += n;
+	};
+
+	bool operator==(const iterator_base_t<T>& rhs) const {
+		return this->p_ == rhs.p_;
+	};
+	bool operator!=(const iterator_base_t<T>& rhs) const {
+		return this->p_ != rhs.p_;
+	};
+
+	std::string what() const {
+		std::string s = typeid(*this).name();
+		s += "\n";
+
+		s += "value_t:  ";
+		if (std::is_const<value_t>::value) {
+			s += "const ";
+		}
+		s += "value_t";
+		if (std::is_reference<value_t>::value) {
+			s += "&";
+		}
+		s += "\n";
+
+		s += "ptr_t:  ";
+		if (std::is_pointer<ptr_t>::value) {
+			if (std::is_const<std::remove_pointer<ptr_t>::type>::value) {
+				s += "const ";
+			}
+			s += "*ptr_t";
+			if (std::is_const<ptr_t>::value) {
+				s += " const";
+			}
+		}
+		s += "\n";
+
+		s += "reference_t:  ";
+		if (std::is_reference<reference_t>::value) {
+			if (std::is_const<std::remove_reference<reference_t>::type>::value) {
+				s += "const ";
+			}
+			if (std::is_same<std::remove_reference<reference_t>::type,value_t>::value) {
+				s += "&value_t";
+			} else {
+				s += "&reference_t";
+			}
+			if (std::is_const<reference_t>::value) {
+				s += " const";
+			}
+		}
+		s += "\n";
+		s += "\n";
+
+		return s;
+	};
+private:
+	// Private ctor used by friend classes in .begin(),.end()
+	//iterator_base_t<T>(const ptr_t p) {
+	//	this->p_ = p;
+	//}
+	ptr_t p_ {nullptr};
+};
+*/
+
+
 

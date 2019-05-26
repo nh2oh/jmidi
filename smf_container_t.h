@@ -169,14 +169,7 @@ struct linked_note_events_result_t {
 	std::vector<orphan_event_t> orphan_on {};
 	std::vector<orphan_event_t> orphan_off {};
 };
-// TODO:  Maybe these shoudl take orphan_event_t instead of mecsbo_t's.
-// Is there a situation where the user would want to use trackn or tick
-// info to decide if an event qualifies as as on/off?
-bool is_on_event(const mtrk_event_t&);
-bool is_off_event(const mtrk_event_t&);
-// Can the event potentially affect more than one on-event?  For example,
-// maybe ev is an all-notes-off meta event or a system reset event.  
-bool is_multioff_event(const mtrk_event_t&);
+
 // Logic that requires the two matching events be on the same track,
 // follow eachother in time, have the same ch, note-num, etc is 
 // implemented here.  

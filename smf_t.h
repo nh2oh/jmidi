@@ -30,6 +30,7 @@ public:
 	mthd_view_t get_header_view() const;
 	const mthd_t& get_header() const;
 	const mtrk_t& get_track(int) const;
+	mtrk_t& get_track(int);
 	
 	void set_fname(const std::string&);
 	void set_mthd(const validate_mthd_chunk_result_t&);
@@ -50,9 +51,12 @@ struct maybe_smf2_t {
 };
 maybe_smf2_t read_smf2(const std::string&);
 
-
+/*
 struct smf_simultanious_event_range_t {
 	std::vector<simultanious_event_range_t> trks;
 };
 smf_simultanious_event_range_t 
 make_smf_simultanious_event_range(mtrk_iterator_t beg, mtrk_iterator_t end);
+*/
+
+

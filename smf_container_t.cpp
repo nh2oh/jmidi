@@ -480,29 +480,6 @@ std::string print_tied_events(const smf_t& smf) {
 
 
 
-bool is_on_event(const mtrk_event_t& ev) {
-	auto md = ev.midi_data();
-	auto s = md.status_nybble;
-	// md.p2!=0x00u to obey the convention that a note-on (s==0x90u) event
-	// w/a zero velocity (p2==0x00u) is to be interpreted as a note-off 
-	// event.  
-	return (s==0x90u && md.p2!=0x00u);
-}
-bool is_off_event(const mtrk_event_t& ev) {
-	auto md = ev.midi_data();
-	auto s = md.status_nybble;
-	// md.p2==0x00u to obey the convention that a note-on (s==0x90u) event
-	// w/a zero velocity (p2==0x00u) is to be interpreted as a note-off 
-	// event.  
-	return (s==0x80u || (s==0x90u && md.p2==0x00u));
-}
-bool is_multioff_event(const mtrk_event_t& ev) {
-	// Can ev potentially affect more than one on-event?  Ex, maybe ev is
-	// an all-notes-off meta event or a system reset event
-	auto md = ev.midi_data();
-	auto s = md.status_nybble;
-	return (s==0xB0u && md.p1==0x7Du);
-}
 bool is_linked_pair(const orphan_event_t& ev_on, const orphan_event_t& ev_off) {
 	auto md_on = ev_on.event.midi_data();
 	auto md_off = ev_off.event.midi_data();

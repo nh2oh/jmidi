@@ -3,7 +3,7 @@
 #include <string>
 #include <cstdint>
 #include <vector>
-
+#include <algorithm>  // std::find_if() in linked-pair finding functions
 
 uint32_t mtrk_t::size() const {
 	return this->data_size_+8;
@@ -176,17 +176,59 @@ bool mtrk_const_iterator_t::operator!=(const mtrk_const_iterator_t& rhs) const {
 }
 
 
-simultanious_event_range_t 
-make_simultanious_event_range(mtrk_iterator_t beg, mtrk_iterator_t end) {
-	simultanious_event_range_t result {beg,end};
-	if (beg==end) {
-		return result;
+mtrk_iterator_t get_simultanious_events(mtrk_iterator_t beg, 
+					mtrk_iterator_t end) {
+	mtrk_iterator_t range_end = beg;
+	if (range_end==end) {
+		return range_end;
 	}
-
-	++beg;
-	while ((beg!=end) && (beg->delta_time()==0)) {
-		++beg;
+	++range_end;
+	while ((range_end!=end) && (range_end->delta_time()==0)) {
+		++range_end;
 	}
-	result.end=beg;
+	return range_end;
 }
+
+linked_and_orphan_onoff_pairs_t get_linked_onoff_pairs(mtrk_iterator_t beg,
+					mtrk_iterator_t end) {
+	linked_and_orphan_onoff_pairs_t result {};
+	//result.linked.reserve(end-beg);
+
+	uint32_t cumtk = 0;
+	for (auto it=beg; it!=end; ++it) {
+		const auto& curr_ev = *it;
+		cumtk += curr_ev.delta_time();
+
+		auto matching_on_event = [&curr_ev,&cumtk](const orphan_onoff_t& on_ev)->bool {
+			// Captures curr_ev for use in std::find_if() to find
+			// the matching on-event when curr_ev is an off event.  
+			auto md_on = on_ev.ev.midi_data();
+			auto md_off = curr_ev.midi_data();
+			return ((on_ev.cumtk<=cumtk) 
+				&& (md_on.ch==md_off.ch) 
+				&& (md_on.p1==md_off.p1));
+		};
+
+		if (is_on_event(curr_ev)) {
+			result.orphan_on.push_back({cumtk,*it});
+		} else if (is_off_event(curr_ev)) {
+			auto it_linked_on = 
+				std::find_if(result.orphan_on.begin(),result.orphan_on.end(),
+					matching_on_event);
+			if (it_linked_on==result.orphan_on.end()) {
+				// curr_ev does not match anything in orphans_on; weird.  
+				result.orphan_off.push_back({cumtk,curr_ev});
+			} else {
+				// The event in orphans_on pointed to by it_linked_on matches
+				// the off-event curr_ev.  
+				result.linked.push_back({(*it_linked_on).cumtk,
+					(*it_linked_on).ev,cumtk,curr_ev});
+				result.orphan_on.erase(it_linked_on);
+			}
+		}  // else { // not an on or off event
+	}  // To the next event on [beg,end)
+
+	return result;
+}
+
 
