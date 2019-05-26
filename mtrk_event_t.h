@@ -191,9 +191,7 @@ enum class mtrk_sbo_print_opts {
 std::string print(const mtrk_event_t&,
 			mtrk_sbo_print_opts=mtrk_sbo_print_opts::normal);
 
-// TODO:  Maybe these shoudl take orphan_event_t instead of mecsbo_t's.
-// Is there a situation where the user would want to use trackn or tick
-// info to decide if an event qualifies as as on/off?
+
 bool is_on_event(const mtrk_event_t&);
 bool is_off_event(const mtrk_event_t&);
 // Can the event potentially affect more than one on-event?  For example,

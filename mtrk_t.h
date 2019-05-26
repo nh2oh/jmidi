@@ -68,6 +68,7 @@ private:
 	mtrk_iterator_t(mtrk_event_t*);
 	mtrk_event_t *p_;
 	friend class mtrk_t;
+	friend class mtrk_const_iterator_t;
 };
 class mtrk_const_iterator_t {
 public:
@@ -78,6 +79,8 @@ public:
 	mtrk_const_iterator_t operator+(int);
 	bool operator==(const mtrk_const_iterator_t&) const;
 	bool operator!=(const mtrk_const_iterator_t&) const;
+
+	operator mtrk_iterator_t();
 private:
 	mtrk_const_iterator_t(const mtrk_event_t*);
 	const mtrk_event_t *p_;

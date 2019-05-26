@@ -2,6 +2,7 @@
 #include "midi_raw.h"
 #include "mthd_t.h"
 #include "mtrk_container_t.h"
+#include "mtrk_t.h"
 #include "dbklib\byte_manipulation.h"
 #include <string>
 #include <cstdint>
@@ -250,4 +251,102 @@ std::string print(const std::vector<all_smf_events_dt_ordered_t>& evs) {
 
 	return ss.str();
 }
+
+
+linked_and_orphans_with_trackn_t get_linked_onoff_pairs(const smf2_t& smf) {
+	linked_and_orphans_with_trackn_t result;
+	for (int i=0; i<smf.ntrks(); ++i) {
+		const auto& curr_trk = smf.get_track(i);
+		auto curr_trk_linked = get_linked_onoff_pairs(curr_trk.begin(),curr_trk.end());
+		uint32_t cumtk = 0;
+		for (int j=0; j<curr_trk_linked.linked.size(); ++j) {
+			result.linked.push_back({i,curr_trk_linked.linked[j]});
+		}
+		for (int j=0; j<curr_trk_linked.orphan_on.size(); ++j) {
+			result.orphan_on.push_back({i,curr_trk_linked.orphan_on[j]});
+		}
+		for (int j=0; j<curr_trk_linked.orphan_off.size(); ++j) {
+			result.orphan_off.push_back({i,curr_trk_linked.orphan_off[j]});
+		}
+	}
+
+	auto lt_ev = [](const linked_pair_with_trackn_t& lhs, 
+					const linked_pair_with_trackn_t& rhs)->bool {
+		if (lhs.ev_pair.cumtk_on == rhs.ev_pair.cumtk_on) {
+			return lhs.trackn < rhs.trackn;
+		} else {
+			return lhs.ev_pair.cumtk_on < rhs.ev_pair.cumtk_on;
+		}
+	};
+	std::sort(result.linked.begin(),result.linked.end(),lt_ev);
+
+	return result;
+}
+
+std::string print(const linked_and_orphans_with_trackn_t& evs) {
+std::string s {};
+	struct width_t {
+		int def {12};  // "default"
+		int tick {12};
+		int trk {7};
+		int p1p2 {10};
+		int ch {10};
+		int sep {3};
+	};
+	width_t w {};
+
+	std::stringstream ss {};
+	ss << std::left;
+	ss << std::setw(w.trk) << "Track";
+	ss << std::setw(w.ch) << "Ch (on)";
+	ss << std::setw(w.p1p2) << "p1 (on)";
+	ss << std::setw(w.p1p2) << "p2 (on)";
+	ss << std::setw(w.tick) << "Tick (on)";
+	//ss << std::setw(w.sep) << " ";
+	ss << std::setw(w.ch) << "Ch (off)";
+	ss << std::setw(w.p1p2) << "p1 (off)";
+	ss << std::setw(w.p1p2) << "p2 (off)";
+	ss << std::setw(w.tick) << "Tick off";
+	//ss << std::setw(w.sep) << " ";
+	ss << std::setw(w.def) << "Duration";
+	ss << "\n";
+
+	auto half = [&ss,&w](uint32_t cumtk, const mtrk_event_t& onoff)->void {
+		auto md = onoff.midi_data();
+		ss << std::setw(w.ch) << std::to_string(md.ch);
+		ss << std::setw(w.p1p2) << std::to_string(md.p1);
+		ss << std::setw(w.p1p2) << std::to_string(md.p2);
+		ss << std::setw(w.tick) << std::to_string(cumtk);
+	};
+	
+	for (const auto& e : evs.linked) {
+		ss << std::setw(w.trk) << std::to_string(e.trackn);
+		half(e.ev_pair.cumtk_on,e.ev_pair.on);
+		//ss << std::setw(w.sep) << " ";
+		half(e.ev_pair.cumtk_off,e.ev_pair.off);
+		//ss << std::setw(w.sep) << " ";
+		ss << std::to_string(e.ev_pair.cumtk_off-e.ev_pair.cumtk_on);
+		ss << "\n";
+	}
+	
+	if (evs.orphan_on.size()>0) {
+		ss << "FILE CONTAINS ORPHAN NOTE-ON EVENTS:\n";
+		for (const auto& e : evs.orphan_on) {
+			ss << std::setw(w.trk) << std::to_string(e.trackn);
+			half(e.orph_ev.cumtk,e.orph_ev.ev);
+			ss << std::setw(w.sep) << "\n";
+		}
+	}
+	if (evs.orphan_off.size()>0) {
+		ss << "FILE CONTAINS ORPHAN NOTE-OFF EVENTS:\n";
+		for (const auto& e : evs.orphan_off) {
+			ss << std::setw(w.trk) << std::to_string(e.trackn);
+			half(e.orph_ev.cumtk,e.orph_ev.ev);
+			ss << std::setw(w.sep) << "\n";
+		}
+	}
+
+	return ss.str();
+}
+
 

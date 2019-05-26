@@ -23,13 +23,18 @@ int midi_example() {
 	//testdata::print_meta_tests(mt_tests);
 	//testdata::print_midi_test_cases();
 
-	std::string fn = "C:\\Users\\ben\\Desktop\\scr\\CLEMENTI.MID";
+	std::string fn = "C:\\Users\\ben\\Desktop\\scr\\hallelujah_joy_to_the_world.mid";
+	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\CLEMENTI.MID";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\test.mid";
 	auto maybesmf2 = read_smf2(fn);
 	if (!maybesmf2) {
 		std::cout << "nope :(" << std::endl;
 		std::abort();
 	}
+
+	auto linked_pairs = get_linked_onoff_pairs(maybesmf2.smf);
+	std::cout << print(linked_pairs) << std::endl;
+
 	std::cout << print(maybesmf2.smf) << std::endl;
 	//auto lkdevs2 = get_linked_onoff_pairs(maybesmf2.smf.get_track(1).begin(),
 	//	maybesmf2.smf.get_track(1).end());
@@ -44,16 +49,16 @@ int midi_example() {
 	//std::string fn = "C:\\Users\\ben\\Desktop\\A7.mid";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\test.mid";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\hallelujah_joy_to_the_world.mid";
-	auto rawfiledata = dbk::readfile(fn).d;
+	//auto rawfiledata = dbk::readfile(fn).d;
 	//auto rawfiledata = dbk::readfile("C:\\Users\\ben\\Desktop\\scr\\test.mid").d;
-	auto rawfile_check_result = validate_smf(&rawfiledata[0],rawfiledata.size(),fn);
+	//auto rawfile_check_result = validate_smf(&rawfiledata[0],rawfiledata.size(),fn);
 
-	smf_t mf(rawfile_check_result);
+	//smf_t mf(rawfile_check_result);
 	
-	std::cout << print(mf) << std::endl << std::endl;
-	std::cout << print_tied_events(mf) << std::endl << std::endl;
-	auto lkdevs = link_note_events(mf);
-	std::cout << print(lkdevs) << std::endl;
+	//std::cout << print(mf) << std::endl << std::endl;
+	//std::cout << print_tied_events(mf) << std::endl << std::endl;
+	//auto lkdevs = link_note_events(mf);
+	//std::cout << print(lkdevs) << std::endl;
 
 	/*auto s1 = print(mf);
 	auto s2 = print_tied_events(mf);

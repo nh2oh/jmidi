@@ -51,6 +51,18 @@ struct maybe_smf2_t {
 };
 maybe_smf2_t read_smf2(const std::string&);
 
+
+/*class smf2_chrono_iterator {
+public:
+private:
+	struct event_range_t {
+		mtrk_iterator_t beg;
+		mtrk_iterator_t end;
+	};
+	std::vector<event_range_t> trks_;
+};*/
+
+
 struct all_smf_events_dt_ordered_t {
 	mtrk_event_t ev;
 	uint32_t cumtk;
@@ -59,6 +71,21 @@ struct all_smf_events_dt_ordered_t {
 std::vector<all_smf_events_dt_ordered_t> get_events_dt_ordered(const smf2_t&);
 std::string print(const std::vector<all_smf_events_dt_ordered_t>&);
 
+struct linked_pair_with_trackn_t {
+	int trackn;
+	linked_onoff_pair_t ev_pair;
+};
+struct orphan_onoff_with_trackn_t {
+	int trackn;
+	orphan_onoff_t orph_ev;
+};
+struct linked_and_orphans_with_trackn_t {
+	std::vector<linked_pair_with_trackn_t> linked {};
+	std::vector<orphan_onoff_with_trackn_t> orphan_on {};
+	std::vector<orphan_onoff_with_trackn_t> orphan_off {};
+};
+linked_and_orphans_with_trackn_t get_linked_onoff_pairs(const smf2_t&);
+std::string print(const linked_and_orphans_with_trackn_t&);
 
 /*
 struct smf_simultanious_event_range_t {

@@ -178,7 +178,11 @@ bool mtrk_const_iterator_t::operator==(const mtrk_const_iterator_t& rhs) const {
 bool mtrk_const_iterator_t::operator!=(const mtrk_const_iterator_t& rhs) const {
 	return !(*this==rhs);
 }
-
+mtrk_const_iterator_t::operator mtrk_iterator_t() {
+	auto p = this->p_;
+	mtrk_iterator_t result(const_cast<mtrk_event_t*>(p));
+	return result;
+}
 
 mtrk_iterator_t get_simultanious_events(mtrk_iterator_t beg, 
 					mtrk_iterator_t end) {
