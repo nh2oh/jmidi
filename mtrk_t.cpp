@@ -249,7 +249,14 @@ linked_and_orphan_onoff_pairs_t get_linked_onoff_pairs(mtrk_iterator_t beg,
 	return result;
 }
 
+
+
+
+
+
+
 std::string print(const linked_and_orphan_onoff_pairs_t& evs) {
+	std::string s {};
 	struct width_t {
 		int def {12};  // "default"
 		int p1p2 {10};

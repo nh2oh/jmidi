@@ -192,3 +192,62 @@ maybe_smf2_t read_smf2(const std::string& fn) {
 	return result;
 }
 
+
+std::vector<all_smf_events_dt_ordered_t> get_events_dt_ordered(const smf2_t& smf) {
+	std::vector<all_smf_events_dt_ordered_t> result;
+	//result.reserve(smf.nchunks...
+	
+	for (int i=0; i<smf.ntrks(); ++i) {
+		const auto& curr_trk = smf.get_track(i);
+		uint32_t cumtk = 0;
+		for (const auto& e : curr_trk) {
+			cumtk += e.delta_time();
+			result.push_back({e,cumtk,i});
+		}
+	}
+
+	auto lt_ev = [](const all_smf_events_dt_ordered_t& lhs, 
+					const all_smf_events_dt_ordered_t& rhs)->bool {
+		if (lhs.cumtk == rhs.cumtk) {
+			return lhs.trackn < rhs.trackn;
+		} else {
+			return lhs.cumtk < rhs.cumtk;
+		}
+	};
+	std::sort(result.begin(),result.end(),lt_ev);
+
+	return result;
+}
+
+std::string print(const std::vector<all_smf_events_dt_ordered_t>& evs) {
+	struct width_t {
+		int def {12};  // "default"
+		int sep {3};
+		int tick {10};
+		int type {10};
+		int trk {8};
+		int dat_sz {12};
+	};
+	width_t w {};
+
+	std::stringstream ss {};
+	ss << std::left;
+	ss << std::setw(w.tick) << "Tick";
+	ss << std::setw(w.type) << "Type";
+	ss << std::setw(w.dat_sz) << "Data_size";
+	ss << std::setw(w.trk) << "Track";
+	ss << std::setw(w.trk) << "Bytes";
+	ss << "\n";
+	
+	for (const auto& e : evs) {
+		ss << std::setw(w.tick) << std::to_string(e.cumtk);
+		ss << std::setw(w.type) << print(e.ev.type());
+		ss << std::setw(w.dat_sz) << std::to_string(e.ev.data_size());
+		ss << std::setw(w.trk) << std::to_string(e.trackn);
+		ss << dbk::print_hexascii(e.ev.data(), e.ev.size(), ' ');
+		ss << "\n";
+	}
+
+	return ss.str();
+}
+

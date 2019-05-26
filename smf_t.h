@@ -51,6 +51,15 @@ struct maybe_smf2_t {
 };
 maybe_smf2_t read_smf2(const std::string&);
 
+struct all_smf_events_dt_ordered_t {
+	mtrk_event_t ev;
+	uint32_t cumtk;
+	int trackn;
+};
+std::vector<all_smf_events_dt_ordered_t> get_events_dt_ordered(const smf2_t&);
+std::string print(const std::vector<all_smf_events_dt_ordered_t>&);
+
+
 /*
 struct smf_simultanious_event_range_t {
 	std::vector<simultanious_event_range_t> trks;
