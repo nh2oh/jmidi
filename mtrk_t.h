@@ -107,7 +107,7 @@ struct linked_and_orphan_onoff_pairs_t {
 	std::vector<orphan_onoff_t> orphan_off {};
 };
 linked_and_orphan_onoff_pairs_t get_linked_onoff_pairs(mtrk_iterator_t, mtrk_iterator_t);
-
+std::string print(const linked_and_orphan_onoff_pairs_t&);
 
 
 

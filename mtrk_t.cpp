@@ -4,6 +4,10 @@
 #include <cstdint>
 #include <vector>
 #include <algorithm>  // std::find_if() in linked-pair finding functions
+#include <iomanip>  // std::setw()
+#include <ios>  // std::left
+#include <sstream>
+#include <iostream>
 
 uint32_t mtrk_t::size() const {
 	return this->data_size_+8;
@@ -191,6 +195,9 @@ mtrk_iterator_t get_simultanious_events(mtrk_iterator_t beg,
 
 linked_and_orphan_onoff_pairs_t get_linked_onoff_pairs(mtrk_iterator_t beg,
 					mtrk_iterator_t end) {
+	// TODO:  It might be faster to pull all on,off events into a single
+	// "orphans" vector, then iterate over this collection pairing up 
+	// the events and moving them into a linked-events vector.  
 	linked_and_orphan_onoff_pairs_t result {};
 	//result.linked.reserve(end-beg);
 
@@ -228,7 +235,76 @@ linked_and_orphan_onoff_pairs_t get_linked_onoff_pairs(mtrk_iterator_t beg,
 		}  // else { // not an on or off event
 	}  // To the next event on [beg,end)
 
+	// "less-than" functions for orphans and linked pairs
+	auto lt_oe = [](const orphan_onoff_t& rhs,const orphan_onoff_t& lhs)->bool {
+		return rhs.cumtk<lhs.cumtk;
+	};
+	auto lt_le = [](const linked_onoff_pair_t& rhs,const linked_onoff_pair_t& lhs)->bool {
+		return rhs.cumtk_on<lhs.cumtk_on;
+	};
+	std::sort(result.orphan_on.begin(),result.orphan_on.end(),lt_oe);
+	std::sort(result.orphan_on.begin(),result.orphan_on.end(),lt_oe);
+	std::sort(result.linked.begin(),result.linked.end(),lt_le);
+
 	return result;
 }
 
+std::string print(const linked_and_orphan_onoff_pairs_t& evs) {
+	struct width_t {
+		int def {12};  // "default"
+		int p1p2 {10};
+		int ch {10};
+		int sep {3};
+	};
+	width_t w {};
+
+	std::stringstream ss {};
+	ss << std::left;
+	ss << std::setw(w.ch) << "Ch (on)";
+	ss << std::setw(w.p1p2) << "p1 (on)";
+	ss << std::setw(w.p1p2) << "p2 (on)";
+	ss << std::setw(w.def) << "Tick (on)";
+	ss << std::setw(w.sep) << " ";
+	ss << std::setw(w.ch) << "Ch (off)";
+	ss << std::setw(w.p1p2) << "p1 (off)";
+	ss << std::setw(w.p1p2) << "p2 (off)";
+	ss << std::setw(w.def) << "Tick off";
+	ss << std::setw(w.sep) << " ";
+	ss << std::setw(w.def) << "Duration";
+	ss << "\n";
+
+	auto half = [&ss,&w](uint32_t cumtk, const mtrk_event_t& onoff)->void {
+		auto md = onoff.midi_data();
+		ss << std::setw(w.ch) << std::to_string(md.ch);
+		ss << std::setw(w.p1p2) << std::to_string(md.p1);
+		ss << std::setw(w.p1p2) << std::to_string(md.p2);
+		ss << std::setw(w.def) << std::to_string(cumtk);
+	};
+	
+	for (const auto& e : evs.linked) {
+		half(e.cumtk_on,e.on);
+		ss << std::setw(w.sep) << " ";
+		half(e.cumtk_off,e.off);
+		ss << std::setw(w.sep) << " ";
+		ss << std::to_string(e.cumtk_off-e.cumtk_on);
+		ss << "\n";
+	}
+
+	if (evs.orphan_on.size()>0) {
+		ss << "FILE CONTAINS ORPHAN NOTE-ON EVENTS:\n";
+		for (const auto& e : evs.orphan_on) {
+			half(e.cumtk,e.ev);
+			ss << std::setw(w.sep) << "\n";
+		}
+	}
+	if (evs.orphan_off.size()>0) {
+		ss << "FILE CONTAINS ORPHAN NOTE-OFF EVENTS:\n";
+		for (const auto& e : evs.orphan_off) {
+			half(e.cumtk,e.ev);
+			ss << std::setw(w.sep) << "\n";
+		}
+	}
+
+	return ss.str();
+}
 

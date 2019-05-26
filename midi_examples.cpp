@@ -23,15 +23,17 @@ int midi_example() {
 	//testdata::print_meta_tests(mt_tests);
 	//testdata::print_midi_test_cases();
 
-	std::string fn = "C:\\Users\\ben\\Desktop\\scr\\CLEMENTI.MID";
+	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\CLEMENTI.MID";
+	std::string fn = "C:\\Users\\ben\\Desktop\\scr\\test.mid";
 	auto maybesmf2 = read_smf2(fn);
 	if (!maybesmf2) {
 		std::cout << "nope :(" << std::endl;
 		std::abort();
 	}
 	std::cout << print(maybesmf2.smf) << std::endl;
-	auto lkdevs2 = get_linked_onoff_pairs(maybesmf2.smf.get_track(0).begin(),
-		maybesmf2.smf.get_track(0).end());
+	auto lkdevs2 = get_linked_onoff_pairs(maybesmf2.smf.get_track(1).begin(),
+		maybesmf2.smf.get_track(1).end());
+	std::cout << print(lkdevs2) << std::endl;
 
 	//std::string fn = "D:\\cpp\\nh2oh\\au\\gt_aulib\\test_data\\clementi_no_rs.mid";
 	//std::string fn = "D:\\cpp\\nh2oh\\au\\gt_aulib\\test_data\\tc_a_rs.mid";
