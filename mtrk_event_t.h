@@ -6,6 +6,9 @@
 #include <vector>
 
 
+class mtrk_event_iterator_t;
+class mtrk_event_const_iterator_t;
+
 //
 // mtrk_event_t:  An sbo-featured container for mtrk events
 //
@@ -43,14 +46,19 @@ public:
 	// Dtor
 	~mtrk_event_t();
 
-	const unsigned char* begin() const;  // first byte of dt field
-	const unsigned char* dt_begin() const;
-	const unsigned char* dt_end() const;
-	const unsigned char* event_begin() const;  // first byte following the dt field
+	mtrk_event_const_iterator_t begin() const;  // first byte of dt field
+	mtrk_event_iterator_t begin();  // first byte of dt field
+	mtrk_event_const_iterator_t dt_end() const;
+	mtrk_event_iterator_t dt_end();
+	// first byte following the dt field
+	mtrk_event_const_iterator_t event_begin() const;
+	mtrk_event_iterator_t event_begin();
 	// For midi events, the first byte following the dt field;
 	// for meta,sysex events, the first byte following the length vl field.  
-	const unsigned char* payload_begin() const;
-	const unsigned char* end() const;
+	mtrk_event_const_iterator_t payload_begin() const;
+	mtrk_event_iterator_t payload_begin();
+	mtrk_event_const_iterator_t end() const;
+	mtrk_event_iterator_t end();
 
 
 
@@ -60,10 +68,12 @@ public:
 	// For meta,sysex events, ptr to first byte following the length
 	const unsigned char *payload() const;
 	// Bytes of this->data()+i returned by value
-	unsigned char operator[](uint32_t) const;
+	const unsigned char& operator[](uint32_t) const;
+	unsigned char& operator[](uint32_t);
 	// Ptr to this->data_[0] if this->is_small(), big_ptr() if is_big()
 	// TODO:  rename to data_dtstart(), data()  ??
-	unsigned char *data() const;
+	unsigned char *data();
+	const unsigned char *data() const;
 	unsigned char *data_skipdt() const;
 	// Ptr to this->data_[0], w/o regard to this->is_small()
 	// TODO:  Should probably be made private
@@ -210,6 +220,51 @@ enum class mtrk_sbo_print_opts {
 };
 std::string print(const mtrk_event_t&,
 			mtrk_sbo_print_opts=mtrk_sbo_print_opts::normal);
+
+
+
+
+class mtrk_event_iterator_t {
+public:
+	mtrk_event_iterator_t(mtrk_event_t*);
+	unsigned char& operator*() const;
+	unsigned char *operator->() const;
+	mtrk_event_iterator_t& operator++();  // preincrement
+	mtrk_event_iterator_t operator++(int);  // postincrement
+	mtrk_event_iterator_t& operator--();  // pre
+	mtrk_event_iterator_t operator--(int);  // post
+	mtrk_event_iterator_t& operator+=(int);
+	mtrk_event_iterator_t operator+(int);
+	std::ptrdiff_t operator-(const mtrk_event_iterator_t&) const;
+	bool operator==(const mtrk_event_iterator_t&) const;
+	bool operator!=(const mtrk_event_iterator_t&) const;
+private:
+	unsigned char *p_;
+};
+class mtrk_event_const_iterator_t {
+public:
+	mtrk_event_const_iterator_t(mtrk_event_t*);
+	mtrk_event_const_iterator_t(const mtrk_event_t*);
+	mtrk_event_const_iterator_t(const mtrk_event_iterator_t&);
+	const unsigned char& operator*() const;
+	const unsigned char *operator->() const;
+	mtrk_event_const_iterator_t& operator++();  // preincrement
+	mtrk_event_const_iterator_t operator++(int);  // postincrement
+	mtrk_event_const_iterator_t& operator--();  // pre
+	mtrk_event_const_iterator_t operator--(int);  // post
+	mtrk_event_const_iterator_t& operator+=(int);
+	mtrk_event_const_iterator_t operator+(int);
+	std::ptrdiff_t operator-(const mtrk_event_const_iterator_t& rhs) const;
+	bool operator==(const mtrk_event_const_iterator_t&) const;
+	bool operator!=(const mtrk_event_const_iterator_t&) const;
+private:
+	const unsigned char *p_;
+};
+
+
+
+
+
 
 
 //

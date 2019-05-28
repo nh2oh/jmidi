@@ -16,6 +16,7 @@
 #include <exception>
 #include <fstream>
 #include <optional>
+#include <vector>
 
 
 int midi_example() {
@@ -36,6 +37,12 @@ int midi_example() {
 	auto linked_pairs = get_linked_onoff_pairs(maybesmf2.smf);
 	//std::cout << print(linked_pairs) << std::endl;
 
+	auto n =linked_pairs.linked[1].ev_pair.on.size();
+	for (int i=0; i<n; ++i) {
+		std::cout << std::to_string(i) << ": "
+			<< std::to_string(linked_pairs.linked[1].ev_pair.on[i])
+			<< std::endl;
+	}
 	std::cout << print(maybesmf2.smf) << std::endl;
 	//auto lkdevs2 = get_linked_onoff_pairs(maybesmf2.smf.get_track(1).begin(),
 	//	maybesmf2.smf.get_track(1).end());
