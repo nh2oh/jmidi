@@ -216,7 +216,7 @@ std::string print(const mtrk_event_t&,
 // Meta event classification
 //
 // I include the leading 0xFF byte so that it is possible to have "unknown"
-// and "invalid" message types.  Some meta events ahve fixed-lengths; 
+// and "invalid" message types.  Some meta events have fixed-lengths; 
 // functions classify_meta_event(), is_meta() etc do not verify these 
 // values, and are not generic validation functions.  
 //

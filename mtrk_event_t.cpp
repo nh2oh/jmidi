@@ -560,14 +560,6 @@ std::string print(const mtrk_event_t& evnt, mtrk_sbo_print_opts opts) {
 	s += ("size = " + std::to_string(evnt.size()) + ", ");
 	s += ("data_size = " + std::to_string(evnt.data_size()) + "\n");
 
-	/*auto ss = evnt.size();
-	auto ds = evnt.data_size();
-	auto n = ss-ds;*/
-
-	// delta_t field
-	//s += ("\t[" + dbk::print_hexascii(evnt.data(), evnt.size()-evnt.data_size(), ' ') + "] ");
-	// underlying data
-	//s += dbk::print_hexascii(evnt.data_skipdt(), evnt.data_size(), ' ');
 	s += "\t[";
 	dbk::print_hexascii(evnt.dt_begin(),evnt.dt_end(),std::back_inserter(s),' ');
 	s += "] ";

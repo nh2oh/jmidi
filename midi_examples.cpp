@@ -34,7 +34,7 @@ int midi_example() {
 	}
 
 	auto linked_pairs = get_linked_onoff_pairs(maybesmf2.smf);
-	std::cout << print(linked_pairs) << std::endl;
+	//std::cout << print(linked_pairs) << std::endl;
 
 	std::cout << print(maybesmf2.smf) << std::endl;
 	//auto lkdevs2 = get_linked_onoff_pairs(maybesmf2.smf.get_track(1).begin(),
