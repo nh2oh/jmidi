@@ -532,27 +532,61 @@ std::string print(const mtrk_event_t& evnt, mtrk_sbo_print_opts opts) {
 }
 
 
-bool operator==(const meta_event_t& lhs, unsigned char rhs) {
-	return static_cast<unsigned char>(lhs)==rhs;
-}
-bool operator==(unsigned char lhs, const meta_event_t& rhs) {
-	return lhs==rhs;
-}
-bool operator!=(const meta_event_t& lhs, unsigned char rhs) {
-	return lhs!=rhs;
-}
-bool operator!=(unsigned char lhs, const meta_event_t& rhs) {
-	return lhs!=rhs;
+meta_event_t classify_meta_event_impl(const uint16_t& d16) {
+	if (d16==static_cast<uint16_t>(meta_event_t::seqn)) {
+		return meta_event_t::seqn;
+	} else if (d16==static_cast<uint16_t>(meta_event_t::text)) {
+		return meta_event_t::text;
+	} else if (d16==static_cast<uint16_t>(meta_event_t::copyright)) {
+		return meta_event_t::copyright;
+	} else if (d16==static_cast<uint16_t>(meta_event_t::trackname)) {
+		return meta_event_t::trackname;
+	} else if (d16==static_cast<uint16_t>(meta_event_t::instname)) {
+		return meta_event_t::instname;
+	} else if (d16==static_cast<uint16_t>(meta_event_t::lyric)) {
+		return meta_event_t::lyric;
+	} else if (d16==static_cast<uint16_t>(meta_event_t::marker)) {
+		return meta_event_t::marker;
+	} else if (d16==static_cast<uint16_t>(meta_event_t::cuepoint)) {
+		return meta_event_t::cuepoint;
+	} else if (d16==static_cast<uint16_t>(meta_event_t::chprefix)) {
+		return meta_event_t::chprefix;
+	} else if (d16==static_cast<uint16_t>(meta_event_t::eot)) {
+		return meta_event_t::eot;
+	} else if (d16==static_cast<uint16_t>(meta_event_t::tempo)) {
+		return meta_event_t::tempo;
+	} else if (d16==static_cast<uint16_t>(meta_event_t::smpteoffset)) {
+		return meta_event_t::smpteoffset;
+	} else if (d16==static_cast<uint16_t>(meta_event_t::timesig)) {
+		return meta_event_t::timesig;
+	} else if (d16==static_cast<uint16_t>(meta_event_t::keysig)) {
+		return meta_event_t::keysig;
+	} else if (d16==static_cast<uint16_t>(meta_event_t::seqspecific)) {
+		return meta_event_t::seqspecific;
+	} else {
+		if ((d16&0xFF00u)==0xFF00u) {
+			return meta_event_t::unknown;
+		} else {
+			return meta_event_t::invalid;
+		}
+	}
 }
 
+meta_event_t classify_meta_event(const mtrk_event_t& ev) {
+	if (ev.type()!=smf_event_type::meta) {
+		return meta_event_t::invalid;
+	}
+	auto p = ev.data_skipdt();
+	uint16_t d16 = dbk::be_2_native<uint16_t>(p);
+	return classify_meta_event_impl(d16);
+}
 bool is_meta(const mtrk_event_t& ev) {
 	return ev.type()==smf_event_type::meta;
 }
-bool is_meta(const mtrk_event_t& ev, meta_event_t mtype) {
+bool is_meta(const mtrk_event_t& ev, const meta_event_t& mtype) {
 	if (ev.type()==smf_event_type::meta) {
 		auto p = ev.data_skipdt();
-		++p;  // skip 0xFFu
-		return *p==mtype;
+		return classify_meta_event_impl(dbk::be_2_native<uint16_t>(p))==mtype;
 	}
 	return false;
 }

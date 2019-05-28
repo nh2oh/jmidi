@@ -196,34 +196,37 @@ std::string print(const mtrk_event_t&,
 
 
 //
-// is_meta-event(const mtrk_event_t&) functions
+// Meta event classification
 //
-// This design for the meta-event enum class means it is impossible
-// to have "unknown" and "invalid" meta-event types.  Alternatively, i
-// could make the underlying type a uint16_t and include the leading 0xFF.  
-// 
-enum class meta_event_t : unsigned char {
-	seqn = 0x00u,
-	text = 0x01u,
-	copyright = 0x02u,
-	trackname = 0x03u,
-	instname = 0x04u,
-	lyric = 0x05u,
-	marker = 0x06u,
-	cuepoint = 0x07u,
-	chprefix = 0x20u,
-	eot = 0x2Fu,
-	tempo = 0x51u,
-	smpteoffset = 0x54u,
-	timesig = 0x58u,
-	keysig = 0x59u,
-	seqspecific = 0x7Fu
-};
-bool operator==(const meta_event_t&, unsigned char);
-bool operator==(unsigned char, const meta_event_t&);
-bool operator!=(const meta_event_t&, unsigned char);
-bool operator!=(unsigned char, const meta_event_t&);
+// I include the leading 0xFF byte so that it is possible to have "unknown"
+// and "invalid" message types.  Some meta events ahve fixed-lengths; 
+// functions classify_meta_event(), is_meta() etc do not verify these 
+// values, and are not generic validation functions.  
+//
+enum class meta_event_t : uint16_t {
+	seqn = 0xFF00u,
+	text = 0xFF01u,
+	copyright = 0xFF02u,
+	trackname = 0xFF03u,
+	instname = 0xFF04u,
+	lyric = 0xFF05u,
+	marker = 0xFF06u,
+	cuepoint = 0xFF07u,
+	chprefix = 0xFF20u,
+	eot = 0xFF2Fu,
+	tempo = 0xFF51u,
+	smpteoffset = 0xFF54u,
+	timesig = 0xFF58u,
+	keysig = 0xFF59u,
+	seqspecific = 0xFF7Fu,
 
+	invalid = 0x0000u,
+	unknown = 0xFFFFu
+};
+meta_event_t classify_meta_event_impl(const uint16_t&);
+
+meta_event_t classify_meta_event(const mtrk_event_t&);
+bool is_meta(const mtrk_event_t&, const meta_event_t&);
 bool is_meta(const mtrk_event_t&);
 bool is_seqn(const mtrk_event_t&);
 bool is_text(const mtrk_event_t&);
