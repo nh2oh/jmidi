@@ -24,7 +24,8 @@ int midi_example() {
 	//testdata::print_midi_test_cases();
 
 	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\hallelujah_joy_to_the_world.mid";
-	std::string fn = "C:\\Users\\ben\\Desktop\\scr\\CLEMENTI.MID";
+	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\CLEMENTI.MID";
+	std::string fn = "C:\\Users\\ben\\Desktop\\twinkle.mid";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\test.mid";
 	auto maybesmf2 = read_smf2(fn);
 	if (!maybesmf2) {

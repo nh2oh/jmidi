@@ -158,9 +158,12 @@ const unsigned char *mtrk_event_t::payload() const {
 unsigned char mtrk_event_t::operator[](uint32_t i) const {
 	return *(this->data()+i);
 };
-const unsigned char *mtrk_event_t::raw_data() const {
-	return &(this->d_[0]);
+unsigned char *mtrk_event_t::data_skipdt() const {
+	unsigned char *p = this->data();
+	auto dt = midi_interpret_vl_field(p);
+	return p+=dt.N;
 }
+
 // TODO:  If small, this returns a ptr to a stack-allocated object...  Bad?
 unsigned char *mtrk_event_t::data() const {
 	if (this->is_small()) {
@@ -168,6 +171,9 @@ unsigned char *mtrk_event_t::data() const {
 	} else {
 		return this->big_ptr();
 	}
+}
+const unsigned char *mtrk_event_t::raw_data() const {
+	return &(this->d_[0]);
 }
 const unsigned char *mtrk_event_t::raw_flag() const {
 	return &(this->flags_);
@@ -524,6 +530,79 @@ std::string print(const mtrk_event_t& evnt, mtrk_sbo_print_opts opts) {
 	}
 	return s;
 }
+
+
+bool operator==(const meta_event_t& lhs, unsigned char rhs) {
+	return static_cast<unsigned char>(lhs)==rhs;
+}
+bool operator==(unsigned char lhs, const meta_event_t& rhs) {
+	return lhs==rhs;
+}
+bool operator!=(const meta_event_t& lhs, unsigned char rhs) {
+	return lhs!=rhs;
+}
+bool operator!=(unsigned char lhs, const meta_event_t& rhs) {
+	return lhs!=rhs;
+}
+
+bool is_meta(const mtrk_event_t& ev) {
+	return ev.type()==smf_event_type::meta;
+}
+bool is_meta(const mtrk_event_t& ev, meta_event_t mtype) {
+	if (ev.type()==smf_event_type::meta) {
+		auto p = ev.data_skipdt();
+		++p;  // skip 0xFFu
+		return *p==mtype;
+	}
+	return false;
+}
+bool is_seqn(const mtrk_event_t& ev) {
+	return is_meta(ev, meta_event_t::seqn);
+}
+bool is_text(const mtrk_event_t& ev) {
+	return is_meta(ev, meta_event_t::text);
+}
+bool is_copyright(const mtrk_event_t& ev) {
+	return is_meta(ev, meta_event_t::copyright);
+}
+bool is_trackname(const mtrk_event_t& ev) {
+	return is_meta(ev, meta_event_t::trackname);
+}
+bool is_instname(const mtrk_event_t& ev) {
+	return is_meta(ev, meta_event_t::instname);
+}
+bool is_lyric(const mtrk_event_t& ev) {
+	return is_meta(ev, meta_event_t::lyric);
+}
+bool is_marker(const mtrk_event_t& ev) {
+	return is_meta(ev, meta_event_t::marker);
+}
+bool is_cuepoint(const mtrk_event_t& ev) {
+	return is_meta(ev, meta_event_t::cuepoint);
+}
+bool is_chprefix(const mtrk_event_t& ev) {
+	return is_meta(ev, meta_event_t::chprefix);
+}
+bool is_eot(const mtrk_event_t& ev) {
+	return is_meta(ev, meta_event_t::eot);
+}
+bool is_tempo(const mtrk_event_t& ev) {
+	return is_meta(ev, meta_event_t::tempo);
+}
+bool is_smpteoffset(const mtrk_event_t& ev) {
+	return is_meta(ev, meta_event_t::smpteoffset);
+}
+bool is_timesig(const mtrk_event_t& ev) {
+	return is_meta(ev, meta_event_t::timesig);
+}
+bool is_keysig(const mtrk_event_t& ev) {
+	return is_meta(ev, meta_event_t::keysig);
+}
+
+
+
+
+
 
 
 

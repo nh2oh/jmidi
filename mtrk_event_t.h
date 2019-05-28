@@ -46,14 +46,17 @@ public:
 	// Bytes of this->data()+i returned by value
 	unsigned char operator[](uint32_t) const;
 	// Ptr to this->data_[0] if this->is_small(), big_ptr() if is_big()
+	// TODO:  rename to data_dtstart(), data()  ??
 	unsigned char *data() const;
+	unsigned char *data_skipdt() const;
 	// Ptr to this->data_[0], w/o regard to this->is_small()
+	// TODO:  Should probably be made private
 	const unsigned char *raw_data() const;
 	// ptr to this->flags_
 	const unsigned char *raw_flag() const;
 	uint32_t delta_time() const;
 	smf_event_type type() const;
-	uint32_t data_size() const;  // Not indluding the delta-t
+	uint32_t data_size() const;  // Not including the delta-t
 	uint32_t size() const;  // Includes delta-t
 	// If is_small(), reports the size of the d_ array, which is the maximum
 	// size of an event that the 'small' state can contain.  
@@ -190,6 +193,55 @@ enum class mtrk_sbo_print_opts {
 };
 std::string print(const mtrk_event_t&,
 			mtrk_sbo_print_opts=mtrk_sbo_print_opts::normal);
+
+
+//
+// is_meta-event(const mtrk_event_t&) functions
+//
+// This design for the meta-event enum class means it is impossible
+// to have "unknown" and "invalid" meta-event types.  Alternatively, i
+// could make the underlying type a uint16_t and include the leading 0xFF.  
+// 
+enum class meta_event_t : unsigned char {
+	seqn = 0x00u,
+	text = 0x01u,
+	copyright = 0x02u,
+	trackname = 0x03u,
+	instname = 0x04u,
+	lyric = 0x05u,
+	marker = 0x06u,
+	cuepoint = 0x07u,
+	chprefix = 0x20u,
+	eot = 0x2Fu,
+	tempo = 0x51u,
+	smpteoffset = 0x54u,
+	timesig = 0x58u,
+	keysig = 0x59u,
+	seqspecific = 0x7Fu
+};
+bool operator==(const meta_event_t&, unsigned char);
+bool operator==(unsigned char, const meta_event_t&);
+bool operator!=(const meta_event_t&, unsigned char);
+bool operator!=(unsigned char, const meta_event_t&);
+
+bool is_meta(const mtrk_event_t&);
+bool is_seqn(const mtrk_event_t&);
+bool is_text(const mtrk_event_t&);
+bool is_copyright(const mtrk_event_t&);
+bool is_trackname(const mtrk_event_t&);
+bool is_instname(const mtrk_event_t&);
+bool is_lyric(const mtrk_event_t&);
+bool is_marker(const mtrk_event_t&);
+bool is_cuepoint(const mtrk_event_t&);
+bool is_chprefix(const mtrk_event_t&);
+bool is_eot(const mtrk_event_t&);
+bool is_tempo(const mtrk_event_t&);
+bool is_smpteoffset(const mtrk_event_t&);
+bool is_timesig(const mtrk_event_t&);
+bool is_keysig(const mtrk_event_t&);
+
+
+
 
 
 bool is_on_event(const mtrk_event_t&);
