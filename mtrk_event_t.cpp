@@ -135,6 +135,58 @@ mtrk_event_t::~mtrk_event_t() {
 	}
 }
 
+const unsigned char* mtrk_event_t::begin() const {
+	return this->data();
+}
+const unsigned char* mtrk_event_t::dt_begin() const {
+	return this->data();
+}
+const unsigned char* mtrk_event_t::dt_end() const {
+	auto len = midi_interpret_vl_field(this->data());
+	return this->data()+len.N;
+}
+const unsigned char* mtrk_event_t::event_begin() const {
+	return this->dt_end();
+}
+
+const unsigned char* mtrk_event_t::payload_begin() const {
+	const unsigned char *p = this->event_begin();
+	if (this->type()==smf_event_type::meta) {
+		p += 2;  // 0xFFu, type-byte
+	} else if (this->type()==smf_event_type::sysex_f0
+					|| this->type()==smf_event_type::sysex_f7) {
+		p += 1;  // 0xF0u or 0xF7u
+	} else {
+		// midi event ?  TODO:  unknown, invalid...
+		return p;
+	}
+	auto len = midi_interpret_vl_field(p);
+	p += len.N;
+	return p;
+}
+const unsigned char* mtrk_event_t::end() const {
+	return this->data()+this->size();
+}
+
+std::string mtrk_event_t::text_payload() const {
+	std::string s {};
+	const unsigned char *p = this->data_skipdt();
+	//midi_vl_field_interpreted len;
+	if (this->type()==smf_event_type::meta) {
+		p += 2;  // 0xFFu, type-byte
+	} else if (this->type()==smf_event_type::sysex_f0
+					|| this->type()==smf_event_type::sysex_f7) {
+		p += 1;  // 0xF0u or 0xF7u
+	} else {
+		return s;
+	}
+	auto len = midi_interpret_vl_field(p);
+	p += len.N;
+	s.reserve(len.N);
+	std::copy(p,p+len.val,std::back_inserter(s));
+	return s;
+}
+
 const unsigned char *mtrk_event_t::payload() const {
 	const unsigned char *result = this->data();
 	result += midi_interpret_vl_field(result).N;
@@ -505,17 +557,31 @@ std::string print(const mtrk_event_t& evnt, mtrk_sbo_print_opts opts) {
 	std::string s {};
 	s += ("delta_time = " + std::to_string(evnt.delta_time()) + ", ");
 	s += ("type = " + print(evnt.type()) + ", ");
-	s += ("data_size = " + std::to_string(evnt.data_size()) + ", ");
-	s += ("size = " + std::to_string(evnt.size()) + "\n\t");
+	s += ("size = " + std::to_string(evnt.size()) + ", ");
+	s += ("data_size = " + std::to_string(evnt.data_size()) + "\n");
 
-	auto ss = evnt.size();
+	/*auto ss = evnt.size();
 	auto ds = evnt.data_size();
-	auto n = ss-ds;
+	auto n = ss-ds;*/
 
-	s += ("[" + dbk::print_hexascii(evnt.data(), evnt.size()-evnt.data_size(), ' ') + "] ");
-	s += dbk::print_hexascii(evnt.data()+n, evnt.data_size(), ' ');
-
-	if (opts == mtrk_sbo_print_opts::debug) {
+	// delta_t field
+	//s += ("\t[" + dbk::print_hexascii(evnt.data(), evnt.size()-evnt.data_size(), ' ') + "] ");
+	// underlying data
+	//s += dbk::print_hexascii(evnt.data_skipdt(), evnt.data_size(), ' ');
+	s += "\t[";
+	dbk::print_hexascii(evnt.dt_begin(),evnt.dt_end(),std::back_inserter(s),' ');
+	s += "] ";
+	dbk::print_hexascii(evnt.event_begin(),evnt.end(),std::back_inserter(s),' ');
+	
+	if (opts == mtrk_sbo_print_opts::detail) {
+		if (evnt.type()==smf_event_type::meta) {
+			s += "\n";
+			s += ("\tmeta type: " + print(classify_meta_event(evnt)) + "; ");
+			if (meta_has_text(evnt)) {
+				s += ("text payload: \"" + meta_generic_gettext(evnt) + "\"; ");
+			}
+		}
+	} else if (opts == mtrk_sbo_print_opts::debug) {
 		s += "\n\t";
 		if (evnt.is_small()) {
 			s += "sbo=>small = ";
@@ -569,6 +635,46 @@ meta_event_t classify_meta_event_impl(const uint16_t& d16) {
 		} else {
 			return meta_event_t::invalid;
 		}
+	}
+}
+
+std::string print(const meta_event_t& mt) {
+	if (mt==meta_event_t::seqn) {
+		return "seqn";
+	} else if (mt==meta_event_t::text) {
+		return "text";
+	} else if (mt==meta_event_t::copyright) {
+		return "copyright";
+	} else if (mt==meta_event_t::trackname) {
+		return "trackname";
+	} else if (mt==meta_event_t::instname) {
+		return "instname";
+	} else if (mt==meta_event_t::lyric) {
+		return "lyric";
+	} else if (mt==meta_event_t::marker) {
+		return "marker";
+	} else if (mt==meta_event_t::cuepoint) {
+		return "cuepoint";
+	} else if (mt==meta_event_t::chprefix) {
+		return "chprefix";
+	} else if (mt==meta_event_t::eot) {
+		return "eot";
+	} else if (mt==meta_event_t::tempo) {
+		return "tempo";
+	} else if (mt==meta_event_t::smpteoffset) {
+		return "smpteoffset";
+	} else if (mt==meta_event_t::timesig) {
+		return "timesig";
+	} else if (mt==meta_event_t::keysig) {
+		return "keysig";
+	} else if (mt==meta_event_t::seqspecific) {
+		return "seqspecific";
+	} else if (mt==meta_event_t::invalid) {
+		return "invalid";
+	} else if (mt==meta_event_t::unknown) {
+		return "unknown";
+	} else {
+		return "?";
 	}
 }
 
@@ -633,7 +739,29 @@ bool is_keysig(const mtrk_event_t& ev) {
 	return is_meta(ev, meta_event_t::keysig);
 }
 
+bool meta_has_text(const mtrk_event_t& ev) {
+	auto mttype = classify_meta_event(ev);
+	return (mttype==meta_event_t::text 
+			|| mttype==meta_event_t::copyright
+			|| mttype==meta_event_t::trackname
+			|| mttype==meta_event_t::lyric
+			|| mttype==meta_event_t::marker
+			|| mttype==meta_event_t::cuepoint);
+}
 
+std::string meta_generic_gettext(const mtrk_event_t& ev) {
+	std::string s {};
+	auto mttype = classify_meta_event(ev);
+	if (mttype==meta_event_t::text 
+				|| mttype==meta_event_t::copyright
+				|| mttype==meta_event_t::trackname
+				|| mttype==meta_event_t::lyric
+				|| mttype==meta_event_t::marker
+				|| mttype==meta_event_t::cuepoint) {
+		s = ev.text_payload();
+	}
+	return s;
+}
 
 
 

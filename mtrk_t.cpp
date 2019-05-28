@@ -48,7 +48,8 @@ std::string print(const mtrk_t& mtrk) {
 	std::string s {};
 	s.reserve(mtrk.nevents()*100);  // TODO:  Magic constant 100
 	for (auto it=mtrk.begin(); it!=mtrk.end(); ++it) {
-		s += print(*it);
+		//s += print(*it);
+		s += print(*it,mtrk_sbo_print_opts::detail);
 		s += "\n";
 	}
 	return s;

@@ -3,7 +3,7 @@
 #include <string>
 #include <cstdint>
 #include <array>
-
+#include <vector>
 
 
 //
@@ -20,6 +20,9 @@
 // determine the object type dynamically.  One would not have to process the
 // delta-time field.  Presumably .type() is the most common method called on
 // these objects.  
+//
+// TODO:  This exposes a lot of dangerous getters
+//
 //
 class mtrk_event_t {
 public:
@@ -40,8 +43,21 @@ public:
 	// Dtor
 	~mtrk_event_t();
 
+	const unsigned char* begin() const;  // first byte of dt field
+	const unsigned char* dt_begin() const;
+	const unsigned char* dt_end() const;
+	const unsigned char* event_begin() const;  // first byte following the dt field
+	// For midi events, the first byte following the dt field;
+	// for meta,sysex events, the first byte following the length vl field.  
+	const unsigned char* payload_begin() const;
+	const unsigned char* end() const;
+
+
+
+	std::string text_payload() const;
+
 	// For midi events, ptr to first byte following the delta_time
-	// For meta,sysex eveents, ptr to first byte following the length
+	// For meta,sysex events, ptr to first byte following the length
 	const unsigned char *payload() const;
 	// Bytes of this->data()+i returned by value
 	unsigned char operator[](uint32_t) const;
@@ -189,6 +205,7 @@ private:
 
 enum class mtrk_sbo_print_opts {
 	normal,
+	detail,
 	debug
 };
 std::string print(const mtrk_event_t&,
@@ -226,6 +243,7 @@ enum class meta_event_t : uint16_t {
 meta_event_t classify_meta_event_impl(const uint16_t&);
 
 meta_event_t classify_meta_event(const mtrk_event_t&);
+std::string print(const meta_event_t&);
 bool is_meta(const mtrk_event_t&, const meta_event_t&);
 bool is_meta(const mtrk_event_t&);
 bool is_seqn(const mtrk_event_t&);
@@ -243,7 +261,12 @@ bool is_smpteoffset(const mtrk_event_t&);
 bool is_timesig(const mtrk_event_t&);
 bool is_keysig(const mtrk_event_t&);
 
-
+// Returns true if the event is a meta_event_t w/a text payload,
+//ex:  meta_event_t::text, meta_event_t::lyric, etc. 
+bool meta_has_text(const mtrk_event_t&);
+// Get the text of any meta event w/a text payload, ex:
+// meta_event_t::text, ::copyright, ::trackname, instname::, ...
+std::string meta_generic_gettext(const mtrk_event_t&);
 
 
 
