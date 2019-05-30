@@ -1,4 +1,5 @@
 #include "mtrk_event_t.h"
+#include "mtrk_event_iterator_t.h"
 #include "midi_raw.h"
 #include "midi_vlq.h"
 #include "dbklib\byte_manipulation.h"
@@ -203,49 +204,13 @@ mtrk_event_iterator_t mtrk_event_t::end() {
 }
 std::string mtrk_event_t::text_payload() const {
 	std::string s {};
-	/*const unsigned char *p = this->data_skipdt();
-	//midi_vl_field_interpreted len;
-	if (this->type()==smf_event_type::meta) {
-		p += 2;  // 0xFFu, type-byte
-	} else if (this->type()==smf_event_type::sysex_f0
-					|| this->type()==smf_event_type::sysex_f7) {
-		p += 1;  // 0xF0u or 0xF7u
-	} else {
-		return s;
-	}
-	auto len = midi_interpret_vl_field(p);
-	p += len.N;
-	s.reserve(len.N);
-	std::copy(p,p+len.val,std::back_inserter(s));
-	*/
 	if (this->type()==smf_event_type::meta 
 				|| this->type()==smf_event_type::sysex_f0
 				|| this->type()==smf_event_type::sysex_f7) {
-	std::copy(this->payload_begin(),this->end(),std::back_inserter(s));
+		std::copy(this->payload_begin(),this->end(),std::back_inserter(s));
 	}
 	return s;
 }
-/*
-const unsigned char *mtrk_event_t::payload() const {
-	const unsigned char *result = this->data();
-	result += midi_interpret_vl_field(result).N;
-
-	if (this->type()==smf_event_type::channel) {
-		//result is pointing at either an event-local status byte or
-		// the first data byte of the midi msg. 
-	} else if (this->type()==smf_event_type::meta) {
-		// result is pointing at an 0xFF
-		result += 2;  // Skip the 0xFF and the type byte
-		result += midi_interpret_vl_field(result).N;  // Skip the length field
-	} else if (this->type()==smf_event_type::sysex_f0
-				|| this->type()==smf_event_type::sysex_f7) {
-		result += 1; // Skips the 0xF0 or 0xF7
-		result += midi_interpret_vl_field(result).N;  // Skip the length field
-	} else {  // Invalid
-		result = nullptr;
-	}
-	return result;
-}*/
 const unsigned char& mtrk_event_t::operator[](uint32_t i) const {
 	const auto& r = *(this->data()+i);
 	return r;
@@ -253,13 +218,6 @@ const unsigned char& mtrk_event_t::operator[](uint32_t i) const {
 unsigned char& mtrk_event_t::operator[](uint32_t i) {
 	return *(this->data()+i);
 };
-/*
-unsigned char *mtrk_event_t::data_skipdt() const {
-	unsigned char *p = this->data();
-	auto dt = midi_interpret_vl_field(p);
-	return p+=dt.N;
-}
-*/
 const unsigned char *mtrk_event_t::data() const {
 	if (this->is_small()) {
 		return this->small_ptr();
@@ -638,157 +596,6 @@ std::string print(const mtrk_event_t& evnt, mtrk_sbo_print_opts opts) {
 	}
 	return s;
 }
-
-
-
-
-mtrk_event_iterator_t::mtrk_event_iterator_t(mtrk_event_t& ev) {
-	this->p_ = ev.data();
-}
-mtrk_event_iterator_t::mtrk_event_iterator_t(mtrk_event_t *p) {
-	this->p_ = p->data();
-}
-unsigned char& mtrk_event_iterator_t::operator*() const {
-	return *(this->p_);
-}
-unsigned char *mtrk_event_iterator_t::operator->() const {
-	return this->p_;
-}
-mtrk_event_iterator_t& mtrk_event_iterator_t::operator++() {  // preincrement
-	++(this->p_);
-	return *this;
-}
-mtrk_event_iterator_t mtrk_event_iterator_t::operator++(int) {  // postincrement
-	mtrk_event_iterator_t temp = *this;
-	++this->p_;
-	return temp;
-}
-mtrk_event_iterator_t& mtrk_event_iterator_t::operator--() {  // pre
-	--(this->p_);
-	return *this;
-}
-mtrk_event_iterator_t mtrk_event_iterator_t::operator--(int) {  // post
-	mtrk_event_iterator_t temp = *this;
-	--this->p_;
-	return temp;
-}
-mtrk_event_iterator_t& mtrk_event_iterator_t::operator+=(int n) {
-	this->p_ += n;
-	return *this;
-}
-mtrk_event_iterator_t mtrk_event_iterator_t::operator+(int n) {
-	mtrk_event_iterator_t temp = *this;
-	return temp += n;
-}
-mtrk_event_iterator_t& mtrk_event_iterator_t::operator-=(int n) {
-	this->p_ -= n;
-	return *this;
-}
-std::ptrdiff_t mtrk_event_iterator_t::operator-(const mtrk_event_iterator_t& rhs) const {
-	return this->p_-rhs.p_;
-}
-bool mtrk_event_iterator_t::operator==(const mtrk_event_iterator_t& rhs) const {
-	return this->p_ == rhs.p_;
-}
-bool mtrk_event_iterator_t::operator!=(const mtrk_event_iterator_t& rhs) const {
-	return this->p_ != rhs.p_;
-}
-bool mtrk_event_iterator_t::operator<(const mtrk_event_iterator_t& rhs) const {
-	return this->p_ < rhs.p_;
-}
-bool mtrk_event_iterator_t::operator>(const mtrk_event_iterator_t& rhs) const {
-	return this->p_ > rhs.p_;
-}
-bool mtrk_event_iterator_t::operator<=(const mtrk_event_iterator_t& rhs) const {
-	return this->p_ <= rhs.p_;
-}
-bool mtrk_event_iterator_t::operator>=(const mtrk_event_iterator_t& rhs) const {
-	return this->p_ >= rhs.p_;
-}
-
-
-
-
-
-
-
-
-mtrk_event_const_iterator_t::mtrk_event_const_iterator_t(const mtrk_event_iterator_t& it) {
-	this->p_ = it.operator->();//p_;;
-}
-mtrk_event_const_iterator_t::mtrk_event_const_iterator_t(mtrk_event_t *p) {
-	this->p_ = p->data();
-}
-mtrk_event_const_iterator_t::mtrk_event_const_iterator_t(const mtrk_event_t& ev) {
-	this->p_ = ev.data();
-}
-const unsigned char& mtrk_event_const_iterator_t::operator*() const {
-	return *(this->p_);
-}
-const unsigned char *mtrk_event_const_iterator_t::operator->() const {
-	return this->p_;
-}
-mtrk_event_const_iterator_t& mtrk_event_const_iterator_t::operator++() {  // preincrement
-	++(this->p_);
-	return *this;
-}
-mtrk_event_const_iterator_t mtrk_event_const_iterator_t::operator++(int) {  // postincrement
-	mtrk_event_const_iterator_t temp = *this;
-	++this->p_;
-	return temp;
-}
-mtrk_event_const_iterator_t& mtrk_event_const_iterator_t::operator--() {  // pre
-	--(this->p_);
-	return *this;
-}
-mtrk_event_const_iterator_t mtrk_event_const_iterator_t::operator--(int) {  // post
-	mtrk_event_const_iterator_t temp = *this;
-	--this->p_;
-	return temp;
-}
-mtrk_event_const_iterator_t& mtrk_event_const_iterator_t::operator+=(int n) {
-	this->p_ += n;
-	return *this;
-}
-mtrk_event_const_iterator_t mtrk_event_const_iterator_t::operator+(int n) {
-	mtrk_event_const_iterator_t temp = *this;
-	return temp += n;
-}
-mtrk_event_const_iterator_t& mtrk_event_const_iterator_t::operator-=(int n) {
-	this->p_ -= n;
-	return *this;
-}
-std::ptrdiff_t mtrk_event_const_iterator_t::operator-(const mtrk_event_const_iterator_t& rhs) const {
-	return this->p_-rhs.p_;
-}
-bool mtrk_event_const_iterator_t::operator==(const mtrk_event_const_iterator_t& rhs) const {
-	return this->p_ == rhs.p_;
-}
-bool mtrk_event_const_iterator_t::operator!=(const mtrk_event_const_iterator_t& rhs) const {
-	return !(*this==rhs);
-}
-bool mtrk_event_const_iterator_t::operator<(const mtrk_event_const_iterator_t& rhs) const {
-	return this->p_ < rhs.p_;
-}
-bool mtrk_event_const_iterator_t::operator>(const mtrk_event_const_iterator_t& rhs) const {
-	return this->p_ > rhs.p_;
-}
-bool mtrk_event_const_iterator_t::operator<=(const mtrk_event_const_iterator_t& rhs) const {
-	return this->p_ <= rhs.p_;
-}
-bool mtrk_event_const_iterator_t::operator>=(const mtrk_event_const_iterator_t& rhs) const {
-	return this->p_ >= rhs.p_;
-}
-
-
-
-
-
-
-
-
-
-
 
 
 

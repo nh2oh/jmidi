@@ -38,6 +38,7 @@ std::string print(const mtrk_event_t&,
 //
 // TODO:  This exposes a lot of dangerous getters
 // TODO:  ==,!= operators
+// TODO:  Member enum class offs is absolutely disgusting
 //
 class mtrk_event_t {
 public:
@@ -58,11 +59,16 @@ public:
 	// Dtor
 	~mtrk_event_t();
 
+	// Iterators allowing access to the underlying unsigned char array
+	//
 	// begin(), dt_begin() both return iterators to the first byte of the 
 	// dt field.  The redundant dt_ versions are here for users who want
-	// to be as explicit as possible.  dt_end() returns an iterator to the 
-	// first byte following the dt field, which is the first byte of the
-	// "event," and is the same as is returned by event_begin().  
+	// to be more explicit.  dt_end() returns an iterator to the first
+	// byte following the dt field, which is the first byte of the "event," 
+	// and is the same as is returned by event_begin().  
+	// payload_begin() returns an iterator to the first byte following
+	// the delta_t field for midi events, and to the first byte following
+	// the vlq length field for sysex and meta events.  
 	mtrk_event_const_iterator_t begin() const;
 	mtrk_event_iterator_t begin();
 	mtrk_event_const_iterator_t dt_begin() const;
@@ -71,36 +77,28 @@ public:
 	mtrk_event_iterator_t dt_end();
 	mtrk_event_const_iterator_t event_begin() const;
 	mtrk_event_iterator_t event_begin();
-	// For midi events, the first byte following the dt field;
-	// for meta,sysex events, the first byte following the length vl field.  
 	mtrk_event_const_iterator_t payload_begin() const;
 	mtrk_event_iterator_t payload_begin();
 	mtrk_event_const_iterator_t end() const;
 	mtrk_event_iterator_t end();
 
-	std::string text_payload() const;
+	
 
-	// For midi events, ptr to first byte following the delta_time
-	// For meta,sysex events, ptr to first byte following the length
-	//const unsigned char *payload() const;
-	// Bytes of this->data()+i returned by value
 	const unsigned char& operator[](uint32_t) const;
 	unsigned char& operator[](uint32_t);
-	// Ptr to this->data_[0] if this->is_small(), big_ptr() if is_big()
-	// TODO:  rename to data_dtstart(), data()  ??
 	unsigned char *data();
 	const unsigned char *data() const;
-	//unsigned char *data_skipdt() const;
 	
-	uint32_t delta_time() const;
 	smf_event_type type() const;
+	uint32_t delta_time() const;
+	bool set_delta_time(uint32_t);
+	std::string text_payload() const;
 	uint32_t data_size() const;  // Not including the delta-t
 	uint32_t size() const;  // Includes delta-t
+					
 	// If is_small(), reports the size of the d_ array, which is the maximum
 	// size of an event that the 'small' state can contain.  
 	uint32_t capacity() const;
-
-	bool set_delta_time(uint32_t);
 
 	struct midi_data_t {
 		bool is_valid {false};
@@ -111,8 +109,6 @@ public:
 		uint8_t p2 {0x00u};
 	};
 	midi_data_t midi_data() const;
-	
-	
 private:
 	enum class offs {
 		ptr = 0,
@@ -180,9 +176,7 @@ private:
 	static_assert(sizeof(d_)==22);
 	static_assert(static_cast<uint32_t>(offs::max_size_sbo)==22);
 	
-
 	// Ptr to this->data_[0], w/o regard to this->is_small()
-	// TODO:  Should probably be made private
 	const unsigned char *raw_data() const;
 	// ptr to this->flags_
 	const unsigned char *raw_flag() const;
@@ -212,7 +206,6 @@ private:
 	void set_flag_small();
 	void set_flag_big();
 
-	bool validate() const;
 	// Getters {big,small}_ptr() get a pointer to the first byte of
 	// the underlying data array (the first byte of the dt field).  Neither
 	// checks for the container size; the caller must be careful to call the
@@ -232,79 +225,11 @@ private:
 	smf_event_type big_smf_event_type() const;  // shortcut to determining the type if is_big()
 	smf_event_type set_big_cached_smf_event_type(smf_event_type);
 
+	bool validate() const;
+
 	friend std::string print(const mtrk_event_t&,
 			mtrk_sbo_print_opts);
 };
-
-
-
-
-
-
-
-class mtrk_event_iterator_t {
-public:
-	using iterator_category = std::random_access_iterator_tag;
-	using value_type = unsigned char;
-	using difference_type = int;
-	using pointer = unsigned char *;
-	using reference = unsigned char&;
-	mtrk_event_iterator_t(mtrk_event_t&);
-	mtrk_event_iterator_t(mtrk_event_t*);
-	unsigned char& operator*() const;
-	unsigned char *operator->() const;
-	mtrk_event_iterator_t& operator++();  // preincrement
-	mtrk_event_iterator_t operator++(int);  // postincrement
-	mtrk_event_iterator_t& operator--();  // pre
-	mtrk_event_iterator_t operator--(int);  // post
-	mtrk_event_iterator_t& operator+=(int);
-	mtrk_event_iterator_t operator+(int);
-	mtrk_event_iterator_t& operator-=(int);
-	std::ptrdiff_t operator-(const mtrk_event_iterator_t&) const;
-	bool operator==(const mtrk_event_iterator_t&) const;
-	bool operator!=(const mtrk_event_iterator_t&) const;
-	bool operator<(const mtrk_event_iterator_t&) const;
-	bool operator>(const mtrk_event_iterator_t&) const;
-	bool operator<=(const mtrk_event_iterator_t&) const;
-	bool operator>=(const mtrk_event_iterator_t&) const;
-private:
-	unsigned char *p_;
-};
-class mtrk_event_const_iterator_t {
-public:
-	using iterator_category = std::random_access_iterator_tag;
-	using value_type = unsigned char;
-	using difference_type = int;
-	using pointer = const unsigned char *;
-	using reference = const unsigned char&;
-
-	mtrk_event_const_iterator_t(mtrk_event_t*);
-	mtrk_event_const_iterator_t(const mtrk_event_t*);
-	mtrk_event_const_iterator_t(const mtrk_event_t&);
-	mtrk_event_const_iterator_t(const mtrk_event_iterator_t&);
-	const unsigned char& operator*() const;
-	const unsigned char *operator->() const;
-	mtrk_event_const_iterator_t& operator++();  // preincrement
-	mtrk_event_const_iterator_t operator++(int);  // postincrement
-	mtrk_event_const_iterator_t& operator--();  // pre
-	mtrk_event_const_iterator_t operator--(int);  // post
-	mtrk_event_const_iterator_t& operator+=(int);
-	mtrk_event_const_iterator_t operator+(int);
-	mtrk_event_const_iterator_t& operator-=(int);
-	std::ptrdiff_t operator-(const mtrk_event_const_iterator_t& rhs) const;
-	bool operator==(const mtrk_event_const_iterator_t&) const;
-	bool operator!=(const mtrk_event_const_iterator_t&) const;
-	bool operator<(const mtrk_event_const_iterator_t&) const;
-	bool operator>(const mtrk_event_const_iterator_t&) const;
-	bool operator<=(const mtrk_event_const_iterator_t&) const;
-	bool operator>=(const mtrk_event_const_iterator_t&) const;
-private:
-	const unsigned char *p_;
-};
-
-
-
-
 
 
 
