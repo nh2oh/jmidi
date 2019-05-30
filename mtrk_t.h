@@ -115,5 +115,36 @@ linked_and_orphan_onoff_pairs_t get_linked_onoff_pairs(mtrk_const_iterator_t,
 					mtrk_const_iterator_t);
 std::string print(const linked_and_orphan_onoff_pairs_t&);
 
+//
+// An alternate design, possibly more general, & w/o question
+// more lightweight
+//
+// Args:  Iterator to the first event of the sequence, iterator to one past
+// the end of the sequence, the on-event of interest.  
+// Returns an mtrk_event_cumtk_t where member .ev points to the linked off 
+// event and .cumtk is the cumulative number of ticks occuring between 
+// [beg,.ev).  It is the cumulative number if ticks past immediately _before_
+// event .ev (the onset tick of event .ev is .cumtk + .ev->delta_time()).  
+// If no corresponding off event can be found, .ev==end and .cumtk has the
+// same interpretation as before.  
+struct mtrk_event_cumtk_t {
+	uint32_t cumtk;  // cumtk _before_ event ev
+	mtrk_const_iterator_t ev;
+};
+mtrk_event_cumtk_t find_linked_off(mtrk_const_iterator_t, mtrk_const_iterator_t,
+			const mtrk_event_t&);
+std::string print_linked_onoff_pairs(const mtrk_t&);
+
+// First draft
+template<typename InIt, typename UPred, typename FIntegrate>
+std::pair<InIt,typename FIntegrate::value_type> accumulate_to(InIt beg,
+								InIt end, UPred pred, FIntegrate func) {
+	std::pair<InIt,typename FIntegrate::value_type> res;
+	for (res.ev=beg; (res.ev!=end && !pred(res.ev)); ++res.ev) {
+		res.first = func(res.first,res.ev);
+	}
+	return res;
+};
+
 
 

@@ -36,13 +36,15 @@ int midi_example() {
 		std::cout << "nope :(" << std::endl;
 		std::abort();
 	}
-	std::cout << print(maybesmf2.smf) << std::endl;
+	//std::cout << print(maybesmf2.smf) << std::endl;
 
 	auto linked_pairs = get_linked_onoff_pairs(maybesmf2.smf);
-	std::cout << print(linked_pairs) << std::endl;
+	std::cout << print(linked_pairs) << std::endl << std::endl;
 
-	auto ordered_evs_all = get_events_dt_ordered(maybesmf2.smf);
-	std::cout << print(ordered_evs_all) << std::endl;
+	//auto ordered_evs_all = get_events_dt_ordered(maybesmf2.smf);
+	//std::cout << print(ordered_evs_all) << std::endl;
+
+	std::cout << print_linked_onoff_pairs(maybesmf2.smf.get_track(2)) << std::endl;
 
 	return 0;
 }

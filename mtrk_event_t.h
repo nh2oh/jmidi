@@ -1,14 +1,13 @@
 #pragma once
-#include "midi_raw.h"
+#include "midi_raw.h"  // declares smf_event_type
 #include <string>
 #include <cstdint>
 #include <array>
-#include <vector>
+
 
 class mtrk_event_t;
 class mtrk_event_iterator_t;
 class mtrk_event_const_iterator_t;
-
 
 enum class mtrk_sbo_print_opts {
 	normal,

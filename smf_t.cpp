@@ -6,7 +6,7 @@
 #include <string>
 #include <cstdint>
 #include <vector>
-#include <algorithm>  // std::copy() in smf2_t::smf2_t(const validate_smf_result_t& maybe_smf)
+#include <algorithm>  // std::copy() in smf_t::smf_t(const validate_smf_result_t& maybe_smf)
 #include <iostream>
 #include <exception>
 #include <iomanip>  // std::setw()
@@ -18,7 +18,7 @@
 
 
 
-uint32_t smf2_t::size() const {
+uint32_t smf_t::size() const {
 	uint32_t n = 0;
 	n = this->mthd_.size();
 	for (const auto& e : this->mtrks_) {
@@ -29,61 +29,61 @@ uint32_t smf2_t::size() const {
 	}
 	return n;
 }
-uint16_t smf2_t::ntrks() const {
+uint16_t smf_t::ntrks() const {
 	return this->mtrks_.size();
 }
-uint16_t smf2_t::nchunks() const {
+uint16_t smf_t::nchunks() const {
 	return static_cast<uint16_t>(this->mtrks_.size()+this->uchks_.size()+1);
 }
-uint16_t smf2_t::format() const {
+uint16_t smf_t::format() const {
 	return this->mthd_.format();
 }
-uint16_t smf2_t::division() const {
+uint16_t smf_t::division() const {
 	return this->mthd_.division();
 }
-uint32_t smf2_t::mthd_size() const {
+uint32_t smf_t::mthd_size() const {
 	return this->mthd_.size();
 }
-uint32_t smf2_t::mthd_data_size() const {
+uint32_t smf_t::mthd_data_size() const {
 	return this->mthd_.data_size();
 }
-std::string smf2_t::fname() const {
+std::string smf_t::fname() const {
 	return this->fname_;
 }
-uint32_t smf2_t::track_size(int trackn) const {
+uint32_t smf_t::track_size(int trackn) const {
 	return this->mtrks_[trackn].size();
 }
-uint32_t smf2_t::track_data_size(int trackn) const {
+uint32_t smf_t::track_data_size(int trackn) const {
 	return this->mtrks_[trackn].data_size();
 }
-mthd_view_t smf2_t::get_header_view() const {
+mthd_view_t smf_t::get_header_view() const {
 	return this->mthd_.get_view();
 }
-const mthd_t& smf2_t::get_header() const {
+const mthd_t& smf_t::get_header() const {
 	return this->mthd_;
 }
-const mtrk_t& smf2_t::get_track(int trackn) const {
+const mtrk_t& smf_t::get_track(int trackn) const {
 	return this->mtrks_[trackn];
 }
-mtrk_t& smf2_t::get_track(int trackn) {
+mtrk_t& smf_t::get_track(int trackn) {
 	return this->mtrks_[trackn];
 }
 
-void smf2_t::set_fname(const std::string& fname) {
+void smf_t::set_fname(const std::string& fname) {
 	this->fname_ = fname;
 }
 
-void smf2_t::set_mthd(const validate_mthd_chunk_result_t& val_mthd) {
+void smf_t::set_mthd(const validate_mthd_chunk_result_t& val_mthd) {
 	this->mthd_.set(val_mthd);
 }
-void smf2_t::append_mtrk(const mtrk_t& mtrk) {
+void smf_t::append_mtrk(const mtrk_t& mtrk) {
 	this->mtrks_.push_back(mtrk);
 }
-void smf2_t::append_uchk(const std::vector<unsigned char>& uchk) {
+void smf_t::append_uchk(const std::vector<unsigned char>& uchk) {
 	this->uchks_.push_back(uchk);
 }
 
-std::string print(const smf2_t& smf) {
+std::string print(const smf_t& smf) {
 	std::string s {};
 	s.reserve(20*smf.size());  // TODO: Magic constant 20
 
@@ -114,12 +114,12 @@ std::string print(const smf2_t& smf) {
 
 
 
-maybe_smf2_t::operator bool() const {
+maybe_smf_t::operator bool() const {
 	return this->error == "No error";
 }
 
-maybe_smf2_t read_smf2(const std::string& fn) {
-	maybe_smf2_t result {};
+maybe_smf_t read_smf2(const std::string& fn) {
+	maybe_smf_t result {};
 	
 	// Read the file into fdata, close the file
 	std::vector<unsigned char> fdata {};
@@ -193,7 +193,7 @@ maybe_smf2_t read_smf2(const std::string& fn) {
 }
 
 
-std::vector<all_smf_events_dt_ordered_t> get_events_dt_ordered(const smf2_t& smf) {
+std::vector<all_smf_events_dt_ordered_t> get_events_dt_ordered(const smf_t& smf) {
 	std::vector<all_smf_events_dt_ordered_t> result;
 	//result.reserve(smf.nchunks...
 	
@@ -252,7 +252,7 @@ std::string print(const std::vector<all_smf_events_dt_ordered_t>& evs) {
 }
 
 
-linked_and_orphans_with_trackn_t get_linked_onoff_pairs(const smf2_t& smf) {
+linked_and_orphans_with_trackn_t get_linked_onoff_pairs(const smf_t& smf) {
 	linked_and_orphans_with_trackn_t result;
 	for (int i=0; i<smf.ntrks(); ++i) {
 		const auto& curr_trk = smf.get_track(i);

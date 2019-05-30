@@ -5,12 +5,9 @@
 #include "dbklib\byte_manipulation.h"
 #include <string>
 #include <cstdint>
-#include <iostream>
 #include <cstring>  // std::memcpy()
-#include <exception>
-#include <algorithm>
-#include <vector>
-#include <iterator>
+#include <exception>  // std::abort()
+#include <algorithm>  
 #include <utility>  // std::move()
 
 

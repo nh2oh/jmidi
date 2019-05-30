@@ -1,5 +1,6 @@
 #include "mtrk_t.h"
 #include "dbklib\byte_manipulation.h"
+#include "mtrk_event_t.h"
 #include <string>
 #include <cstdint>
 #include <vector>
@@ -276,6 +277,8 @@ linked_and_orphan_onoff_pairs_t get_linked_onoff_pairs(mtrk_const_iterator_t beg
 	}  // To the next event on [beg,end)
 
 	// "less-than" functions for orphans and linked pairs
+	// "lt_oe" => "less than for orphan events"
+	// "lt_le" => "less than for linked events"
 	auto lt_oe = [](const orphan_onoff_t& rhs,const orphan_onoff_t& lhs)->bool {
 		return rhs.cumtk<lhs.cumtk;
 	};
@@ -283,17 +286,11 @@ linked_and_orphan_onoff_pairs_t get_linked_onoff_pairs(mtrk_const_iterator_t beg
 		return rhs.cumtk_on<lhs.cumtk_on;
 	};
 	std::sort(result.orphan_on.begin(),result.orphan_on.end(),lt_oe);
-	std::sort(result.orphan_on.begin(),result.orphan_on.end(),lt_oe);
+	std::sort(result.orphan_off.begin(),result.orphan_off.end(),lt_oe);
 	std::sort(result.linked.begin(),result.linked.end(),lt_le);
 
 	return result;
 }
-
-
-
-
-
-
 
 std::string print(const linked_and_orphan_onoff_pairs_t& evs) {
 	std::string s {};
@@ -354,4 +351,95 @@ std::string print(const linked_and_orphan_onoff_pairs_t& evs) {
 
 	return ss.str();
 }
+
+
+
+
+
+mtrk_event_cumtk_t find_linked_off(mtrk_const_iterator_t beg,
+					mtrk_const_iterator_t end, const mtrk_event_t& on) {
+	mtrk_event_cumtk_t res {0, end};
+	if (beg==end || !is_on_event(on)) {
+		return res;
+	}
+
+	auto mdata_on = on.midi_data();
+	auto is_linked_off = [&mdata_on](const mtrk_const_iterator_t& evit)->bool {
+		if (!is_off_event(*evit)) {
+			return false;
+		}
+		auto mdata_ev = evit->midi_data();
+		return ((mdata_ev.ch==mdata_on.ch) 
+			&& (mdata_ev.p1==mdata_on.p1));
+	};
+
+	for (res.ev=beg; (res.ev!=end && !is_linked_off(res.ev)); ++res.ev) {
+		res.cumtk += res.ev->delta_time();
+	}
+
+	return res;
+}
+
+std::string print_linked_onoff_pairs(const mtrk_t& mtrk) {
+	std::string s;
+
+	struct width_t {
+		int def {12};  // "default"
+		int p1p2 {10};
+		int ch {10};
+		int sep {3};
+	};
+	width_t w {};
+
+	std::stringstream ss {};
+	ss << std::left;
+	ss << std::setw(w.ch) << "Ch (on)";
+	ss << std::setw(w.p1p2) << "p1 (on)";
+	ss << std::setw(w.p1p2) << "p2 (on)";
+	ss << std::setw(w.def) << "Tick (on)";
+	ss << std::setw(w.sep) << " ";
+	ss << std::setw(w.ch) << "Ch (off)";
+	ss << std::setw(w.p1p2) << "p1 (off)";
+	ss << std::setw(w.p1p2) << "p2 (off)";
+	ss << std::setw(w.def) << "Tick off";
+	ss << std::setw(w.sep) << " ";
+	ss << std::setw(w.def) << "Duration";
+	ss << "\n";
+
+	auto print_half = [&ss,&w](uint32_t cumtk, const mtrk_event_t& onoff)->void {
+		auto md = onoff.midi_data();
+		ss << std::setw(w.ch) << std::to_string(md.ch);
+		ss << std::setw(w.p1p2) << std::to_string(md.p1);
+		ss << std::setw(w.p1p2) << std::to_string(md.p2);
+		ss << std::setw(w.def) << std::to_string(cumtk);
+	};
+
+	uint32_t cumtk_on = 0;
+	for (auto curr=mtrk.begin(); curr!=mtrk.end(); ++curr) {
+		cumtk_on += curr->delta_time();
+		if (!is_on_event(*curr)) {
+			continue;
+		}
+		auto cumtk_prior = (cumtk_on - curr->delta_time());
+
+		print_half(cumtk_on,*curr);
+		ss << std::setw(w.sep) << " ";
+
+		// Note:  Not starting @ curr+1
+		auto it_off = find_linked_off(curr,mtrk.end(),*curr);
+		if (it_off.ev==mtrk.end()) {
+			ss << "NO OFF EVENT\n";
+			continue;
+		}
+
+		auto cumtk_off = cumtk_prior + it_off.cumtk + it_off.ev->delta_time();
+		print_half(cumtk_off,*it_off.ev);
+		ss << std::setw(w.sep) << " ";
+		ss << std::to_string(cumtk_off-cumtk_on);
+		ss << "\n";
+	}
+	return ss.str();
+}
+
+
 

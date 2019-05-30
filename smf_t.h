@@ -9,12 +9,12 @@
 
 
 //
-// smf2_t
+// smf_t
 //
 // Holds an smf; owns the underlying data.  Stores the mtrk chunks as
 // a std::vector<std::vector<mtrk_event_t>>.  
 //
-class smf2_t {
+class smf_t {
 public:
 	uint32_t size() const;
 	uint16_t nchunks() const;
@@ -42,14 +42,14 @@ private:
 	std::vector<mtrk_t> mtrks_ {};
 	std::vector<std::vector<unsigned char>> uchks_ {};
 };
-std::string print(const smf2_t&);
+std::string print(const smf_t&);
 
-struct maybe_smf2_t {
-	smf2_t smf;
+struct maybe_smf_t {
+	smf_t smf;
 	std::string error {"No error"};
 	operator bool() const;
 };
-maybe_smf2_t read_smf2(const std::string&);
+maybe_smf_t read_smf2(const std::string&);
 
 
 /*class smf2_chrono_iterator {
@@ -68,7 +68,7 @@ struct all_smf_events_dt_ordered_t {
 	uint32_t cumtk;
 	int trackn;
 };
-std::vector<all_smf_events_dt_ordered_t> get_events_dt_ordered(const smf2_t&);
+std::vector<all_smf_events_dt_ordered_t> get_events_dt_ordered(const smf_t&);
 std::string print(const std::vector<all_smf_events_dt_ordered_t>&);
 
 struct linked_pair_with_trackn_t {
@@ -84,7 +84,7 @@ struct linked_and_orphans_with_trackn_t {
 	std::vector<orphan_onoff_with_trackn_t> orphan_on {};
 	std::vector<orphan_onoff_with_trackn_t> orphan_off {};
 };
-linked_and_orphans_with_trackn_t get_linked_onoff_pairs(const smf2_t&);
+linked_and_orphans_with_trackn_t get_linked_onoff_pairs(const smf_t&);
 std::string print(const linked_and_orphans_with_trackn_t&);
 
 /*
