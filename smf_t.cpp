@@ -1,7 +1,6 @@
 #include "smf_t.h"
 #include "midi_raw.h"
 #include "mthd_t.h"
-#include "mtrk_container_t.h"
 #include "mtrk_t.h"
 #include "dbklib\byte_manipulation.h"
 #include <string>
