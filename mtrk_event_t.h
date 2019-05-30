@@ -5,9 +5,21 @@
 #include <array>
 #include <vector>
 
-
+class mtrk_event_t;
 class mtrk_event_iterator_t;
 class mtrk_event_const_iterator_t;
+
+
+enum class mtrk_sbo_print_opts {
+	normal,
+	detail,
+	// Prints the value of flags_, midi_status_.  If big, prints the byte 
+	// array d_ for the local container in addition to the heap-allocated
+	// data.  
+	debug  
+};
+std::string print(const mtrk_event_t&,
+			mtrk_sbo_print_opts=mtrk_sbo_print_opts::normal);
 
 //
 // mtrk_event_t:  An sbo-featured container for mtrk events
@@ -25,7 +37,7 @@ class mtrk_event_const_iterator_t;
 // these objects.  
 //
 // TODO:  This exposes a lot of dangerous getters
-//
+// TODO:  ==,!= operators
 //
 class mtrk_event_t {
 public:
@@ -46,11 +58,17 @@ public:
 	// Dtor
 	~mtrk_event_t();
 
-	mtrk_event_const_iterator_t begin() const;  // first byte of dt field
-	mtrk_event_iterator_t begin();  // first byte of dt field
+	// begin(), dt_begin() both return iterators to the first byte of the 
+	// dt field.  The redundant dt_ versions are here for users who want
+	// to be as explicit as possible.  dt_end() returns an iterator to the 
+	// first byte following the dt field, which is the first byte of the
+	// "event," and is the same as is returned by event_begin().  
+	mtrk_event_const_iterator_t begin() const;
+	mtrk_event_iterator_t begin();
+	mtrk_event_const_iterator_t dt_begin() const;
+	mtrk_event_iterator_t dt_begin();
 	mtrk_event_const_iterator_t dt_end() const;
 	mtrk_event_iterator_t dt_end();
-	// first byte following the dt field
 	mtrk_event_const_iterator_t event_begin() const;
 	mtrk_event_iterator_t event_begin();
 	// For midi events, the first byte following the dt field;
@@ -60,13 +78,11 @@ public:
 	mtrk_event_const_iterator_t end() const;
 	mtrk_event_iterator_t end();
 
-
-
 	std::string text_payload() const;
 
 	// For midi events, ptr to first byte following the delta_time
 	// For meta,sysex events, ptr to first byte following the length
-	const unsigned char *payload() const;
+	//const unsigned char *payload() const;
 	// Bytes of this->data()+i returned by value
 	const unsigned char& operator[](uint32_t) const;
 	unsigned char& operator[](uint32_t);
@@ -74,12 +90,8 @@ public:
 	// TODO:  rename to data_dtstart(), data()  ??
 	unsigned char *data();
 	const unsigned char *data() const;
-	unsigned char *data_skipdt() const;
-	// Ptr to this->data_[0], w/o regard to this->is_small()
-	// TODO:  Should probably be made private
-	const unsigned char *raw_data() const;
-	// ptr to this->flags_
-	const unsigned char *raw_flag() const;
+	//unsigned char *data_skipdt() const;
+	
 	uint32_t delta_time() const;
 	smf_event_type type() const;
 	uint32_t data_size() const;  // Not including the delta-t
@@ -100,9 +112,7 @@ public:
 	};
 	midi_data_t midi_data() const;
 	
-	bool validate() const;
-	bool is_big() const;
-	bool is_small() const;
+	
 private:
 	enum class offs {
 		ptr = 0,
@@ -170,6 +180,13 @@ private:
 	static_assert(sizeof(d_)==22);
 	static_assert(static_cast<uint32_t>(offs::max_size_sbo)==22);
 	
+
+	// Ptr to this->data_[0], w/o regard to this->is_small()
+	// TODO:  Should probably be made private
+	const unsigned char *raw_data() const;
+	// ptr to this->flags_
+	const unsigned char *raw_flag() const;
+
 	// Causes the container to "adopt" the data at p (writes p and the 
 	// associated size, capacity into this->d_).  Note: data at p is _not_
 	// copied into a new buffer.  Caller should not delete p after calling.  
@@ -190,9 +207,12 @@ private:
 	// is made; if is_big() the memory will leak.  
 	void clear_nofree();
 
+	bool is_big() const;
+	bool is_small() const;
 	void set_flag_small();
 	void set_flag_big();
 
+	bool validate() const;
 	// Getters {big,small}_ptr() get a pointer to the first byte of
 	// the underlying data array (the first byte of the dt field).  Neither
 	// checks for the container size; the caller must be careful to call the
@@ -211,21 +231,25 @@ private:
 	uint32_t set_big_cached_delta_t(uint32_t);
 	smf_event_type big_smf_event_type() const;  // shortcut to determining the type if is_big()
 	smf_event_type set_big_cached_smf_event_type(smf_event_type);
+
+	friend std::string print(const mtrk_event_t&,
+			mtrk_sbo_print_opts);
 };
 
-enum class mtrk_sbo_print_opts {
-	normal,
-	detail,
-	debug
-};
-std::string print(const mtrk_event_t&,
-			mtrk_sbo_print_opts=mtrk_sbo_print_opts::normal);
+
+
 
 
 
 
 class mtrk_event_iterator_t {
 public:
+	using iterator_category = std::random_access_iterator_tag;
+	using value_type = unsigned char;
+	using difference_type = int;
+	using pointer = unsigned char *;
+	using reference = unsigned char&;
+	mtrk_event_iterator_t(mtrk_event_t&);
 	mtrk_event_iterator_t(mtrk_event_t*);
 	unsigned char& operator*() const;
 	unsigned char *operator->() const;
@@ -235,16 +259,28 @@ public:
 	mtrk_event_iterator_t operator--(int);  // post
 	mtrk_event_iterator_t& operator+=(int);
 	mtrk_event_iterator_t operator+(int);
+	mtrk_event_iterator_t& operator-=(int);
 	std::ptrdiff_t operator-(const mtrk_event_iterator_t&) const;
 	bool operator==(const mtrk_event_iterator_t&) const;
 	bool operator!=(const mtrk_event_iterator_t&) const;
+	bool operator<(const mtrk_event_iterator_t&) const;
+	bool operator>(const mtrk_event_iterator_t&) const;
+	bool operator<=(const mtrk_event_iterator_t&) const;
+	bool operator>=(const mtrk_event_iterator_t&) const;
 private:
 	unsigned char *p_;
 };
 class mtrk_event_const_iterator_t {
 public:
+	using iterator_category = std::random_access_iterator_tag;
+	using value_type = unsigned char;
+	using difference_type = int;
+	using pointer = const unsigned char *;
+	using reference = const unsigned char&;
+
 	mtrk_event_const_iterator_t(mtrk_event_t*);
 	mtrk_event_const_iterator_t(const mtrk_event_t*);
+	mtrk_event_const_iterator_t(const mtrk_event_t&);
 	mtrk_event_const_iterator_t(const mtrk_event_iterator_t&);
 	const unsigned char& operator*() const;
 	const unsigned char *operator->() const;
@@ -254,9 +290,14 @@ public:
 	mtrk_event_const_iterator_t operator--(int);  // post
 	mtrk_event_const_iterator_t& operator+=(int);
 	mtrk_event_const_iterator_t operator+(int);
+	mtrk_event_const_iterator_t& operator-=(int);
 	std::ptrdiff_t operator-(const mtrk_event_const_iterator_t& rhs) const;
 	bool operator==(const mtrk_event_const_iterator_t&) const;
 	bool operator!=(const mtrk_event_const_iterator_t&) const;
+	bool operator<(const mtrk_event_const_iterator_t&) const;
+	bool operator>(const mtrk_event_const_iterator_t&) const;
+	bool operator<=(const mtrk_event_const_iterator_t&) const;
+	bool operator>=(const mtrk_event_const_iterator_t&) const;
 private:
 	const unsigned char *p_;
 };
@@ -332,6 +373,8 @@ bool is_off_event(const mtrk_event_t&);
 bool is_multioff_event(const mtrk_event_t&);
 
 
+
+/*
 //
 // Meta events
 //
@@ -353,6 +396,6 @@ public:
 private:
 	mtrk_event_t d_;
 };
-
+*/
 
 

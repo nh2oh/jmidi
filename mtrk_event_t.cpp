@@ -135,42 +135,75 @@ mtrk_event_t::~mtrk_event_t() {
 	}
 }
 
-const unsigned char* mtrk_event_t::begin() const {
-	return this->data();
+mtrk_event_const_iterator_t mtrk_event_t::begin() const {
+	return mtrk_event_const_iterator_t(*this);
 }
-const unsigned char* mtrk_event_t::dt_begin() const {
-	return this->data();
+mtrk_event_iterator_t mtrk_event_t::begin() {
+	return mtrk_event_iterator_t(*this);
 }
-const unsigned char* mtrk_event_t::dt_end() const {
+mtrk_event_const_iterator_t mtrk_event_t::dt_begin() const {
+	return this->begin();
+}
+mtrk_event_iterator_t mtrk_event_t::dt_begin() {
+	return this->begin();
+}
+mtrk_event_const_iterator_t mtrk_event_t::dt_end() const {
 	auto len = midi_interpret_vl_field(this->data());
-	return this->data()+len.N;
+	return this->begin()+len.N;
 }
-const unsigned char* mtrk_event_t::event_begin() const {
-	return this->dt_end();
+mtrk_event_iterator_t mtrk_event_t::dt_end() {
+	auto len = midi_interpret_vl_field(this->data());
+	return this->begin()+len.N;
 }
-
-const unsigned char* mtrk_event_t::payload_begin() const {
-	const unsigned char *p = this->event_begin();
+mtrk_event_const_iterator_t mtrk_event_t::event_begin() const {
+	auto len = midi_interpret_vl_field(this->data());
+	return this->begin()+len.N;
+}
+mtrk_event_iterator_t mtrk_event_t::event_begin() {
+	auto len = midi_interpret_vl_field(this->data());
+	return this->begin()+len.N;
+}
+mtrk_event_const_iterator_t mtrk_event_t::payload_begin() const {
+	auto it = this->event_begin();
 	if (this->type()==smf_event_type::meta) {
-		p += 2;  // 0xFFu, type-byte
+		it += 2;  // 0xFFu, type-byte
+		auto len = midi_interpret_vl_field(it);
+		it += len.N;
 	} else if (this->type()==smf_event_type::sysex_f0
 					|| this->type()==smf_event_type::sysex_f7) {
-		p += 1;  // 0xF0u or 0xF7u
-	} else {
-		// midi event ?  TODO:  unknown, invalid...
-		return p;
+		it += 1;  // 0xF0u or 0xF7u
+		auto len = midi_interpret_vl_field(it);
+		it += len.N;
+	} else {  // smf_event_type::channel_voice, _mode, unknown, invalid...
+		return it;
 	}
-	auto len = midi_interpret_vl_field(p);
-	p += len.N;
-	return p;
+	return it;
 }
-const unsigned char* mtrk_event_t::end() const {
-	return this->data()+this->size();
+mtrk_event_iterator_t mtrk_event_t::payload_begin() {
+	auto it = this->event_begin();
+	if (this->type()==smf_event_type::meta) {
+		it += 2;  // 0xFFu, type-byte
+		auto len = midi_interpret_vl_field(it);
+		it += len.N;
+	} else if (this->type()==smf_event_type::sysex_f0
+					|| this->type()==smf_event_type::sysex_f7) {
+		it += 1;  // 0xF0u or 0xF7u
+		auto len = midi_interpret_vl_field(it);
+		it += len.N;
+	} else {  // smf_event_type::channel_voice, _mode, unknown, invalid...
+		return it;
+	}
+	return it;
 }
-
+mtrk_event_const_iterator_t mtrk_event_t::end() const {
+	return this->begin()+this->size();
+}
+mtrk_event_iterator_t mtrk_event_t::end() {
+	return this->begin()+this->size();
+}
 std::string mtrk_event_t::text_payload() const {
 	std::string s {};
-	const unsigned char *p = this->data_skipdt();
+	/*const unsigned char *p = this->data_skipdt();
 	//midi_vl_field_interpreted len;
 	if (this->type()==smf_event_type::meta) {
 		p += 2;  // 0xFFu, type-byte
@@ -184,9 +217,15 @@ std::string mtrk_event_t::text_payload() const {
 	p += len.N;
 	s.reserve(len.N);
 	std::copy(p,p+len.val,std::back_inserter(s));
+	*/
+	if (this->type()==smf_event_type::meta 
+				|| this->type()==smf_event_type::sysex_f0
+				|| this->type()==smf_event_type::sysex_f7) {
+	std::copy(this->payload_begin(),this->end(),std::back_inserter(s));
+	}
 	return s;
 }
-
+/*
 const unsigned char *mtrk_event_t::payload() const {
 	const unsigned char *result = this->data();
 	result += midi_interpret_vl_field(result).N;
@@ -206,7 +245,7 @@ const unsigned char *mtrk_event_t::payload() const {
 		result = nullptr;
 	}
 	return result;
-}
+}*/
 const unsigned char& mtrk_event_t::operator[](uint32_t i) const {
 	const auto& r = *(this->data()+i);
 	return r;
@@ -214,12 +253,13 @@ const unsigned char& mtrk_event_t::operator[](uint32_t i) const {
 unsigned char& mtrk_event_t::operator[](uint32_t i) {
 	return *(this->data()+i);
 };
+/*
 unsigned char *mtrk_event_t::data_skipdt() const {
 	unsigned char *p = this->data();
 	auto dt = midi_interpret_vl_field(p);
 	return p+=dt.N;
 }
-
+*/
 const unsigned char *mtrk_event_t::data() const {
 	if (this->is_small()) {
 		return this->small_ptr();
@@ -602,7 +642,9 @@ std::string print(const mtrk_event_t& evnt, mtrk_sbo_print_opts opts) {
 
 
 
-
+mtrk_event_iterator_t::mtrk_event_iterator_t(mtrk_event_t& ev) {
+	this->p_ = ev.data();
+}
 mtrk_event_iterator_t::mtrk_event_iterator_t(mtrk_event_t *p) {
 	this->p_ = p->data();
 }
@@ -638,6 +680,10 @@ mtrk_event_iterator_t mtrk_event_iterator_t::operator+(int n) {
 	mtrk_event_iterator_t temp = *this;
 	return temp += n;
 }
+mtrk_event_iterator_t& mtrk_event_iterator_t::operator-=(int n) {
+	this->p_ -= n;
+	return *this;
+}
 std::ptrdiff_t mtrk_event_iterator_t::operator-(const mtrk_event_iterator_t& rhs) const {
 	return this->p_-rhs.p_;
 }
@@ -647,6 +693,25 @@ bool mtrk_event_iterator_t::operator==(const mtrk_event_iterator_t& rhs) const {
 bool mtrk_event_iterator_t::operator!=(const mtrk_event_iterator_t& rhs) const {
 	return this->p_ != rhs.p_;
 }
+bool mtrk_event_iterator_t::operator<(const mtrk_event_iterator_t& rhs) const {
+	return this->p_ < rhs.p_;
+}
+bool mtrk_event_iterator_t::operator>(const mtrk_event_iterator_t& rhs) const {
+	return this->p_ > rhs.p_;
+}
+bool mtrk_event_iterator_t::operator<=(const mtrk_event_iterator_t& rhs) const {
+	return this->p_ <= rhs.p_;
+}
+bool mtrk_event_iterator_t::operator>=(const mtrk_event_iterator_t& rhs) const {
+	return this->p_ >= rhs.p_;
+}
+
+
+
+
+
+
+
 
 mtrk_event_const_iterator_t::mtrk_event_const_iterator_t(const mtrk_event_iterator_t& it) {
 	this->p_ = it.operator->();//p_;;
@@ -654,8 +719,8 @@ mtrk_event_const_iterator_t::mtrk_event_const_iterator_t(const mtrk_event_iterat
 mtrk_event_const_iterator_t::mtrk_event_const_iterator_t(mtrk_event_t *p) {
 	this->p_ = p->data();
 }
-mtrk_event_const_iterator_t::mtrk_event_const_iterator_t(const mtrk_event_t *p) {
-	this->p_ = p->data();
+mtrk_event_const_iterator_t::mtrk_event_const_iterator_t(const mtrk_event_t& ev) {
+	this->p_ = ev.data();
 }
 const unsigned char& mtrk_event_const_iterator_t::operator*() const {
 	return *(this->p_);
@@ -689,6 +754,10 @@ mtrk_event_const_iterator_t mtrk_event_const_iterator_t::operator+(int n) {
 	mtrk_event_const_iterator_t temp = *this;
 	return temp += n;
 }
+mtrk_event_const_iterator_t& mtrk_event_const_iterator_t::operator-=(int n) {
+	this->p_ -= n;
+	return *this;
+}
 std::ptrdiff_t mtrk_event_const_iterator_t::operator-(const mtrk_event_const_iterator_t& rhs) const {
 	return this->p_-rhs.p_;
 }
@@ -698,7 +767,18 @@ bool mtrk_event_const_iterator_t::operator==(const mtrk_event_const_iterator_t& 
 bool mtrk_event_const_iterator_t::operator!=(const mtrk_event_const_iterator_t& rhs) const {
 	return !(*this==rhs);
 }
-
+bool mtrk_event_const_iterator_t::operator<(const mtrk_event_const_iterator_t& rhs) const {
+	return this->p_ < rhs.p_;
+}
+bool mtrk_event_const_iterator_t::operator>(const mtrk_event_const_iterator_t& rhs) const {
+	return this->p_ > rhs.p_;
+}
+bool mtrk_event_const_iterator_t::operator<=(const mtrk_event_const_iterator_t& rhs) const {
+	return this->p_ <= rhs.p_;
+}
+bool mtrk_event_const_iterator_t::operator>=(const mtrk_event_const_iterator_t& rhs) const {
+	return this->p_ >= rhs.p_;
+}
 
 
 
@@ -798,8 +878,9 @@ meta_event_t classify_meta_event(const mtrk_event_t& ev) {
 	if (ev.type()!=smf_event_type::meta) {
 		return meta_event_t::invalid;
 	}
-	auto p = ev.data_skipdt();
-	uint16_t d16 = dbk::be_2_native<uint16_t>(p);
+	auto it = ev.event_begin();
+	//auto p = ev.data_skipdt();
+	uint16_t d16 = dbk::be_2_native<uint16_t>(&*it); // (p);
 	return classify_meta_event_impl(d16);
 }
 bool is_meta(const mtrk_event_t& ev) {
@@ -807,8 +888,10 @@ bool is_meta(const mtrk_event_t& ev) {
 }
 bool is_meta(const mtrk_event_t& ev, const meta_event_t& mtype) {
 	if (ev.type()==smf_event_type::meta) {
-		auto p = ev.data_skipdt();
-		return classify_meta_event_impl(dbk::be_2_native<uint16_t>(p))==mtype;
+		auto it = ev.event_begin();
+		return classify_meta_event_impl(dbk::be_2_native<uint16_t>(&*it))==mtype;
+		//auto p = ev.data_skipdt();
+		//return classify_meta_event_impl(dbk::be_2_native<uint16_t>(p))==mtype;
 	}
 	return false;
 }
@@ -920,7 +1003,7 @@ bool is_multioff_event(const mtrk_event_t& ev) {
 
 
 
-
+/*
 //
 // Meta events
 //
@@ -968,5 +1051,5 @@ bool text_event_t::set_text(const std::string& s) {
 	this->d_ = txtev.d_;
 	return true;
 }
-
+*/
 

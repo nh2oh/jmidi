@@ -21,6 +21,30 @@ midi_vl_field_interpreted midi_interpret_vl_field(const unsigned char*);
 // byte is not encountered after reading max_size bytes, returns w/ 
 // !is_valid
 midi_vl_field_interpreted midi_interpret_vl_field(const unsigned char*, uint32_t);
+// Overload for iterators
+template<typename InIt>
+midi_vl_field_interpreted midi_interpret_vl_field(InIt it) {
+	//static_assert(std::is_same<std::remove_reference<decltype(*it)>::type,
+	//	const unsigned char>::value);
+	midi_vl_field_interpreted result {};
+	result.val = 0;
+	while (true) {
+		result.val += (*it & 0x7F);
+		++(result.N);
+		if (!(*it & 0x80) || result.N==4) { // the high-bit is not set
+			break;
+		} else {
+			result.val <<= 7;  // result.val << 7;
+			++it;
+		}
+	}
+	result.is_valid = !(*it & 0x80);
+	return result;
+};
+
+
+
+
 //
 // Returns an integer with the bit representation of the input encoded as a midi
 // vl quantity.  Ex for:
