@@ -3,7 +3,7 @@
 #include <string>
 #include <cstdint>
 #include <array>
-
+#include <vector>
 
 class mtrk_event_t;
 class mtrk_event_iterator_t;
@@ -27,7 +27,12 @@ std::string print(const mtrk_event_t&,
 // in midi_status_ is that running-status events extracted from a file can 
 // be stored elsewhere and interpreted correctly later.  For example, in 
 // linking note pairs, pairs of corresponding on and off events are collected
-// into a vector of linked events.  
+// into a vector of linked events.  A second consequence is that events
+// intended to be "serialized" as running-status events can be created and
+// be meaningfull outside the event sequence in which they are to occur.  
+// A downside is that insertion of an event intended to be in rs into an
+// event stream is more complicated since insertion may change its meaning
+// & it is not clear whether or not the user intended this.  
 //
 // TODO:  
 // If midi_status_ held the first byte following the delta-time in all cases
@@ -39,6 +44,9 @@ std::string print(const mtrk_event_t&,
 // TODO:  This exposes a lot of dangerous getters
 // TODO:  ==,!= operators
 // TODO:  Member enum class offs is absolutely disgusting
+// TODO:  Error handling for some of the ctors; default uninit value?
+// TODO:  Ctors for channel/meta/sysex data structs
+//
 //
 class mtrk_event_t {
 public:

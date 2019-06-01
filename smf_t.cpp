@@ -78,9 +78,11 @@ void smf_t::set_mthd(const validate_mthd_chunk_result_t& val_mthd) {
 }
 void smf_t::append_mtrk(const mtrk_t& mtrk) {
 	this->mtrks_.push_back(mtrk);
+	this->chunkorder_.push_back(0);
 }
 void smf_t::append_uchk(const std::vector<unsigned char>& uchk) {
 	this->uchks_.push_back(uchk);
+	this->chunkorder_.push_back(1);
 }
 
 std::string print(const smf_t& smf) {
@@ -117,7 +119,8 @@ std::string print(const smf_t& smf) {
 maybe_smf_t::operator bool() const {
 	return this->error == "No error";
 }
-
+// TODO:  I can make this more effecient by moving the curr_uckh, curr_mtrk
+// vectors out of the loop & clearing them after usage to avoid allocations.  
 maybe_smf_t read_smf2(const std::string& fn) {
 	maybe_smf_t result {};
 	
@@ -152,12 +155,13 @@ maybe_smf_t read_smf2(const std::string& fn) {
 		return result;
 	}
 	result.smf.set_mthd(val_mthd);
-
 	o += curr_chunk.size;
-	// Note: Loop terminates based on fdata.size(), not on the number of 
+
+	int n_mtrks_read = 0;  int n_uchks_read = 0;
+	// Note: Thid loop terminates based on fdata.size(), not on the number of 
 	// chunks read; mthd_.ntrks() reports the number of track chunks, but not
 	// the number of other chunk types.  
-	while (o<fdata.size()) {  
+	while (o<fdata.size()) {
 		const unsigned char *curr_p = p+o;
 		uint32_t curr_max_sz = fdata.size()-o;
 		auto curr_chunk = validate_chunk_header(curr_p,curr_max_sz);
@@ -168,6 +172,7 @@ maybe_smf_t read_smf2(const std::string& fn) {
 				result.error = "!curr_mtrk";
 				return result;
 			}
+			++n_mtrks_read;
 			result.smf.append_mtrk(curr_mtrk.mtrk);
 		} else if (curr_chunk.type == chunk_type::unknown) {
 			std::vector<unsigned char> curr_uchk {};
@@ -175,6 +180,7 @@ maybe_smf_t read_smf2(const std::string& fn) {
 			std::copy(curr_p,curr_p+curr_chunk.size,
 				std::back_inserter(curr_uchk));
 			result.smf.append_uchk(curr_uchk);
+			++n_uchks_read;
 		} else {
 			result.error = "curr_chunk.type != track || unknown";
 			return result;
@@ -186,6 +192,12 @@ maybe_smf_t read_smf2(const std::string& fn) {
 	// the final mtrk chunk.  o>fdata.size() is clearly an error.  
 	if (o != fdata.size()) {
 		result.error = "offset != fdata.size().";
+		return result;
+	}
+
+	if (n_mtrks_read != result.smf.get_header_view().ntrks()) {
+		result.error = "The number-of-tracks reported by the header chunk is "
+			"inconsistent with the number of MTrk chunks in the file.  ";
 		return result;
 	}
 

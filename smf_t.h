@@ -1,5 +1,4 @@
 #pragma once
-#include "midi_raw.h"
 #include "mthd_t.h"
 #include "mtrk_event_t.h"
 #include "mtrk_t.h"
@@ -32,6 +31,8 @@ public:
 	const mtrk_t& get_track(int) const;
 	mtrk_t& get_track(int);
 	
+	// TODO:  These functions need to update the mthd chunk (ntrks,
+	// etc).  
 	void set_fname(const std::string&);
 	void set_mthd(const validate_mthd_chunk_result_t&);
 	void append_mtrk(const mtrk_t&);
@@ -41,9 +42,15 @@ private:
 	mthd_t mthd_ {};
 	std::vector<mtrk_t> mtrks_ {};
 	std::vector<std::vector<unsigned char>> uchks_ {};
+	// Since MTrk and unknown chunks are split into mtrks_ and uchks_,
+	// respectively, the order in which these chunks occured in the file
+	// is lost.  chunkorder_ saves the order of interspersed MTrk and 
+	// unknown chunks.  chunkorder.size()==mtrks_.size+uchks.size().  
+	std::vector<int> chunkorder_ {};  // 0=>mtrk, 1=>unknown
 };
 std::string print(const smf_t&);
 
+// TODO:  read_smf2() -> read_smf()
 struct maybe_smf_t {
 	smf_t smf;
 	std::string error {"No error"};
