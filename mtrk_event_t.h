@@ -29,6 +29,7 @@ std::string print(const mtrk_event_t&,
 // linking note pairs, pairs of corresponding on and off events are collected
 // into a vector of linked events.  
 //
+// TODO:  
 // If midi_status_ held the first byte following the delta-time in all cases
 // (including for sysex,meta,etc events), it would be _way_ more effecient to
 // determine the object type dynamically.  One would not have to process the
@@ -79,35 +80,43 @@ public:
 	mtrk_event_const_iterator_t payload_begin() const;
 	mtrk_event_iterator_t payload_begin();
 	mtrk_event_const_iterator_t end() const;
-	mtrk_event_iterator_t end();
-
-	
+	mtrk_event_iterator_t end();	
 
 	const unsigned char& operator[](uint32_t) const;
 	unsigned char& operator[](uint32_t);
 	unsigned char *data();
 	const unsigned char *data() const;
-	
-	smf_event_type type() const;
-	uint32_t delta_time() const;
-	bool set_delta_time(uint32_t);
-	std::string text_payload() const;
+
 	uint32_t data_size() const;  // Not including the delta-t
 	uint32_t size() const;  // Includes delta-t
-					
 	// If is_small(), reports the size of the d_ array, which is the maximum
 	// size of an event that the 'small' state can contain.  
 	uint32_t capacity() const;
 
-	struct midi_data_t {
-		bool is_valid {false};
-		bool is_running_status {false};
+	// Getters
+	unsigned char status_byte() const;
+	smf_event_type type() const;
+	uint32_t delta_time() const;
+	bool set_delta_time(uint32_t);
+	// For meta events w/ a text payload, copies the payload to a
+	// std::string;  Returns an empty std::string otherwise.  
+	std::string text_payload() const;
+	// For channel events, gets the midi data, including.  For non-channel
+	// events, .is_valid==false and the value of all other fields is 
+	// undefined.  
+	struct channel_event_data_t {
 		uint8_t status_nybble {0x00u};  // most-significant nybble
 		uint8_t ch {0x00u};
 		uint8_t p1 {0x00u};
 		uint8_t p2 {0x00u};
+		bool is_valid {false};
+		bool is_running_status {false};
 	};
-	midi_data_t midi_data() const;
+	channel_event_data_t midi_data() const;
+
+	bool is_big() const;
+	bool is_small() const;
+	bool validate() const;
 private:
 	enum class offs {
 		ptr = 0,
@@ -200,8 +209,6 @@ private:
 	// is made; if is_big() the memory will leak.  
 	void clear_nofree();
 
-	bool is_big() const;
-	bool is_small() const;
 	void set_flag_small();
 	void set_flag_big();
 
@@ -223,8 +230,6 @@ private:
 	uint32_t set_big_cached_delta_t(uint32_t);
 	smf_event_type big_smf_event_type() const;  // shortcut to determining the type if is_big()
 	smf_event_type set_big_cached_smf_event_type(smf_event_type);
-
-	bool validate() const;
 
 	friend std::string print(const mtrk_event_t&,
 			mtrk_sbo_print_opts);
@@ -280,21 +285,33 @@ bool is_tempo(const mtrk_event_t&);
 bool is_smpteoffset(const mtrk_event_t&);
 bool is_timesig(const mtrk_event_t&);
 bool is_keysig(const mtrk_event_t&);
-
 // Returns true if the event is a meta_event_t w/a text payload,
-//ex:  meta_event_t::text, meta_event_t::lyric, etc. 
+// ex:  meta_event_t::text, meta_event_t::lyric, etc. 
 bool meta_has_text(const mtrk_event_t&);
 // Get the text of any meta event w/a text payload, ex:
 // meta_event_t::text, ::copyright, ::trackname, instname::, ...
 std::string meta_generic_gettext(const mtrk_event_t&);
+// TODO:  std::vector<unsigned char> meta_generic_getpayload(...
 
 
+//
+// Channel event classification
+//
+bool is_channel(const mtrk_event_t&);
+bool is_channel_voice(const mtrk_event_t&);
+bool is_channel_mode(const mtrk_event_t&);
+// is_note_on(), is_note_off() check for a status byte of 0x9nu,0x8nu,
+// respectively.  For a status nybble of 0x9nu, p2 must be > 0 to qualify
+// as a note-on event.  For note off events, a status nybble of 0x9nu and
+// p2==0 qualifies.  
+bool is_note_on(const mtrk_event_t&);
+bool is_note_off(const mtrk_event_t&);
+bool is_key_aftertouch(const mtrk_event_t&);  // 0xAnu
+bool is_control_change(const mtrk_event_t&);
+bool is_program_change(const mtrk_event_t&);
+bool is_channel_aftertouch(const mtrk_event_t&);  // 0xDnu
+bool is_pitch_bend(const mtrk_event_t&);
 
-bool is_on_event(const mtrk_event_t&);
-bool is_off_event(const mtrk_event_t&);
-// Can the event potentially affect more than one on-event?  For example,
-// maybe ev is an all-notes-off meta event or a system reset event.  
-bool is_multioff_event(const mtrk_event_t&);
 
 
 

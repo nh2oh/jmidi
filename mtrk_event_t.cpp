@@ -208,6 +208,27 @@ std::string mtrk_event_t::text_payload() const {
 	}
 	return s;
 }
+// TODO:  This is evauating the delta_time field multiple times in inner
+// function calls & can be made way more effecient.  
+mtrk_event_t::channel_event_data_t mtrk_event_t::midi_data() const {
+	mtrk_event_t::channel_event_data_t result {};
+	result.is_valid = false;
+
+	if (this->type()==smf_event_type::channel) {
+		result.is_valid = true;
+		
+		auto dt = midi_interpret_vl_field(this->data());
+		auto p = this->data()+dt.N;
+		result.is_running_status = *p!=this->midi_status_;
+
+		result.status_nybble = this->midi_status_&0xF0u;
+		result.ch = this->midi_status_&0x0Fu;
+		result.p1 = mtrk_event_get_midi_p1_dtstart_unsafe(this->data(),this->midi_status_);
+		result.p2 = mtrk_event_get_midi_p2_dtstart_unsafe(this->data(),this->midi_status_);
+	}
+
+	return result;
+}
 const unsigned char& mtrk_event_t::operator[](uint32_t i) const {
 	const auto& r = *(this->data()+i);
 	return r;
@@ -240,6 +261,15 @@ uint32_t mtrk_event_t::delta_time() const {
 		return midi_interpret_vl_field(this->data()).val;
 	} else {
 		return this->big_delta_t();
+	}
+}
+unsigned char mtrk_event_t::status_byte() const {
+	// Since at present this->midi_status_ is == 0x00u for meta or sysex
+	// events, have to check for its validity.  
+	if ((this->midi_status_ & 0x80u) == 0x80u) {
+		return this->midi_status_;
+	} else {
+		return *(this->event_begin());
 	}
 }
 smf_event_type mtrk_event_t::type() const {
@@ -294,25 +324,7 @@ bool mtrk_event_t::set_delta_time(uint32_t dt) {
 	}
 	return true;
 }
-mtrk_event_t::midi_data_t mtrk_event_t::midi_data() const {
-	mtrk_event_t::midi_data_t result {};
-	result.is_valid = false;
 
-	if (this->type()==smf_event_type::channel) {
-		result.is_valid = true;
-		
-		auto dt = midi_interpret_vl_field(this->data());
-		auto p = this->data()+dt.N;
-		result.is_running_status = *p!=this->midi_status_;
-
-		result.status_nybble = this->midi_status_&0xF0u;
-		result.ch = this->midi_status_&0x0Fu;
-		result.p1 = mtrk_event_get_midi_p1_dtstart_unsafe(this->data(),this->midi_status_);
-		result.p2 = mtrk_event_get_midi_p2_dtstart_unsafe(this->data(),this->midi_status_);
-	}
-
-	return result;
-}
 bool mtrk_event_t::validate() const {
 	bool tf = true;
 
@@ -772,38 +784,51 @@ std::string meta_generic_gettext(const mtrk_event_t& ev) {
 
 
 
-
-
-bool is_on_event(const mtrk_event_t& ev) {
-	auto md = ev.midi_data();
-	auto s = md.status_nybble;
-	// md.p2!=0x00u to obey the convention that a note-on (s==0x90u) event
-	// w/a zero velocity (p2==0x00u) is to be interpreted as a note-off 
-	// event.  
-	return (s==0x90u && md.p2!=0x00u);
+bool is_channel(const mtrk_event_t& ev) {  // voice or mode
+	auto s = ev.status_byte();
+	return ((s&0x80u)==0x80u && (s&0xF0u)!=0xF0u);
 }
-bool is_off_event(const mtrk_event_t& ev) {
+bool is_channel_voice(const mtrk_event_t& ev) {
 	auto md = ev.midi_data();
-	auto s = md.status_nybble;
-	// md.p2==0x00u to obey the convention that a note-on (s==0x90u) event
-	// w/a zero velocity (p2==0x00u) is to be interpreted as a note-off 
-	// event.  
-	return (s==0x80u || (s==0x90u && md.p2==0x00u));
+	if (!md.is_valid || (md.status_nybble != 0xB0u)) {
+		return false;
+	}
+	return (((md.p1>>3)&0x0Fu)!=0x0Fu);
 }
-bool is_multioff_event(const mtrk_event_t& ev) {
-	// Can ev potentially affect more than one on-event?  Ex, maybe ev is
-	// an all-notes-off meta event or a system reset event
+bool is_channel_mode(const mtrk_event_t& ev) {
 	auto md = ev.midi_data();
-	auto s = md.status_nybble;
-	return (s==0xB0u && md.p1==0x7Du);
+	if (!md.is_valid || (md.status_nybble != 0xB0u)) {
+		return false;
+	}
+	return (((md.p1>>3)&0x0Fu)==0x0Fu);
 }
-
-
-
-
-
-
-
+bool is_note_on(const mtrk_event_t& ev) {
+	auto md = ev.midi_data();
+	return (md.is_valid 
+		&& md.status_nybble==0x90u && (md.p2 > 0));
+}
+bool is_note_off(const mtrk_event_t& ev) {
+	auto md = ev.midi_data();
+	return (md.is_valid && 
+		((md.status_nybble==0x80u)
+			|| (md.status_nybble==0x90u && (md.p2==0))));
+}
+bool is_key_aftertouch(const mtrk_event_t& ev) {
+	return ((ev.status_byte() & 0xF0u) == 0xA0u);
+}
+bool is_control_change(const mtrk_event_t& ev) {
+	return (((ev.status_byte()&0xF0u)==0xB0u) 
+		&& is_channel_voice(ev));
+}
+bool is_program_change(const mtrk_event_t& ev) {
+	return ((ev.status_byte() & 0xF0u) == 0xC0u);
+}
+bool is_channel_aftertouch(const mtrk_event_t& ev) {
+	return ((ev.status_byte() & 0xF0u) == 0xD0u);
+}
+bool is_pitch_bend(const mtrk_event_t& ev) {
+	return ((ev.status_byte() & 0xF0u) == 0xE0u);
+}
 
 
 

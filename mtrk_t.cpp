@@ -257,9 +257,9 @@ linked_and_orphan_onoff_pairs_t get_linked_onoff_pairs(mtrk_const_iterator_t beg
 				&& (md_on.p1==md_off.p1));
 		};
 
-		if (is_on_event(curr_ev)) {
+		if (is_note_on(curr_ev)) {
 			result.orphan_on.push_back({cumtk,*it});
-		} else if (is_off_event(curr_ev)) {
+		} else if (is_note_off(curr_ev)) {
 			auto it_linked_on = 
 				std::find_if(result.orphan_on.begin(),result.orphan_on.end(),
 					matching_on_event);
@@ -359,13 +359,13 @@ std::string print(const linked_and_orphan_onoff_pairs_t& evs) {
 mtrk_event_cumtk_t find_linked_off(mtrk_const_iterator_t beg,
 					mtrk_const_iterator_t end, const mtrk_event_t& on) {
 	mtrk_event_cumtk_t res {0, end};
-	if (beg==end || !is_on_event(on)) {
+	if (beg==end || !is_note_on(on)) {
 		return res;
 	}
 
 	auto mdata_on = on.midi_data();
 	auto is_linked_off = [&mdata_on](const mtrk_const_iterator_t& evit)->bool {
-		if (!is_off_event(*evit)) {
+		if (!is_note_off(*evit)) {
 			return false;
 		}
 		auto mdata_ev = evit->midi_data();
@@ -417,7 +417,7 @@ std::string print_linked_onoff_pairs(const mtrk_t& mtrk) {
 	uint32_t cumtk_on = 0;
 	for (auto curr=mtrk.begin(); curr!=mtrk.end(); ++curr) {
 		cumtk_on += curr->delta_time();
-		if (!is_on_event(*curr)) {
+		if (!is_note_on(*curr)) {
 			continue;
 		}
 		auto cumtk_prior = (cumtk_on - curr->delta_time());
