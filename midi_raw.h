@@ -280,20 +280,12 @@ uint32_t mtrk_event_get_size_dtstart_unsafe(const unsigned char*, unsigned char)
 uint32_t mtrk_event_get_data_size_dtstart_unsafe(const unsigned char*, unsigned char);
 // Implements table I of the midi std
 uint8_t channel_status_byte_n_data_bytes(unsigned char);
-
-
-
-
-
-
-
-
 // If p is not a valid midi event, returns 0x80u, which is an invalid data
 // byte.  For ..._p2_...(), also returns 0x80u if the event has status byte
 // ~ 0xC0u || 0xD0u (single-byte midi messages).  
 unsigned char mtrk_event_get_midi_p1_dtstart_unsafe(const unsigned char*, unsigned char=0x00u);
 unsigned char mtrk_event_get_midi_p2_dtstart_unsafe(const unsigned char*, unsigned char=0x00u);
-// Does not consider 0xFnu to be valid
+
 
 
 unsigned char mtrk_event_get_meta_type_byte_dtstart_unsafe(const unsigned char*);
@@ -329,46 +321,13 @@ struct parse_sysex_event_result_t {
 	bool has_terminating_f7 {false};
 };
 parse_sysex_event_result_t parse_sysex_event(const unsigned char*,int32_t=0);
-enum class channel_msg_type : uint8_t {
-	note_on,
-	note_off,
-	key_pressure,
-	control_change,
-	program_change,
-	channel_pressure,
-	pitch_bend,
-	channel_mode,
-	invalid
-};
-channel_msg_type mtrk_event_get_ch_msg_type_dtstart_unsafe(const unsigned char*,
-	unsigned char=0x00u);
-struct parse_channel_event_result_t {
-	bool is_valid {false};
-	channel_msg_type type {channel_msg_type::invalid};
-	midi_vl_field_interpreted delta_t {};
-	bool has_status_byte {false};
-	unsigned char status_byte {0};
-	uint8_t n_data_bytes {0};  // 0, 1, 2
-	int32_t size {0};
-	int32_t data_length {0};  // Everything not delta_time
-};
-parse_channel_event_result_t parse_channel_event(const unsigned char*, unsigned char=0, int32_t=0);
-bool midi_event_has_status_byte(const unsigned char*);
-// TODO:  Deprecate
-unsigned char midi_event_get_status_byte(const unsigned char*);  // dtstart
-// For the midi _channel_ event implied by the status byte arg 1 (or, if arg 1
-// is not a status byte, the status byte arg 2), returns the number of expected
-// data bytes + 1 if the first arg is a valid status byte; + 0 if arg 1 is not
-// a valid status byte but arg 2 is a valid status byte.  Returns 0 if neither
-// arg 1, arg 2 are valid status bytes.
-int midi_channel_event_n_bytes(unsigned char, unsigned char); 
-// Result is only valid for channel_voice or channel_mode status bytes:  Does not 
-// verify that the input is a legit channel_voice or _mode status byte.  
-int8_t channel_number_from_status_byte_unsafe(unsigned char);
-// arg 1 => status byte, arg 2 => first data byte, needed iff arg1 & 0xF0 == 0xB0.  
-// Not really "_unsafe"-worthy since will return channel_msg_type::invalid if the
-// status byte is not legit.  
-channel_msg_type channel_msg_type_from_status_byte(unsigned char, unsigned char=0);
+
+
+
+
+
+
+
 
 // It is assumed that the buffer is large enough to accomodate the new dt
 // value.  Returns a ptr to one past the end of the new dt value (ie, the
@@ -401,95 +360,6 @@ struct validate_smf_result_t {
 validate_smf_result_t validate_smf(const unsigned char*, int32_t, const std::string&);
 
 
-
-/*
-template<typename T> 
-class iterator_base_t {
-public:
-	static_assert(!std::is_reference<T>::value);
-	using value_t = typename T;  // remove cvref...
-	using ptr_t = typename std::add_pointer<T>::type;
-	using reference_t = value_t&;
-
-	reference_t operator*() const {
-		return *(this->p_);
-	};
-	ptr_t operator->() const {
-		return this->p_;
-	};
-	iterator_base_t<T>& operator++() {  // preincrement
-		++(this->p_);
-		return *this;
-	};
-	iterator_base_t<T>& operator+=(int n) {
-		this->p_ += n;
-		return *this;
-	};
-	iterator_base_t<T> operator+(int n) {
-		auto temp = *this;
-		return temp += n;
-	};
-
-	bool operator==(const iterator_base_t<T>& rhs) const {
-		return this->p_ == rhs.p_;
-	};
-	bool operator!=(const iterator_base_t<T>& rhs) const {
-		return this->p_ != rhs.p_;
-	};
-
-	std::string what() const {
-		std::string s = typeid(*this).name();
-		s += "\n";
-
-		s += "value_t:  ";
-		if (std::is_const<value_t>::value) {
-			s += "const ";
-		}
-		s += "value_t";
-		if (std::is_reference<value_t>::value) {
-			s += "&";
-		}
-		s += "\n";
-
-		s += "ptr_t:  ";
-		if (std::is_pointer<ptr_t>::value) {
-			if (std::is_const<std::remove_pointer<ptr_t>::type>::value) {
-				s += "const ";
-			}
-			s += "*ptr_t";
-			if (std::is_const<ptr_t>::value) {
-				s += " const";
-			}
-		}
-		s += "\n";
-
-		s += "reference_t:  ";
-		if (std::is_reference<reference_t>::value) {
-			if (std::is_const<std::remove_reference<reference_t>::type>::value) {
-				s += "const ";
-			}
-			if (std::is_same<std::remove_reference<reference_t>::type,value_t>::value) {
-				s += "&value_t";
-			} else {
-				s += "&reference_t";
-			}
-			if (std::is_const<reference_t>::value) {
-				s += " const";
-			}
-		}
-		s += "\n";
-		s += "\n";
-
-		return s;
-	};
-private:
-	// Private ctor used by friend classes in .begin(),.end()
-	//iterator_base_t<T>(const ptr_t p) {
-	//	this->p_ = p;
-	//}
-	ptr_t p_ {nullptr};
-};
-*/
 
 
 

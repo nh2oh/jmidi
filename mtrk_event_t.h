@@ -296,14 +296,32 @@ std::string meta_generic_gettext(const mtrk_event_t&);
 
 //
 // Channel event classification
+// Note that for many events, the status byte, as well as p1 and p2 are
+// needed to classify the event in a uswful way.  For example, where 
+// s&0xF0u==0x90u, (nominally a note-on status byte), p2 has to be > 0 
+// for the event to qualify as a note-on (otherwise it is a note-off).  
+// Where s&0xF0u==0xB0u, p1 distinguishes a channel_voice from a channel_mode
+// event.  
+// For the purpose of creating an enum class to hold the channel_event types,
+// an underlying type of uint8_t, or even uint16_t may be insufficient.  
+// See also the enum class for meta event types where i included the leading 
+// 0xFFu to allow for ::invalid and ::unrecognized events.  One important
+// difference between here and the case of the meta events, however, is that
+// the meta event enum class can be static_cast to a uint16_t to obtain the
+// first two bytes of the meta event; this is not possible for channel events
+// because of the nature of the equality conditions, which involve shifting
+// and masking s, p1, p2, in different ways for each type.  
 //
+// In the future, this set of functions may be expanded to things like 
+// is_bank_select(), is_pan(), is_foot_controller(), etc.  These require 
+// reading p1.  
 bool is_channel(const mtrk_event_t&);
 bool is_channel_voice(const mtrk_event_t&);
 bool is_channel_mode(const mtrk_event_t&);
-// is_note_on(), is_note_off() check for a status byte of 0x9nu,0x8nu,
-// respectively.  For a status nybble of 0x9nu, p2 must be > 0 to qualify
-// as a note-on event.  For note off events, a status nybble of 0x9nu and
-// p2==0 qualifies.  
+// is_note_on(), is_note_off() evaluate both the status nybble as well as
+// p2.  For a status nybble of 0x9nu, p2 must be > 0 for the  event to 
+// qualify as a note-on event.  Events w/a status nybble of 0x9nu and p2==0 
+// are considered note-off events.  
 bool is_note_on(const mtrk_event_t&);
 bool is_note_off(const mtrk_event_t&);
 bool is_key_aftertouch(const mtrk_event_t&);  // 0xAnu

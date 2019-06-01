@@ -395,10 +395,12 @@ bool mtrk_event_t::validate() const {
 			// The event-local status byte must match this->midi_status_
 			tf &= (*p==this->midi_status_);
 		} else {  // running status
+			// TODO:  This is confusing as hell...
 			// this->midi_status_ must accurately describe the # of midi
 			// data bytes.  
 			tf &= (is_channel_status_byte(this->midi_status_));
-			auto nbytesmsg = midi_channel_event_n_bytes(this->midi_status_,0x00u)-1;
+			//auto nbytesmsg = midi_channel_event_n_bytes(this->midi_status_,0x00u)-1;
+			auto nbytesmsg = channel_event_get_data_size(p,this->midi_status_);
 			tf &= (is_data_byte(*p));
 			if (nbytesmsg==2) {
 				tf &= (is_data_byte(*++p));
