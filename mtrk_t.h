@@ -1,15 +1,12 @@
 #pragma once
 #include "mtrk_event_t.h"
+#include "mtrk_iterator_t.h"
 #include <string>
 #include <cstdint>
 #include <vector>
-#include <cstddef>  // std::ptrdiff_t for difference_type in mtrk_iterator
-
 
 struct maybe_mtrk_t;
 class mtrk_t;
-class mtrk_iterator_t;
-class mtrk_const_iterator_t;
 
 //
 // mtrk_t
@@ -17,8 +14,11 @@ class mtrk_const_iterator_t;
 // Holds an mtrk; owns the underlying data.  Stores the event sequence as
 // a std::vector<mtrk_event_t>.  
 //
+// TODO:  Ctors
+//
 class mtrk_t {
 public:
+	// TODO:  size() depends on if rs is to be used or not.  
 	uint32_t size() const;
 	uint32_t data_size() const;
 	uint32_t nevents() const;
@@ -49,46 +49,6 @@ struct maybe_mtrk_t {
 	mtrk_t mtrk;
 	operator bool() const;
 };
-
-
-// TODO:  Template this + inheritence so it isn't so repetitive
-class mtrk_iterator_t {
-public:
-	mtrk_iterator_t(mtrk_event_t*);
-	mtrk_event_t& operator*() const;
-	mtrk_event_t *operator->() const;
-	mtrk_iterator_t& operator++();  // preincrement
-	mtrk_iterator_t operator++(int);  // postincrement
-	mtrk_iterator_t& operator--();  // pre
-	mtrk_iterator_t operator--(int);  // post
-	mtrk_iterator_t& operator+=(int);
-	mtrk_iterator_t operator+(int);
-	std::ptrdiff_t operator-(const mtrk_iterator_t&) const;
-	bool operator==(const mtrk_iterator_t&) const;
-	bool operator!=(const mtrk_iterator_t&) const;
-private:
-	mtrk_event_t *p_;
-};
-class mtrk_const_iterator_t {
-public:
-	mtrk_const_iterator_t(mtrk_event_t*);
-	mtrk_const_iterator_t(const mtrk_event_t*);
-	mtrk_const_iterator_t(const mtrk_iterator_t&);
-	const mtrk_event_t& operator*() const;
-	const mtrk_event_t *operator->() const;
-	mtrk_const_iterator_t& operator++();  // preincrement
-	mtrk_const_iterator_t operator++(int);  // postincrement
-	mtrk_const_iterator_t& operator--();  // pre
-	mtrk_const_iterator_t operator--(int);  // post
-	mtrk_const_iterator_t& operator+=(int);
-	mtrk_const_iterator_t operator+(int);
-	std::ptrdiff_t operator-(const mtrk_const_iterator_t& rhs) const;
-	bool operator==(const mtrk_const_iterator_t&) const;
-	bool operator!=(const mtrk_const_iterator_t&) const;
-private:
-	const mtrk_event_t *p_;
-};
-
 
 
 // Returns an iterator to one past the last simultanious event 
