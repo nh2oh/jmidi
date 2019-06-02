@@ -209,6 +209,7 @@ struct validate_mtrk_event_result_t {
 // ptr, running-status, max_size
 validate_mtrk_event_result_t validate_mtrk_event_dtstart(const unsigned char *,
 													unsigned char, uint32_t=0);
+std::string print(const mtrk_event_validation_error&);
 
 // The most lightweight status-byte classifiers in the lib
 smf_event_type classify_status_byte(unsigned char);

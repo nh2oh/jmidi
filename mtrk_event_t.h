@@ -53,6 +53,10 @@ public:
 	// Default ctor; creates a "small" object representing a meta-text event
 	// w/ a payload length of 0.  
 	mtrk_event_t();
+	// Ctor for callers who have already run validate_mtrk_event_dtstart() on
+	// some underlying buffer.  Avoids re-calculation of the delta-time, 
+	// running-status, event type, etc.  
+	mtrk_event_t(const unsigned char*, const validate_mtrk_event_result_t&);
 	// Ctor for callers who have pre-computed the exact size of the event and who
 	// can also supply a midi status byte if applicible, ex, an mtrk_container_iterator_t.  
 	mtrk_event_t(const unsigned char*, uint32_t, unsigned char=0);

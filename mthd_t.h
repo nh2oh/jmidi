@@ -2,6 +2,7 @@
 #include "midi_raw.h"
 #include <cstdint>
 #include <string>
+#include <vector>
 
 
 //

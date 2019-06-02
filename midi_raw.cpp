@@ -316,6 +316,46 @@ validate_mtrk_event_result_t validate_mtrk_event_dtstart(
 	result.error = mtrk_event_validation_error::no_error;
 	return result;
 }
+
+std::string print(const mtrk_event_validation_error& err) {
+	std::string result = "No error";
+	switch (err) {
+		case mtrk_event_validation_error::invalid_dt_field:
+			result = "Invalid delta-time field.  ";
+			break;
+		case mtrk_event_validation_error::invalid_or_unrecognized_status_byte:
+			result += "Invalid or unrecognized status_byte.  ";
+			break;
+		case mtrk_event_validation_error::unable_to_determine_size:
+			result += "Unable to determine event size.  ";
+			break;
+		case mtrk_event_validation_error::channel_event_missing_data_byte:
+			result += "Channel event has too few data bytes.  ";
+			break;
+		case mtrk_event_validation_error::sysex_or_meta_overflow_in_header:
+			result += "Overflow.  ";
+			break;
+		case mtrk_event_validation_error::sysex_or_meta_invalid_length_field:
+			result += "Invalid length field for a sysex or meta event.  ";
+			break;
+		case mtrk_event_validation_error::sysex_or_meta_length_implies_overflow:
+			result += "The length field for the sysex or meta event "
+				"imples overflow.  ";
+			break;
+		case mtrk_event_validation_error::event_size_exceeds_max:
+			result += "Overflow.  ";
+			break;
+		case mtrk_event_validation_error::unknown_error:
+			result += "Unknown_error :(";
+			break;
+		case mtrk_event_validation_error::no_error:
+			result += "No error";
+			break;
+	}
+	return result;
+}
+
+
 uint8_t channel_status_byte_n_data_bytes(unsigned char s) {
 	if (is_channel_status_byte(s)) {
 		if ((s&0xF0u)==0xC0u || (s&0xF0u)==0xD0u) {

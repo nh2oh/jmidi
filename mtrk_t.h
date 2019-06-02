@@ -14,6 +14,8 @@ class mtrk_t;
 // Holds an mtrk; owns the underlying data.  Stores the event sequence as
 // a std::vector<mtrk_event_t>.  
 //
+//
+//
 // TODO:  Ctors
 //
 class mtrk_t {
@@ -34,10 +36,6 @@ public:
 private:
 	uint32_t data_size_ {};
 	std::vector<mtrk_event_t> evnts_ {};
-
-	// "Unsafe" setters; set_events() does not update this->data_size_
-	void set_events(const std::vector<mtrk_event_t>&);
-	void set_data_size(uint32_t);
 };
 std::string print(const mtrk_t&);
 

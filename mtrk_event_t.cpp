@@ -20,6 +20,22 @@ mtrk_event_t::mtrk_event_t() {
 	this->flags_ = 0x00;
 	this->set_flag_small();
 }
+mtrk_event_t::mtrk_event_t(const unsigned char *p, 
+					const validate_mtrk_event_result_t& ev) {
+	if (ev.size<=static_cast<uint64_t>(offs::max_size_sbo)) {  // small
+		this->set_flag_small();
+
+		auto end = std::copy(p,p+ev.size,this->d_.begin());
+		while (end!=this->d_.end()) {
+			*end++ = 0x00u;
+		}
+		this->midi_status_ = ev.running_status;
+	} else {  // big
+		auto new_p = new unsigned char[ev.size];
+		std::copy(p,p+ev.size,new_p);
+		this->init_big(new_p,ev.size,ev.size,ev.running_status);  // adopts new_p
+	}
+}
 //
 // For callers who have pre-computed the exact size of the event and who
 // can also supply a midi status byte if applicible, ex, an mtrk_container_iterator_t.  
@@ -38,6 +54,8 @@ mtrk_event_t::mtrk_event_t(const unsigned char *p, uint32_t sz, unsigned char rs
 		auto new_p = new unsigned char[sz];
 		std::copy(p,p+sz,new_p);
 		this->init_big(new_p,sz,sz,rs);  // adopts new_p
+		// TODO:  This is blindly trusting rs?  For the small case i call 
+		// get_running_Status_byte()...  Bug?
 	}
 }
 //
@@ -448,6 +466,9 @@ void mtrk_event_t::clear_nofree() {
 // It is the responsibility of the caller to delete the old big_ptr() before
 // calling init_big() w/ the ptr to the new buffer, or memory will leak.  
 // ptr, size, capacity, running-status
+//
+// TODO:  Why not an overload of this for when type, delta-time, rs, etc
+// is known by the caller (avoid recomputation...) ?
 bool mtrk_event_t::init_big(unsigned char *p, uint32_t sz, uint32_t c, unsigned char rs) {
 	this->set_flag_big();
 

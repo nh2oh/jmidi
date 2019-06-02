@@ -40,13 +40,7 @@ void mtrk_t::push_back(const mtrk_event_t& ev) {
 	this->evnts_.push_back(ev);
 	this->data_size_ += ev.data_size();
 }
-// Private methods
-void mtrk_t::set_data_size(uint32_t data_size) {
-	this->data_size_=data_size;
-}
-void mtrk_t::set_events(const std::vector<mtrk_event_t>& evec) {
-	this->evnts_=evec;
-}
+
 
 std::string print(const mtrk_t& mtrk) {
 	std::string s {};
@@ -68,38 +62,62 @@ maybe_mtrk_t make_mtrk(const unsigned char *p, uint32_t max_sz) {
 	maybe_mtrk_t result {};
 	auto chunk_detect = validate_chunk_header(p,max_sz);
 	if (chunk_detect.type != chunk_type::track) {
-		result.error = "chunk_detect.type != chunk_type::track";
+		result.error = ("Error validating MTrk chunk:  "
+			"validate_chunk_header() reported:\n\t"
+			+ print_error(chunk_detect));
 		return result;
 	}
 	
+	// From experience with thousands of midi files encountered in the wild,
+	// the average number of bytes per MTrk event is about 3.  
+	std::vector<mtrk_event_t> evec;  // "event vector"
+	evec.reserve(static_cast<double>(chunk_detect.data_size)/3.0);
+
 	// Process the data section of the mtrk chunk until the number of bytes
 	// processed is as indicated by chunk_detect.size, or an end-of-track 
 	// meta event is encountered.  
-	std::vector<mtrk_event_t> evec;  // "event vector"
-	evec.reserve(static_cast<double>(chunk_detect.data_size)/3.0);
-	bool found_eot = false;
+	bool found_eot = false;  bool found_ch_ev = false;
 	uint32_t o = 8;  // offset; skip "MTrk" & the 4-byte length
 	unsigned char rs {0};  // value of the running-status
+	uint64_t cumtk = 0;  // Cumulative delta-time
 	validate_mtrk_event_result_t curr_event;
 	while ((o<chunk_detect.size) && !found_eot) {
 		const unsigned char *curr_p = p+o;  // ptr to start of present event
-		uint32_t curr_max_sz = chunk_detect.size-o;  // max excursion for present event beyond p
+		uint32_t curr_max_sz = chunk_detect.size-o;
 		
 		curr_event = validate_mtrk_event_dtstart(curr_p,rs,curr_max_sz);
 		if (curr_event.error!=mtrk_event_validation_error::no_error) {
-			result.error = "curr_event.error!=mtrk_event_validation_error::no_error";
+			result.error = ("Error validating the MTrk event at offset o = "
+				+ std::to_string(o) + "\n\t" + print(curr_event.error));
 			return result;
 		}
-
+		
 		rs = curr_event.running_status;
-		auto curr_mtrk_event = mtrk_event_t(curr_p,curr_event.size,rs);
-		evec.push_back(curr_mtrk_event);
+		cumtk += curr_event.delta_t;
+		found_ch_ev = (found_ch_ev || (curr_event.type == smf_event_type::channel));
+		//auto curr_mtrk_event = mtrk_event_t(curr_p,curr_event.size,rs);
+		auto curr_mtrk_event = mtrk_event_t(curr_p,curr_event);
 
-		// Test for end-of-track msg
+		// Test for end-of-track msg; finding the eot will cause the loop to
+		// exit, so, if there is an "illegal" eot in the middle of the track,
+		// it will be caught below the loop when o is compared to 
+		// chunk_detect.size.  
+		// TODO:  Replace w/ is_eot() once unit tested
+		// TODO:  The 
 		if (curr_event.type==smf_event_type::meta && curr_event.size>=4) {
 			uint32_t last_four = dbk::be_2_native<uint32_t>(curr_p+(curr_event.size-4));
 			found_eot = ((last_four&0x00FFFFFFu)==0x00FF2F00u);
 		}
+		if (is_seqn(curr_mtrk_event) && ((cumtk>0) || found_ch_ev)) {
+			result.error = ("Illegal \"Sequence number\" meta-event found "
+				"at offset o = " + std::to_string(o) + " and cumulative "
+				"delta-time = " + std::to_string(cumtk) + ".  Sequence "
+				"number events must occur before any non-zero delta times "
+				"and before any MIDI [channel] events.  ");
+			return result;
+		}
+
+		evec.push_back(curr_mtrk_event);
 		o += curr_event.size;
 	}
 
@@ -118,8 +136,8 @@ maybe_mtrk_t make_mtrk(const unsigned char *p, uint32_t max_sz) {
 		return result;
 	}
 
-	result.mtrk.set_events(evec);
-	result.mtrk.set_data_size(chunk_detect.data_size);
+	result.mtrk.evnts_ = evec;
+	result.mtrk.data_size_ = chunk_detect.data_size;
 
 	return result;
 }
