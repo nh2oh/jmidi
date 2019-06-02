@@ -13,14 +13,18 @@ class mtrk_t;
 //
 // Holds an mtrk; owns the underlying data.  Stores the event sequence as
 // a std::vector<mtrk_event_t>.  
+// Maintains the following invariants:
+// -> No seqn meta events at t > 0 or after one a channel event has ocured.  
+// -> No eot meta events anywhere other than at the very end
 //
-//
+// Maintaining these for methods like push_back(), insert(), etc is
+// complex and expensive.  Allow sequences that would be invalid as an MTrk
+// chunk and provide some sort of validate() method to find/correct errors?
 //
 // TODO:  Ctors
 //
 class mtrk_t {
 public:
-	// TODO:  size() depends on if rs is to be used or not.  
 	uint32_t size() const;
 	uint32_t data_size() const;
 	uint32_t nevents() const;
@@ -30,14 +34,97 @@ public:
 	mtrk_const_iterator_t begin() const;
 	mtrk_const_iterator_t end() const;
 
-	void push_back(const mtrk_event_t&);
+	// These are convienience methods applicable to the overwhelming
+	// majority of cases where there is only one of these events per track.  
+	// Returns the text payload of the relevant meta event, or an empty str
+	// if the event is not present in the track.  Of course, there could
+	// be multiple of these events; a user worried about this needs to
+	// run std::find_if() or some equivalent.  The aim of these methods is
+	// is to make simple things simple.  
+	// Note however that multiple of these events may not be rare for cases
+	// where many "tracks" are encoded on one mtrk_t w/ each logical track
+	// having a different channel, ex, in an fmt 0 smf.  
+	std::string copyright() const;
+	std::string track_name() const;
+	std::string instrument_name() const;
+	// Concatenates all the lyrics
+	std::string lyrics() const;
+
+	bool push_back(const mtrk_event_t&);
+
+	struct validate_t {
+		std::string msg {};
+		operator bool() const;
+	};
+	validate_t validate() const;
 
 	friend maybe_mtrk_t make_mtrk(const unsigned char*, uint32_t);
 private:
-	uint32_t data_size_ {};
+	uint32_t data_size_ {0};
+	uint64_t cumdt_ {0};
+	int64_t first_ch_ev_ {-1};
 	std::vector<mtrk_event_t> evnts_ {};
 };
 std::string print(const mtrk_t&);
+
+
+// TODO:  Apply S. Parent's concept that inh should be an
+// implementation detail.  
+struct integrator_t {
+	virtual integrator_t& operator+=(const mtrk_event_t& ev)=0;
+	virtual std::string print()=0;
+};
+struct tk_integrator_t : integrator_t {
+	tk_integrator_t& operator+=(const mtrk_event_t& ev) override {
+		this->val_ += ev.delta_time();
+		return *this;
+	};
+	std::string print() override {
+		return ("tk_integrator_t.val_=="+std::to_string(this->val_));
+	};
+	uint32_t val_ {0};
+};
+struct lyric_integrator_t : integrator_t {
+	lyric_integrator_t& operator+=(const mtrk_event_t& ev) override {
+		if (is_lyric(ev)) {
+			this->val_ = ev.text_payload();
+			return *this;
+		}
+	};
+	std::string print() override {
+		return ("lyric_integrator_t.val_=="+this->val_);
+	};
+	std::string val_ {};
+};
+// Idea:  Member tempo-track; instantiate w/a tempo track 
+struct time_integrator_t : integrator_t {
+	time_integrator_t& operator+=(const mtrk_event_t& ev) override {
+		this->val_ += ev.delta_time()*(this->tempo_/this->tpq_)/1000;
+		this->tempo_ = get_tempo(ev,this->tempo_);
+		return *this;
+	};
+	std::string print() override {
+		return ("time_integrator_t.val_=="+std::to_string(this->val_)
+			+"; tempo=="+std::to_string(this->tempo_));
+	};
+	double val_ {0};
+	uint32_t tempo_ {500000};
+	uint32_t tpq_ {96};  // ticks per q nt from MThd
+};
+
+/*
+// TODO...
+template<typename OIt>
+OIt write_mtrk_chunk(const mtrk_t&, OIt dest) {
+	std::array<char,4> h_mtrk {'M','T','r','k'};
+	std::copy(h_mtrk.begin(),h_mtrk.end(),dest);
+	// size...
+	for (const auto& e : mtrk) {
+		//...
+	}
+	return dest;
+};
+*/
 
 // Declaration matches the in-class friend declaration to make the 
 // name visible for lookup outside the class.  

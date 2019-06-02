@@ -1,7 +1,6 @@
 #include "mtrk_t.h"
 #include "mtrk_event_t.h"
 #include "mtrk_iterator_t.h"
-#include "dbklib\byte_manipulation.h"
 #include <string>
 #include <cstdint>
 #include <vector>
@@ -9,7 +8,6 @@
 #include <iomanip>  // std::setw()
 #include <ios>  // std::left
 #include <sstream>
-#include <iostream>
 
 
 
@@ -36,11 +34,39 @@ mtrk_const_iterator_t mtrk_t::end() const {
 	auto p_last = &(this->evnts_.back());
 	return mtrk_const_iterator_t(++p_last);
 }
-void mtrk_t::push_back(const mtrk_event_t& ev) {
-	this->evnts_.push_back(ev);
+bool mtrk_t::push_back(const mtrk_event_t& ev) {
+	if (ev.type()==smf_event_type::meta) {
+		// Do not insert eot messages; do not insert seqn messages at
+		// t > 0 or after a midi channel msg.  
+		if (is_eot(ev)) {
+			return false;
+		}
+		if (is_seqn(ev)) {
+			auto t_onset = (this->cumdt_ - this->evnts_.back().delta_time())
+				+ ev.delta_time();
+			if (t_onset > 0) {
+				return false;
+			}
+			if (this->first_ch_ev_ >= 0) {
+				return false;
+			}
+		}
+	} else if (is_channel(ev) && this->first_ch_ev_ < 0) {
+		this->first_ch_ev_ = this->evnts_.size()-1;
+	}
+	this->cumdt_ += ev.delta_time();
 	this->data_size_ += ev.data_size();
+	this->evnts_.insert(this->evnts_.end()-1,ev);
+	return true;
 }
+mtrk_t::validate_t mtrk_t::validate() const {
+	mtrk_t::validate_t result {};
 
+	return result;
+}
+mtrk_t::validate_t::operator bool() const {
+	return this->msg.size()==0;
+}
 
 std::string print(const mtrk_t& mtrk) {
 	std::string s {};
@@ -95,19 +121,15 @@ maybe_mtrk_t make_mtrk(const unsigned char *p, uint32_t max_sz) {
 		rs = curr_event.running_status;
 		cumtk += curr_event.delta_t;
 		found_ch_ev = (found_ch_ev || (curr_event.type == smf_event_type::channel));
-		//auto curr_mtrk_event = mtrk_event_t(curr_p,curr_event.size,rs);
 		auto curr_mtrk_event = mtrk_event_t(curr_p,curr_event);
 
 		// Test for end-of-track msg; finding the eot will cause the loop to
 		// exit, so, if there is an "illegal" eot in the middle of the track,
 		// it will be caught below the loop when o is compared to 
 		// chunk_detect.size.  
-		// TODO:  Replace w/ is_eot() once unit tested
-		// TODO:  The 
-		if (curr_event.type==smf_event_type::meta && curr_event.size>=4) {
-			uint32_t last_four = dbk::be_2_native<uint32_t>(curr_p+(curr_event.size-4));
-			found_eot = ((last_four&0x00FFFFFFu)==0x00FF2F00u);
-		}
+		found_eot = (found_eot || (is_eot(curr_mtrk_event)));
+		// Test for illegal sequence-number meta event occuring after a midi
+		// channel event or at t>0.  
 		if (is_seqn(curr_mtrk_event) && ((cumtk>0) || found_ch_ev)) {
 			result.error = ("Illegal \"Sequence number\" meta-event found "
 				"at offset o = " + std::to_string(o) + " and cumulative "

@@ -104,6 +104,10 @@ std::string print_error(const validate_mthd_chunk_result_t&);
 // error==mtrk_validation_error::no_error ensures that an mtrk_event_t 
 // can be constructed from all the events in the track.  
 //
+// TODO:  validate_mtrk_chunk() is completely obsoleted by make_mtrk().  
+// It is still useful to have a validation only fn, however.  To
+// validate views, for example...
+//
 // If the input is a valid MTrk chunk, the validate_mtrk_chunk_result_t
 // returned can be passed to the ctor of mtrk_container_t to instantiate
 // a valid object.  

@@ -226,6 +226,11 @@ std::string mtrk_event_t::text_payload() const {
 	}
 	return s;
 }
+uint32_t mtrk_event_t::uint32_payload() const {
+	auto d = this->payload_begin() - this->begin();
+	auto p = this->data()+d;
+	return dbk::be_2_native<uint32_t>(p);
+}
 // TODO:  This is evauating the delta_time field multiple times in inner
 // function calls & can be made way more effecient.  
 mtrk_event_t::channel_event_data_t mtrk_event_t::midi_data() const {
@@ -801,8 +806,12 @@ std::string meta_generic_gettext(const mtrk_event_t& ev) {
 	return s;
 }
 
-
-
+uint32_t get_tempo(const mtrk_event_t& ev, uint32_t def) {
+	if (!is_tempo(ev)) {
+		return def;
+	}
+	return ev.uint32_payload();
+}
 
 
 

@@ -24,10 +24,10 @@ int midi_example() {
 
 	//std::string fn = "D:\\cpp\\nh2oh\\au\\gt_aulib\\test_data\\clementi_no_rs.mid";
 	//std::string fn = "D:\\cpp\\nh2oh\\au\\gt_aulib\\test_data\\tc_a_rs.mid";
-	std::string fn = "C:\\Users\\ben\\Desktop\\scr\\CLEMENTI.MID";
+	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\CLEMENTI.MID";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\A7.mid";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\test.mid";
-	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\hallelujah_joy_to_the_world.mid";
+	std::string fn = "C:\\Users\\ben\\Desktop\\scr\\hallelujah_joy_to_the_world.mid";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\twinkle.mid";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\test.mid";
 
@@ -36,15 +36,41 @@ int midi_example() {
 		std::cout << "nope :(" << std::endl;
 		std::abort();
 	}
+	//std::cout << "print(maybesmf2.smf):" << std::endl;
 	//std::cout << print(maybesmf2.smf) << std::endl;
 
-	auto linked_pairs = get_linked_onoff_pairs(maybesmf2.smf);
-	std::cout << print(linked_pairs) << std::endl << std::endl;
+	//std::cout << "get_linked_onoff_pairs(maybesmf2.smf):" << std::endl;
+	//auto linked_pairs = get_linked_onoff_pairs(maybesmf2.smf);
+	//std::cout << print(linked_pairs) << std::endl << std::endl;
 
 	//auto ordered_evs_all = get_events_dt_ordered(maybesmf2.smf);
 	//std::cout << print(ordered_evs_all) << std::endl;
 
-	std::cout << print_linked_onoff_pairs(maybesmf2.smf.get_track(2)) << std::endl;
+	//std::cout << "print_linked_onoff_pairs(maybesmf2.smf.get_track(2)):" << std::endl;
+	//std::cout << print_linked_onoff_pairs(maybesmf2.smf.get_track(2)) << std::endl;
+
+	tk_integrator_t tki;
+	lyric_integrator_t lyri;
+	time_integrator_t timei;
+	std::vector<integrator_t*> vi;
+	vi.push_back(&tki);
+	vi.push_back(&lyri);
+	vi.push_back(&timei);
+	auto trk = maybesmf2.smf.get_track(4);
+	int i=0;
+	for (const auto& e : trk) {
+		for (const auto& ie : vi) {
+			*ie += e;
+		}
+	
+		if (i%5==0) {
+			std::cout << print(e) << std::endl;
+			for (const auto& ie : vi) {
+				std::cout << "\t" << ie->print() << "\n";
+			}
+		}
+		std::cout << std::endl;
+	}
 
 	return 0;
 }

@@ -113,6 +113,9 @@ public:
 	// For meta events w/ a text payload, copies the payload to a
 	// std::string;  Returns an empty std::string otherwise.  
 	std::string text_payload() const;
+	// TODO:  Implementation is very unsafe; need to check buffer
+	// size, etc.  
+	uint32_t uint32_payload() const;
 	// For channel events, gets the midi data, including.  For non-channel
 	// events, .is_valid==false and the value of all other fields is 
 	// undefined.  
@@ -305,6 +308,7 @@ bool meta_has_text(const mtrk_event_t&);
 std::string meta_generic_gettext(const mtrk_event_t&);
 // TODO:  std::vector<unsigned char> meta_generic_getpayload(...
 
+uint32_t get_tempo(const mtrk_event_t&, uint32_t=500000);
 
 //
 // Channel event classification
