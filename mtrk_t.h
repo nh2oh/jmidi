@@ -70,6 +70,21 @@ std::string print(const mtrk_t&);
 
 // TODO:  Apply S. Parent's concept that inh should be an
 // implementation detail.  
+//
+// TODO:  I want to be able to bundle these @ low cost.  Ex,
+// i may want my lyric integrator to also associate a cumtk
+// or a ms value w/ the last-encountered lyric event.  When 
+// expanded to smf_t's & iterating over a group of tracks i 
+// may also want to assoctate a trackn w/ event data held by the
+// integrator.  
+//
+// NB:  For a user looping through an mtrk_event_t sequence and
+// updating some vector of integrators, in the general case, += 
+// for each integrator has to be called for each mtrk event, since
+// more than one integrator may apply to any given event.  Ex,
+// a lyric event has to be processed by the lyric integrator _and_
+// by the delta_time integrator.  The integrator vector could be 
+// wrapped into it's own type w/a custom += to be more effecient.  
 struct integrator_t {
 	virtual integrator_t& operator+=(const mtrk_event_t& ev)=0;
 	virtual std::string print()=0;
