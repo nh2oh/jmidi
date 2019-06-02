@@ -1,11 +1,8 @@
 #pragma once
 #include "midi_vlq.h"
 #include <string>
-#include <vector>
-#include <limits> // CHAR_BIT
-#include <type_traits> // std::enable_if<>, is_integral<>, is_unsigned<>
 #include <cstdint>
-#include <typeinfo>
+
 
 //
 // TODO:  I have to include midi_vlq.h to get a dfn of 
@@ -323,43 +320,8 @@ struct parse_sysex_event_result_t {
 parse_sysex_event_result_t parse_sysex_event(const unsigned char*,int32_t=0);
 
 
-
-
-
-
-
-
 // It is assumed that the buffer is large enough to accomodate the new dt
 // value.  Returns a ptr to one past the end of the new dt value (ie, the
 // first msg data byte).  
 unsigned char *midi_rewrite_dt_field_unsafe(uint32_t, unsigned char*, unsigned char=0);
-
-
-//
-// My smf_t, smf_container_t types do not index into each mtrk event, hence 
-// the mtrk event list's do not need to be parsed to construct these objects.  
-// The only important point is that the data be valid.  
-//
-struct chunk_idx_t {
-	chunk_type type {};
-	int32_t offset {0};
-	uint32_t size {0};
-};
-struct validate_smf_result_t {
-	bool is_valid {};
-	std::string msg {};
-
-	// Needed by the smf_container_t ctor
-	std::string fname {};
-	const unsigned char *p {};
-	uint32_t size {0};
-	int32_t n_mtrk {0};  // Number of MTrk chunks
-	int32_t n_unknown {0};
-	std::vector<chunk_idx_t> chunk_idxs {};
-};
-validate_smf_result_t validate_smf(const unsigned char*, int32_t, const std::string&);
-
-
-
-
 

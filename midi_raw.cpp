@@ -2,7 +2,6 @@
 #include "midi_vlq.h"
 #include "dbklib\byte_manipulation.h"
 #include <string>
-#include <exception>
 #include <cstdint>
 
 
@@ -727,80 +726,3 @@ unsigned char *midi_rewrite_dt_field_unsafe(uint32_t dt, unsigned char *p, unsig
 }
 
 
-
-//
-//TODO:  The offset checks are repetitive...
-//
-validate_smf_result_t validate_smf(const unsigned char *p, int32_t offset_end, 
-									const std::string& fname) {
-	validate_smf_result_t result {};
-	int n_tracks {0};
-	int n_unknown {0};
-	std::vector<chunk_idx_t> chunk_idxs {};
-
-	int32_t offset {0};
-	while (offset<offset_end) {  // For each chunk...
-		auto curr_chunk = validate_chunk_header(p+offset,offset_end-offset);
-		if (curr_chunk.type == chunk_type::invalid) {
-			result.is_valid = false;
-			result.msg += "curr_chunk.type == chunk_type::invalid\ncurr_chunk_type.msg== ";
-			result.msg += print_error(curr_chunk);
-			return result;
-		} else if (curr_chunk.type == chunk_type::header) {
-			if (offset > 0) {
-				result.is_valid = false;
-				result.msg += "curr_chunk.type == chunk_type::header but offset > 0.  ";
-				result.msg += "A valid midi file must contain only one MThd @ the very start.  \n";
-				return result;
-			}
-			validate_mthd_chunk_result_t mthd = validate_mthd_chunk(p+offset, offset_end-offset);
-			if (mthd.error != mthd_validation_error::no_error) {
-				result.is_valid = false;
-				result.msg += "mthd.error != mthd_validation_error::no_error";
-				return result;
-			}
-		} else if (curr_chunk.type == chunk_type::track) {
-			if (offset == 0) {
-				result.is_valid = false;
-				result.msg += "curr_chunk.type == chunk_type::track but offset == 0.  ";
-				result.msg += "A valid midi file must begin w/an MThd chunk.  \n";
-				return result;
-			}
-			validate_mtrk_chunk_result_t curr_track = validate_mtrk_chunk(p+offset,offset_end-offset);
-			if (curr_track.error != mtrk_validation_error::no_error) {
-				result.msg += "!curr_track.is_valid\ncurr_track.msg==";
-				result.msg += print_error(curr_track);
-				//result.msg += curr_track.msg;
-				return result;
-			}
-			++n_tracks;
-		} else if (curr_chunk.type == chunk_type::unknown) {
-			++n_unknown;
-			if (offset == 0) {
-				result.is_valid = false;
-				result.msg += "curr_chunk.type == chunk_type::unknown but offset == 0.  ";
-				result.msg += "A valid midi file must begin w/an MThd chunk.  \n";
-				return result;
-			}
-		}
-
-		chunk_idxs.push_back({curr_chunk.type,offset,curr_chunk.size});
-		offset += curr_chunk.size;
-	}
-
-	if (offset != offset_end) {
-		result.is_valid = false;
-		result.msg = "offset != offset_end.";
-		return result;
-	}
-
-	result.is_valid = true;
-	result.fname = fname;
-	result.chunk_idxs = chunk_idxs;
-	result.n_mtrk = n_tracks;
-	result.n_unknown = n_unknown;
-	result.size = offset;
-	result.p = p;
-
-	return result;
-}

@@ -1,7 +1,6 @@
 #pragma once
-#include <array>
-#include <limits> // CHAR_BIT
-#include <type_traits> // std::enable_if<>, is_integral<>, is_unsigned<>
+#include <limits>  // CHAR_BIT
+#include <type_traits>  // std::enable_if<>, is_integral<>, is_unsigned<>
 #include <cstdint>
 
 
