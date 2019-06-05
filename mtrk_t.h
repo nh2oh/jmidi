@@ -12,18 +12,45 @@ class mtrk_t;
 //
 // mtrk_t
 //
-// Holds an mtrk; owns the underlying data.  Stores the event sequence as
-// a std::vector<mtrk_event_t>.  Also caches certain properties of the
-// sequence to allow faster access, ex the total number of ticks (member
-// cumdt_).  
+// Holds a sequence of mtrk_event_t's; owns the underlying data.  Stores 
+// the event sequence as a std::vector<mtrk_event_t>.  Also caches certain
+// properties of the sequence to allow faster access, ex the total number
+// of ticks spanned by the sequence (member cumdt_).  
+//
+// Because the conditions on a valid MTrk event sequence are complex and 
+// expensive to maintain for operations such as push_back(), insert() etc,
+// an mtrk_t may not serialize to a valid MTrk chunk.  For example, there
+// may be multiple EOT events within the event sequence (or a terminating
+// EOT event may be missing), there may be orphan note-on events, etc.  
+// The method validate() returns a summary of the problems w/ the object.  
+// Disallowing "invalid" states would make it prohibitively cumbersome to
+// provide straightforward, low-overhead editing functionality to users.
+// A user _has_ to be able to, for example, call push_back() to add note-on
+// and note_off events one at a time.  If I were to require the object to
+// always be serializable to a valid MTrk, this would be impossible since 
+// adding a note-on event before the corresponsing note-off creates an
+// orphan on-event situation (as well as a "missing EOT" error).  
+//
+// Note that a default-constructed mtrk_t is empty (nevents()==0, 
+// data_size()==0) and .validate() will return false (no EOT event);
+// empty mtrk_t's do not represent serializable MTrk chunks.  
+//
 // Maintains the following invariants:
 // -> No events in the sequence have .type()==smf_event_type::invalid
-// -> cumtk_, data_size_ matches the event sequence evnts_.  
+// -> cumtk_, data_size_ match the event sequence evnts_.  
 //
 // TODO:  Need some sort of private fn to convert to/from std::vector 
 // iterators.  
 // TODO:  Method size() returns a size in bytes not a number-of-events,
 // which might be confusing, esp since capacity()
+// TODO:  Check for max_size() type of overflow?  Maximum data_size
+// == 0xFFFFFFFFu (?)
+// TODO:  Things like non-const operator[], begin(), end() make it
+// impossible to maintain the invariants.  
+// These methods could set a "maybe_dirty_" bit, which could force
+// reverification of the invariants when needed.  
+// TODO:  The zillion is_linked_off() lambda's implemented everywhere
+// need to be made into a free function on mtrk_event_t.  
 //
 //
 class mtrk_t {
@@ -61,10 +88,14 @@ public:
 	mtrk_iterator_t end();
 	mtrk_const_iterator_t begin() const;
 	mtrk_const_iterator_t end() const;
+	mtrk_event_t& operator[](uint32_t);
+	const mtrk_event_t& operator[](uint32_t) const;
 
+	// Returns false if the event could not be added, ex if it's an
+	// smf_event_type::invalid.  
 	bool push_back(const mtrk_event_t&);
 	void pop_back();
-	// Insert arg2 _before_ arg1 and returns an iterator to the newly
+	// Inserts arg2 _before_ arg1 and returns an iterator to the newly
 	// inserted event.  If arg2.type()==smf_event_type::invalid, does
 	// not insert, and returns this->end().  
 	mtrk_iterator_t insert(mtrk_iterator_t, const mtrk_event_t&);
@@ -101,50 +132,58 @@ struct maybe_mtrk_t {
 	operator bool() const;
 };
 
-
 // Returns an iterator to one past the last simultanious event 
 // following beg.  
 mtrk_iterator_t get_simultanious_events(mtrk_iterator_t, mtrk_iterator_t);
 
-// TODO:  Really just an mtrk_event_t w/ an integrated delta-time
-struct orphan_onoff_t {
-	uint32_t cumtk;
-	mtrk_event_t ev;
-};
-struct linked_onoff_pair_t {
-	uint32_t cumtk_on;
-	mtrk_event_t on;
-	uint32_t cumtk_off;
-	mtrk_event_t off;
-};
-struct linked_and_orphan_onoff_pairs_t {
-	std::vector<linked_onoff_pair_t> linked {};
-	std::vector<orphan_onoff_t> orphan_on {};
-	std::vector<orphan_onoff_t> orphan_off {};
-};
-linked_and_orphan_onoff_pairs_t get_linked_onoff_pairs(mtrk_const_iterator_t,
-					mtrk_const_iterator_t);
-std::string print(const linked_and_orphan_onoff_pairs_t&);
 
 //
-// An alternate design, possibly more general, & w/o question
-// more lightweight
-//
-// Args:  Iterator to the first event of the sequence, iterator to one past
-// the end of the sequence, the on-event of interest.  
-// Returns an mtrk_event_cumtk_t where member .ev points to the linked off 
-// event and .cumtk is the cumulative number of ticks occuring between 
-// [beg,.ev).  It is the cumulative number if ticks past immediately _before_
-// event .ev (the onset tick of event .ev is .cumtk + .ev->delta_time()).  
+// find_linked_off(mtrk_const_iterator_t beg, mtrk_const_iterator_t end,
+//						mtrk_event_t on);
+// Find an off event on [beg,end) matching the mtrk_event_t "on" event 
+// given by arg mtrk_event_t on.  
+// 
+// Returns an mtrk_event_cumtk_t where member .ev is an iterator to the
+// corresponding off mtrk_event_t, and .cumtk is the cumulative number
+// of ticks occuring on the interval [beg,.ev).  It is the cumulative 
+// number of ticks starting from beg and and continuing to the event
+// immediately _prior_ to event .ev (the onset tick of event .ev is thus
+// .cumtk + .ev->delta_time()).  
+// If on is not a note-on event, .ev==end and .cumtk==0.  
 // If no corresponding off event can be found, .ev==end and .cumtk has the
 // same interpretation as before.  
+//
 struct mtrk_event_cumtk_t {
 	uint32_t cumtk;  // cumtk _before_ event ev
 	mtrk_const_iterator_t ev;
 };
-mtrk_event_cumtk_t find_linked_off(mtrk_const_iterator_t, mtrk_const_iterator_t,
-			const mtrk_event_t&);
+mtrk_event_cumtk_t find_linked_off(mtrk_const_iterator_t, 
+					mtrk_const_iterator_t, const mtrk_event_t&);
+
+//
+// get_linked_onoff_pairs()
+//
+// For each linked pair {on,off}, the field cumtk (on.cumtk, off.cumtk) is 
+// the cumulative number of ticks immediately prior to the event pointed 
+// at by the iterator in field ev (on.ev, off.ev).  For a 
+// linked_onoff_pair_t p,
+// the onset tick for the on event is p.on.cumtk + p.on.ev->delta_time(),
+// and similarly for the onset tick of the off event.  The duration of
+// the note is:
+// uint32_t duration = (p.on.cumtk+p.on.ev->delta_time()) 
+//                     - (p.off.cumtk+p.off.ev->delta_time());
+//
+// Orphan note-on events are not included in the results.  
+//
+struct linked_onoff_pair_t {
+	mtrk_event_cumtk_t on;
+	mtrk_event_cumtk_t off;
+};
+std::vector<linked_onoff_pair_t>
+	get_linked_onoff_pairs(mtrk_const_iterator_t,mtrk_const_iterator_t);
 std::string print_linked_onoff_pairs(const mtrk_t&);
+
+
 
 // First draft
 template<typename InIt, typename UPred, typename FIntegrate>

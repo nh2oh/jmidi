@@ -83,6 +83,12 @@ mtrk_const_iterator_t mtrk_t::end() const {
 	auto p_last = &(this->evnts_.back());
 	return mtrk_const_iterator_t(++p_last);
 }
+mtrk_event_t& mtrk_t::operator[](uint32_t idx) {
+	return this->evnts_[idx];
+}
+const mtrk_event_t& mtrk_t::operator[](uint32_t idx) const {
+	return this->evnts_[idx];
+}
 bool mtrk_t::push_back(const mtrk_event_t& ev) {
 	if (ev.type() == smf_event_type::invalid) {
 		return false;
@@ -397,127 +403,6 @@ mtrk_iterator_t get_simultanious_events(mtrk_iterator_t beg,
 	return range_end;
 }
 
-linked_and_orphan_onoff_pairs_t get_linked_onoff_pairs(mtrk_const_iterator_t beg,
-					mtrk_const_iterator_t end) {
-	// TODO:  It might be faster to pull all on,off events into a single
-	// "orphans" vector, then iterate over this collection pairing up 
-	// the events and moving them into a linked-events vector.  
-	linked_and_orphan_onoff_pairs_t result {};
-	//result.linked.reserve(end-beg);
-
-	uint32_t cumtk = 0;
-	for (auto it=beg; it!=end; ++it) {
-		const auto& curr_ev = *it;
-		cumtk += curr_ev.delta_time();
-
-		auto matching_on_event = [&curr_ev,&cumtk](const orphan_onoff_t& on_ev)->bool {
-			// Captures curr_ev for use in std::find_if() to find
-			// the matching on-event when curr_ev is an off event.  
-			auto md_on = on_ev.ev.midi_data();
-			auto md_off = curr_ev.midi_data();
-			return ((on_ev.cumtk<=cumtk) 
-				&& (md_on.ch==md_off.ch) 
-				&& (md_on.p1==md_off.p1));
-		};
-
-		if (is_note_on(curr_ev)) {
-			result.orphan_on.push_back({cumtk,*it});
-		} else if (is_note_off(curr_ev)) {
-			auto it_linked_on = 
-				std::find_if(result.orphan_on.begin(),result.orphan_on.end(),
-					matching_on_event);
-			if (it_linked_on==result.orphan_on.end()) {
-				// curr_ev does not match anything in orphans_on; weird.  
-				result.orphan_off.push_back({cumtk,curr_ev});
-			} else {
-				// The event in orphans_on pointed to by it_linked_on matches
-				// the off-event curr_ev.  
-				result.linked.push_back({(*it_linked_on).cumtk,
-					(*it_linked_on).ev,cumtk,curr_ev});
-				result.orphan_on.erase(it_linked_on);
-			}
-		}  // else { // not an on or off event
-	}  // To the next event on [beg,end)
-
-	// "less-than" functions for orphans and linked pairs
-	// "lt_oe" => "less than for orphan events"
-	// "lt_le" => "less than for linked events"
-	auto lt_oe = [](const orphan_onoff_t& rhs,const orphan_onoff_t& lhs)->bool {
-		return rhs.cumtk<lhs.cumtk;
-	};
-	auto lt_le = [](const linked_onoff_pair_t& rhs,const linked_onoff_pair_t& lhs)->bool {
-		return rhs.cumtk_on<lhs.cumtk_on;
-	};
-	std::sort(result.orphan_on.begin(),result.orphan_on.end(),lt_oe);
-	std::sort(result.orphan_off.begin(),result.orphan_off.end(),lt_oe);
-	std::sort(result.linked.begin(),result.linked.end(),lt_le);
-
-	return result;
-}
-
-std::string print(const linked_and_orphan_onoff_pairs_t& evs) {
-	std::string s {};
-	struct width_t {
-		int def {12};  // "default"
-		int p1p2 {10};
-		int ch {10};
-		int sep {3};
-	};
-	width_t w {};
-
-	std::stringstream ss {};
-	ss << std::left;
-	ss << std::setw(w.ch) << "Ch (on)";
-	ss << std::setw(w.p1p2) << "p1 (on)";
-	ss << std::setw(w.p1p2) << "p2 (on)";
-	ss << std::setw(w.def) << "Tick (on)";
-	ss << std::setw(w.sep) << " ";
-	ss << std::setw(w.ch) << "Ch (off)";
-	ss << std::setw(w.p1p2) << "p1 (off)";
-	ss << std::setw(w.p1p2) << "p2 (off)";
-	ss << std::setw(w.def) << "Tick off";
-	ss << std::setw(w.sep) << " ";
-	ss << std::setw(w.def) << "Duration";
-	ss << "\n";
-
-	auto half = [&ss,&w](uint32_t cumtk, const mtrk_event_t& onoff)->void {
-		auto md = onoff.midi_data();
-		ss << std::setw(w.ch) << std::to_string(md.ch);
-		ss << std::setw(w.p1p2) << std::to_string(md.p1);
-		ss << std::setw(w.p1p2) << std::to_string(md.p2);
-		ss << std::setw(w.def) << std::to_string(cumtk);
-	};
-	
-	for (const auto& e : evs.linked) {
-		half(e.cumtk_on,e.on);
-		ss << std::setw(w.sep) << " ";
-		half(e.cumtk_off,e.off);
-		ss << std::setw(w.sep) << " ";
-		ss << std::to_string(e.cumtk_off-e.cumtk_on);
-		ss << "\n";
-	}
-
-	if (evs.orphan_on.size()>0) {
-		ss << "FILE CONTAINS ORPHAN NOTE-ON EVENTS:\n";
-		for (const auto& e : evs.orphan_on) {
-			half(e.cumtk,e.ev);
-			ss << std::setw(w.sep) << "\n";
-		}
-	}
-	if (evs.orphan_off.size()>0) {
-		ss << "FILE CONTAINS ORPHAN NOTE-OFF EVENTS:\n";
-		for (const auto& e : evs.orphan_off) {
-			half(e.cumtk,e.ev);
-			ss << std::setw(w.sep) << "\n";
-		}
-	}
-
-	return ss.str();
-}
-
-
-
-
 
 mtrk_event_cumtk_t find_linked_off(mtrk_const_iterator_t beg,
 					mtrk_const_iterator_t end, const mtrk_event_t& on) {
@@ -536,6 +421,9 @@ mtrk_event_cumtk_t find_linked_off(mtrk_const_iterator_t beg,
 			&& (mdata_ev.p1==mdata_on.p1));
 	};
 
+	// Note that when res.ev points at the event for which 
+	// is_linked_off(res.ev), res.ev->delta_time() will _not_ be added
+	// to res.cumtk.  
 	for (res.ev=beg; (res.ev!=end && !is_linked_off(res.ev)); ++res.ev) {
 		res.cumtk += res.ev->delta_time();
 	}
@@ -543,9 +431,33 @@ mtrk_event_cumtk_t find_linked_off(mtrk_const_iterator_t beg,
 	return res;
 }
 
+std::vector<linked_onoff_pair_t>
+	get_linked_onoff_pairs(mtrk_const_iterator_t beg,
+							mtrk_const_iterator_t end) {
+	std::vector<linked_onoff_pair_t> result;
+
+	uint32_t cumtk = 0;
+	for (auto curr=beg; curr!=end; ++curr) {
+		cumtk += curr->delta_time();
+		if (!is_note_on(*curr)) {
+			continue;
+		}
+
+		auto off = find_linked_off(curr,end,*curr);  // Note:  Not starting @ curr+1
+		if (off.ev==end) {  // Orphan on event
+			continue;
+		}
+		// Event *curr is the on-event
+		auto cumtk_on = (cumtk - curr->delta_time());
+		auto cumtk_off = cumtk_on + off.cumtk;
+		result.push_back({{cumtk_on,curr},{cumtk_off,off.ev}});
+	}
+
+	return result;
+}
+
 std::string print_linked_onoff_pairs(const mtrk_t& mtrk) {
 	std::string s;
-
 	struct width_t {
 		int def {12};  // "default"
 		int p1p2 {10};
@@ -564,7 +476,7 @@ std::string print_linked_onoff_pairs(const mtrk_t& mtrk) {
 	ss << std::setw(w.ch) << "Ch (off)";
 	ss << std::setw(w.p1p2) << "p1 (off)";
 	ss << std::setw(w.p1p2) << "p2 (off)";
-	ss << std::setw(w.def) << "Tick off";
+	ss << std::setw(w.def) << "Tick (off)";
 	ss << std::setw(w.sep) << " ";
 	ss << std::setw(w.def) << "Duration";
 	ss << "\n";
@@ -574,31 +486,33 @@ std::string print_linked_onoff_pairs(const mtrk_t& mtrk) {
 		ss << std::setw(w.ch) << std::to_string(md.ch);
 		ss << std::setw(w.p1p2) << std::to_string(md.p1);
 		ss << std::setw(w.p1p2) << std::to_string(md.p2);
-		ss << std::setw(w.def) << std::to_string(cumtk);
+		ss << std::setw(w.def) << std::to_string(cumtk+onoff.delta_time());
 	};
 
-	uint32_t cumtk_on = 0;
+	uint32_t cumtk = 0;
 	for (auto curr=mtrk.begin(); curr!=mtrk.end(); ++curr) {
-		cumtk_on += curr->delta_time();
+		cumtk += curr->delta_time();
 		if (!is_note_on(*curr)) {
 			continue;
 		}
-		auto cumtk_prior = (cumtk_on - curr->delta_time());
 
+		// Event *curr is the present on-event
+		auto cumtk_on = cumtk - curr->delta_time();
 		print_half(cumtk_on,*curr);
 		ss << std::setw(w.sep) << " ";
-
-		// Note:  Not starting @ curr+1
-		auto it_off = find_linked_off(curr,mtrk.end(),*curr);
-		if (it_off.ev==mtrk.end()) {
-			ss << "NO OFF EVENT\n";
+		auto off = find_linked_off(curr,mtrk.end(),*curr);
+		if (off.ev==mtrk.end()) {  // Orphan on event
+			ss << "NO CORRESPONDING OFF EVENT\n";
 			continue;
 		}
-
-		auto cumtk_off = cumtk_prior + it_off.cumtk + it_off.ev->delta_time();
-		print_half(cumtk_off,*it_off.ev);
+		// off.cumtk includes curr->delta_time(), but does not include
+		// off.ev->delta_time().  
+		auto cumtk_off = cumtk_on + off.cumtk;
+		print_half(cumtk_off,*off.ev);
 		ss << std::setw(w.sep) << " ";
-		ss << std::to_string(cumtk_off-cumtk_on);
+		auto duration = cumtk_off + off.ev->delta_time()
+			- (cumtk_on + curr->delta_time());
+		ss << std::to_string(duration);
 		ss << "\n";
 	}
 	return ss.str();

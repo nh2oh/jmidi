@@ -78,6 +78,7 @@ struct all_smf_events_dt_ordered_t {
 std::vector<all_smf_events_dt_ordered_t> get_events_dt_ordered(const smf_t&);
 std::string print(const std::vector<all_smf_events_dt_ordered_t>&);
 
+/*
 struct linked_pair_with_trackn_t {
 	int trackn;
 	linked_onoff_pair_t ev_pair;
@@ -93,6 +94,10 @@ struct linked_and_orphans_with_trackn_t {
 };
 linked_and_orphans_with_trackn_t get_linked_onoff_pairs(const smf_t&);
 std::string print(const linked_and_orphans_with_trackn_t&);
+*/
+
+
+
 
 /*
 struct smf_simultanious_event_range_t {

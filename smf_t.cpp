@@ -263,7 +263,7 @@ std::string print(const std::vector<all_smf_events_dt_ordered_t>& evs) {
 	return ss.str();
 }
 
-
+/*
 linked_and_orphans_with_trackn_t get_linked_onoff_pairs(const smf_t& smf) {
 	linked_and_orphans_with_trackn_t result;
 	for (int i=0; i<smf.ntrks(); ++i) {
@@ -359,5 +359,5 @@ std::string s {};
 
 	return ss.str();
 }
-
+*/
 
