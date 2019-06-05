@@ -122,6 +122,11 @@ private:
 };
 std::string print(const mtrk_t&);
 
+// Returns true if the track qualifies as a tempo map; only a certain
+// subset of meta events are permitted in a tempo_map.  Does not 
+// validate the mtrk.  
+bool is_tempo_map(const mtrk_t&);
+
 // Declaration matches the in-class friend declaration to make the 
 // name visible for lookup outside the class.  
 maybe_mtrk_t make_mtrk(const unsigned char*, uint32_t);

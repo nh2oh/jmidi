@@ -252,6 +252,21 @@ std::string print(const mtrk_t& mtrk) {
 	return s;
 }
 
+bool is_tempo_map(const mtrk_t& trk) {
+	auto not_allowed = [](const mtrk_event_t& ev) -> bool {
+		auto mt_type = classify_meta_event(ev);
+		return (mt_type!=meta_event_t::tempo
+			&& mt_type!=meta_event_t::timesig
+			&& mt_type!=meta_event_t::eot
+			&& mt_type!=meta_event_t::seqn
+			&& mt_type!=meta_event_t::trackname
+			&& mt_type!=meta_event_t::smpteoffset
+			&& mt_type!=meta_event_t::marker);
+	};
+
+	return std::find_if(trk.begin(),trk.end(),not_allowed)==trk.end();
+}
+
 
 maybe_mtrk_t::operator bool() const {
 	return this->error=="No error";
