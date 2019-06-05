@@ -4,46 +4,49 @@
 #include <string>
 #include <cstdint>
 #include <vector>
+#include <array>  // get_header()
 #include <algorithm>  // std::find_if() in linked-pair finding functions
 #include <iomanip>  // std::setw()
 #include <ios>  // std::left
 #include <sstream>
 
 
-mtrk_t::mtrk_t(const unsigned char *p, uint32_t max_sz) {
-	auto chunk_detect = validate_chunk_header(p,max_sz);
+mtrk_t::mtrk_t(const unsigned char *p, uint32_t sz) {
+	auto chunk_detect = validate_chunk_header(p,sz);
 	if (chunk_detect.type != chunk_type::track) {
 		return;
 	}
-	this->data_size_ = chunk_detect.data_size;
-	
+	if (chunk_detect.size != sz) {
+		return;
+	}
+
 	// From experience with thousands of midi files encountered in the wild,
 	// the average number of bytes per MTrk event is about 3.  
 	auto approx_nevents = static_cast<double>(chunk_detect.data_size)/3.0;
 	this->evnts_.reserve(approx_nevents);
 	
-	// Loop continues until o==chunk_detect.size or a invalid smf_event_type
-	// is encountered.  Note that it does _not_ break upon encountering
-	// an EOT meta event.  
+	// Loop continues until o==sz (==chunk_detect.size) or a invalid 
+	// smf_event_type is encountered.  Note that it does _not_ break 
+	// upon encountering an EOT meta event.  If an invalid event is
+	// hit before o==sz, the actual data_size of the track (==o-8) is
+	// written for this->data_size_.  
 	uint32_t o = 8;  // offset; skip "MTrk" & the 4-byte length
 	unsigned char rs {0};  // value of the running-status
 	uint64_t cumtk = 0;  // Cumulative delta-time
 	validate_mtrk_event_result_t curr_event;
-	while (o<chunk_detect.size) {
+	while (o<sz) {
 		const unsigned char *curr_p = p+o;  // ptr to start of present event
 		uint32_t curr_max_sz = chunk_detect.size-o;
-		
 		curr_event = validate_mtrk_event_dtstart(curr_p,rs,curr_max_sz);
 		if (curr_event.error!=mtrk_event_validation_error::no_error) {
 			break;
 		}
 		rs = curr_event.running_status;
-
 		this->cumtk_ += curr_event.delta_t;
 		this->evnts_.push_back(mtrk_event_t(curr_p,curr_event));
-
 		o += curr_event.size;
 	}
+	this->data_size_ = (o-8);
 }
 uint32_t mtrk_t::size() const {
 	return this->data_size_+8;
@@ -53,6 +56,18 @@ uint32_t mtrk_t::data_size() const {
 }
 uint32_t mtrk_t::nevents() const {
 	return this->evnts_.size();
+}
+std::array<unsigned char,8> mtrk_t::get_header() const {
+	std::array<unsigned char,8> r {'M','T','r','k',0,0,0,0};
+	unsigned char *p_dest = &(r[4]);
+	uint32_t src = this->data_size_;
+	uint32_t mask = 0xFF000000u;
+	for (int i=3; i>=0; --i) {
+		*p_dest = static_cast<unsigned char>((mask&src)>>(i*8));
+		mask>>=8;
+		++p_dest;
+	}
+	return r;
 }
 mtrk_iterator_t mtrk_t::begin() {
 	return mtrk_iterator_t(&(this->evnts_[0]));
@@ -74,7 +89,27 @@ bool mtrk_t::push_back(const mtrk_event_t& ev) {
 	}
 	this->evnts_.push_back(ev);
 	this->cumtk_ += ev.delta_time();
+	this->data_size_ += ev.size();
 	return true;
+}
+void mtrk_t::pop_back() {
+	this->data_size_ -= this->evnts_.back().size();
+	this->cumtk_ -= this->evnts_.back().delta_time();
+	this->evnts_.pop_back();
+}
+mtrk_iterator_t mtrk_t::insert(mtrk_iterator_t it, const mtrk_event_t& ev) {
+	if (ev.type() == smf_event_type::invalid) {
+		return this->end();
+	}
+	auto vit = this->evnts_.insert(this->evnts_.begin()+(it-this->begin()),ev);
+	this->data_size_ += vit->size();
+	this->cumtk_ += vit->delta_time();
+	return this->begin() + (vit-this->evnts_.begin());
+}
+void mtrk_t::clear() {
+	this->evnts_.clear();
+	this->data_size_ = 0;
+	this->cumtk_ = 0;
 }
 mtrk_t::validate_t mtrk_t::validate() const {
 	mtrk_t::validate_t r {};

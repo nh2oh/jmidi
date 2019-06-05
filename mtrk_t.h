@@ -4,6 +4,7 @@
 #include <string>
 #include <cstdint>
 #include <vector>
+#include <array>
 
 struct maybe_mtrk_t;
 class mtrk_t;
@@ -16,14 +17,14 @@ class mtrk_t;
 // sequence to allow faster access, ex the total number of ticks (member
 // cumdt_).  
 // Maintains the following invariants:
-// -> None of the mtrk events in the sequence may have 
-//    type==smf_event_type::invalid.  
+// -> No events in the sequence have .type()==smf_event_type::invalid
+// -> cumtk_, data_size_ matches the event sequence evnts_.  
 //
-// Maintaining these for methods like push_back(), insert(), etc is
-// complex and expensive.  Allow sequences that would be invalid as an MTrk
-// chunk and provide some sort of validate() method to find/correct errors?
+// TODO:  Need some sort of private fn to convert to/from std::vector 
+// iterators.  
+// TODO:  Method size() returns a size in bytes not a number-of-events,
+// which might be confusing, esp since capacity()
 //
-// TODO:  Ctors
 //
 class mtrk_t {
 public:
@@ -37,17 +38,24 @@ public:
 	// validate_mtrk_event_dtstart(curr_p,rs,curr_max_sz) and 
 	// the ctor mtrk_event_t(const unsigned char*, unsigned char, uint32_t)
 	// Iteration stops when arg2 bytes have been processed or when an 
-	// invalid smf event is encoundered.  No error checking other than
+	// invalid smf event is encountered.  No error checking other than
 	// that provided by validate_mtrk_event_dtstart() is implemented.  
 	// The resulting mtrk_t may be invalid as an MTrk event sequence.  For
 	// example, it may contain multiple internal EOT events, orphan 
-	// note-on events, etc.  this->data_size_ is taken from the chunk header
-	// and may be smaller or larger than the the value implied by arg2.  
+	// note-on events, etc.  this->data_size_ is _not_ blindly taken from
+	// the chunk header; it will reflect the actual size occupied by the
+	// event sequence, ex, if an invalid event is encountered before 
+	// processing arg2 bytes.  
 	mtrk_t(const unsigned char*, uint32_t);
 
+	// The size in bytes occupied by the container written out (serialized)
+	// as an MTrk chunk, including the 8-bytes occupied by the header.  
 	uint32_t size() const;
 	uint32_t data_size() const;
 	uint32_t nevents() const;
+	// Writes out the literal chunk header:
+	// {'M','T','r','k',_,_,_,_}
+	std::array<unsigned char,8> get_header() const;
 
 	mtrk_iterator_t begin();
 	mtrk_iterator_t end();
@@ -55,7 +63,15 @@ public:
 	mtrk_const_iterator_t end() const;
 
 	bool push_back(const mtrk_event_t&);
-
+	void pop_back();
+	// Insert arg2 _before_ arg1 and returns an iterator to the newly
+	// inserted event.  If arg2.type()==smf_event_type::invalid, does
+	// not insert, and returns this->end().  
+	mtrk_iterator_t insert(mtrk_iterator_t, const mtrk_event_t&);
+	// Note that calling clear will cause !this.validate(), since there is
+	// no longer an EOT meta event at the end of the sequence.  
+	void clear();
+	
 	// TODO:  This substantially duplicates the functionality of 
 	// make_mtrk(const unsigned char*, uint32_t);
 	// Could have make_mtrk() just call push_back() "blindly" on the
