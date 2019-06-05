@@ -27,6 +27,24 @@ class mtrk_t;
 //
 class mtrk_t {
 public:
+	// Creates an empty MTrk event sequence:
+	// size() == 8, data_size() == 0;
+	// This will classify as invalid (!.validate()), because an MTrk 
+	// sequence must terminate w/ an EOT meta event.  
+	mtrk_t()=default;
+	// Calls validate_chunk_header(p,max_sz) on the input, then iterates 
+	// through the array building mtrk_event_t's by calling 
+	// validate_mtrk_event_dtstart(curr_p,rs,curr_max_sz) and 
+	// the ctor mtrk_event_t(const unsigned char*, unsigned char, uint32_t)
+	// Iteration stops when arg2 bytes have been processed or when an 
+	// invalid smf event is encoundered.  No error checking other than
+	// that provided by validate_mtrk_event_dtstart() is implemented.  
+	// The resulting mtrk_t may be invalid as an MTrk event sequence.  For
+	// example, it may contain multiple internal EOT events, orphan 
+	// note-on events, etc.  this->data_size_ is taken from the chunk header
+	// and may be smaller or larger than the the value implied by arg2.  
+	mtrk_t(const unsigned char*, uint32_t);
+
 	uint32_t size() const;
 	uint32_t data_size() const;
 	uint32_t nevents() const;
@@ -43,7 +61,8 @@ public:
 	// Could have make_mtrk() just call push_back() "blindly" on the
 	// sequence then call validate() on the object.  
 	struct validate_t {
-		std::string msg {};
+		std::string error {};
+		std::string warning {};
 		operator bool() const;
 	};
 	validate_t validate() const;
@@ -56,21 +75,6 @@ private:
 };
 std::string print(const mtrk_t&);
 
-
-
-/*
-// TODO...
-template<typename OIt>
-OIt write_mtrk_chunk(const mtrk_t&, OIt dest) {
-	std::array<char,4> h_mtrk {'M','T','r','k'};
-	std::copy(h_mtrk.begin(),h_mtrk.end(),dest);
-	// size...
-	for (const auto& e : mtrk) {
-		//...
-	}
-	return dest;
-};
-*/
 
 // Declaration matches the in-class friend declaration to make the 
 // name visible for lookup outside the class.  
