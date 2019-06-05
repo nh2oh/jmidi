@@ -385,7 +385,7 @@ maybe_mtrk_t make_mtrk(const unsigned char *p, uint32_t max_sz) {
 	result.mtrk.cumtk_ = cumtk;
 
 	return result;
-}
+}  // make_mtrk()
 
 
 
@@ -402,7 +402,6 @@ mtrk_iterator_t get_simultanious_events(mtrk_iterator_t beg,
 	}
 	return range_end;
 }
-
 
 mtrk_event_cumtk_t find_linked_off(mtrk_const_iterator_t beg,
 					mtrk_const_iterator_t end, const mtrk_event_t& on) {

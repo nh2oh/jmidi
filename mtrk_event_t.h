@@ -347,6 +347,18 @@ bool is_control_change(const mtrk_event_t&);
 bool is_program_change(const mtrk_event_t&);
 bool is_channel_aftertouch(const mtrk_event_t&);  // 0xDnu
 bool is_pitch_bend(const mtrk_event_t&);
+// TODO:  Not sure if the int,int... overloads should be here?
+// Should i put these in some sort of low-level implementation
+// file?  
+// is_onoff_pair(const mtrk_event_t& on, const mtrk_event_t& off)
+bool is_onoff_pair(const mtrk_event_t&, const mtrk_event_t&);
+// is_onoff_pair(int on_ch, int on_note, const mtrk_event_t& off)
+bool is_onoff_pair(int, int, const mtrk_event_t&);
+// is_onoff_pair(int on_ch, int on_note, int off_ch, int off_note)
+bool is_onoff_pair(int, int, int, int);
+
+
+
 
 
 

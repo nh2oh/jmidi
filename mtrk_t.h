@@ -4,7 +4,7 @@
 #include <string>
 #include <cstdint>
 #include <vector>
-#include <array>
+#include <array>  // For method .get_header()
 
 struct maybe_mtrk_t;
 class mtrk_t;
@@ -122,7 +122,6 @@ private:
 };
 std::string print(const mtrk_t&);
 
-
 // Declaration matches the in-class friend declaration to make the 
 // name visible for lookup outside the class.  
 maybe_mtrk_t make_mtrk(const unsigned char*, uint32_t);
@@ -132,10 +131,14 @@ struct maybe_mtrk_t {
 	operator bool() const;
 };
 
-// Returns an iterator to one past the last simultanious event 
-// following beg.  
-mtrk_iterator_t get_simultanious_events(mtrk_iterator_t, mtrk_iterator_t);
 
+
+//
+// get_simultanious_events(mtrk_iterator_t beg, mtrk_iterator_t end)
+//
+// Returns an iterator to one past the last event simultanious with
+// beg.  
+mtrk_iterator_t get_simultanious_events(mtrk_iterator_t, mtrk_iterator_t);
 
 //
 // find_linked_off(mtrk_const_iterator_t beg, mtrk_const_iterator_t end,
@@ -162,6 +165,7 @@ mtrk_event_cumtk_t find_linked_off(mtrk_const_iterator_t,
 
 //
 // get_linked_onoff_pairs()
+// Find all the linked note-on/off event pairs on [beg,end)
 //
 // For each linked pair {on,off}, the field cumtk (on.cumtk, off.cumtk) is 
 // the cumulative number of ticks immediately prior to the event pointed 
@@ -181,20 +185,11 @@ struct linked_onoff_pair_t {
 };
 std::vector<linked_onoff_pair_t>
 	get_linked_onoff_pairs(mtrk_const_iterator_t,mtrk_const_iterator_t);
+
+//
+// Print a table of linked note-on/off event pairs in the input mtrk_t.  
+// On events w/o a matching off event are output to the table with a
+// "not found" message in place of the data for the off event.  Orphan
+// off events are skipped (they are not detected at all).  
 std::string print_linked_onoff_pairs(const mtrk_t&);
-
-
-
-// First draft
-template<typename InIt, typename UPred, typename FIntegrate>
-std::pair<InIt,typename FIntegrate::value_type> accumulate_to(InIt beg,
-								InIt end, UPred pred, FIntegrate func) {
-	std::pair<InIt,typename FIntegrate::value_type> res;
-	for (res.ev=beg; (res.ev!=end && !pred(res.ev)); ++res.ev) {
-		res.first = func(res.first,res.ev);
-	}
-	return res;
-};
-
-
 

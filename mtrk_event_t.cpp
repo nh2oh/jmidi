@@ -866,6 +866,25 @@ bool is_channel_aftertouch(const mtrk_event_t& ev) {
 bool is_pitch_bend(const mtrk_event_t& ev) {
 	return ((ev.status_byte() & 0xF0u) == 0xE0u);
 }
+bool is_onoff_pair(const mtrk_event_t& on, const mtrk_event_t& off) {
+	if (!is_note_on(on) || !is_note_off(off)) {
+		return false;
+	}
+	auto on_md = on.midi_data();
+	auto off_md = off.midi_data();
+	return is_onoff_pair(on_md.ch,on_md.p1,off_md.ch,off_md.p1);
+}
+bool is_onoff_pair(int on_ch, int on_note, const mtrk_event_t& off) {
+	if (!is_note_off(off)) {
+		return false;
+	}
+	auto off_md = off.midi_data();
+	return is_onoff_pair(on_ch,on_note,off_md.ch,off_md.p1);
+}
+bool is_onoff_pair(int on_ch, int on_note, int off_ch, int off_note) {
+	return (on_ch==off_ch && on_note==off_note);
+}
+
 
 
 /*
