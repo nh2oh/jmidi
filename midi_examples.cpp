@@ -49,7 +49,7 @@ int midi_example() {
 	//std::cout << "print_linked_onoff_pairs(maybesmf2.smf.get_track(2)):" << std::endl;
 	//std::cout << print_linked_onoff_pairs(maybesmf2.smf.get_track(2)) << std::endl;
 
-	tk_integrator_t tki;
+	/*tk_integrator_t tki;
 	lyric_integrator_t lyri;
 	time_integrator_t timei;
 	std::vector<integrator_t*> vi;
@@ -70,7 +70,7 @@ int midi_example() {
 			}
 		}
 		std::cout << std::endl;
-	}
+	}*/
 
 	return 0;
 }

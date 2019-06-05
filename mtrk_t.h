@@ -12,10 +12,12 @@ class mtrk_t;
 // mtrk_t
 //
 // Holds an mtrk; owns the underlying data.  Stores the event sequence as
-// a std::vector<mtrk_event_t>.  
+// a std::vector<mtrk_event_t>.  Also caches certain properties of the
+// sequence to allow faster access, ex the total number of ticks (member
+// cumdt_).  
 // Maintains the following invariants:
-// -> No seqn meta events at t > 0 or after one a channel event has ocured.  
-// -> No eot meta events anywhere other than at the very end
+// -> None of the mtrk events in the sequence may have 
+//    type==smf_event_type::invalid.  
 //
 // Maintaining these for methods like push_back(), insert(), etc is
 // complex and expensive.  Allow sequences that would be invalid as an MTrk
@@ -34,24 +36,12 @@ public:
 	mtrk_const_iterator_t begin() const;
 	mtrk_const_iterator_t end() const;
 
-	// These are convienience methods applicable to the overwhelming
-	// majority of cases where there is only one of these events per track.  
-	// Returns the text payload of the relevant meta event, or an empty str
-	// if the event is not present in the track.  Of course, there could
-	// be multiple of these events; a user worried about this needs to
-	// run std::find_if() or some equivalent.  The aim of these methods is
-	// is to make simple things simple.  
-	// Note however that multiple of these events may not be rare for cases
-	// where many "tracks" are encoded on one mtrk_t w/ each logical track
-	// having a different channel, ex, in an fmt 0 smf.  
-	std::string copyright() const;
-	std::string track_name() const;
-	std::string instrument_name() const;
-	// Concatenates all the lyrics
-	std::string lyrics() const;
-
 	bool push_back(const mtrk_event_t&);
 
+	// TODO:  This substantially duplicates the functionality of 
+	// make_mtrk(const unsigned char*, uint32_t);
+	// Could have make_mtrk() just call push_back() "blindly" on the
+	// sequence then call validate() on the object.  
 	struct validate_t {
 		std::string msg {};
 		operator bool() const;
@@ -61,71 +51,12 @@ public:
 	friend maybe_mtrk_t make_mtrk(const unsigned char*, uint32_t);
 private:
 	uint32_t data_size_ {0};
-	uint64_t cumdt_ {0};
-	int64_t first_ch_ev_ {-1};
+	uint64_t cumtk_ {0};
 	std::vector<mtrk_event_t> evnts_ {};
 };
 std::string print(const mtrk_t&);
 
 
-// TODO:  Apply S. Parent's concept that inh should be an
-// implementation detail.  
-//
-// TODO:  I want to be able to bundle these @ low cost.  Ex,
-// i may want my lyric integrator to also associate a cumtk
-// or a ms value w/ the last-encountered lyric event.  When 
-// expanded to smf_t's & iterating over a group of tracks i 
-// may also want to assoctate a trackn w/ event data held by the
-// integrator.  
-//
-// NB:  For a user looping through an mtrk_event_t sequence and
-// updating some vector of integrators, in the general case, += 
-// for each integrator has to be called for each mtrk event, since
-// more than one integrator may apply to any given event.  Ex,
-// a lyric event has to be processed by the lyric integrator _and_
-// by the delta_time integrator.  The integrator vector could be 
-// wrapped into it's own type w/a custom += to be more effecient.  
-struct integrator_t {
-	virtual integrator_t& operator+=(const mtrk_event_t& ev)=0;
-	virtual std::string print()=0;
-};
-struct tk_integrator_t : integrator_t {
-	tk_integrator_t& operator+=(const mtrk_event_t& ev) override {
-		this->val_ += ev.delta_time();
-		return *this;
-	};
-	std::string print() override {
-		return ("tk_integrator_t.val_=="+std::to_string(this->val_));
-	};
-	uint32_t val_ {0};
-};
-struct lyric_integrator_t : integrator_t {
-	lyric_integrator_t& operator+=(const mtrk_event_t& ev) override {
-		if (is_lyric(ev)) {
-			this->val_ = ev.text_payload();
-			return *this;
-		}
-	};
-	std::string print() override {
-		return ("lyric_integrator_t.val_=="+this->val_);
-	};
-	std::string val_ {};
-};
-// Idea:  Member tempo-track; instantiate w/a tempo track 
-struct time_integrator_t : integrator_t {
-	time_integrator_t& operator+=(const mtrk_event_t& ev) override {
-		this->val_ += ev.delta_time()*(this->tempo_/this->tpq_)/1000;
-		this->tempo_ = get_tempo(ev,this->tempo_);
-		return *this;
-	};
-	std::string print() override {
-		return ("time_integrator_t.val_=="+std::to_string(this->val_)
-			+"; tempo=="+std::to_string(this->tempo_));
-	};
-	double val_ {0};
-	uint32_t tempo_ {500000};
-	uint32_t tpq_ {96};  // ticks per q nt from MThd
-};
 
 /*
 // TODO...

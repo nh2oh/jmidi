@@ -295,6 +295,11 @@ unsigned char mtrk_event_t::status_byte() const {
 		return *(this->event_begin());
 	}
 }
+unsigned char mtrk_event_t::running_status() const {
+	// Since at present this->midi_status_ is == 0x00u for meta or sysex
+	// events, have to check for its validity.  
+	return get_running_status_byte(this->midi_status_,*(this->event_begin()));
+}
 smf_event_type mtrk_event_t::type() const {
 	if (is_small()) {
 		// TODO:  Arbitary max_size==6
@@ -861,7 +866,6 @@ bool is_channel_aftertouch(const mtrk_event_t& ev) {
 bool is_pitch_bend(const mtrk_event_t& ev) {
 	return ((ev.status_byte() & 0xF0u) == 0xE0u);
 }
-
 
 
 /*

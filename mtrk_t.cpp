@@ -35,34 +35,110 @@ mtrk_const_iterator_t mtrk_t::end() const {
 	return mtrk_const_iterator_t(++p_last);
 }
 bool mtrk_t::push_back(const mtrk_event_t& ev) {
-	if (ev.type()==smf_event_type::meta) {
-		// Do not insert eot messages; do not insert seqn messages at
-		// t > 0 or after a midi channel msg.  
-		if (is_eot(ev)) {
-			return false;
-		}
-		if (is_seqn(ev)) {
-			auto t_onset = (this->cumdt_ - this->evnts_.back().delta_time())
-				+ ev.delta_time();
-			if (t_onset > 0) {
-				return false;
-			}
-			if (this->first_ch_ev_ >= 0) {
-				return false;
-			}
-		}
-	} else if (is_channel(ev) && this->first_ch_ev_ < 0) {
-		this->first_ch_ev_ = this->evnts_.size()-1;
+	if (ev.type() == smf_event_type::invalid) {
+		return false;
 	}
-	this->cumdt_ += ev.delta_time();
-	this->data_size_ += ev.data_size();
-	this->evnts_.insert(this->evnts_.end()-1,ev);
+	this->evnts_.push_back(ev);
+	this->cumtk_ += ev.delta_time();
 	return true;
 }
 mtrk_t::validate_t mtrk_t::validate() const {
-	mtrk_t::validate_t result {};
+	mtrk_t::validate_t r {};
 
-	return result;
+	// vector sounding holds a list of note-on events for which a 
+	// corresponding note-off event has not yet been encountered.  When the
+	// corresponding note-off event is found, the on event is cleared from 
+	// the list.  
+	// -> Multiple "on" events w/the same note and ch number are not
+	//    considered errors; the first off event will match with the first
+	//    on event only.  
+	// -> Orphan note-off events are not considered errors
+	struct sounding_notes_t {
+		int idx;
+		int ch {0};
+		int note {0};  // note number
+	};
+	std::vector<sounding_notes_t> sounding;
+	sounding.reserve(10);  // Expect <= 10 simultaniously sounding notes???
+	mtrk_event_t::channel_event_data_t curr_chev_data;
+	auto is_matching_off = [&curr_chev_data](const sounding_notes_t& sev)->bool {
+		return (curr_chev_data.ch==sev.ch
+			&& curr_chev_data.p1==sev.note);
+	};
+
+	// Certain meta events are not allowed to occur after the first channel
+	// event, hence found_ch_event is set to true once a ch event has been
+	// encountered.  
+	bool found_ch_ev = false;
+	uint64_t cumtk = 0;  // Cumulative delta-time
+	for (int i=0; i<this->evnts_.size(); ++i) {
+		auto curr_event_type = this->evnts_[i].type();
+		if (curr_event_type == smf_event_type::invalid) {
+			r.msg = ("this->evnts_[i].type() == smf_event_type::invalid; i = "
+				+ std::to_string(i) + "\n\t");
+			return r;
+		}
+		
+		cumtk += this->evnts_[i].delta_time();
+		found_ch_ev = (found_ch_ev || (curr_event_type == smf_event_type::channel));
+		
+		// Test for note-on/note-off event
+		if (is_note_on(this->evnts_[i])) {
+			curr_chev_data = this->evnts_[i].midi_data();
+			sounding.push_back({i,curr_chev_data.ch,curr_chev_data.p1});
+		} else if (is_note_off(this->evnts_[i])) {
+			curr_chev_data = this->evnts_[i].midi_data();
+			auto it = std::find_if(sounding.begin(),sounding.end(),
+				is_matching_off);
+			if (it!=sounding.end()) {
+				sounding.erase(it);
+			}  //it==sounding.end() => orphan "off" event
+		} else if (is_eot(this->evnts_[i]) && (i!=(this->evnts_.size()-1))) {
+			r.msg = ("Illegal \"End-of-track\" (EOT) meta-event found "
+				"at idx i = " + std::to_string(i) + " and cumulative "
+				"delta-time = " + std::to_string(cumtk) + ".  EOT "
+				"events are only valid as the very last event in an MTrk "
+				"event sequence.  ");
+			return r;
+		} else if (is_seqn(this->evnts_[i]) && ((cumtk>0) || found_ch_ev)) {
+			// Test for illegal sequence-number meta event occuring after 
+			// a midi channel event or at t>0.  
+			r.msg = ("Illegal \"Sequence number\" meta-event found "
+				"at idx i = " + std::to_string(i) + " and cumulative "
+				"delta-time = " + std::to_string(cumtk) + ".  Sequence "
+				"number events must occur before any non-zero delta times "
+				"and before any MIDI [channel] events.  ");
+			return r;
+		}
+	}
+
+	// The final event must be a meta-end-of-track msg.  
+	if (!is_eot(this->evnts_.back())) {
+		r.msg = "!is_eot(this->evnts_.back()):  "
+			"The final event in an MTrk eent sequence must be an"
+			"\"end-of-track\" meta event.  ";
+		return r;
+	}
+
+	// std::vector<sounding_notes_t> sounding must be empty
+	if (sounding.size() > 0) {
+		r.msg = "Orphan note-on events found (sounding.size() > 0):  \n";
+		r.msg += "\tidx\tch\tnote\n";
+			for (int i=0; i<sounding.size(); ++i) {
+				r.msg += ("\t" + std::to_string(sounding[i].idx));
+				r.msg += ("\t" + std::to_string(sounding[i].ch));
+				r.msg += ("\t" + std::to_string(sounding[i].note) + "\n");
+			}
+		return r;
+	}
+
+	if (this->cumtk_ != cumtk) {
+		r.msg = ("Inconsistent values of cumtk (==" + std::to_string(cumtk)
+			+ "), this->cumtk_ (==" + std::to_string(this->cumtk_) + ")\n");
+		return r;
+	}
+
+	return r;
 }
 mtrk_t::validate_t::operator bool() const {
 	return this->msg.size()==0;
@@ -97,11 +173,35 @@ maybe_mtrk_t make_mtrk(const unsigned char *p, uint32_t max_sz) {
 	// From experience with thousands of midi files encountered in the wild,
 	// the average number of bytes per MTrk event is about 3.  
 	std::vector<mtrk_event_t> evec;  // "event vector"
-	evec.reserve(static_cast<double>(chunk_detect.data_size)/3.0);
+	auto approx_nevents = static_cast<double>(chunk_detect.data_size)/3.0;
+	evec.reserve(approx_nevents);
+	// vector sounding holds a list of note-on events for which a 
+	// corresponding note-off event has not yet been encountered.  When the
+	// corresponding note-off event is found, the on event is cleared from 
+	// the list.  
+	// -> Multiple "on" events w/the same note and ch number are not
+	//    considered errors; the first off event will match with the first
+	//    on event only.  
+	// -> Orphan note-off events are not considered errors
+	struct sounding_notes_t {
+		uint32_t offset {0};
+		int ch {0};
+		int note {0};  // note number
+	};
+	std::vector<sounding_notes_t> sounding;
+	sounding.reserve(10);  // Expect <= 10 simultaniously-sounding notes ???
+	mtrk_event_t::channel_event_data_t curr_chev_data;
+	auto is_matching_off = [&curr_chev_data](const sounding_notes_t& sev)->bool {
+		return (curr_chev_data.ch==sev.ch
+			&& curr_chev_data.p1==sev.note);
+	};
 
 	// Process the data section of the mtrk chunk until the number of bytes
 	// processed is as indicated by chunk_detect.size, or an end-of-track 
 	// meta event is encountered.  
+	// Certain meta events are not allowed to occur after the first channel
+	// event, hence found_ch_event is set to true once a ch event has been
+	// encountered.  
 	bool found_eot = false;  bool found_ch_ev = false;
 	uint32_t o = 8;  // offset; skip "MTrk" & the 4-byte length
 	unsigned char rs {0};  // value of the running-status
@@ -122,6 +222,19 @@ maybe_mtrk_t make_mtrk(const unsigned char *p, uint32_t max_sz) {
 		cumtk += curr_event.delta_t;
 		found_ch_ev = (found_ch_ev || (curr_event.type == smf_event_type::channel));
 		auto curr_mtrk_event = mtrk_event_t(curr_p,curr_event);
+		
+		// Test for note-on/note-off event
+		if (is_note_on(curr_mtrk_event)) {
+			curr_chev_data = curr_mtrk_event.midi_data();
+			sounding.push_back({o,curr_chev_data.ch,curr_chev_data.p1});
+		} else if (is_note_off(curr_mtrk_event)) {
+			curr_chev_data = curr_mtrk_event.midi_data();
+			auto it = std::find_if(sounding.begin(),sounding.end(),
+				is_matching_off);
+			if (it!=sounding.end()) {
+				sounding.erase(it);
+			}  //it==sounding.end() => orphan "off" event
+		}
 
 		// Test for end-of-track msg; finding the eot will cause the loop to
 		// exit, so, if there is an "illegal" eot in the middle of the track,
@@ -158,8 +271,21 @@ maybe_mtrk_t make_mtrk(const unsigned char *p, uint32_t max_sz) {
 		return result;
 	}
 
+	// std::vector<sounding_notes_t> sounding must be empty
+	if (sounding.size() > 0) {
+		result.error = "Orphan note-on events found (sounding.size() > 0):  \n";
+		result.error += "\tch\tnote\n";
+			for (int i=0; i<sounding.size(); ++i) {
+				result.error += ("\t" + std::to_string(sounding[i].ch));
+				result.error += ("\t" + std::to_string(sounding[i].note));
+				result.error += ("\toffset== " + std::to_string(sounding[i].offset)+"\n");
+			}
+		return result;
+	}
+
 	result.mtrk.evnts_ = evec;
 	result.mtrk.data_size_ = chunk_detect.data_size;
+	result.mtrk.cumtk_ = cumtk;
 
 	return result;
 }

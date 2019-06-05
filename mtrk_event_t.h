@@ -107,6 +107,8 @@ public:
 
 	// Getters
 	unsigned char status_byte() const;
+	// The value of the running-status _after_ this event has passed
+	unsigned char running_status() const;
 	smf_event_type type() const;
 	uint32_t delta_time() const;
 	bool set_delta_time(uint32_t);
@@ -345,7 +347,6 @@ bool is_control_change(const mtrk_event_t&);
 bool is_program_change(const mtrk_event_t&);
 bool is_channel_aftertouch(const mtrk_event_t&);  // 0xDnu
 bool is_pitch_bend(const mtrk_event_t&);
-
 
 
 
