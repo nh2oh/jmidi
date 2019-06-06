@@ -611,9 +611,9 @@ std::string print(const mtrk_event_t& evnt, mtrk_sbo_print_opts opts) {
 	s += ("data_size = " + std::to_string(evnt.data_size()) + "\n");
 
 	s += "\t[";
-	dbk::print_hexascii(evnt.dt_begin(),evnt.dt_end(),std::back_inserter(s),' ');
+	dbk::print_hexascii(evnt.dt_begin(),evnt.dt_end(),std::back_inserter(s),'\0',' ');
 	s += "] ";
-	dbk::print_hexascii(evnt.event_begin(),evnt.end(),std::back_inserter(s),' ');
+	dbk::print_hexascii(evnt.event_begin(),evnt.end(),std::back_inserter(s),'\0',' ');
 	
 	if (opts == mtrk_sbo_print_opts::detail) {
 		if (evnt.type()==smf_event_type::meta) {

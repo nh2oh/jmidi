@@ -54,7 +54,7 @@ uint32_t smf_t::track_size(int trackn) const {
 	return this->mtrks_[trackn].size();
 }
 uint32_t smf_t::track_data_size(int trackn) const {
-	return this->mtrks_[trackn].data_size();
+	return this->mtrks_[trackn].data_nbytes();
 }
 mthd_view_t smf_t::get_header_view() const {
 	return this->mthd_.get_view();
@@ -101,7 +101,7 @@ std::string print(const smf_t& smf) {
 	for (int i=0; i<smf.ntrks(); ++i) {
 		const mtrk_t& curr_trk = smf.get_track(i);
 		s += ("Track (MTrk) " + std::to_string(i) 
-				+ "\t(data_size = " + std::to_string(curr_trk.data_size())
+				+ "\t(data_size = " + std::to_string(curr_trk.data_nbytes())
 				+ ", size = " + std::to_string(curr_trk.size()) + "):\n");
 		s += print(curr_trk);
 		s += "\n";

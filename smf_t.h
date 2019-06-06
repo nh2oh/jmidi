@@ -10,8 +10,20 @@
 //
 // smf_t
 //
-// Holds an smf; owns the underlying data.  Stores the mtrk chunks as
-// a std::vector<std::vector<mtrk_event_t>>.  
+// Holds an smf; owns the underlying data.  MTrk chunks are stored as a 
+// std::vector<mtrk_t>, unknown chunks as a 
+// std::vector<std::vector<unsigned char>>.  Also stores the MThd chunk as
+// an mthd_t, the filename, and the order in which the MTrk and Unknown
+// chunks occured in the file.  
+//
+// Provided that the MTrk and unknown chunks validate, the only invariants
+// an smf_t needs to maintain in order to be serializable are consistent
+// values of mthd_.format() and .ntrks() (mthd_.format()==0 => .ntrks()==0)
+// and mthd_.size(),.data_size() and the size of the chunks.  This is 
+// difficult to do under editing by users working through mtrk_t, 
+// mtrk_event_t iterators and references to the internal data.  Provide a
+// validate() function as for mtrk_t?  Provide a compute_mthd() method?
+// 
 //
 class smf_t {
 public:

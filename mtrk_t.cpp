@@ -11,14 +11,15 @@
 #include <sstream>
 
 
-mtrk_t::mtrk_t(const unsigned char *p, uint32_t sz) {
-	auto chunk_detect = validate_chunk_header(p,sz);
+mtrk_t::mtrk_t(const unsigned char *p, uint32_t max_sz) {
+	auto chunk_detect = validate_chunk_header(p,max_sz);
 	if (chunk_detect.type != chunk_type::track) {
 		return;
 	}
-	if (chunk_detect.size != sz) {
+	if (chunk_detect.size > max_sz) {
 		return;
 	}
+	uint32_t sz = chunk_detect.size;
 
 	// From experience with thousands of midi files encountered in the wild,
 	// the average number of bytes per MTrk event is about 3.  
@@ -101,6 +102,12 @@ mtrk_event_t& mtrk_t::operator[](uint32_t idx) {
 const mtrk_event_t& mtrk_t::operator[](uint32_t idx) const {
 	return this->evnts_[idx];
 }
+mtrk_event_t& mtrk_t::back() {
+	return *--this->end();
+}
+const mtrk_event_t& mtrk_t::back() const {
+	return *--this->end();
+}
 mtrk_t::at_cumtk_result_t<mtrk_iterator_t>
 								mtrk_t::at_cumtk(uint64_t cumtk_on) {
 	mtrk_t::at_cumtk_result_t<mtrk_iterator_t> res {this->begin(),0};
@@ -119,9 +126,9 @@ mtrk_t::at_cumtk_result_t<mtrk_const_iterator_t>
 	}
 	return res;
 }
-bool mtrk_t::push_back(const mtrk_event_t& ev) {
+mtrk_event_t& mtrk_t::push_back(const mtrk_event_t& ev) {
 	this->evnts_.push_back(ev);
-	return true;
+	return this->back();
 }
 void mtrk_t::pop_back() {
 	this->evnts_.pop_back();
@@ -130,6 +137,7 @@ mtrk_iterator_t mtrk_t::insert(mtrk_iterator_t it, const mtrk_event_t& ev) {
 	auto vit = this->evnts_.insert(this->evnts_.begin()+(it-this->begin()),ev);
 	return this->begin() + (vit-this->evnts_.begin());
 }
+// TODO:  This is all messed up... Just use at_cumtk() ??
 mtrk_iterator_t mtrk_t::insert_no_tkshift(mtrk_iterator_t it_pos, 
 											mtrk_event_t ev) {
 	uint64_t cumtk_pos = 0;
@@ -161,6 +169,24 @@ mtrk_iterator_t mtrk_t::insert_no_tkshift(mtrk_iterator_t it_pos,
 void mtrk_t::clear() {
 	this->evnts_.clear();
 }
+void mtrk_t::resize(uint32_t n) {
+	this->evnts_.resize(n);
+}
+mtrk_iterator_t mtrk_t::from_vec_iterator(
+						const std::vector<mtrk_event_t>::iterator& it) {
+	if (it==this->evnts_.end()) {
+		return this->end();
+	}
+	return mtrk_iterator_t(&(*it));
+}
+mtrk_const_iterator_t mtrk_t::from_vec_iterator(
+						const std::vector<mtrk_event_t>::iterator& it) const {
+	if (it==this->evnts_.end()) {
+		return this->end();
+	}
+	return mtrk_const_iterator_t(&(*it));
+}
+
 mtrk_t::validate_t mtrk_t::validate() const {
 	mtrk_t::validate_t r {};
 
@@ -172,6 +198,8 @@ mtrk_t::validate_t mtrk_t::validate() const {
 	//    warnings, not errors; the first off event will match with the 
 	//    first on event only.  
 	// -> Orphan note-off events are considered warnings, not errors
+	// is_matching_onoff(const sounding_notes_t& sev) also serves to check 
+	// for duplicate note-on events.  
 	struct sounding_notes_t {
 		int idx;
 		int ch {0};
@@ -180,9 +208,10 @@ mtrk_t::validate_t mtrk_t::validate() const {
 	std::vector<sounding_notes_t> sounding;
 	sounding.reserve(10);  // Expect <= 10 simultaniously sounding notes???
 	mtrk_event_t::channel_event_data_t curr_chev_data;
-	auto is_matching_onoff = [&curr_chev_data](const sounding_notes_t& sev)->bool {
-		return (curr_chev_data.ch==sev.ch
-			&& curr_chev_data.p1==sev.note);
+	auto is_matching_onoff 
+		= [&curr_chev_data](const sounding_notes_t& sev) -> bool {
+		return is_onoff_pair(sev.ch,sev.note,
+						curr_chev_data.ch,curr_chev_data.p1);
 	};
 
 	// Certain meta events are not allowed to occur after the first channel
@@ -270,6 +299,8 @@ mtrk_t::validate_t::operator bool() const {
 	return this->error.size()==0;
 }
 
+
+
 std::string print(const mtrk_t& mtrk) {
 	std::string s {};
 	s.reserve(mtrk.size()*100);  // TODO:  Magic constant 100
@@ -282,7 +313,10 @@ std::string print(const mtrk_t& mtrk) {
 }
 
 bool is_tempo_map(const mtrk_t& trk) {
-	auto not_allowed = [](const mtrk_event_t& ev) -> bool {
+	auto found_not_allowed = [](const mtrk_event_t& ev) -> bool {
+		if (ev.type()!=smf_event_type::meta) {
+			return true;
+		}
 		auto mt_type = classify_meta_event(ev);
 		return (mt_type!=meta_event_t::tempo
 			&& mt_type!=meta_event_t::timesig
@@ -293,7 +327,7 @@ bool is_tempo_map(const mtrk_t& trk) {
 			&& mt_type!=meta_event_t::marker);
 	};
 
-	return std::find_if(trk.begin(),trk.end(),not_allowed)==trk.end();
+	return std::find_if(trk.begin(),trk.end(),found_not_allowed)==trk.end();
 }
 
 
@@ -458,9 +492,10 @@ mtrk_event_cumtk_t find_linked_off(mtrk_const_iterator_t beg,
 		if (!is_note_off(*evit)) {
 			return false;
 		}
-		auto mdata_ev = evit->midi_data();
+		return is_onoff_pair(mdata_on.ch,mdata_on.p1,*evit);
+		/*auto mdata_ev = evit->midi_data();
 		return ((mdata_ev.ch==mdata_on.ch) 
-			&& (mdata_ev.p1==mdata_on.p1));
+			&& (mdata_ev.p1==mdata_on.p1));*/
 	};
 
 	// Note that when res.ev points at the event for which 

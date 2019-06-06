@@ -19,7 +19,7 @@ class mtrk_t;
 // Because the conditions on a valid MTrk event sequence are complex and 
 // expensive to maintain for operations such as push_back(), insert() etc,
 // an mtrk_t object may not be serializable to a valid SMF MTrk chunk.  For 
-// example, the sequence may contain multiplee EOT events (or a terminating
+// example, the sequence may contain multiple EOT events (or a terminating
 // EOT event may be missing), there may be orphan note-on events, etc.  
 // The method validate() returns a summary of the problems w/ the object.  
 // Disallowing "invalid" states would make it prohibitively cumbersome to
@@ -35,25 +35,13 @@ class mtrk_t;
 // empty mtrk_t's are not serializable to valid MTrk chunks.  
 //
 //
-// TODO:  Need some sort of private fn to convert to/from std::vector 
-// iterators.  
-// TODO:  Method size() returns a size in bytes not a number-of-events,
-// which might be confusing, esp since capacity()
 // TODO:  Check for max_size() type of overflow?  Maximum data_size
 // == 0xFFFFFFFFu (?)
-// TODO:  Things like non-const operator[], begin(), end() make it
-// impossible to maintain the invariants.  
-// These methods could set a "maybe_dirty_" bit, which could force
-// reverification of the invariants when needed.  
-// TODO:  The zillion is_linked_off() lambda's implemented everywhere
-// need to be made into a free function on mtrk_event_t.  
-// TODO:  The max size of an MTrk chunk is 0xFFFFFFFFu... add checks
-// for this?
 //
 class mtrk_t {
 public:
 	// Creates an empty MTrk event sequence:
-	// size() == 8, data_size() == 0;
+	// nbytes() == 8, data_nbytes() == 0;
 	// This will classify as invalid (!.validate()), because an MTrk 
 	// sequence must terminate w/ an EOT meta event.  
 	mtrk_t()=default;
@@ -61,15 +49,15 @@ public:
 	// through the array building mtrk_event_t's by calling 
 	// validate_mtrk_event_dtstart(curr_p,rs,curr_max_sz) and 
 	// the ctor mtrk_event_t(const unsigned char*, unsigned char, uint32_t)
-	// Iteration stops when arg2 bytes have been processed or when an 
+	// Iteration stops when the number of bytes reported in the chunk
+	// header (required to be <= max_size) have been processed or when an 
 	// invalid smf event is encountered.  No error checking other than
 	// that provided by validate_mtrk_event_dtstart() is implemented.  
 	// The resulting mtrk_t may be invalid as an MTrk event sequence.  For
 	// example, it may contain multiple internal EOT events, orphan 
-	// note-on events, etc.  this->data_size_ is _not_ blindly taken from
-	// the chunk header; it will reflect the actual size occupied by the
-	// event sequence, ex, if an invalid event is encountered before 
-	// processing arg2 bytes.  
+	// note-on events, etc.  Note that the sequence may be only partially
+	// read-in if an error is encountered before the number of bytes 
+	// indicated by the chunk header have been read.  
 	mtrk_t(const unsigned char*, uint32_t);
 
 	// The number of events in the track
@@ -94,6 +82,8 @@ public:
 	mtrk_const_iterator_t end() const;
 	mtrk_event_t& operator[](uint32_t);
 	const mtrk_event_t& operator[](uint32_t) const;
+	mtrk_event_t& back();
+	const mtrk_event_t& back() const;
 	// at_cumtk() returns an iterator to the first event with an onset 
 	// cumtk >= the number provided and the cumtk value for all prior 
 	// events.  The onset tk for the event pointed to by .it is:
@@ -106,9 +96,8 @@ public:
 	at_cumtk_result_t<mtrk_iterator_t> at_cumtk(uint64_t);
 	at_cumtk_result_t<mtrk_const_iterator_t> at_cumtk(uint64_t) const;
 
-	// Returns false if the event could not be added, ex if it's an
-	// smf_event_type::invalid.  
-	bool push_back(const mtrk_event_t&);
+	// Returns a ref to the event just added
+	mtrk_event_t& push_back(const mtrk_event_t&);
 	void pop_back();
 	// Inserts arg2 _before_ arg1 and returns an iterator to the newly
 	// inserted event.  Note that if the new event has a nonzero delta_time
@@ -139,7 +128,8 @@ public:
 	// Note that calling clear will cause !this.validate(), since there is
 	// no longer an EOT meta event at the end of the sequence.  
 	void clear();
-	
+	void resize(uint32_t);
+
 	// TODO:  This substantially duplicates the functionality of 
 	// make_mtrk(const unsigned char*, uint32_t);
 	// Could have make_mtrk() just call push_back() "blindly" on the
@@ -153,6 +143,9 @@ public:
 
 	friend maybe_mtrk_t make_mtrk(const unsigned char*, uint32_t);
 private:
+	mtrk_iterator_t from_vec_iterator(const std::vector<mtrk_event_t>::iterator&);
+	mtrk_const_iterator_t from_vec_iterator(const std::vector<mtrk_event_t>::iterator&) const;
+	
 	std::vector<mtrk_event_t> evnts_ {};
 };
 std::string print(const mtrk_t&);
