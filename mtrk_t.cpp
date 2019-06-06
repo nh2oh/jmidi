@@ -42,25 +42,37 @@ mtrk_t::mtrk_t(const unsigned char *p, uint32_t sz) {
 			break;
 		}
 		rs = curr_event.running_status;
-		this->cumtk_ += curr_event.delta_t;
 		this->evnts_.push_back(mtrk_event_t(curr_p,curr_event));
 		o += curr_event.size;
 	}
-	this->data_size_ = (o-8);
 }
 uint32_t mtrk_t::size() const {
-	return this->data_size_+8;
-}
-uint32_t mtrk_t::data_size() const {
-	return this->data_size_;
-}
-uint32_t mtrk_t::nevents() const {
 	return this->evnts_.size();
+}
+uint32_t mtrk_t::capacity() const {
+	return this->evnts_.capacity();
+}
+uint32_t mtrk_t::nbytes() const {
+	uint32_t sz = 8;  // MTrk+4-byte length field
+	for (const auto& e : this->evnts_) {
+		sz += e.size();
+	}
+	return sz;
+}
+uint32_t mtrk_t::data_nbytes() const {
+	return (this->nbytes()-8);
+}
+uint64_t mtrk_t::nticks() const {
+	uint64_t cumtk = 0;
+	for (const auto& e : this->evnts_) {
+		cumtk += e.delta_time();
+	}
+	return cumtk;
 }
 std::array<unsigned char,8> mtrk_t::get_header() const {
 	std::array<unsigned char,8> r {'M','T','r','k',0,0,0,0};
 	unsigned char *p_dest = &(r[4]);
-	uint32_t src = this->data_size_;
+	uint32_t src = this->data_nbytes();
 	uint32_t mask = 0xFF000000u;
 	for (int i=3; i>=0; --i) {
 		*p_dest = static_cast<unsigned char>((mask&src)>>(i*8));
@@ -89,33 +101,65 @@ mtrk_event_t& mtrk_t::operator[](uint32_t idx) {
 const mtrk_event_t& mtrk_t::operator[](uint32_t idx) const {
 	return this->evnts_[idx];
 }
-bool mtrk_t::push_back(const mtrk_event_t& ev) {
-	if (ev.type() == smf_event_type::invalid) {
-		return false;
+mtrk_t::at_cumtk_result_t<mtrk_iterator_t>
+								mtrk_t::at_cumtk(uint64_t cumtk_on) {
+	mtrk_t::at_cumtk_result_t<mtrk_iterator_t> res {this->begin(),0};
+	while (res.it!=this->end() && res.cumtk<cumtk_on) {
+		res.cumtk += res.it->delta_time();
+		++(res.it);
 	}
+	return res;
+}
+mtrk_t::at_cumtk_result_t<mtrk_const_iterator_t>
+						mtrk_t::at_cumtk(uint64_t cumtk_on) const {
+	mtrk_t::at_cumtk_result_t<mtrk_const_iterator_t> res {this->begin(),0};
+	while (res.it!=this->end() && res.cumtk<cumtk_on) {
+		res.cumtk += res.it->delta_time();
+		++(res.it);
+	}
+	return res;
+}
+bool mtrk_t::push_back(const mtrk_event_t& ev) {
 	this->evnts_.push_back(ev);
-	this->cumtk_ += ev.delta_time();
-	this->data_size_ += ev.size();
 	return true;
 }
 void mtrk_t::pop_back() {
-	this->data_size_ -= this->evnts_.back().size();
-	this->cumtk_ -= this->evnts_.back().delta_time();
 	this->evnts_.pop_back();
 }
 mtrk_iterator_t mtrk_t::insert(mtrk_iterator_t it, const mtrk_event_t& ev) {
-	if (ev.type() == smf_event_type::invalid) {
-		return this->end();
-	}
 	auto vit = this->evnts_.insert(this->evnts_.begin()+(it-this->begin()),ev);
-	this->data_size_ += vit->size();
-	this->cumtk_ += vit->delta_time();
 	return this->begin() + (vit-this->evnts_.begin());
+}
+mtrk_iterator_t mtrk_t::insert_no_tkshift(mtrk_iterator_t it_pos, 
+											mtrk_event_t ev) {
+	uint64_t cumtk_pos = 0;
+	auto it = this->begin();
+	for (true; (it!=this->end() && it!=it_pos); ++it) {
+		cumtk_pos += it->delta_time();
+	}
+	if (it==this->end()) {
+		return this->insert(it,ev);
+	}
+	// At this point, it == it_pos != this->end()
+	// tk onset of the candidate insertion position it, tk onset desired for
+	// the new event.  
+	uint64_t tk_onset_pos = cumtk_pos + it->delta_time();
+	uint64_t tk_onset_ev = cumtk_pos + ev.delta_time();
+	for (tk_onset_pos=cumtk_pos; ((tk_onset_pos<tk_onset_ev) && (it!=this->end())); ++it) {
+		tk_onset_pos += it->delta_time();
+	}
+	// It points at the first event w/a tk onset >= tk_onset_ev, or at 
+	// the end.  tk_onset_pos >= tk_onset_ev.  
+	auto delta = tk_onset_ev-tk_onset_pos;
+	auto new_dt_ev = it->delta_time() - delta;  // It may==end() ...
+	ev.set_delta_time(new_dt_ev);
+	if (it!=this->end()) {
+		it->set_delta_time(it->delta_time()-ev.delta_time());
+	}
+	return this->insert(it,ev);
 }
 void mtrk_t::clear() {
 	this->evnts_.clear();
-	this->data_size_ = 0;
-	this->cumtk_ = 0;
 }
 mtrk_t::validate_t mtrk_t::validate() const {
 	mtrk_t::validate_t r {};
@@ -142,11 +186,10 @@ mtrk_t::validate_t mtrk_t::validate() const {
 	};
 
 	// Certain meta events are not allowed to occur after the first channel
-	// event, hence found_ch_event is set to true once a ch event has been
-	// encountered.  
+	// event, or after t=0.  found_ch_event is set to true once a ch event 
+	// has been encountered.  
 	bool found_ch_ev = false;
 	uint64_t cumtk = 0;  // Cumulative delta-time
-	uint64_t cum_data_size = 0;
 	for (int i=0; i<this->evnts_.size(); ++i) {
 		auto curr_event_type = this->evnts_[i].type();
 		if (curr_event_type == smf_event_type::invalid) {
@@ -156,7 +199,6 @@ mtrk_t::validate_t mtrk_t::validate() const {
 		}
 		
 		cumtk += this->evnts_[i].delta_time();
-		cum_data_size += this->evnts_[i].size();
 		found_ch_ev = (found_ch_ev || (curr_event_type == smf_event_type::channel));
 		
 		if (is_note_on(this->evnts_[i])) {
@@ -222,19 +264,6 @@ mtrk_t::validate_t mtrk_t::validate() const {
 		return r;
 	}
 
-	if (this->cumtk_ != cumtk) {
-		r.error = ("Inconsistent values of cumtk (==" + std::to_string(cumtk)
-			+ "), this->cumtk_ (==" + std::to_string(this->cumtk_) + ")\n");
-		return r;
-	}
-
-	if (this->data_size_ != cum_data_size) {
-		r.error = ("Inconsistent values of cum_data_size (==" 
-			+ std::to_string(cum_data_size) + "), this->data_size_ (==" 
-			+ std::to_string(this->data_size_) + ")\n");
-		return r;
-	}
-
 	return r;
 }
 mtrk_t::validate_t::operator bool() const {
@@ -243,7 +272,7 @@ mtrk_t::validate_t::operator bool() const {
 
 std::string print(const mtrk_t& mtrk) {
 	std::string s {};
-	s.reserve(mtrk.nevents()*100);  // TODO:  Magic constant 100
+	s.reserve(mtrk.size()*100);  // TODO:  Magic constant 100
 	for (auto it=mtrk.begin(); it!=mtrk.end(); ++it) {
 		//s += print(*it);
 		s += print(*it,mtrk_sbo_print_opts::detail);
@@ -396,9 +425,8 @@ maybe_mtrk_t make_mtrk(const unsigned char *p, uint32_t max_sz) {
 	}
 
 	result.mtrk.evnts_ = evec;
-	result.mtrk.data_size_ = chunk_detect.data_size;
-	result.mtrk.cumtk_ = cumtk;
-
+	//result.mtrk.data_size_ = chunk_detect.data_size;
+	//result.mtrk.cumtk_ = cumtk;
 	return result;
 }  // make_mtrk()
 

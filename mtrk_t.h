@@ -12,15 +12,14 @@ class mtrk_t;
 //
 // mtrk_t
 //
-// Holds a sequence of mtrk_event_t's; owns the underlying data.  Stores 
-// the event sequence as a std::vector<mtrk_event_t>.  Also caches certain
-// properties of the sequence to allow faster access, ex the total number
-// of ticks spanned by the sequence (member cumdt_).  
+// Holds a sequence of mtrk_event_t's as a std::vector<mtrk_event_t>; owns 
+// the underlying data.  Provides certain convienience functions for 
+// obtaining iterators into the sequence (at a specific tick number, etc).  
 //
 // Because the conditions on a valid MTrk event sequence are complex and 
 // expensive to maintain for operations such as push_back(), insert() etc,
-// an mtrk_t may not serialize to a valid MTrk chunk.  For example, there
-// may be multiple EOT events within the event sequence (or a terminating
+// an mtrk_t object may not be serializable to a valid SMF MTrk chunk.  For 
+// example, the sequence may contain multiplee EOT events (or a terminating
 // EOT event may be missing), there may be orphan note-on events, etc.  
 // The method validate() returns a summary of the problems w/ the object.  
 // Disallowing "invalid" states would make it prohibitively cumbersome to
@@ -33,11 +32,8 @@ class mtrk_t;
 //
 // Note that a default-constructed mtrk_t is empty (nevents()==0, 
 // data_size()==0) and .validate() will return false (no EOT event);
-// empty mtrk_t's do not represent serializable MTrk chunks.  
+// empty mtrk_t's are not serializable to valid MTrk chunks.  
 //
-// Maintains the following invariants:
-// -> No events in the sequence have .type()==smf_event_type::invalid
-// -> cumtk_, data_size_ match the event sequence evnts_.  
 //
 // TODO:  Need some sort of private fn to convert to/from std::vector 
 // iterators.  
@@ -51,7 +47,8 @@ class mtrk_t;
 // reverification of the invariants when needed.  
 // TODO:  The zillion is_linked_off() lambda's implemented everywhere
 // need to be made into a free function on mtrk_event_t.  
-//
+// TODO:  The max size of an MTrk chunk is 0xFFFFFFFFu... add checks
+// for this?
 //
 class mtrk_t {
 public:
@@ -75,11 +72,18 @@ public:
 	// processing arg2 bytes.  
 	mtrk_t(const unsigned char*, uint32_t);
 
+	// The number of events in the track
+	uint32_t size() const;
+	uint32_t capacity() const;
 	// The size in bytes occupied by the container written out (serialized)
 	// as an MTrk chunk, including the 8-bytes occupied by the header.  
-	uint32_t size() const;
-	uint32_t data_size() const;
-	uint32_t nevents() const;
+	// This is an O(n) operation
+	uint32_t nbytes() const;
+	// Same as .nbytes(), but excluding the chunk header
+	uint32_t data_nbytes() const;
+	// Cumulative number of midi ticks occupied by the entire sequence
+	uint64_t nticks() const;
+
 	// Writes out the literal chunk header:
 	// {'M','T','r','k',_,_,_,_}
 	std::array<unsigned char,8> get_header() const;
@@ -90,15 +94,48 @@ public:
 	mtrk_const_iterator_t end() const;
 	mtrk_event_t& operator[](uint32_t);
 	const mtrk_event_t& operator[](uint32_t) const;
+	// at_cumtk() returns an iterator to the first event with an onset 
+	// cumtk >= the number provided and the cumtk value for all prior 
+	// events.  The onset tk for the event pointed to by .it is:
+	// .cumtk + .it->delta_time();
+	template <typename It>
+	struct at_cumtk_result_t {
+		It it;
+		uint64_t cumtk;
+	};
+	at_cumtk_result_t<mtrk_iterator_t> at_cumtk(uint64_t);
+	at_cumtk_result_t<mtrk_const_iterator_t> at_cumtk(uint64_t) const;
 
 	// Returns false if the event could not be added, ex if it's an
 	// smf_event_type::invalid.  
 	bool push_back(const mtrk_event_t&);
 	void pop_back();
 	// Inserts arg2 _before_ arg1 and returns an iterator to the newly
-	// inserted event.  If arg2.type()==smf_event_type::invalid, does
-	// not insert, and returns this->end().  
+	// inserted event.  Note that if the new event has a nonzero delta_time
+	// insertion will timeshift all downstream events by that number of 
+	// ticks.  
 	mtrk_iterator_t insert(mtrk_iterator_t, const mtrk_event_t&);
+	// Inserts the provided event into the sequence such that its tk onset
+	// == the cumtk at the event pointed to by the iterator + the delta
+	// time of the event and in such a way that the length of the track is
+	// not changed, and such that the tk spacing between all other events
+	// remains unchanged.  
+	// The event is inserted as close as possible to the location 
+	// immediately prior to the event indicated by the iterator.  
+	// If the event has a delta_time == 0, it will be inserted directly
+	// prior to the event pointed at by the iterator.  If the event has a 
+	// delta_time > 0, it will be inserted either immediately prior to the
+	// iterator, or at some location following the iterator and its 
+	// delta_time value will be adjusted downward such that its tk onset is
+	// as described above.  The delta_time of the first event after the
+	// insertion position may be adjusted downward to keep the track length
+	// constant and to preserve the tk seperation of the events in the 
+	// sequence.  
+	mtrk_iterator_t insert_no_tkshift(mtrk_iterator_t, mtrk_event_t);
+	// Insert the provided event into the sequence such that its onset tick
+	// is == arg1 + arg2.delta_time()
+	mtrk_iterator_t insert(uint64_t, const mtrk_event_t&);
+
 	// Note that calling clear will cause !this.validate(), since there is
 	// no longer an EOT meta event at the end of the sequence.  
 	void clear();
@@ -116,8 +153,6 @@ public:
 
 	friend maybe_mtrk_t make_mtrk(const unsigned char*, uint32_t);
 private:
-	uint32_t data_size_ {0};
-	uint64_t cumtk_ {0};
 	std::vector<mtrk_event_t> evnts_ {};
 };
 std::string print(const mtrk_t&);
