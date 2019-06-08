@@ -310,6 +310,8 @@ bool meta_has_text(const mtrk_event_t&);
 std::string meta_generic_gettext(const mtrk_event_t&);
 // TODO:  std::vector<unsigned char> meta_generic_getpayload(...
 
+// Value returned represents "usec/midi-q-nt"
+// 500000 => 120 qnts/min
 uint32_t get_tempo(const mtrk_event_t&, uint32_t=500000);
 
 

@@ -72,7 +72,6 @@ public:
 	uint32_t data_nbytes() const;
 	// Cumulative number of midi ticks occupied by the entire sequence
 	uint64_t nticks() const;
-	
 
 	// Writes out the literal chunk header:
 	// {'M','T','r','k',_,_,_,_}
