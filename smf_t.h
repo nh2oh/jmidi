@@ -17,13 +17,21 @@
 // chunks occured in the file.  
 //
 // Provided that the MTrk and unknown chunks validate, the only invariants
-// an smf_t needs to maintain in order to be serializable are consistent
-// values of mthd_.format() and .ntrks() (mthd_.format()==0 => .ntrks()==0)
-// and mthd_.size(),.data_size() and the size of the chunks.  This is 
-// difficult to do under editing by users working through mtrk_t, 
-// mtrk_event_t iterators and references to the internal data.  Provide a
-// validate() function as for mtrk_t?  Provide a compute_mthd() method?
+// an smf_t needs to maintain in order to be serializable are consistency
+// between values of the MThd chunk parameters and the number, size etc of
+// the MTrk chunks (ex mthd_.format()==0 => .ntrks()==1).  This is difficult
+// to continuously, since smf_t exposes functions returning references &
+// iterators directly into the member mtrks and mthd data.  Hence, any given 
+// smf_t object may not be serializable to a valid smf.  The member function
+// validate() returns detailed information about any problems.  The member
+// function compute_mthd() sets the MThd data to be consistent with the 
+// mtrk and unknown chunks.  
 // 
+// TODO:  Rename size() => nbytes; track_size(), track_data_size(), 
+//        mthd_size(), etc.  
+// TODO:  validate()
+// TODO:  compute_mthd()
+// TODO:  Ctors
 //
 class smf_t {
 public:
@@ -47,8 +55,15 @@ public:
 	// etc).  
 	void set_fname(const std::string&);
 	void set_mthd(const validate_mthd_chunk_result_t&);
+	void set_format(int);
+	void set_division(uint16_t);
+
 	void append_mtrk(const mtrk_t&);
 	void append_uchk(const std::vector<unsigned char>&);
+
+	// TODO:  
+	bool compute_mthd();
+	bool validate() const;
 private:
 	std::string fname_ {};
 	mthd_t mthd_ {};
@@ -62,13 +77,12 @@ private:
 };
 std::string print(const smf_t&);
 
-// TODO:  read_smf2() -> read_smf()
 struct maybe_smf_t {
 	smf_t smf;
 	std::string error {"No error"};
 	operator bool() const;
 };
-maybe_smf_t read_smf2(const std::string&);
+maybe_smf_t read_smf(const std::string&);
 
 
 /*class smf2_chrono_iterator {

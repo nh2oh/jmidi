@@ -121,7 +121,7 @@ maybe_smf_t::operator bool() const {
 }
 // TODO:  I can make this more effecient by moving the curr_uckh, curr_mtrk
 // vectors out of the loop & clearing them after usage to avoid allocations.  
-maybe_smf_t read_smf2(const std::string& fn) {
+maybe_smf_t read_smf(const std::string& fn) {
 	maybe_smf_t result {};
 	
 	// Read the file into fdata, close the file

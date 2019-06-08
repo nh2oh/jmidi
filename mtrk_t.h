@@ -126,6 +126,13 @@ public:
 	// is == arg1 + arg2.delta_time()
 	mtrk_iterator_t insert(uint64_t, const mtrk_event_t&);
 
+	// TODO:  Useful for, ex, removing illegal or unwanted events from within
+	// an mtrk, ex, if a user has gathered all tempo events into a seperate
+	// tempo track and now wants to excise them all.  
+	//void erase_no_tkshift(UPred);
+	// The brute-force version:
+	//void erase(UPred);
+
 	// Note that calling clear will cause !this.validate(), since there is
 	// no longer an EOT meta event at the end of the sequence.  
 	void clear();
