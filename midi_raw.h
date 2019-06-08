@@ -4,6 +4,34 @@
 #include <cstdint>
 
 
+
+
+
+//
+// be_2_native<T>(const unsigned char*) for unsigned integer type T 
+// interprets the bytes in the range [p,p+sizeof(T)) such that a BE-encoded 
+// integer is interpreted correctly on both LE and BE architectures.  
+//
+template<typename T, typename InIt>
+T be_2_native(InIt beg, InIt end) {
+	static_assert(std::is_same<
+		std::remove_cvref<decltype(*beg)>::type,unsigned char>::value);
+	static_assert(std::is_integral<T>::value);
+	static_assert(std::is_unsigned<T>::value);
+	T result {0};
+	auto niter = sizeof(T)<=(end-beg) ? sizeof(T) : (end-beg);
+	auto it = beg;
+	for (int i=0; i<niter; ++i) {
+		result <<= CHAR_BIT;
+		result += *it;
+		++it;
+	}
+	return result;
+};
+
+
+
+
 //
 // TODO:  I have to include midi_vlq.h to get a dfn of 
 // struct midi_vl_field_interpreted, which is a data member of structs

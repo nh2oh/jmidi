@@ -227,9 +227,7 @@ std::string mtrk_event_t::text_payload() const {
 	return s;
 }
 uint32_t mtrk_event_t::uint32_payload() const {
-	auto d = this->payload_begin() - this->begin();
-	auto p = this->data()+d;
-	return dbk::be_2_native<uint32_t>(p);
+	return be_2_native<uint32_t>(this->payload_begin(),this->end());
 }
 // TODO:  This is evauating the delta_time field multiple times in inner
 // function calls & can be made way more effecient.  

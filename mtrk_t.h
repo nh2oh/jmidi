@@ -163,7 +163,7 @@ bool is_tempo_map(const mtrk_t&);
 // are encountered in the mtrk_t.  
 struct midi_time_t {
 	// From MThd; no default specified in the std, arbitrarily choosing 48.  
-	uint16_t tpq_ {48};  
+	uint16_t tpq_ {48};
 	// From a set-tempo meta msg; default => 120 usec/qnt ("bpm"):
 	// 500,000 us => 500 ms => 0.5 s / qnt
 	// => 2 qnt/s => 120 qnt/min => "120 bpm"

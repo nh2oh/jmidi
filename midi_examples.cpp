@@ -47,7 +47,13 @@ int midi_example() {
 	//std::cout << print(ordered_evs_all) << std::endl;
 
 	for (int trkn=0; trkn<maybesmf2.smf.ntrks(); ++trkn) {
+		midi_time_t curr_time {};
+		curr_time.tpq_ = interpret_tpq_field(maybesmf2.smf.division());
 		auto trk = maybesmf2.smf.get_track(trkn);
+		std::cout << "duration(maybesmf2.smf.get_track("
+			<< std::to_string(trkn) << ")) == "
+			<< std::to_string(duration(maybesmf2.smf.get_track(trkn),curr_time))
+			<< std::endl;
 		std::cout << "print_linked_onoff_pairs(maybesmf2.smf.get_track("
 			<< std::to_string(trkn) << ")):" << std::endl;
 		std::cout << print_linked_onoff_pairs(trk) << std::endl;
