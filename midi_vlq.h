@@ -4,6 +4,34 @@
 #include <cstdint>
 
 
+
+
+//
+// be_2_native<T>(InIt beg, InIt end) 
+//
+// Where InIt is an iterator to an array of unsigned char and T is an 
+// unsigned integer type, reads a BE-encoded value on 
+// [beg, beg+min(sizeof(T),(end-beg))) into a zero-initialized T:
+// T result {0}.  
+//
+template<typename T, typename InIt>
+T be_2_native(InIt beg, InIt end) {
+	static_assert(std::is_same<
+		std::remove_cvref<decltype(*beg)>::type,unsigned char>::value);
+	static_assert(std::is_integral<T>::value);
+	static_assert(std::is_unsigned<T>::value);
+	T result {0};
+	auto niter = sizeof(T)<=(end-beg) ? sizeof(T) : (end-beg);
+	auto it = beg;
+	for (int i=0; i<niter; ++i) {
+		result <<= CHAR_BIT;
+		result += *it;
+		++it;
+	}
+	return result;
+};
+
+
 // 
 // The max size of a vl field is 4 bytes, and the largest value it may encode is
 // 0x0FFFFFFF (BE-encoded as: FF FF FF 7F) => 268,435,455, which fits safely in

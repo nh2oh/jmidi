@@ -5,32 +5,22 @@
 
 
 
-
-
-//
-// be_2_native<T>(const unsigned char*) for unsigned integer type T 
-// interprets the bytes in the range [p,p+sizeof(T)) such that a BE-encoded 
-// integer is interpreted correctly on both LE and BE architectures.  
-//
-template<typename T, typename InIt>
-T be_2_native(InIt beg, InIt end) {
-	static_assert(std::is_same<
-		std::remove_cvref<decltype(*beg)>::type,unsigned char>::value);
-	static_assert(std::is_integral<T>::value);
-	static_assert(std::is_unsigned<T>::value);
-	T result {0};
-	auto niter = sizeof(T)<=(end-beg) ? sizeof(T) : (end-beg);
-	auto it = beg;
-	for (int i=0; i<niter; ++i) {
-		result <<= CHAR_BIT;
-		result += *it;
-		++it;
-	}
-	return result;
+// midi_time_t 
+// Provides the information needed to convert midi ticks to seconds.  
+// The tpq field is contained in the MThd chunk of an smf; there is no
+// standardized default value for this quantity.  The value for usec/qnt
+// is obtained from a meta set-tempo event; the default is 120 "bpm" 
+// (see below).  
+struct midi_time_t {
+	// From MThd; no default specified in the std, arbitrarily choosing 48.  
+	uint16_t tpq {48};
+	// From a set-tempo meta msg; default => 120 usec/qnt ("bpm"):
+	// 500,000 us => 500 ms => 0.5 s / qnt
+	// => 2 qnt/s => 120 qnt/min => "120 bpm"
+	uint32_t uspq {500000};
 };
-
-
-
+double ticks2sec(const uint32_t&, const midi_time_t&);
+uint32_t sec2ticks(const double&, const midi_time_t&);
 
 //
 // TODO:  I have to include midi_vlq.h to get a dfn of 

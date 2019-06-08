@@ -3,7 +3,17 @@
 #include "dbklib\byte_manipulation.h"
 #include <string>
 #include <cstdint>
+#include <cmath>  // std::round()
 
+
+
+double ticks2sec(const uint32_t& tks, const midi_time_t& t) {
+	return tks*(1.0/t.tpq)*(t.uspq)*(1.0/1000000.0);
+}
+uint32_t sec2ticks(const double& sec, const midi_time_t& t) {
+	// s = tks*(1.0/t.tpq)*(t.uspq)*(1.0/1000000.0);
+	return static_cast<uint32_t>(std::round(sec*(t.tpq)*(1.0/t.uspq)*1000000.0));
+}
 
 validate_chunk_header_result_t validate_chunk_header(const unsigned char *p, uint32_t max_size) {
 	validate_chunk_header_result_t result {};

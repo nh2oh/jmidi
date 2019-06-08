@@ -338,11 +338,11 @@ double duration(const mtrk_t& mtrk, const midi_time_t& t) {
 
 double duration(mtrk_const_iterator_t& beg, mtrk_const_iterator_t& end,
 				const midi_time_t& t) {
-	if (t.tpq_ == 0) {
+	if (t.tpq == 0) {
 		return -1.0;
 	}
-	auto curr_uspq = t.uspq_;
-	double curr_usptk = (1.0/t.tpq_)*curr_uspq;
+	auto curr_uspq = t.uspq;
+	double curr_usptk = (1.0/t.tpq)*curr_uspq;
 	double cum_us = 0.0;  // "cumulative usec"
 	for (auto it=beg; it!=end; ++it) {
 		cum_us += curr_usptk*(it->delta_time());
@@ -350,7 +350,7 @@ double duration(mtrk_const_iterator_t& beg, mtrk_const_iterator_t& end,
 		// the value for ticks-per-q-note is constant for the track and is
 		// set in the MThd chunk for the corresponding smf_t.  
 		curr_uspq = get_tempo(*it,curr_uspq);
-		curr_usptk = (1.0/t.tpq_)*curr_uspq;
+		curr_usptk = (1.0/t.tpq)*curr_uspq;
 	}
 	return cum_us/1000000.0;  // usec->sec
 }

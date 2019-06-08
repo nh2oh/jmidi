@@ -1,4 +1,5 @@
 #pragma once
+#include "midi_raw.h"  // midi_time_t
 #include "mtrk_event_t.h"
 #include "mtrk_iterator_t.h"
 #include <string>
@@ -159,16 +160,8 @@ bool is_tempo_map(const mtrk_t&);
 // Get the duration in seconds.  A midi_time_t _must_ be provided, since
 // a naked MTrk object does not inherit the tpq field from the MThd chunk
 // of an smf_t, and there is no standardized default value for this 
-// quantity.  The value midi_time_t.uspq_ is updated as meta tempo events 
+// quantity.  The value midi_time_t.uspq is updated as meta tempo events 
 // are encountered in the mtrk_t.  
-struct midi_time_t {
-	// From MThd; no default specified in the std, arbitrarily choosing 48.  
-	uint16_t tpq_ {48};
-	// From a set-tempo meta msg; default => 120 usec/qnt ("bpm"):
-	// 500,000 us => 500 ms => 0.5 s / qnt
-	// => 2 qnt/s => 120 qnt/min => "120 bpm"
-	uint32_t uspq_ {500000};
-};
 double duration(const mtrk_t&, const midi_time_t&);
 double duration(mtrk_const_iterator_t&, mtrk_const_iterator_t&, const midi_time_t&);
 

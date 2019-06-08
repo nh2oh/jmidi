@@ -312,6 +312,7 @@ std::string meta_generic_gettext(const mtrk_event_t&);
 
 uint32_t get_tempo(const mtrk_event_t&, uint32_t=500000);
 
+
 //
 // Channel event classification
 // Note that for many events, the status byte, as well as p1 and p2 are
