@@ -356,7 +356,8 @@ bool is_onoff_pair(const mtrk_event_t&, const mtrk_event_t&);
 bool is_onoff_pair(int, int, const mtrk_event_t&);
 // is_onoff_pair(int on_ch, int on_note, int off_ch, int off_note)
 bool is_onoff_pair(int, int, int, int);
-
+// TODO:  More generic is_onoff_pair(), ex for pedal up/down, other
+// control msgs.  
 
 
 

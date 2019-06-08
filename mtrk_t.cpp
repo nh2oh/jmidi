@@ -330,6 +330,30 @@ bool is_tempo_map(const mtrk_t& trk) {
 	return std::find_if(trk.begin(),trk.end(),found_not_allowed)==trk.end();
 }
 
+double duration(const mtrk_t& mtrk, const midi_time_t& t) {
+	auto beg = mtrk.begin();
+	auto end = mtrk.end();
+	return duration(beg,end,t);
+}
+
+double duration(mtrk_const_iterator_t& beg, mtrk_const_iterator_t& end,
+				const midi_time_t& t) {
+	if (t.tpq_ == 0) {
+		return -1.0;
+	}
+	auto curr_uspq = t.uspq_;
+	double curr_usptk = (1.0/t.tpq_)*curr_uspq;
+	double cum_us = 0.0;  // "cumulative usec"
+	for (auto it=beg; it!=end; ++it) {
+		cum_us += curr_usptk*(it->delta_time());
+		// A tempo meta event updates the current value for us-per-q-note;
+		// the value for ticks-per-q-note is constant for the track and is
+		// set in the MThd chunk for the corresponding smf_t.  
+		curr_uspq = get_tempo(*it,curr_uspq);
+		curr_usptk = (1.0/t.tpq_)*curr_uspq;
+	}
+	return cum_us/1000000.0;  // usec->sec
+}
 
 maybe_mtrk_t::operator bool() const {
 	return this->error=="No error";
