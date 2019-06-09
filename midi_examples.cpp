@@ -3,7 +3,7 @@
 #include "midi_raw_test_parts.h"
 #include "mthd_t.h"
 #include "mtrk_event_t.h"
-#include "smf_t.h";
+#include "smf_t.h"
 #include "dbklib\binfile.h"
 #include "dbklib\byte_manipulation.h"
 #include <iostream>
@@ -18,18 +18,32 @@
 
 
 int midi_example() {
+
+	/*auto e1 = midi_ch_event_t {0x90u,1,57,25};
+	mtrk_event_t me1(157,e1);
+	auto e1md = get_channel_event(me1);
+	auto e1dt = me1.delta_time();
+
+	auto e2 = midi_ch_event_t {note_off,1,57,25};
+	mtrk_event_t me2(1548,e2);
+	auto e2md = get_channel_event(me2);
+	auto e2dt = me2.delta_time();*/
+
 	//auto mt_tests = testdata::make_random_meta_tests(100);
 	//testdata::print_meta_tests(mt_tests);
 	//testdata::print_midi_test_cases();
 
 	//std::string fn = "D:\\cpp\\nh2oh\\au\\gt_aulib\\test_data\\clementi_no_rs.mid";
 	//std::string fn = "D:\\cpp\\nh2oh\\au\\gt_aulib\\test_data\\tc_a_rs.mid";
-	std::string fn = "C:\\Users\\ben\\Desktop\\scr\\CLEMENTI.MID";
+	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\CLEMENTI.MID";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\A7.mid";
-	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\test.mid";
+	std::string fn = "C:\\Users\\ben\\Desktop\\scr\\test.mid";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\hallelujah_joy_to_the_world.mid";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\twinkle.mid";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\test.mid";
+
+	
+
 
 	auto maybesmf = read_smf(fn);
 	if (!maybesmf) {
@@ -38,6 +52,9 @@ int midi_example() {
 	}
 	std::cout << "print(maybesmf.smf):" << std::endl;
 	std::cout << print(maybesmf.smf) << std::endl;
+
+	auto trk1 = maybesmf.smf.get_track(1);
+	//std::cout << print_event_arrays(trk1) << std::endl;
 
 	//std::cout << "get_linked_onoff_pairs(maybesmf.smf):" << std::endl;
 	//auto linked_pairs = get_linked_onoff_pairs(maybesmf.smf);

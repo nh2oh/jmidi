@@ -1,6 +1,8 @@
 #include "mtrk_t.h"
 #include "mtrk_event_t.h"
 #include "mtrk_iterator_t.h"
+#include "mtrk_event_iterator_t.h"
+#include "dbklib\byte_manipulation.h"
 #include <string>
 #include <cstdint>
 #include <vector>
@@ -345,6 +347,31 @@ std::string print(const mtrk_t& mtrk) {
 	return s;
 }
 
+struct sep_t {
+	std::string byte_pfx {""};
+	std::string byte_sfx {""};
+	std::string byte_sep {""};  // not appended to the very last byte
+	std::string elem_pfx {""};
+	std::string elem_sfx {""};
+	std::string elem_sep {""};  // not appended to the very last element
+};
+std::string print_event_arrays(const mtrk_t& mtrk) {
+	std::string s {};
+
+	dbk::sep_t sep {};
+	sep.byte_pfx = "0x";
+	sep.byte_sfx = "u";
+	sep.elem_sep = ",";
+
+	uint64_t cumtk = 0;
+	for (const auto& e : mtrk) {
+		cumtk += e.delta_time();
+		s += "{{";
+		dbk::print_hexascii(e.begin(),e.end(),std::back_inserter(s),sep);
+		s += "}, "+std::to_string(cumtk) + "\n";
+	}
+	return s;
+}
 bool is_tempo_map(const mtrk_t& trk) {
 	auto found_not_allowed = [](const mtrk_event_t& ev) -> bool {
 		if (ev.type()!=smf_event_type::meta) {

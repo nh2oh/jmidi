@@ -158,6 +158,9 @@ private:
 	std::vector<mtrk_event_t> evnts_ {};
 };
 std::string print(const mtrk_t&);
+// Prints each mtrk event as hexascii (using dbk::print_hexascii()) in a
+// format valid to brace-init a c++ array.  
+std::string print_event_arrays(const mtrk_t&);
 
 // Returns true if the track qualifies as a tempo map; only a certain
 // subset of meta events are permitted in a tempo_map.  Does not 

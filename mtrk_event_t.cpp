@@ -21,8 +21,9 @@ mtrk_event_t::mtrk_event_t() {
 	this->set_flag_small();
 }
 mtrk_event_t::mtrk_event_t(uint32_t dt, const midi_ch_event_t& md) {
-	auto it = midi_write_vl_field(std::back_inserter(this->d_),dt);
-	unsigned char s = ((md.status_nybble)<<4);
+	//auto it = midi_write_vl_field(std::back_inserter(this->d_),dt);
+	auto it = midi_write_vl_field(this->d_.begin(),this->d_.end(),dt);
+	unsigned char s = md.status_nybble;
 	s += md.ch;
 	*it++ = s;
 	*it++ = md.p1;
@@ -361,7 +362,24 @@ bool mtrk_event_t::set_delta_time(uint32_t dt) {
 	}
 	return true;
 }
-
+bool mtrk_event_t::operator==(const mtrk_event_t& rhs) const {
+	if (this->size() != rhs.size()) {
+		return false;
+	}
+	auto it_lhs = this->begin();
+	auto it_rhs = rhs.begin();
+	while (it_lhs!=this->end() && it_rhs!=rhs.end()) {
+		if (*it_lhs != *it_rhs) {
+			return false;
+		}
+		++it_lhs;
+		++it_rhs;
+	}
+	return true;
+}
+bool mtrk_event_t::operator!=(const mtrk_event_t& rhs) const {
+	return !(*this==rhs);
+}
 bool mtrk_event_t::validate() const {
 	bool tf = true;
 
@@ -808,6 +826,7 @@ bool meta_has_text(const mtrk_event_t& ev) {
 	auto mttype = classify_meta_event(ev);
 	return (mttype==meta_event_t::text 
 			|| mttype==meta_event_t::copyright
+			|| mttype==meta_event_t::instname
 			|| mttype==meta_event_t::trackname
 			|| mttype==meta_event_t::lyric
 			|| mttype==meta_event_t::marker
@@ -816,15 +835,10 @@ bool meta_has_text(const mtrk_event_t& ev) {
 
 std::string meta_generic_gettext(const mtrk_event_t& ev) {
 	std::string s {};
-	auto mttype = classify_meta_event(ev);
-	if (mttype==meta_event_t::text 
-				|| mttype==meta_event_t::copyright
-				|| mttype==meta_event_t::trackname
-				|| mttype==meta_event_t::lyric
-				|| mttype==meta_event_t::marker
-				|| mttype==meta_event_t::cuepoint) {
-		s = ev.text_payload();
+	if (!meta_has_text(ev)) {
+		return s;
 	}
+	s = ev.text_payload();
 	return s;
 }
 

@@ -34,29 +34,20 @@ struct midi_timesig_t {
 	uint8_t ntd32pq {8};  // "Number of notated 32'nd notes per MIDI q nt"
 };
 
-
+enum : uint8_t {
+	note_off = 0x80u,
+	note_on = 0x90u,
+	key_pressure = 0xA0u,
+	ctrl_change = 0xB0u,
+	prog_change = 0xC0u,
+	ch_pressure = 0xD0u,
+	pitch_bend = 0xE0u
+};
 struct midi_ch_event_t {
 	uint8_t status_nybble {0x00u};  // most-significant nybble of the status byte
-	uint8_t ch {0x00u};
+	uint8_t ch {0x00u};  // least-significant nybble of the status byte
 	uint8_t p1 {0x00u};
 	uint8_t p2 {0x00u};
-};
-template<uint8_t S>
-struct midi_ch_event_type_tag_impl {
-	const uint8_t status_nybble {S};
-};
-using note_off = midi_ch_event_type_tag_impl<0x80u>;
-using note_on = midi_ch_event_type_tag_impl<0x90u>;
-using key_pressure = midi_ch_event_type_tag_impl<0xA0u>;
-using ctrl_change = midi_ch_event_type_tag_impl<0xB0u>;
-using prog_change = midi_ch_event_type_tag_impl<0xC0u>;
-using ch_pressure = midi_ch_event_type_tag_impl<0xD0u>;
-using pitch_bend = midi_ch_event_type_tag_impl<0xE0u>;
-
-template <typename T>
-midi_ch_event_t make_event(const T& type, uint8_t ch,
-									uint8_t p1, uint8_t p2=0x00u) {
-	return midi_ch_event_t result {type.status_nybble,ch,p1,p2};
 };
 
 //template<typename T>

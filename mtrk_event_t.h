@@ -136,6 +136,9 @@ public:
 	bool is_big() const;
 	bool is_small() const;
 	bool validate() const;
+
+	bool operator==(const mtrk_event_t&) const;
+	bool operator!=(const mtrk_event_t&) const;
 private:
 	enum class offs {
 		ptr = 0,
