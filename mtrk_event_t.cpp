@@ -20,6 +20,17 @@ mtrk_event_t::mtrk_event_t() {
 	this->flags_ = 0x00;
 	this->set_flag_small();
 }
+mtrk_event_t::mtrk_event_t(uint32_t dt, const midi_ch_event_t& md) {
+	auto it = midi_write_vl_field(std::back_inserter(this->d_),dt);
+	unsigned char s = ((md.status_nybble)<<4);
+	s += md.ch;
+	*it++ = s;
+	*it++ = md.p1;
+	*it++ = md.p2;
+	this->midi_status_ = s;
+	this->flags_ = 0x00;
+	this->set_flag_small();
+}
 mtrk_event_t::mtrk_event_t(const unsigned char *p, 
 					const validate_mtrk_event_result_t& ev) {
 	if (ev.size<=static_cast<uint64_t>(offs::max_size_sbo)) {  // small
@@ -622,14 +633,11 @@ std::string print(const mtrk_event_t& evnt, mtrk_sbo_print_opts opts) {
 			} else if (is_tempo(evnt)) {
 				s += ("value = " + std::to_string(get_tempo(evnt)) + " us/q; ");
 			} else if (is_timesig(evnt)) {
-				auto it = evnt.payload_begin();
-				int n = *it++;
-				int d = static_cast<int>(std::exp2(*it++));
-				int c = *it++;
-				int b = *it++;
-				s += ("value = " + std::to_string(n) + "/" + std::to_string(d)
-					+ ", " + std::to_string(c) + " MIDI clocks/click, "
-					+ std::to_string(b) + " notated 32'nd nts / MIDI q nt; ");
+				auto data = get_timesig(evnt);
+				s += ("value = " + std::to_string(data.num) + "/" 
+					+ std::to_string(static_cast<int>(std::exp2(data.log2denom)))
+					+ ", " + std::to_string(data.clckspclk) + " MIDI clocks/click, "
+					+ std::to_string(data.ntd32pq) + " notated 32'nd nts / MIDI q nt; ");
 			}
 		}
 	} else if (opts == mtrk_sbo_print_opts::debug) {
@@ -909,6 +917,18 @@ bool is_onoff_pair(int on_ch, int on_note, int off_ch, int off_note) {
 	return (on_ch==off_ch && on_note==off_note);
 }
 
+midi_ch_event_t get_channel_event(const mtrk_event_t& ev, midi_ch_event_t def) {
+	if (!is_channel(ev)) {
+		return def;
+	}
+	auto md = ev.midi_data();
+	midi_ch_event_t result {};
+	result.status_nybble = md.status_nybble;
+	result.ch = md.ch;
+	result.p1 = md.p1;
+	result.p2 = md.p2;
+	return result;
+}
 
 
 /*

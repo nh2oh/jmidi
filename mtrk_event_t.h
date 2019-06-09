@@ -53,6 +53,8 @@ public:
 	// Default ctor; creates a "small" object representing a meta-text event
 	// w/ a payload length of 0.  
 	mtrk_event_t();
+	// delta_time, raw data
+	mtrk_event_t(uint32_t, const midi_ch_event_t&);
 	// Ctor for callers who have already run validate_mtrk_event_dtstart() on
 	// some underlying buffer.  Avoids re-calculation of the delta-time, 
 	// running-status, event type, etc.  
@@ -365,6 +367,7 @@ bool is_onoff_pair(int, int, int, int);
 // control msgs.  
 
 
+midi_ch_event_t get_channel_event(const mtrk_event_t&, midi_ch_event_t={});
 
 
 

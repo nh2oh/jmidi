@@ -105,6 +105,9 @@ public:
 	// insertion will timeshift all downstream events by that number of 
 	// ticks.  
 	mtrk_iterator_t insert(mtrk_iterator_t, const mtrk_event_t&);
+	// Insert the provided event into the sequence such that its onset tick
+	// is == arg1 + arg2.delta_time()
+	mtrk_iterator_t insert(uint64_t, const mtrk_event_t&);
 	// Inserts the provided event into the sequence such that its tk onset
 	// == the cumtk at the event pointed to by the iterator + the delta
 	// time of the event and in such a way that the length of the track is
@@ -122,9 +125,7 @@ public:
 	// constant and to preserve the tk seperation of the events in the 
 	// sequence.  
 	mtrk_iterator_t insert_no_tkshift(mtrk_iterator_t, mtrk_event_t);
-	// Insert the provided event into the sequence such that its onset tick
-	// is == arg1 + arg2.delta_time()
-	mtrk_iterator_t insert(uint64_t, const mtrk_event_t&);
+	
 
 	// TODO:  Useful for, ex, removing illegal or unwanted events from within
 	// an mtrk, ex, if a user has gathered all tempo events into a seperate
