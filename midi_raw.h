@@ -11,6 +11,7 @@
 // standardized default value for this quantity.  The value for usec/qnt
 // is obtained from a meta set-tempo event; the default is 120 "bpm" 
 // (see below).  
+// TODO:  Rename midi_tempo_t ?
 struct midi_time_t {
 	// From MThd; no default specified in the std, arbitrarily choosing 48.  
 	uint16_t tpq {48};
@@ -22,6 +23,16 @@ struct midi_time_t {
 // Do not check for division by 0 for the case where midi_time_t.tpq==0
 double ticks2sec(const uint32_t&, const midi_time_t&);
 uint32_t sec2ticks(const double&, const midi_time_t&);
+// P.134:  
+// All MIDI Files should specify tempo and time signature.  If they don't,
+// the time signature is assumed to be 4/4, and the tempo 120 beats per 
+// minute.
+struct midi_timesig_t {
+	uint8_t num {4};
+	uint8_t log2denom {2};  // denom == std::exp2(log2denom)
+	uint8_t clckspclk {24};  // "Number of MIDI clocks in a metronome tick"
+	uint8_t ntd32pq {8};  // "Number of notated 32'nd notes per MIDI q nt"
+};
 
 //
 // TODO:  I have to include midi_vlq.h to get a dfn of 

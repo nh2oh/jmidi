@@ -619,6 +619,17 @@ std::string print(const mtrk_event_t& evnt, mtrk_sbo_print_opts opts) {
 			s += ("\tmeta type: " + print(classify_meta_event(evnt)) + "; ");
 			if (meta_has_text(evnt)) {
 				s += ("text payload: \"" + meta_generic_gettext(evnt) + "\"; ");
+			} else if (is_tempo(evnt)) {
+				s += ("value = " + std::to_string(get_tempo(evnt)) + " us/q; ");
+			} else if (is_timesig(evnt)) {
+				auto it = evnt.payload_begin();
+				int n = *it++;
+				int d = static_cast<int>(std::exp2(*it++));
+				int c = *it++;
+				int b = *it++;
+				s += ("value = " + std::to_string(n) + "/" + std::to_string(d)
+					+ ", " + std::to_string(c) + " MIDI clocks/click, "
+					+ std::to_string(b) + " notated 32'nd nts / MIDI q nt; ");
 			}
 		}
 	} else if (opts == mtrk_sbo_print_opts::debug) {
@@ -816,7 +827,22 @@ uint32_t get_tempo(const mtrk_event_t& ev, uint32_t def) {
 	return ev.uint32_payload();
 }
 
+midi_timesig_t get_timesig(const mtrk_event_t& ev, midi_timesig_t def) {
+	if (!is_timesig(ev)) {
+		return def;
+	}
+	auto it = ev.payload_begin();
+	if ((ev.end()-it) != 4) {
+		return def;
+	}
 
+	midi_timesig_t result {};
+	result.num = *it++;
+	result.log2denom = *it++;
+	result.clckspclk = *it++;
+	result.ntd32pq = *it++;
+	return result;
+}
 
 
 bool is_channel(const mtrk_event_t& ev) {  // voice or mode
