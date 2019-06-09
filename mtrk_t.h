@@ -85,9 +85,9 @@ public:
 	const mtrk_event_t& operator[](uint32_t) const;
 	mtrk_event_t& back();
 	const mtrk_event_t& back() const;
-	// at_cumtk() returns an iterator to the first event with an onset 
-	// cumtk >= the number provided and the cumtk value for all prior 
-	// events.  The onset tk for the event pointed to by .it is:
+	// at_cumtk() returns an iterator to the first event with
+	// cumtk >= the number provided, and the exact cumtk for that event.  
+	// The onset tk for the event pointed to by .it is:
 	// .cumtk + .it->delta_time();
 	template <typename It>
 	struct at_cumtk_result_t {
