@@ -113,8 +113,8 @@ const mtrk_event_t& mtrk_t::back() const {
 mtrk_t::at_cumtk_result_t<mtrk_iterator_t>
 								mtrk_t::at_cumtk(uint64_t cumtk_on) {
 	mtrk_t::at_cumtk_result_t<mtrk_iterator_t> res {this->begin(),0};
-	while (res.it!=this->end() && res.cumtk<cumtk_on) {
-		res.cumtk += res.it->delta_time();
+	while (res.it!=this->end() && res.tk<cumtk_on) {
+		res.tk += res.it->delta_time();
 		++(res.it);
 	}
 	return res;
@@ -122,8 +122,32 @@ mtrk_t::at_cumtk_result_t<mtrk_iterator_t>
 mtrk_t::at_cumtk_result_t<mtrk_const_iterator_t>
 						mtrk_t::at_cumtk(uint64_t cumtk_on) const {
 	mtrk_t::at_cumtk_result_t<mtrk_const_iterator_t> res {this->begin(),0};
-	while (res.it!=this->end() && res.cumtk<cumtk_on) {
-		res.cumtk += res.it->delta_time();
+	while (res.it!=this->end() && res.tk<cumtk_on) {
+		res.tk += res.it->delta_time();
+		++(res.it);
+	}
+	return res;
+}
+mtrk_t::at_cumtk_result_t<mtrk_iterator_t> mtrk_t::at_tkonset(uint64_t tk_on) {
+	mtrk_t::at_cumtk_result_t<mtrk_iterator_t> 
+		res {this->begin(),0};
+	while (res.it!=this->end()) {
+		res.tk += res.it->delta_time();
+		if (res.tk >= tk_on) {
+			break;
+		}
+		++(res.it);
+	}
+	return res;
+}
+mtrk_t::at_cumtk_result_t<mtrk_const_iterator_t> mtrk_t::at_tkonset(uint64_t tk_on) const {
+	mtrk_t::at_cumtk_result_t<mtrk_const_iterator_t> 
+		res {this->begin(),this->begin()->delta_time()};
+	while (res.it!=this->end()) {
+		res.tk += res.it->delta_time();
+		if (res.tk >= tk_on) {
+			break;
+		}
 		++(res.it);
 	}
 	return res;

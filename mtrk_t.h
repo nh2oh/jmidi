@@ -88,14 +88,20 @@ public:
 	// at_cumtk() returns an iterator to the first event with
 	// cumtk >= the number provided, and the exact cumtk for that event.  
 	// The onset tk for the event pointed to by .it is:
-	// .cumtk + .it->delta_time();
+	// .tk + .it->delta_time();
 	template <typename It>
 	struct at_cumtk_result_t {
 		It it;
-		uint64_t cumtk;
+		uint64_t tk;
 	};
 	at_cumtk_result_t<mtrk_iterator_t> at_cumtk(uint64_t);
 	at_cumtk_result_t<mtrk_const_iterator_t> at_cumtk(uint64_t) const;
+	// at_tkonset() returns an iterator to the first event with onset
+	// tk >= the number provided, and the exact onset tk for that event.  
+	// The cumtk for the event pointed to by .it is:
+	// .tk - .it->delta_time();
+	at_cumtk_result_t<mtrk_iterator_t> at_tkonset(uint64_t);
+	at_cumtk_result_t<mtrk_const_iterator_t> at_tkonset(uint64_t) const;
 
 	// Returns a ref to the event just added
 	mtrk_event_t& push_back(const mtrk_event_t&);
