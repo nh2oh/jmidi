@@ -90,18 +90,18 @@ public:
 	// The onset tk for the event pointed to by .it is:
 	// .tk + .it->delta_time();
 	template <typename It>
-	struct at_cumtk_result_t {
+	struct at_tk_result_t {
 		It it;
 		uint64_t tk;
 	};
-	at_cumtk_result_t<mtrk_iterator_t> at_cumtk(uint64_t);
-	at_cumtk_result_t<mtrk_const_iterator_t> at_cumtk(uint64_t) const;
+	at_tk_result_t<mtrk_iterator_t> at_cumtk(uint64_t);
+	at_tk_result_t<mtrk_const_iterator_t> at_cumtk(uint64_t) const;
 	// at_tkonset() returns an iterator to the first event with onset
 	// tk >= the number provided, and the exact onset tk for that event.  
 	// The cumtk for the event pointed to by .it is:
 	// .tk - .it->delta_time();
-	at_cumtk_result_t<mtrk_iterator_t> at_tkonset(uint64_t);
-	at_cumtk_result_t<mtrk_const_iterator_t> at_tkonset(uint64_t) const;
+	at_tk_result_t<mtrk_iterator_t> at_tkonset(uint64_t);
+	at_tk_result_t<mtrk_const_iterator_t> at_tkonset(uint64_t) const;
 
 	// Returns a ref to the event just added
 	mtrk_event_t& push_back(const mtrk_event_t&);
@@ -112,8 +112,10 @@ public:
 	// ticks.  
 	mtrk_iterator_t insert(mtrk_iterator_t, const mtrk_event_t&);
 	// Insert the provided event into the sequence such that its onset tick
-	// is == arg1 + arg2.delta_time()
-	mtrk_iterator_t insert(uint64_t, const mtrk_event_t&);
+	// is == arg1 + arg2.delta_time().  The newly inserted event will be the
+	// first in the sequence w/ cumtk==arg1.  
+	// This might be renamed insert_at_cumtk()
+	mtrk_iterator_t insert(uint64_t, mtrk_event_t);
 	// Inserts the provided event into the sequence such that its tk onset
 	// == the cumtk at the event pointed to by the iterator + the delta
 	// time of the event and in such a way that the length of the track is

@@ -110,26 +110,26 @@ mtrk_event_t& mtrk_t::back() {
 const mtrk_event_t& mtrk_t::back() const {
 	return *--this->end();
 }
-mtrk_t::at_cumtk_result_t<mtrk_iterator_t>
+mtrk_t::at_tk_result_t<mtrk_iterator_t>
 								mtrk_t::at_cumtk(uint64_t cumtk_on) {
-	mtrk_t::at_cumtk_result_t<mtrk_iterator_t> res {this->begin(),0};
+	mtrk_t::at_tk_result_t<mtrk_iterator_t> res {this->begin(),0};
 	while (res.it!=this->end() && res.tk<cumtk_on) {
 		res.tk += res.it->delta_time();
 		++(res.it);
 	}
 	return res;
 }
-mtrk_t::at_cumtk_result_t<mtrk_const_iterator_t>
+mtrk_t::at_tk_result_t<mtrk_const_iterator_t>
 						mtrk_t::at_cumtk(uint64_t cumtk_on) const {
-	mtrk_t::at_cumtk_result_t<mtrk_const_iterator_t> res {this->begin(),0};
+	mtrk_t::at_tk_result_t<mtrk_const_iterator_t> res {this->begin(),0};
 	while (res.it!=this->end() && res.tk<cumtk_on) {
 		res.tk += res.it->delta_time();
 		++(res.it);
 	}
 	return res;
 }
-mtrk_t::at_cumtk_result_t<mtrk_iterator_t> mtrk_t::at_tkonset(uint64_t tk_on) {
-	mtrk_t::at_cumtk_result_t<mtrk_iterator_t> 
+mtrk_t::at_tk_result_t<mtrk_iterator_t> mtrk_t::at_tkonset(uint64_t tk_on) {
+	mtrk_t::at_tk_result_t<mtrk_iterator_t> 
 		res {this->begin(),0};
 	while (res.it!=this->end()) {
 		res.tk += res.it->delta_time();
@@ -140,8 +140,8 @@ mtrk_t::at_cumtk_result_t<mtrk_iterator_t> mtrk_t::at_tkonset(uint64_t tk_on) {
 	}
 	return res;
 }
-mtrk_t::at_cumtk_result_t<mtrk_const_iterator_t> mtrk_t::at_tkonset(uint64_t tk_on) const {
-	mtrk_t::at_cumtk_result_t<mtrk_const_iterator_t> 
+mtrk_t::at_tk_result_t<mtrk_const_iterator_t> mtrk_t::at_tkonset(uint64_t tk_on) const {
+	mtrk_t::at_tk_result_t<mtrk_const_iterator_t> 
 		res {this->begin(),this->begin()->delta_time()};
 	while (res.it!=this->end()) {
 		res.tk += res.it->delta_time();
@@ -166,21 +166,14 @@ mtrk_iterator_t mtrk_t::insert(mtrk_iterator_t it, const mtrk_event_t& ev) {
 // Insert the provided event into the sequence such that its onset tick
 // is == arg1 + arg2.delta_time()
 // TODO:  Not implemented
-mtrk_iterator_t mtrk_t::insert(uint64_t cumtk_pos, const mtrk_event_t& ev) {
-	uint64_t cumtk_on = cumtk_pos = ev.delta_time();
-	uint64_t cumtk = 0;
-	auto it=this->begin();
-	for (true; ((it!=this->end()) && (cumtk<cumtk_on)); ++it) {
-		cumtk += it->delta_time();
-	}
-	//if (cumtk > cumtk_pos) {
-
-	// cumtk @ --it >= cumtk_pos; 
-	// (--it)->delta_time() > 0; 
-	// (cumtk - (--it)->delta_time()) < cumtk_pos
-
-	//auto vit = this->evnts_.insert(this->evnts_.begin()+(it-this->begin()),ev);
-	return this->begin();// + (vit-this->evnts_.begin());
+mtrk_iterator_t mtrk_t::insert(uint64_t cumtk_pos, mtrk_event_t ev) {
+	auto new_tk_onset = cumtk_pos+ev.delta_time();
+	auto where = this->at_tkonset(cumtk_pos);
+	// Insertion before where.it guarantees insertion at cumtk < cumtk_pos
+	auto where_cumtk = where.tk-where.it->delta_time();
+	// The tonset would be where_cumtk + ev.delta_time()
+	ev.set_delta_time(new_tk_onset - where_cumtk);
+	return this->insert(where.it,ev);
 }
 // TODO:  This is all messed up... Just use at_cumtk() ??
 mtrk_iterator_t mtrk_t::insert_no_tkshift(mtrk_iterator_t it_pos, 
