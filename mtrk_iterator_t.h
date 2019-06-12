@@ -1,45 +1,70 @@
 #pragma once
-#include "mtrk_event_t.h"
 #include <cstdint>
 #include <cstddef>  // std::ptrdiff_t
+#include <iterator>  // std::random_access_iterator_tag;
 
+class mtrk_event_t;
 
-// TODO:  Template this so it isn't so repetitive
 class mtrk_iterator_t {
 public:
+	using iterator_category = std::random_access_iterator_tag;
+	using value_type = mtrk_event_t;
+	using difference_type = std::ptrdiff_t;
+	using pointer = mtrk_event_t *;
+	using reference = mtrk_event_t&;
+
+	mtrk_iterator_t(mtrk_event_t&);
 	mtrk_iterator_t(mtrk_event_t*);
-	mtrk_event_t& operator*() const;
-	mtrk_event_t *operator->() const;
+	reference operator*() const;
+	pointer operator->() const;
 	mtrk_iterator_t& operator++();  // preincrement
 	mtrk_iterator_t operator++(int);  // postincrement
 	mtrk_iterator_t& operator--();  // pre
 	mtrk_iterator_t operator--(int);  // post
 	mtrk_iterator_t& operator+=(int);
 	mtrk_iterator_t operator+(int);
-	std::ptrdiff_t operator-(const mtrk_iterator_t&) const;
+	mtrk_iterator_t& operator-=(int);
+	difference_type operator-(const mtrk_iterator_t&) const;
 	bool operator==(const mtrk_iterator_t&) const;
 	bool operator!=(const mtrk_iterator_t&) const;
+	bool operator<(const mtrk_iterator_t&) const;
+	bool operator>(const mtrk_iterator_t&) const;
+	bool operator<=(const mtrk_iterator_t&) const;
+	bool operator>=(const mtrk_iterator_t&) const;
 private:
-	mtrk_event_t *p_;
+	pointer p_;
 };
+
 class mtrk_const_iterator_t {
 public:
+	using iterator_category = std::random_access_iterator_tag;
+	using value_type = mtrk_event_t;
+	using difference_type = std::ptrdiff_t;
+	using pointer = const mtrk_event_t *;
+	using reference = const mtrk_event_t&;
+
 	mtrk_const_iterator_t(mtrk_event_t*);
 	mtrk_const_iterator_t(const mtrk_event_t*);
+	mtrk_const_iterator_t(const mtrk_event_t&);
 	mtrk_const_iterator_t(const mtrk_iterator_t&);
-	const mtrk_event_t& operator*() const;
-	const mtrk_event_t *operator->() const;
+	reference operator*() const;
+	pointer operator->() const;
 	mtrk_const_iterator_t& operator++();  // preincrement
 	mtrk_const_iterator_t operator++(int);  // postincrement
 	mtrk_const_iterator_t& operator--();  // pre
 	mtrk_const_iterator_t operator--(int);  // post
 	mtrk_const_iterator_t& operator+=(int);
 	mtrk_const_iterator_t operator+(int);
-	std::ptrdiff_t operator-(const mtrk_const_iterator_t& rhs) const;
+	mtrk_const_iterator_t& operator-=(int);
+	difference_type operator-(const mtrk_const_iterator_t& rhs) const;
 	bool operator==(const mtrk_const_iterator_t&) const;
 	bool operator!=(const mtrk_const_iterator_t&) const;
+	bool operator<(const mtrk_const_iterator_t&) const;
+	bool operator>(const mtrk_const_iterator_t&) const;
+	bool operator<=(const mtrk_const_iterator_t&) const;
+	bool operator>=(const mtrk_const_iterator_t&) const;
 private:
-	const mtrk_event_t *p_;
+	pointer p_;
 };
 
 

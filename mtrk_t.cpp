@@ -85,7 +85,8 @@ std::array<unsigned char,8> mtrk_t::get_header() const {
 	return r;
 }
 mtrk_iterator_t mtrk_t::begin() {
-	return mtrk_iterator_t(&(this->evnts_[0]));
+	auto p = &(this->evnts_[0]);
+	return mtrk_iterator_t(p);
 }
 mtrk_iterator_t mtrk_t::end() {
 	auto p_last = &(this->evnts_.back());
@@ -105,10 +106,16 @@ const mtrk_event_t& mtrk_t::operator[](uint32_t idx) const {
 	return this->evnts_[idx];
 }
 mtrk_event_t& mtrk_t::back() {
-	return *--this->end();
+	return this->evnts_.back();
 }
 const mtrk_event_t& mtrk_t::back() const {
-	return *--this->end();
+	return this->evnts_.back();
+}
+mtrk_event_t& mtrk_t::front() {
+	return this->evnts_.front();
+}
+const mtrk_event_t& mtrk_t::front() const {
+	return this->evnts_.front();
 }
 mtrk_t::at_tk_result_t<mtrk_iterator_t>
 								mtrk_t::at_cumtk(uint64_t cumtk_on) {
@@ -165,15 +172,44 @@ mtrk_iterator_t mtrk_t::insert(mtrk_iterator_t it, const mtrk_event_t& ev) {
 }
 // Insert the provided event into the sequence such that its onset tick
 // is == arg1 + arg2.delta_time()
-// TODO:  Not implemented
 mtrk_iterator_t mtrk_t::insert(uint64_t cumtk_pos, mtrk_event_t ev) {
 	auto new_tk_onset = cumtk_pos+ev.delta_time();
 	auto where = this->at_tkonset(cumtk_pos);
 	// Insertion before where.it guarantees insertion at cumtk < cumtk_pos
-	auto where_cumtk = where.tk-where.it->delta_time();
-	// The tonset would be where_cumtk + ev.delta_time()
+	auto where_cumtk = where.tk;
+	if (where.it != this->end()) {
+		// TODO:  Gross behavior to have to check for the end iterator
+		where_cumtk -= where.it->delta_time();
+	}
+	// The tkonset would be where_cumtk + ev.delta_time()
 	ev.set_delta_time(new_tk_onset - where_cumtk);
 	return this->insert(where.it,ev);
+}
+// Insert the provided event into the sequence such that after insertion,
+// calling seek_cumtk = at_cumtk() on the container returns an iterator 
+// to the newly inserted event.  
+// TODO:  Not yet implemented
+mtrk_iterator_t mtrk_t::insert_at_cumtk(uint64_t cumtk_pos, mtrk_event_t ev) {
+	return this->begin();
+	/*auto where = this->at_cumtk(cumtk_pos);
+	// where.it is the first event _beyond_ the event w/ a value of 
+	// delta_time sufficient to push the cumtk to >= cumtk_pos.  
+	if (where.it > this->begin()) {
+		--(where.it);
+		where.tk -= where.it->delta_time();
+	}
+
+	auto new_tk_onset = cumtk_pos+ev.delta_time();
+	auto where = this->at_tkonset(cumtk_pos);
+	// Insertion before where.it guarantees insertion at cumtk < cumtk_pos
+	auto where_cumtk = where.tk;
+	if (where.it != this->end()) {
+		// TODO:  Gross behavior to have to check for the end iterator
+		where_cumtk -= where.it->delta_time();
+	}
+	// The tkonset would be where_cumtk + ev.delta_time()
+	ev.set_delta_time(new_tk_onset - where_cumtk);
+	return this->insert(where.it,ev);*/
 }
 // TODO:  This is all messed up... Just use at_cumtk() ??
 mtrk_iterator_t mtrk_t::insert_no_tkshift(mtrk_iterator_t it_pos, 

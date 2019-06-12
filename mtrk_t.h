@@ -8,7 +8,9 @@
 #include <array>  // For method .get_header()
 
 struct maybe_mtrk_t;
-class mtrk_t;
+//class mtrk_t;
+//class mtrk_iterator_t;
+//class mtrk_const_iterator_t;
 
 //
 // mtrk_t
@@ -85,6 +87,8 @@ public:
 	const mtrk_event_t& operator[](uint32_t) const;
 	mtrk_event_t& back();
 	const mtrk_event_t& back() const;
+	mtrk_event_t& front();
+	const mtrk_event_t& front() const;
 	// at_cumtk() returns an iterator to the first event with
 	// cumtk >= the number provided, and the exact cumtk for that event.  
 	// The onset tk for the event pointed to by .it is:
@@ -112,10 +116,13 @@ public:
 	// ticks.  
 	mtrk_iterator_t insert(mtrk_iterator_t, const mtrk_event_t&);
 	// Insert the provided event into the sequence such that its onset tick
-	// is == arg1 + arg2.delta_time().  The newly inserted event will be the
-	// first in the sequence w/ cumtk==arg1.  
-	// This might be renamed insert_at_cumtk()
+	// is == arg1 + arg2.delta_time().  
 	mtrk_iterator_t insert(uint64_t, mtrk_event_t);
+	// Insert the provided event into the sequence such that after insertion,
+	// calling seek_cumtk = at_cumtk() on the container returns an iterator 
+	// to the newly inserted event.  seek_cumtk.tk will be <= arg1; its onset 
+	// tk == seek_cumtk.tk + seek_cumtk.it->delta_time()arg2.delta_time().  
+	mtrk_iterator_t insert_at_cumtk(uint64_t, mtrk_event_t);
 	// Inserts the provided event into the sequence such that its tk onset
 	// == the cumtk at the event pointed to by the iterator + the delta
 	// time of the event and in such a way that the length of the track is
