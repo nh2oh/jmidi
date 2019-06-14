@@ -6,11 +6,20 @@
 #include <cstdint>
 #include <vector>
 #include <array>  // For method .get_header()
+#include <type_traits>
 
 struct maybe_mtrk_t;
-//class mtrk_t;
-//class mtrk_iterator_t;
-//class mtrk_const_iterator_t;
+
+// Intended to represent an event occuring in an mtrk at a tk value given
+// by .tk.  The onset tk of the event is .tk + .it->delta_time().  The onset
+// tk of the event(s) prior to .it is tk.  
+template <typename It>
+struct event_tk_t {
+	static_assert(std::is_same<It,mtrk_iterator_t>::value
+		|| std::is_same<It,mtrk_const_iterator_t>::value);
+	It it;
+	uint64_t tk;
+};
 
 //
 // mtrk_t
@@ -30,7 +39,7 @@ struct maybe_mtrk_t;
 // A user _has_ to be able to, for example, call push_back() to add note-on
 // and note_off events one at a time.  If I were to require the object to
 // always be serializable to a valid MTrk, this would be impossible since 
-// adding a note-on event before the corresponsing note-off creates an
+// adding a note-on event before the corresponding note-off creates an
 // orphan on-event situation (as well as a "missing EOT" error).  
 //
 // Note that a default-constructed mtrk_t is empty (nevents()==0, 
@@ -93,19 +102,14 @@ public:
 	// cumtk >= the number provided, and the exact cumtk for that event.  
 	// The onset tk for the event pointed to by .it is:
 	// .tk + .it->delta_time();
-	template <typename It>
-	struct at_tk_result_t {
-		It it;
-		uint64_t tk;
-	};
-	at_tk_result_t<mtrk_iterator_t> at_cumtk(uint64_t);
-	at_tk_result_t<mtrk_const_iterator_t> at_cumtk(uint64_t) const;
+	event_tk_t<mtrk_iterator_t> at_cumtk(uint64_t);
+	event_tk_t<mtrk_const_iterator_t> at_cumtk(uint64_t) const;
 	// at_tkonset() returns an iterator to the first event with onset
 	// tk >= the number provided, and the exact onset tk for that event.  
 	// The cumtk for the event pointed to by .it is:
 	// .tk - .it->delta_time();
-	at_tk_result_t<mtrk_iterator_t> at_tkonset(uint64_t);
-	at_tk_result_t<mtrk_const_iterator_t> at_tkonset(uint64_t) const;
+	event_tk_t<mtrk_iterator_t> at_tkonset(uint64_t);
+	event_tk_t<mtrk_const_iterator_t> at_tkonset(uint64_t) const;
 
 	// Returns a ref to the event just added
 	mtrk_event_t& push_back(const mtrk_event_t&);
@@ -126,15 +130,18 @@ public:
 	mtrk_iterator_t insert_no_tkshift(mtrk_iterator_t, mtrk_event_t);
 	// Insert the provided event into the sequence such that its onset tick
 	// is == arg1 + arg2.delta_time()
+	// TODO:  Unit tests
 	mtrk_iterator_t insert(uint64_t, mtrk_event_t);	
 	
+	// Erase the event pointed to by the iterator.  Returns an iterator to 
+	// the event immediately following the erased event.  
+	mtrk_iterator_t erase(mtrk_iterator_t);
+	mtrk_const_iterator_t erase(mtrk_const_iterator_t);
+	// Erase the event indicated by the iterator.  If the event has a delta
+	// time > 0, it is added to the event immediately following the deleted
+	// event.  
+	mtrk_iterator_t erase_no_tkshift(mtrk_iterator_t);
 
-	// TODO:  Useful for, ex, removing illegal or unwanted events from within
-	// an mtrk, ex, if a user has gathered all tempo events into a seperate
-	// tempo track and now wants to excise them all.  
-	//void erase_no_tkshift(UPred);
-	// The brute-force version:
-	//void erase(UPred);
 
 	// Note that calling clear will cause !this.validate(), since there is
 	// no longer an EOT meta event at the end of the sequence.  
@@ -215,7 +222,7 @@ struct mtrk_event_cumtk_t {
 	uint32_t cumtk;  // cumtk _before_ event ev
 	mtrk_const_iterator_t ev;
 };
-mtrk_event_cumtk_t find_linked_off(mtrk_const_iterator_t, 
+event_tk_t<mtrk_const_iterator_t> find_linked_off(mtrk_const_iterator_t, 
 					mtrk_const_iterator_t, const mtrk_event_t&);
 
 //
@@ -235,8 +242,8 @@ mtrk_event_cumtk_t find_linked_off(mtrk_const_iterator_t,
 // Orphan note-on events are not included in the results.  
 //
 struct linked_onoff_pair_t {
-	mtrk_event_cumtk_t on;
-	mtrk_event_cumtk_t off;
+	event_tk_t<mtrk_const_iterator_t> on;
+	event_tk_t<mtrk_const_iterator_t> off;
 };
 std::vector<linked_onoff_pair_t>
 	get_linked_onoff_pairs(mtrk_const_iterator_t,mtrk_const_iterator_t);

@@ -117,26 +117,25 @@ mtrk_event_t& mtrk_t::front() {
 const mtrk_event_t& mtrk_t::front() const {
 	return this->evnts_.front();
 }
-mtrk_t::at_tk_result_t<mtrk_iterator_t>
-								mtrk_t::at_cumtk(uint64_t cumtk_on) {
-	mtrk_t::at_tk_result_t<mtrk_iterator_t> res {this->begin(),0};
+event_tk_t<mtrk_iterator_t> mtrk_t::at_cumtk(uint64_t cumtk_on) {
+	event_tk_t<mtrk_iterator_t> res {this->begin(),0};
 	while (res.it!=this->end() && res.tk<cumtk_on) {
 		res.tk += res.it->delta_time();
 		++(res.it);
 	}
 	return res;
 }
-mtrk_t::at_tk_result_t<mtrk_const_iterator_t>
+event_tk_t<mtrk_const_iterator_t>
 						mtrk_t::at_cumtk(uint64_t cumtk_on) const {
-	mtrk_t::at_tk_result_t<mtrk_const_iterator_t> res {this->begin(),0};
+	event_tk_t<mtrk_const_iterator_t> res {this->begin(),0};
 	while (res.it!=this->end() && res.tk<cumtk_on) {
 		res.tk += res.it->delta_time();
 		++(res.it);
 	}
 	return res;
 }
-mtrk_t::at_tk_result_t<mtrk_iterator_t> mtrk_t::at_tkonset(uint64_t tk_on) {
-	mtrk_t::at_tk_result_t<mtrk_iterator_t> 
+event_tk_t<mtrk_iterator_t> mtrk_t::at_tkonset(uint64_t tk_on) {
+	event_tk_t<mtrk_iterator_t> 
 		res {this->begin(),0};
 	while (res.it!=this->end()) {
 		res.tk += res.it->delta_time();
@@ -147,8 +146,8 @@ mtrk_t::at_tk_result_t<mtrk_iterator_t> mtrk_t::at_tkonset(uint64_t tk_on) {
 	}
 	return res;
 }
-mtrk_t::at_tk_result_t<mtrk_const_iterator_t> mtrk_t::at_tkonset(uint64_t tk_on) const {
-	mtrk_t::at_tk_result_t<mtrk_const_iterator_t> 
+event_tk_t<mtrk_const_iterator_t> mtrk_t::at_tkonset(uint64_t tk_on) const {
+	event_tk_t<mtrk_const_iterator_t> 
 		res {this->begin(),this->begin()->delta_time()};
 	while (res.it!=this->end()) {
 		res.tk += res.it->delta_time();
@@ -197,7 +196,22 @@ mtrk_iterator_t mtrk_t::insert(uint64_t cumtk_pos, mtrk_event_t ev) {
 	ev.set_delta_time(new_tk_onset - where_cumtk);
 	return this->insert(where.it,ev);
 }
-
+mtrk_iterator_t mtrk_t::erase(mtrk_iterator_t it) {
+	auto idx = it-this->begin();
+	return this->from_vec_iterator(this->evnts_.erase(this->evnts_.begin()+idx));
+}
+mtrk_const_iterator_t mtrk_t::erase(mtrk_const_iterator_t it) {
+	auto idx = it-this->begin();
+	return this->from_vec_iterator(this->evnts_.erase(this->evnts_.begin()+idx));
+}
+mtrk_iterator_t mtrk_t::erase_no_tkshift(mtrk_iterator_t it) {
+	auto dt = it->delta_time();
+	it = this->erase(it);
+	if (it!=this->end()) {
+		it->set_delta_time(it->delta_time()+dt);
+	}
+	return it;
+}
 void mtrk_t::clear() {
 	this->evnts_.clear();
 }
@@ -561,9 +575,9 @@ mtrk_iterator_t get_simultanious_events(mtrk_iterator_t beg,
 	return range_end;
 }
 
-mtrk_event_cumtk_t find_linked_off(mtrk_const_iterator_t beg,
+event_tk_t<mtrk_const_iterator_t> find_linked_off(mtrk_const_iterator_t beg,
 					mtrk_const_iterator_t end, const mtrk_event_t& on) {
-	mtrk_event_cumtk_t res {0, end};
+	event_tk_t<mtrk_const_iterator_t> res {end,0};
 	if (beg==end || !is_note_on(on)) {
 		return res;
 	}
@@ -582,8 +596,8 @@ mtrk_event_cumtk_t find_linked_off(mtrk_const_iterator_t beg,
 	// Note that when res.ev points at the event for which 
 	// is_linked_off(res.ev), res.ev->delta_time() will _not_ be added
 	// to res.cumtk.  
-	for (res.ev=beg; (res.ev!=end && !is_linked_off(res.ev)); ++res.ev) {
-		res.cumtk += res.ev->delta_time();
+	for (res.it=beg; (res.it!=end && !is_linked_off(res.it)); ++res.it) {
+		res.tk += res.it->delta_time();
 	}
 
 	return res;
@@ -602,13 +616,13 @@ std::vector<linked_onoff_pair_t>
 		}
 
 		auto off = find_linked_off(curr,end,*curr);  // Note:  Not starting @ curr+1
-		if (off.ev==end) {  // Orphan on event
+		if (off.it==end) {  // Orphan on event
 			continue;
 		}
 		// Event *curr is the on-event
 		auto cumtk_on = (cumtk - curr->delta_time());
-		auto cumtk_off = cumtk_on + off.cumtk;
-		result.push_back({{cumtk_on,curr},{cumtk_off,off.ev}});
+		auto cumtk_off = cumtk_on + off.tk;
+		result.push_back({{curr,cumtk_on},{off.it,cumtk_off}});
 	}
 
 	return result;
@@ -659,16 +673,16 @@ std::string print_linked_onoff_pairs(const mtrk_t& mtrk) {
 		print_half(cumtk_on,*curr);
 		ss << std::setw(w.sep) << " ";
 		auto off = find_linked_off(curr,mtrk.end(),*curr);
-		if (off.ev==mtrk.end()) {  // Orphan on event
+		if (off.it==mtrk.end()) {  // Orphan on event
 			ss << "NO CORRESPONDING OFF EVENT\n";
 			continue;
 		}
 		// off.cumtk includes curr->delta_time(), but does not include
 		// off.ev->delta_time().  
-		auto cumtk_off = cumtk_on + off.cumtk;
-		print_half(cumtk_off,*off.ev);
+		auto cumtk_off = cumtk_on + off.tk;
+		print_half(cumtk_off,*off.it);
 		ss << std::setw(w.sep) << " ";
-		auto duration = cumtk_off + off.ev->delta_time()
+		auto duration = cumtk_off + off.it->delta_time()
 			- (cumtk_on + curr->delta_time());
 		ss << std::to_string(duration);
 		ss << "\n";
