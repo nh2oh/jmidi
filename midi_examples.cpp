@@ -35,9 +35,9 @@ int midi_example() {
 
 	//std::string fn = "D:\\cpp\\nh2oh\\au\\gt_aulib\\test_data\\clementi_no_rs.mid";
 	//std::string fn = "D:\\cpp\\nh2oh\\au\\gt_aulib\\test_data\\tc_a_rs.mid";
-	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\CLEMENTI.MID";
+	std::string fn = "C:\\Users\\ben\\Desktop\\scr\\CLEMENTI.MID";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\A7.mid";
-	std::string fn = "C:\\Users\\ben\\Desktop\\scr\\test.mid";
+	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\test.mid";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\hallelujah_joy_to_the_world.mid";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\twinkle.mid";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\test.mid";
@@ -55,9 +55,12 @@ int midi_example() {
 
 	auto trk1 = maybesmf.smf.get_track(1);
 	//std::cout << print_event_arrays(trk1) << std::endl;
+	//std::cout << print(trk1) << std::endl;
+	std::cout << "print_linked_onoff_pairs(trk1):" << std::endl; 
+	std::cout << print_linked_onoff_pairs(trk1) << std::endl;
 
-	//std::cout << "get_linked_onoff_pairs(maybesmf.smf):" << std::endl;
-	//auto linked_pairs = get_linked_onoff_pairs(maybesmf.smf);
+	std::cout << "get_linked_onoff_pairs(maybesmf.smf):" << std::endl;
+	auto linked_pairs = get_linked_onoff_pairs(maybesmf.smf);
 	//std::cout << print(linked_pairs) << std::endl << std::endl;
 
 	//auto ordered_evs_all = get_events_dt_ordered(maybesmf.smf);

@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <vector>
 #include <array>  // For method .get_header()
-#include <type_traits>
+#include <type_traits>  // std::is_same<>
 
 struct maybe_mtrk_t;
 
@@ -167,8 +167,9 @@ private:
 	std::vector<mtrk_event_t> evnts_ {};
 };
 std::string print(const mtrk_t&);
-// Prints each mtrk event as hexascii (using dbk::print_hexascii()) in a
-// format valid to brace-init a c++ array.  
+// Prints each mtrk event as hexascii (using dbk::print_hexascii()) along
+// with its onset tick.  The output is valid syntax to brace-init a c++ 
+// array.  
 std::string print_event_arrays(const mtrk_t&);
 
 // Returns true if the track qualifies as a tempo map; only a certain
@@ -205,23 +206,19 @@ mtrk_iterator_t get_simultanious_events(mtrk_iterator_t, mtrk_iterator_t);
 //
 // find_linked_off(mtrk_const_iterator_t beg, mtrk_const_iterator_t end,
 //						mtrk_event_t on);
-// Find an off event on [beg,end) matching the mtrk_event_t "on" event 
-// given by arg mtrk_event_t on.  
+// Find the first off event on [beg,end) matching the mtrk_event_t "on" 
+// event arg mtrk_event_t on.  
 // 
-// Returns an mtrk_event_cumtk_t where member .ev is an iterator to the
-// corresponding off mtrk_event_t, and .cumtk is the cumulative number
-// of ticks occuring on the interval [beg,.ev).  It is the cumulative 
+// Returns an event_tk_t<mtrk_const_iterator_t> where member .it is an 
+// iterator to the corresponding off mtrk_event_t, and .tk is the cumulative
+// number of ticks occuring on the interval [beg,.it).  It is the cumulative 
 // number of ticks starting from beg and and continuing to the event
-// immediately _prior_ to event .ev (the onset tick of event .ev is thus
-// .cumtk + .ev->delta_time()).  
-// If on is not a note-on event, .ev==end and .cumtk==0.  
-// If no corresponding off event can be found, .ev==end and .cumtk has the
+// immediately _prior_ to event .it (the onset tick of event .it is thus
+// .tk + .it->delta_time()).  
+// If on is not a note-on event, .it==end and .tk==0.  
+// If no corresponding off event can be found, .it==end and .tk has the
 // same interpretation as before.  
 //
-struct mtrk_event_cumtk_t {
-	uint32_t cumtk;  // cumtk _before_ event ev
-	mtrk_const_iterator_t ev;
-};
 event_tk_t<mtrk_const_iterator_t> find_linked_off(mtrk_const_iterator_t, 
 					mtrk_const_iterator_t, const mtrk_event_t&);
 
@@ -250,8 +247,7 @@ std::vector<linked_onoff_pair_t>
 
 //
 // Print a table of linked note-on/off event pairs in the input mtrk_t.  
-// On events w/o a matching off event are output to the table with a
-// "not found" message in place of the data for the off event.  Orphan
-// off events are skipped (they are not detected at all).  
+// Orphan note-on and note-off events are skipped (same behavior as 
+// get_linked_onoff_pairs().  
 std::string print_linked_onoff_pairs(const mtrk_t&);
 
