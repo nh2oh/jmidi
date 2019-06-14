@@ -123,22 +123,12 @@ public:
 	// to the newly inserted event.  seek_cumtk.tk will be <= arg1; its onset 
 	// tk == seek_cumtk.tk + seek_cumtk.it->delta_time()arg2.delta_time().  
 	mtrk_iterator_t insert_at_cumtk(uint64_t, mtrk_event_t);
-	// Inserts the provided event into the sequence such that its tk onset
-	// == the cumtk at the event pointed to by the iterator + the delta
-	// time of the event and in such a way that the length of the track is
-	// not changed, and such that the tk spacing between all other events
-	// remains unchanged.  
-	// The event is inserted as close as possible to the location 
-	// immediately prior to the event indicated by the iterator.  
-	// If the event has a delta_time == 0, it will be inserted directly
-	// prior to the event pointed at by the iterator.  If the event has a 
-	// delta_time > 0, it will be inserted either immediately prior to the
-	// iterator, or at some location following the iterator and its 
-	// delta_time value will be adjusted downward such that its tk onset is
-	// as described above.  The delta_time of the first event after the
-	// insertion position may be adjusted downward to keep the track length
-	// constant and to preserve the tk seperation of the events in the 
-	// sequence.  
+	// Insert the event ev into the sequence such that its onset tk is == 
+	// to the cumtk of arg1 + ev.delta_time() and such that the onset tk 
+	// of all downstream events is unchanged.  The event is inserted as close
+	// as possible to the event pointed to by the iterator.  The dt of the 
+	// new event may be adjusted downward.  The dt of the event immediately 
+	// following the newly inserted event may be adjusted downward.  
 	mtrk_iterator_t insert_no_tkshift(mtrk_iterator_t, mtrk_event_t);
 	
 
