@@ -197,76 +197,7 @@ mtrk_iterator_t mtrk_t::insert(uint64_t cumtk_pos, mtrk_event_t ev) {
 	ev.set_delta_time(new_tk_onset - where_cumtk);
 	return this->insert(where.it,ev);
 }
-// Insert the provided event into the sequence such that after insertion,
-// calling seek_cumtk = at_cumtk() on the container returns an iterator 
-// to the newly inserted event.  
-// TODO:  Not yet implemented
-mtrk_iterator_t mtrk_t::insert_at_cumtk(uint64_t cumtk_pos, mtrk_event_t ev) {
-	return this->begin();
-	/*auto where = this->at_cumtk(cumtk_pos);
-	// where.it is the first event _beyond_ the event w/ a value of 
-	// delta_time sufficient to push the cumtk to >= cumtk_pos.  
-	if (where.it > this->begin()) {
-		--(where.it);
-		where.tk -= where.it->delta_time();
-	}
 
-	auto new_tk_onset = cumtk_pos+ev.delta_time();
-	auto where = this->at_tkonset(cumtk_pos);
-	// Insertion before where.it guarantees insertion at cumtk < cumtk_pos
-	auto where_cumtk = where.tk;
-	if (where.it != this->end()) {
-		// TODO:  Gross behavior to have to check for the end iterator
-		where_cumtk -= where.it->delta_time();
-	}
-	// The tkonset would be where_cumtk + ev.delta_time()
-	ev.set_delta_time(new_tk_onset - where_cumtk);
-	return this->insert(where.it,ev);*/
-}
-/*
-// TODO:  This is all messed up... Just use at_cumtk() ??
-mtrk_iterator_t mtrk_t::insert_no_tkshift(mtrk_iterator_t it_pos, 
-											mtrk_event_t ev) {
-
-	if (it_pos->delta_time() >= ev.delta_time()) {
-		it_pos->set_delta_time(it_pos->delta_time() - ev.delta_time());
-		return this->insert(it_pos,ev);
-	} else {
-		uint64_t tks = 0;
-		while ((it_pos != this->end()) && (tks < ev.delta_time())) {
-			tks += it_pos->delta_time();
-			++it_pos;
-		}
-		ev.set_delta_time(ev.delta_time()-tks);
-		return this->insert_no_tkshift(it_pos,ev);
-	}
-}*/
-	/*uint64_t cumtk_pos = 0;
-	auto it = this->begin();
-	for (true; (it!=this->end() && it!=it_pos); ++it) {
-		cumtk_pos += it->delta_time();
-	}
-	if (it==this->end()) {
-		return this->insert(it,ev);
-	}
-	// At this point, it == it_pos != this->end()
-	// tk onset of the candidate insertion position it, tk onset desired for
-	// the new event.  
-	uint64_t tk_onset_pos = cumtk_pos + it->delta_time();
-	uint64_t tk_onset_ev = cumtk_pos + ev.delta_time();
-	for (tk_onset_pos=cumtk_pos; ((tk_onset_pos<tk_onset_ev) && (it!=this->end())); ++it) {
-		tk_onset_pos += it->delta_time();
-	}
-	// It points at the first event w/a tk onset >= tk_onset_ev, or at 
-	// the end.  tk_onset_pos >= tk_onset_ev.  
-	auto delta = tk_onset_ev-tk_onset_pos;
-	auto new_dt_ev = it->delta_time() - delta;  // It may==end() ...
-	ev.set_delta_time(new_dt_ev);
-	if (it!=this->end()) {
-		it->set_delta_time(it->delta_time()-ev.delta_time());
-	}
-	return this->insert(it,ev);
-}*/
 void mtrk_t::clear() {
 	this->evnts_.clear();
 }

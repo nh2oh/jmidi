@@ -116,20 +116,17 @@ public:
 	// ticks.  
 	mtrk_iterator_t insert(mtrk_iterator_t, const mtrk_event_t&);
 	// Insert the provided event into the sequence such that its onset tick
-	// is == arg1 + arg2.delta_time().  
-	mtrk_iterator_t insert(uint64_t, mtrk_event_t);
-	// Insert the provided event into the sequence such that after insertion,
-	// calling seek_cumtk = at_cumtk() on the container returns an iterator 
-	// to the newly inserted event.  seek_cumtk.tk will be <= arg1; its onset 
-	// tk == seek_cumtk.tk + seek_cumtk.it->delta_time()arg2.delta_time().  
-	mtrk_iterator_t insert_at_cumtk(uint64_t, mtrk_event_t);
-	// Insert the event ev into the sequence such that its onset tk is == 
-	// to the cumtk of arg1 + ev.delta_time() and such that the onset tk 
-	// of all downstream events is unchanged.  The event is inserted as close
-	// as possible to the event pointed to by the iterator.  The dt of the 
-	// new event may be adjusted downward.  The dt of the event immediately 
-	// following the newly inserted event may be adjusted downward.  
+	// is == the cumtk at arg1 + arg2.delta_time() and such that the onset 
+	// tick of all downstream events is unchanged.  The delta time of the
+	// event and/or of the event immediately downstream (after insertion) 
+	// may be changed (reduced).  
+	// If the onset tick intended for the new event (cumtk at arg1 + 
+	// arg2.delta_time()) is <= nticks() prior to insertion, nticks() is 
+	// unchanged following insertion.  
 	mtrk_iterator_t insert_no_tkshift(mtrk_iterator_t, mtrk_event_t);
+	// Insert the provided event into the sequence such that its onset tick
+	// is == arg1 + arg2.delta_time()
+	mtrk_iterator_t insert(uint64_t, mtrk_event_t);	
 	
 
 	// TODO:  Useful for, ex, removing illegal or unwanted events from within
