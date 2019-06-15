@@ -85,19 +85,28 @@ std::array<unsigned char,8> mtrk_t::get_header() const {
 	return r;
 }
 mtrk_iterator_t mtrk_t::begin() {
-	auto p = &(this->evnts_[0]);
-	return mtrk_iterator_t(p);
+	if (this->evnts_.size()==0) {
+		return mtrk_iterator_t(nullptr);
+	}
+	return mtrk_iterator_t(&(this->evnts_[0]));
 }
 mtrk_iterator_t mtrk_t::end() {
-	auto p_last = &(this->evnts_.back());
-	return mtrk_iterator_t(++p_last);
+	if (this->evnts_.size()==0) {
+		return mtrk_iterator_t(nullptr);
+	}
+	return mtrk_iterator_t(&(this->evnts_[0]) + this->evnts_.size());
 }
 mtrk_const_iterator_t mtrk_t::begin() const {
+	if (this->evnts_.size()==0) {
+		return mtrk_iterator_t(nullptr);
+	}
 	return mtrk_const_iterator_t(&(this->evnts_[0]));
 }
 mtrk_const_iterator_t mtrk_t::end() const {
-	auto p_last = &(this->evnts_.back());
-	return mtrk_const_iterator_t(++p_last);
+	if (this->evnts_.size()==0) {
+		return mtrk_iterator_t(nullptr);
+	}
+	return mtrk_const_iterator_t(&(this->evnts_[0]) + this->evnts_.size());
 }
 mtrk_event_t& mtrk_t::operator[](uint32_t idx) {
 	return this->evnts_[idx];
@@ -198,11 +207,15 @@ mtrk_iterator_t mtrk_t::insert(uint64_t cumtk_pos, mtrk_event_t ev) {
 }
 mtrk_iterator_t mtrk_t::erase(mtrk_iterator_t it) {
 	auto idx = it-this->begin();
-	return this->from_vec_iterator(this->evnts_.erase(this->evnts_.begin()+idx));
+	auto vit = this->evnts_.erase(this->evnts_.begin()+idx);
+	return this->begin()+(vit-this->evnts_.begin());
+	//return this->from_vec_iterator(this->evnts_.erase(this->evnts_.begin()+idx));
 }
 mtrk_const_iterator_t mtrk_t::erase(mtrk_const_iterator_t it) {
 	auto idx = it-this->begin();
-	return this->from_vec_iterator(this->evnts_.erase(this->evnts_.begin()+idx));
+	auto vit = this->evnts_.erase(this->evnts_.begin()+idx);
+	return this->begin()+(vit-this->evnts_.begin());
+	//return this->from_vec_iterator(this->evnts_.erase(this->evnts_.begin()+idx));
 }
 mtrk_iterator_t mtrk_t::erase_no_tkshift(mtrk_iterator_t it) {
 	auto dt = it->delta_time();
@@ -218,21 +231,32 @@ void mtrk_t::clear() {
 void mtrk_t::resize(uint32_t n) {
 	this->evnts_.resize(n);
 }
+/*
 mtrk_iterator_t mtrk_t::from_vec_iterator(
-						const std::vector<mtrk_event_t>::iterator& it) {
-	if (it==this->evnts_.end()) {
-		return this->end();
-	}
-	return mtrk_iterator_t(&(*it));
+						std::vector<mtrk_event_t>::iterator it) {
+	//if (it==this->evnts_.end()) {
+	//	return this->end();
+	//}
+	//return mtrk_iterator_t(&(*it));
+	auto pe = it.operator->();
+	return mtrk_iterator_t(pe);
 }
+//mtrk_const_iterator_t mtrk_t::from_vec_iterator(
+//						const std::vector<mtrk_event_t>::iterator& it) const {
+//	if (it==this->evnts_.end()) {
+//		return this->end();
+//	}
+//	return mtrk_const_iterator_t(&(*it));
+//}
 mtrk_const_iterator_t mtrk_t::from_vec_iterator(
-						const std::vector<mtrk_event_t>::iterator& it) const {
-	if (it==this->evnts_.end()) {
-		return this->end();
-	}
-	return mtrk_const_iterator_t(&(*it));
-}
-
+						std::vector<mtrk_event_t>::const_iterator it) const {
+	//if (it==this->evnts_.end()) {
+	//	return this->end();
+	//}
+	auto pe = it.operator->();  //this->evnts_.end()::operator->();
+	//return mtrk_const_iterator_t(&(*it));.
+	return mtrk_const_iterator_t(pe);
+}*/
 mtrk_t::validate_t mtrk_t::validate() const {
 	mtrk_t::validate_t r {};
 
@@ -371,7 +395,7 @@ std::string print_event_arrays(const mtrk_t& mtrk) {
 		s += "{{";
 		dbk::print_hexascii(e.begin(),e.end(),std::back_inserter(s),sep);
 		s += ("}, " + std::to_string(cumtk) + ", "
-			+ std::to_string(cumtk+e.delta_time()) + "\n");
+			+ std::to_string(cumtk+e.delta_time()) + "},\n");
 		cumtk += e.delta_time();
 	}
 	return s;

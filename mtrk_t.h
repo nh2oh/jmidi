@@ -52,6 +52,15 @@ struct event_tk_t {
 //
 class mtrk_t {
 public:
+	using value_type = mtrk_event_t;
+	using reference = mtrk_event_t&;
+	using const_reference = const mtrk_event_t&;
+	using pointer = mtrk_event_t*;
+	using const_pointer = const mtrk_event_t*;
+	using iterator = mtrk_iterator_t;
+	using const_iterator = mtrk_const_iterator_t;
+
+
 	// Creates an empty MTrk event sequence:
 	// nbytes() == 8, data_nbytes() == 0;
 	// This will classify as invalid (!.validate()), because an MTrk 
@@ -161,9 +170,12 @@ public:
 
 	friend maybe_mtrk_t make_mtrk(const unsigned char*, uint32_t);
 private:
-	mtrk_iterator_t from_vec_iterator(const std::vector<mtrk_event_t>::iterator&);
-	mtrk_const_iterator_t from_vec_iterator(const std::vector<mtrk_event_t>::iterator&) const;
-	
+	/*mtrk_iterator_t from_vec_iterator(std::vector<mtrk_event_t>::iterator);
+	// TODO:  Delete this overload?  Can't get an non const_iterator to evnts_ 
+	// in a const mtrk container...
+	//mtrk_const_iterator_t from_vec_iterator(const std::vector<mtrk_event_t>::iterator&) const;
+	mtrk_const_iterator_t from_vec_iterator(std::vector<mtrk_event_t>::const_iterator) const;
+	*/
 	std::vector<mtrk_event_t> evnts_ {};
 };
 std::string print(const mtrk_t&);
@@ -171,6 +183,14 @@ std::string print(const mtrk_t&);
 // with its cumtk and onset tick.  The output is valid syntax to brace-init 
 // a c++ array.  
 std::string print_event_arrays(const mtrk_t&);
+
+/*class mtrk_t_back_inserter {
+public:
+	mtrk_t_back_inserter(const mtrk_t&);
+
+private:
+	mtrk_t *p_;
+};*/
 
 // Returns true if the track qualifies as a tempo map; only a certain
 // subset of meta events are permitted in a tempo_map.  Does not 
