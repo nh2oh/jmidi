@@ -168,8 +168,8 @@ private:
 };
 std::string print(const mtrk_t&);
 // Prints each mtrk event as hexascii (using dbk::print_hexascii()) along
-// with its onset tick.  The output is valid syntax to brace-init a c++ 
-// array.  
+// with its cumtk and onset tick.  The output is valid syntax to brace-init 
+// a c++ array.  
 std::string print_event_arrays(const mtrk_t&);
 
 // Returns true if the track qualifies as a tempo map; only a certain
@@ -199,8 +199,10 @@ struct maybe_mtrk_t {
 //
 // get_simultanious_events(mtrk_iterator_t beg, mtrk_iterator_t end)
 //
-// Returns an iterator to one past the last event simultanious with
-// beg.  
+// Returns an iterator to one past the last event with onset tick == that
+// of beg.  
+// TODO:  Another possible meaning of "simultanious" is all events w/
+// tk onset < the tk onset of the off-event matching beg.  
 mtrk_iterator_t get_simultanious_events(mtrk_iterator_t, mtrk_iterator_t);
 
 //
@@ -250,4 +252,26 @@ std::vector<linked_onoff_pair_t>
 // Orphan note-on and note-off events are skipped (same behavior as 
 // get_linked_onoff_pairs().  
 std::string print_linked_onoff_pairs(const mtrk_t&);
+
+
+//
+// Copy events on [beg,end) for which pred() into dest.  Adjust the
+// delta time of each copied event such that each the new track the 
+// onset tk of each event is the same as in the original.   
+//
+template<typename InIt, typename OIt, typename UPred>
+OIt split_copy_if(InIt beg, InIt end, OIt dest, UPred pred) {
+	uint64_t cumtk_src = 0;
+	uint64_t cumtk_dest = 0;
+	for (auto curr=beg; curr!=end; ++curr) {
+		if (pred(*curr)) {
+			auto curr_cpy = *curr;
+			curr_cpy.set_delta_time(curr_cpy.delta_time() + (cumtk_src-cumtk_dest));
+			*dest++ = curr_cpy;
+			cumtk_dest += curr_cpy.delta_time();
+		}
+		cumtk_src += curr->delta_time();
+	}
+	return dest;
+};
 

@@ -358,14 +358,6 @@ std::string print(const mtrk_t& mtrk) {
 	return s;
 }
 
-struct sep_t {
-	std::string byte_pfx {""};
-	std::string byte_sfx {""};
-	std::string byte_sep {""};  // not appended to the very last byte
-	std::string elem_pfx {""};
-	std::string elem_sfx {""};
-	std::string elem_sep {""};  // not appended to the very last element
-};
 std::string print_event_arrays(const mtrk_t& mtrk) {
 	std::string s {};
 
@@ -374,12 +366,13 @@ std::string print_event_arrays(const mtrk_t& mtrk) {
 	sep.byte_sfx = "u";
 	sep.elem_sep = ",";
 
-	uint64_t tk_onset = 0;
+	uint64_t cumtk = 0;
 	for (const auto& e : mtrk) {
-		tk_onset += e.delta_time();
 		s += "{{";
 		dbk::print_hexascii(e.begin(),e.end(),std::back_inserter(s),sep);
-		s += "}, "+std::to_string(tk_onset) + "\n";
+		s += ("}, " + std::to_string(cumtk) + ", "
+			+ std::to_string(cumtk+e.delta_time()) + "\n");
+		cumtk += e.delta_time();
 	}
 	return s;
 }
