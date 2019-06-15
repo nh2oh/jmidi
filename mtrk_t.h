@@ -170,12 +170,6 @@ public:
 
 	friend maybe_mtrk_t make_mtrk(const unsigned char*, uint32_t);
 private:
-	/*mtrk_iterator_t from_vec_iterator(std::vector<mtrk_event_t>::iterator);
-	// TODO:  Delete this overload?  Can't get an non const_iterator to evnts_ 
-	// in a const mtrk container...
-	//mtrk_const_iterator_t from_vec_iterator(const std::vector<mtrk_event_t>::iterator&) const;
-	mtrk_const_iterator_t from_vec_iterator(std::vector<mtrk_event_t>::const_iterator) const;
-	*/
 	std::vector<mtrk_event_t> evnts_ {};
 };
 std::string print(const mtrk_t&);
@@ -183,14 +177,6 @@ std::string print(const mtrk_t&);
 // with its cumtk and onset tick.  The output is valid syntax to brace-init 
 // a c++ array.  
 std::string print_event_arrays(const mtrk_t&);
-
-/*class mtrk_t_back_inserter {
-public:
-	mtrk_t_back_inserter(const mtrk_t&);
-
-private:
-	mtrk_t *p_;
-};*/
 
 // Returns true if the track qualifies as a tempo map; only a certain
 // subset of meta events are permitted in a tempo_map.  Does not 
@@ -275,9 +261,11 @@ std::string print_linked_onoff_pairs(const mtrk_t&);
 
 
 //
-// Copy events on [beg,end) for which pred() into dest.  Adjust the
-// delta time of each copied event such that each the new track the 
-// onset tk of each event is the same as in the original.   
+// Copy events on [beg,end) for which pred() into dest.  Adjust the delta
+// time of each copied event such that in the new track the onset tk of 
+// each event is the same as in the original.  Note that the cumtk of the
+// events in the new track will in general differ from their values in the
+// original track.  
 //
 template<typename InIt, typename OIt, typename UPred>
 OIt split_copy_if(InIt beg, InIt end, OIt dest, UPred pred) {

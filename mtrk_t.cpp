@@ -209,13 +209,11 @@ mtrk_iterator_t mtrk_t::erase(mtrk_iterator_t it) {
 	auto idx = it-this->begin();
 	auto vit = this->evnts_.erase(this->evnts_.begin()+idx);
 	return this->begin()+(vit-this->evnts_.begin());
-	//return this->from_vec_iterator(this->evnts_.erase(this->evnts_.begin()+idx));
 }
 mtrk_const_iterator_t mtrk_t::erase(mtrk_const_iterator_t it) {
 	auto idx = it-this->begin();
 	auto vit = this->evnts_.erase(this->evnts_.begin()+idx);
 	return this->begin()+(vit-this->evnts_.begin());
-	//return this->from_vec_iterator(this->evnts_.erase(this->evnts_.begin()+idx));
 }
 mtrk_iterator_t mtrk_t::erase_no_tkshift(mtrk_iterator_t it) {
 	auto dt = it->delta_time();
@@ -231,32 +229,6 @@ void mtrk_t::clear() {
 void mtrk_t::resize(uint32_t n) {
 	this->evnts_.resize(n);
 }
-/*
-mtrk_iterator_t mtrk_t::from_vec_iterator(
-						std::vector<mtrk_event_t>::iterator it) {
-	//if (it==this->evnts_.end()) {
-	//	return this->end();
-	//}
-	//return mtrk_iterator_t(&(*it));
-	auto pe = it.operator->();
-	return mtrk_iterator_t(pe);
-}
-//mtrk_const_iterator_t mtrk_t::from_vec_iterator(
-//						const std::vector<mtrk_event_t>::iterator& it) const {
-//	if (it==this->evnts_.end()) {
-//		return this->end();
-//	}
-//	return mtrk_const_iterator_t(&(*it));
-//}
-mtrk_const_iterator_t mtrk_t::from_vec_iterator(
-						std::vector<mtrk_event_t>::const_iterator it) const {
-	//if (it==this->evnts_.end()) {
-	//	return this->end();
-	//}
-	auto pe = it.operator->();  //this->evnts_.end()::operator->();
-	//return mtrk_const_iterator_t(&(*it));.
-	return mtrk_const_iterator_t(pe);
-}*/
 mtrk_t::validate_t mtrk_t::validate() const {
 	mtrk_t::validate_t r {};
 
