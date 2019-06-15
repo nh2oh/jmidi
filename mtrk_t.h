@@ -7,6 +7,8 @@
 #include <vector>
 #include <array>  // For method .get_header()
 #include <type_traits>  // std::is_same<>
+#include <algorithm>  // std::shift_right()
+
 
 struct maybe_mtrk_t;
 
@@ -261,6 +263,8 @@ std::string print_linked_onoff_pairs(const mtrk_t&);
 
 
 //
+// OIt split_copy_if(InIt beg, InIt end, OIt dest, UPred pred)
+//
 // Copy events on [beg,end) for which pred() into dest.  Adjust the delta
 // time of each copied event such that in the new track the onset tk of 
 // each event is the same as in the original.  Note that the cumtk of the
@@ -281,5 +285,32 @@ OIt split_copy_if(InIt beg, InIt end, OIt dest, UPred pred) {
 		cumtk_src += curr->delta_time();
 	}
 	return dest;
+};
+
+//
+// FwIt split_if(FwIt beg, FwIt end, UPred pred)
+//
+// Basically remove_if(), but adjusts delta times
+// TODO:  Rough draft; delta times are not calculated correctly.  
+//
+template<typename FwIt, typename UPred>
+FwIt split_if(FwIt beg, FwIt end, UPred pred) {
+	uint64_t cumtk_src = 0;
+	uint64_t cumtk_dest = 0;
+	for (auto curr=beg; curr!=end; ++curr) {
+		auto curr_dt = curr->delta_time();
+		if (pred(*curr)) {
+			curr->set_delta_time(curr_dt + (cumtk_src-cumtk_dest));
+			cumtk_dest += curr->delta_time();
+
+			auto next = curr+1;
+			beg = std::rotate(beg,curr,next);
+			if (next != end) {
+				next->set_delta_time(next->delta_time()+curr_dt);
+			}
+		}
+		cumtk_src += curr_dt;
+	}
+	return beg;
 };
 

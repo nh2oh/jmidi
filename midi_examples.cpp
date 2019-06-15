@@ -19,6 +19,22 @@
 
 int midi_example() {
 
+	std::vector<int> vi {0,1,2,3,4,5,6,7,8,9};
+	for (const auto& e : vi) {
+		std::cout << e << ", ";
+	}
+	std::cout << std::endl;
+	auto it = std::rotate(vi.begin(),vi.begin()+4,vi.begin()+4+1);
+	for (const auto& e : vi) {
+		std::cout << e;
+		if (*it==e) {
+			std::cout << "* ";
+		} else {
+			std::cout << ", ";
+		}
+	}
+	std::cout << std::endl;
+	std::cout << std::endl;
 	/*auto e1 = midi_ch_event_t {0x90u,1,57,25};
 	mtrk_event_t me1(157,e1);
 	auto e1md = get_channel_event(me1);
