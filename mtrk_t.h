@@ -59,7 +59,7 @@ public:
 	using const_pointer = const mtrk_event_t*;
 	using iterator = mtrk_iterator_t;
 	using const_iterator = mtrk_const_iterator_t;
-
+	using difference_type = std::ptrdiff_t;
 
 	// Creates an empty MTrk event sequence:
 	// nbytes() == 8, data_nbytes() == 0;

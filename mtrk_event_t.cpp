@@ -874,7 +874,7 @@ bool is_channel(const mtrk_event_t& ev) {  // voice or mode
 }
 bool is_channel_voice(const mtrk_event_t& ev) {
 	auto md = ev.midi_data();
-	if (!md.is_valid || (md.status_nybble != 0xB0u)) {
+	if (!md.is_valid || (md.status_nybble == 0xB0u)) {
 		return false;
 	}
 	return (((md.p1>>3)&0x0Fu)!=0x0Fu);
