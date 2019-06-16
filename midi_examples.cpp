@@ -15,6 +15,7 @@
 #include <fstream>
 #include <optional>
 #include <vector>
+#include <iterator>
 
 
 int midi_example() {
@@ -251,13 +252,16 @@ int midi_mtrk_split_testing() {
 
 	std::cout << print_event_arrays(mtrkb) << std::endl << std::endl;
 	auto it = split_if(mtrkb.begin(),mtrkb.end(),isntnum43);
-	
-	std::cout << print_event_arrays(mtrkb.begin(),it) << std::endl << std::endl;
-	std::cout << print_event_arrays(it,mtrkb.end()) << std::endl << std::endl;
+	auto a = mtrk_t(mtrkb.begin(),it);
+	auto b = mtrk_t(it,mtrkb.end());
+	std::cout << print_event_arrays(a) << std::endl << std::endl;
+	std::cout << print_event_arrays(b) << std::endl << std::endl;
 
-	
-
+	auto c = mtrk_t();
+	merge(a.begin(),a.end(),b.begin(),b.end(),std::back_inserter(c));
+	std::cout << print_event_arrays(c) << std::endl << std::endl;
 
 	return 0;
-
 }
+
+

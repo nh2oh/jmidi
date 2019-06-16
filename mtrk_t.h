@@ -7,7 +7,7 @@
 #include <vector>
 #include <array>  // For method .get_header()
 #include <type_traits>  // std::is_same<>
-#include <algorithm>  // std::shift_right()
+#include <algorithm>  // std::rotate()
 #include <iterator>  // std::back_inserter
 
 struct maybe_mtrk_t;
@@ -306,7 +306,7 @@ mtrk_t split_copy_if(const mtrk_t& mtrk, UPred pred) {
 //
 // Partitions the mtrk events in [beg,end) such that events matching pred
 // appear at the beginning of the range, preserving relative order of the 
-// events is preserved.  
+// events.  
 // Returns an iterator to one-past the last event matching pred.  The delta 
 // times for events on both of the resulting ranges [beg,result_it), 
 // [result_it,end) are adjusted so that each event has the same onset tk as 
@@ -346,3 +346,59 @@ mtrk_t split_if(mtrk_t& mtrk, UPred pred) {
 	mtrk = mtrk_t(it,mtrk.end());
 	return result;
 };
+
+//
+// OIt merge(InIt beg1, InIt end1, InIt beg2, InIt end2, OIt dest)
+//
+// Merges the sequence of mtrk events on [beg1,end1) with the sequence on
+// [beg2,end2) into dest.  Delta times are adjusted so that the onset tk for 
+// each event in the merged sequence is the same as in the original 
+// sequence.  
+//
+// TODO:  This is a very rough draft.  Buggy and completely non-working.  
+// TODO:  merge_if(..., UPred pred)  ??
+//
+template<typename InIt, typename OIt>
+OIt merge(InIt beg1, InIt end1, InIt beg2, InIt end2, OIt dest) {
+	uint64_t ontk_1 = 0;
+	if (beg1 != end1) {
+		ontk_1 = beg1->delta_time();
+	}
+	uint64_t ontk_2 = 0;
+	if (beg2 != end2) {
+		ontk_2 = beg2->delta_time();
+	}
+	uint64_t cumtk_dest = 0;
+	auto curr1 = beg1;  auto curr2 = beg2;
+	uint64_t ontk_curr = 0;  InIt curr = beg1;
+	int whichone = 0;
+	while (curr1!=end1 || curr2!=end2) {
+		if (ontk_1<=ontk_2 && curr1!=end1) {
+			whichone = 1;
+			ontk_curr = ontk_1;
+			curr = curr1++;  // Have to check for end
+			if (curr1 != end1) {
+				ontk_1 += curr1->delta_time();  // Have to check for end
+			}
+		} else if (curr2!=end2) {
+			whichone = 2;
+			ontk_curr = ontk_2;
+			curr = curr2++;  // Have to check for end
+			ontk_2 += curr2->delta_time();  // Have to check for end
+			if (curr2 != end2) {
+				ontk_2 += curr2->delta_time();  // Have to check for end
+			}
+		}
+
+		// curr points at the next event for dest; it's desired onset tk is
+		// ontk_curr.  
+		auto curr_ev = *curr;
+		curr_ev.set_delta_time(ontk_curr - cumtk_dest);
+		*dest = curr_ev;
+		cumtk_dest += (ontk_curr - cumtk_dest);
+		++dest;
+	}
+	return dest;
+};
+
+
