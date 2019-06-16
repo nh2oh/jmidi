@@ -82,6 +82,7 @@ public:
 	// read-in if an error is encountered before the number of bytes 
 	// indicated by the chunk header have been read.  
 	mtrk_t(const unsigned char*, uint32_t);
+	mtrk_t(mtrk_const_iterator_t,mtrk_const_iterator_t);
 
 	// The number of events in the track
 	uint32_t size() const;
@@ -178,6 +179,7 @@ std::string print(const mtrk_t&);
 // Prints each mtrk event as hexascii (using dbk::print_hexascii()) along
 // with its cumtk and onset tick.  The output is valid syntax to brace-init 
 // a c++ array.  
+std::string print_event_arrays(mtrk_const_iterator_t,mtrk_const_iterator_t);
 std::string print_event_arrays(const mtrk_t&);
 
 // Returns true if the track qualifies as a tempo map; only a certain
@@ -271,6 +273,11 @@ std::string print_linked_onoff_pairs(const mtrk_t&);
 // events in the new track will in general differ from their values in the
 // original track.  
 //
+// TODO:  This and split_if() should not be templates; they should be regular
+// functions of mtrk_iterator_t since only this arg makes sense wrt adjusting
+// delta times.  
+//
+//
 template<typename InIt, typename OIt, typename UPred>
 OIt split_copy_if(InIt beg, InIt end, OIt dest, UPred pred) {
 	uint64_t cumtk_src = 0;
@@ -290,8 +297,15 @@ OIt split_copy_if(InIt beg, InIt end, OIt dest, UPred pred) {
 //
 // FwIt split_if(FwIt beg, FwIt end, UPred pred)
 //
-// Basically remove_if(), but adjusts delta times
-// TODO:  Rough draft; delta times are not calculated correctly.  
+// Partitions the mtrk events in [beg,end) such that events matching pred
+// appear at the beginning of the range, preserving relative order of the 
+// events is preserved.  
+// Returns an iterator to one-past the last event matching pred.  The delta 
+// times for events on both of the resulting ranges [beg,result_it), 
+// [result_it,end) are adjusted so that each event has the same onset tk as 
+// in the original range.  
+//
+// This is similar to std::remove_if(), but adjusts event delta times.  
 //
 template<typename FwIt, typename UPred>
 FwIt split_if(FwIt beg, FwIt end, UPred pred) {
@@ -308,8 +322,12 @@ FwIt split_if(FwIt beg, FwIt end, UPred pred) {
 			if (next != end) {
 				next->set_delta_time(next->delta_time()+curr_dt);
 			}
+		} else {
+			// Event *curr has been removed, so no longer contributes to the 
+			// src cumtk; curr_dt was added to the delta time for the next 
+			// (curr+1) event & will be accounted for in the next iteration.  
+			cumtk_src += curr_dt;
 		}
-		cumtk_src += curr_dt;
 	}
 	return beg;
 };

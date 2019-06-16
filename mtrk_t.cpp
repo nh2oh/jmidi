@@ -49,6 +49,11 @@ mtrk_t::mtrk_t(const unsigned char *p, uint32_t max_sz) {
 		o += curr_event.size;
 	}
 }
+mtrk_t::mtrk_t(mtrk_const_iterator_t beg, mtrk_const_iterator_t end) {
+	for (auto it=beg; it!=end; ++it) {
+		this->push_back(*it);
+	}
+}
 uint32_t mtrk_t::size() const {
 	return this->evnts_.size();
 }
@@ -353,7 +358,24 @@ std::string print(const mtrk_t& mtrk) {
 	}
 	return s;
 }
+std::string print_event_arrays(mtrk_const_iterator_t beg, mtrk_const_iterator_t end) {
+	std::string s {};
 
+	dbk::sep_t sep {};
+	sep.byte_pfx = "0x";
+	sep.byte_sfx = "u";
+	sep.elem_sep = ",";
+
+	uint64_t cumtk = 0;
+	for (auto it=beg; it!=end; ++it) { //(const auto& e : mtrk) {
+		s += "{{";
+		dbk::print_hexascii(it->begin(),it->end(),std::back_inserter(s),sep);
+		s += ("}, " + std::to_string(cumtk) + ", "
+			+ std::to_string(cumtk+it->delta_time()) + "},\n");
+		cumtk += it->delta_time();
+	}
+	return s;
+}
 std::string print_event_arrays(const mtrk_t& mtrk) {
 	std::string s {};
 
