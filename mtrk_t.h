@@ -8,7 +8,7 @@
 #include <array>  // For method .get_header()
 #include <type_traits>  // std::is_same<>
 #include <algorithm>  // std::shift_right()
-
+#include <iterator>  // std::back_inserter
 
 struct maybe_mtrk_t;
 
@@ -293,6 +293,13 @@ OIt split_copy_if(InIt beg, InIt end, OIt dest, UPred pred) {
 	}
 	return dest;
 };
+template <typename UPred>
+mtrk_t split_copy_if(const mtrk_t& mtrk, UPred pred) {
+	auto result = mtrk_t();
+	result.reserve(mtrk.size()/2);
+	split_copy_if(mtrk.begin(),mtrk.end(),std::back_inserter(result),pred);
+	return result;
+};
 
 //
 // FwIt split_if(FwIt beg, FwIt end, UPred pred)
@@ -331,4 +338,11 @@ FwIt split_if(FwIt beg, FwIt end, UPred pred) {
 	}
 	return beg;
 };
+template <typename UPred>
+mtrk_t split_if(mtrk_t& mtrk, UPred pred) {
+	auto it = split_if(mtrk.begin(),mtrk.end(),pred);
 
+	auto result = mtrk_t(mtrk.begin(),it);
+	mtrk = mtrk_t(it,mtrk.end());
+	return result;
+};
