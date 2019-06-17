@@ -390,7 +390,7 @@ OIt merge(InIt beg1, InIt end1, InIt beg2, InIt end2, OIt dest) {
 		}
 		auto curr_ev_cpy = *curr;
 		curr_ev_cpy.set_delta_time(ontk_curr - cumtk_dest);
-		*dest = curr_ev;
+		*dest = curr_ev_cpy;
 		cumtk_dest += (ontk_curr - cumtk_dest);
 		++dest;
 	}

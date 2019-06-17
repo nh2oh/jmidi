@@ -243,23 +243,32 @@ int midi_mtrk_split_testing() {
 		auto curr_ev = mtrk_event_t(e.d.data(),e.d.size());
 		mtrkb.push_back(curr_ev);
 	}
-
+	auto mtrkb_init = mtrkb;
 	//----------------------------------------------------------
 	auto isntnum43 = [](const mtrk_event_t& ev)->bool {
 		auto md = get_channel_event(ev);
 		return (is_channel_voice(ev) && (md.p1==67));  // 67 == 0x43u
 	};
 
-	std::cout << print_event_arrays(mtrkb) << std::endl << std::endl;
+	std::cout << "mtrkb:\n" << print_event_arrays(mtrkb) << std::endl << std::endl;
 	auto it = split_if(mtrkb.begin(),mtrkb.end(),isntnum43);
 	auto a = mtrk_t(mtrkb.begin(),it);
 	auto b = mtrk_t(it,mtrkb.end());
-	std::cout << print_event_arrays(a) << std::endl << std::endl;
-	std::cout << print_event_arrays(b) << std::endl << std::endl;
+	std::cout << "a:\n" << print_event_arrays(a) << std::endl << std::endl;
+	std::cout << "b:\n" << print_event_arrays(b) << std::endl << std::endl;
 
 	auto c = mtrk_t();
 	merge(b.begin(),b.end(),a.begin(),a.end(),std::back_inserter(c));
-	std::cout << print_event_arrays(c) << std::endl << std::endl;
+	std::cout << "c:\n" << print_event_arrays(c) << std::endl << std::endl;
+
+	for (int i=0; i<mtrkb_init.size(); ++i) {
+		if (mtrkb_init[i]!=c[i]) {
+			std::cout << "oops:" << std::endl;
+			std::cout << print(mtrkb_init[i]) << std::endl;
+			std::cout << print(c[i]) << std::endl;
+			std::cout << std::endl;
+		}
+	}
 
 	return 0;
 }
