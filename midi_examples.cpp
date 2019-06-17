@@ -258,7 +258,7 @@ int midi_mtrk_split_testing() {
 	std::cout << print_event_arrays(b) << std::endl << std::endl;
 
 	auto c = mtrk_t();
-	merge(a.begin(),a.end(),b.begin(),b.end(),std::back_inserter(c));
+	merge(b.begin(),b.end(),a.begin(),a.end(),std::back_inserter(c));
 	std::cout << print_event_arrays(c) << std::endl << std::endl;
 
 	return 0;

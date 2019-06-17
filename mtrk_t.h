@@ -355,8 +355,6 @@ mtrk_t split_if(mtrk_t& mtrk, UPred pred) {
 // each event in the merged sequence is the same as in the original 
 // sequence.  
 //
-// TODO:  This is a very rough draft.  Buggy and completely non-working.  
-// TODO:  merge_if(..., UPred pred)  ??
 //
 template<typename InIt, typename OIt>
 OIt merge(InIt beg1, InIt end1, InIt beg2, InIt end2, OIt dest) {
@@ -371,29 +369,27 @@ OIt merge(InIt beg1, InIt end1, InIt beg2, InIt end2, OIt dest) {
 	uint64_t cumtk_dest = 0;
 	auto curr1 = beg1;  auto curr2 = beg2;
 	uint64_t ontk_curr = 0;  InIt curr = beg1;
-	int whichone = 0;
 	while (curr1!=end1 || curr2!=end2) {
-		if (ontk_1<=ontk_2 && curr1!=end1) {
-			whichone = 1;
+		// Set curr, ontk_curr
+		// curr points at the next event for dest; its desired onset tk is
+		// ontk_curr.  After this conditional block, curr1,2 and ontk_1,2 have
+		// been advanced/incremented to the next event in the respective
+		// stream.
+		if (curr1!=end1 && (ontk_1<=ontk_2 || curr2==end2)) {
 			ontk_curr = ontk_1;
-			curr = curr1++;  // Have to check for end
+			curr = curr1++;
 			if (curr1 != end1) {
-				ontk_1 += curr1->delta_time();  // Have to check for end
+				ontk_1 += curr1->delta_time();
 			}
-		} else if (curr2!=end2) {
-			whichone = 2;
+		} else if (curr2!=end2 && (ontk_1>ontk_2 || curr1==end1)) {
 			ontk_curr = ontk_2;
-			curr = curr2++;  // Have to check for end
-			ontk_2 += curr2->delta_time();  // Have to check for end
+			curr = curr2++;
 			if (curr2 != end2) {
-				ontk_2 += curr2->delta_time();  // Have to check for end
+				ontk_2 += curr2->delta_time();
 			}
 		}
-
-		// curr points at the next event for dest; it's desired onset tk is
-		// ontk_curr.  
-		auto curr_ev = *curr;
-		curr_ev.set_delta_time(ontk_curr - cumtk_dest);
+		auto curr_ev_cpy = *curr;
+		curr_ev_cpy.set_delta_time(ontk_curr - cumtk_dest);
 		*dest = curr_ev;
 		cumtk_dest += (ontk_curr - cumtk_dest);
 		++dest;
