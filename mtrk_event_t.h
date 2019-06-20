@@ -325,7 +325,7 @@ midi_timesig_t get_timesig(const mtrk_event_t&, midi_timesig_t={});
 //
 // Channel event classification
 // Note that for many events, the status byte, as well as p1 and p2 are
-// needed to classify the event in a uswful way.  For example, where 
+// needed to classify the event in a useful way.  For example, where 
 // s&0xF0u==0x90u, (nominally a note-on status byte), p2 has to be > 0 
 // for the event to qualify as a note-on (otherwise it is a note-off).  
 // Where s&0xF0u==0xB0u, p1 distinguishes a channel_voice from a channel_mode
@@ -371,6 +371,8 @@ bool is_onoff_pair(int, int, int, int);
 
 
 midi_ch_event_t get_channel_event(const mtrk_event_t&, midi_ch_event_t={});
+
+mtrk_event_t make_ch_event(uint32_t,midi_ch_event_t);
 
 
 

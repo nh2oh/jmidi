@@ -355,6 +355,12 @@ mtrk_t split_if(mtrk_t& mtrk, UPred pred) {
 // each event in the merged sequence is the same as in the original 
 // sequence.  
 //
+// For events in the pair of ranges w/ the same onset tk, the events in range
+// [beg1,end1) are inserted first.  
+// TODO:  This is probably not good behavior; should insert events in 
+// "blocks" w/ the same onset tk from each range.  A set of events from
+// range 2 intended to occur @ the same onset tk should not be interrupted
+// by events from range 1.  
 //
 template<typename InIt, typename OIt>
 OIt merge(InIt beg1, InIt end1, InIt beg2, InIt end2, OIt dest) {

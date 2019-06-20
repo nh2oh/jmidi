@@ -23,11 +23,13 @@ mtrk_event_t::mtrk_event_t() {
 mtrk_event_t::mtrk_event_t(uint32_t dt, const midi_ch_event_t& md) {
 	//auto it = midi_write_vl_field(std::back_inserter(this->d_),dt);
 	auto it = midi_write_vl_field(this->d_.begin(),this->d_.end(),dt);
-	unsigned char s = md.status_nybble;
-	s += md.ch;
+	unsigned char s = 0x80u|(md.status_nybble);
+	s += 0x0Fu&(md.ch);
 	*it++ = s;
-	*it++ = md.p1;
-	*it++ = md.p2;
+	*it++ = 0x7Fu&(md.p1);
+	if (channel_status_byte_n_data_bytes(s)==2) {
+		*it++ = 0x7Fu&(md.p2);
+	}
 	this->midi_status_ = s;
 	this->flags_ = 0x00;
 	this->set_flag_small();
@@ -241,12 +243,11 @@ std::string mtrk_event_t::text_payload() const {
 uint32_t mtrk_event_t::uint32_payload() const {
 	return be_2_native<uint32_t>(this->payload_begin(),this->end());
 }
-// TODO:  This is evauating the delta_time field multiple times in inner
-// function calls & can be made way more effecient.  
 mtrk_event_t::channel_event_data_t mtrk_event_t::midi_data() const {
-	mtrk_event_t::channel_event_data_t result {};
+	mtrk_event_t::channel_event_data_t result {0x00u,0x80u,0x80u,0x80u};
 	result.is_valid = false;
-
+	// Note that 0x00u is invalid as a status nybble, and 0x80u is invalid
+	// as a channel number and value for p1, p2.  
 	if (this->type()==smf_event_type::channel) {
 		result.is_valid = true;
 		
@@ -256,8 +257,13 @@ mtrk_event_t::channel_event_data_t mtrk_event_t::midi_data() const {
 
 		result.status_nybble = this->midi_status_&0xF0u;
 		result.ch = this->midi_status_&0x0Fu;
-		result.p1 = mtrk_event_get_midi_p1_dtstart_unsafe(this->data(),this->midi_status_);
-		result.p2 = mtrk_event_get_midi_p2_dtstart_unsafe(this->data(),this->midi_status_);
+		if (!result.is_running_status) {
+			++p;
+		}
+		result.p1 = *p++;
+		if (channel_status_byte_n_data_bytes(this->midi_status_)==2) {
+			result.p2 = *p;
+		}
 	}
 
 	return result;

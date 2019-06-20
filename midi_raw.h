@@ -39,8 +39,8 @@ enum : uint8_t {
 	note_on = 0x90u,
 	key_pressure = 0xA0u,
 	ctrl_change = 0xB0u,
-	prog_change = 0xC0u,
-	ch_pressure = 0xD0u,
+	prog_change = 0xC0u,  // 1 data byte
+	ch_pressure = 0xD0u,  // 1 data byte
 	pitch_bend = 0xE0u
 };
 struct midi_ch_event_t {
@@ -49,6 +49,7 @@ struct midi_ch_event_t {
 	uint8_t p1 {0x00u};
 	uint8_t p2 {0x00u};
 };
+
 
 //template<typename T>
 //uint8_t status_nybble(const T& md) {
