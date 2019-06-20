@@ -68,9 +68,15 @@ public:
 	// some underlying buffer.  Avoids re-calculation of the delta-time, 
 	// running-status, event type, etc.  
 	mtrk_event_t(const unsigned char*, const validate_mtrk_event_result_t&);
-	// Ctor for callers who have pre-computed the exact size of the event and who
-	// can also supply a midi status byte if applicible, ex, an mtrk_container_iterator_t.  
+	// Ctors for callers who have pre-computed the exact size of the event 
+	// and who can also supply a midi status byte (if needed).  In the first
+	// overload, parameter 1 is a pointer to the first byte of the delta-time
+	// field for the event.  In the second overload, parameter 1 is the value
+	// of the delta time, and parameter 2 is a pointer to the first byte 
+	// immediately following the delta time field (the beginning of the 
+	// "event" data).  
 	mtrk_event_t(const unsigned char*, uint32_t, unsigned char=0);
+	mtrk_event_t(const uint32_t&, const unsigned char*, uint32_t, unsigned char=0);
 	// Copy ctor
 	mtrk_event_t(const mtrk_event_t&);
 	// Copy assignment; overwrites a pre-existing lhs 'this' w/ rhs
@@ -126,8 +132,6 @@ public:
 	// For meta events w/ a text payload, copies the payload to a
 	// std::string;  Returns an empty std::string otherwise.  
 	std::string text_payload() const;
-	// TODO:  Implementation is very unsafe; need to check buffer
-	// size, etc.  
 	uint32_t uint32_payload() const;
 	// For channel events, gets the midi data, including.  For non-channel
 	// events, .is_valid==false and the value of all other fields is 

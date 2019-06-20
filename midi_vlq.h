@@ -48,18 +48,17 @@ OIt native_2_be(OIt beg, OIt end, T val) {
 		std::remove_cvref<decltype(*end)>::type,unsigned char>::value);
 	static_assert(std::is_integral<T>::value);
 	static_assert(std::is_unsigned<T>::value);
-	static_assert((end-beg)==sizeof(T));
+	//static_assert((end-beg)==sizeof(T));
 	static_assert(sizeof(T)>=1);
 	
 	// Platform-independent conversion of val to a be-encoded value
 	T mask {0xFFu};
-	mask <<= CHAR_BIT*(sizeof(T)-1);
 	T be_val {0};
 	for (int i=0; i<sizeof(T); ++i) {
-		// Could do: while (mask>0); but there may be implementation-defined 
-		// behavior wrt how mask is wrapped when shifted off the end
-		be_val += mask&val;
-		mask >>= CHAR_BIT;
+		auto temp = mask&val;
+		temp <<= (sizeof(T)-1-i)*CHAR_BIT;
+		be_val += temp;
+		mask <<= CHAR_BIT;
 	}
 	// Serialization; could be replaced w/ std::memcpy()
 	unsigned char *p = static_cast<unsigned char*>(static_cast<void*>(&be_val));

@@ -68,7 +68,30 @@ mtrk_event_t::mtrk_event_t(const unsigned char *p, uint32_t sz, unsigned char rs
 		std::copy(p,p+sz,new_p);
 		this->init_big(new_p,sz,sz,rs);  // adopts new_p
 		// TODO:  This is blindly trusting rs?  For the small case i call 
-		// get_running_Status_byte()...  Bug?
+		// get_running_status_byte()...  Bug?
+	}
+}
+// TODO:  Clamp dt to the max allowable value
+mtrk_event_t::mtrk_event_t(const uint32_t& dt, const unsigned char *p, 
+										uint32_t sz, unsigned char rs) {
+	auto dt_end = midi_write_vl_field(this->d_.begin(),dt);
+	auto dt_sz = (this->d_.begin()-dt_end);
+	if ((dt_sz+sz) > static_cast<uint32_t>(offs::max_size_sbo)) {
+		// Does not fit in the sbo:
+		auto new_p = new unsigned char[sz+dt_sz];
+		auto it = std::copy(this->d_.begin(),dt_end,new_p);
+		it = std::copy(p,p+sz,it);
+		this->init_big(new_p,sz+dt_sz,sz+dt_sz,rs);  // adopts new_p
+		// TODO:  This is blindly trusting rs?  For the small case i call 
+		// get_running_status_byte()...  Bug?
+	} else {
+		// Fits in the sbo:
+		this->set_flag_small();
+		auto it = std::copy(p,p+sz,dt_end);
+		while (it!=this->d_.end()) {
+			*it++ = 0x00u;
+		}
+		this->midi_status_ = get_running_status_byte(*(dt_end),rs);
 	}
 }
 //
@@ -871,6 +894,26 @@ midi_timesig_t get_timesig(const mtrk_event_t& ev, midi_timesig_t def) {
 	result.ntd32pq = *it++;
 	return result;
 }
+
+mtrk_event_t make_tempo(const uint32_t& dt, const uint32_t& uspqn) {
+	//;  // meta text event w/ payload size==0
+	std::array<unsigned char,7> evdata {0xFFu,0x51u,0x03u,0x00u,0x00u,0x00u,0x00u};
+	native_2_be(evdata.begin()+3,evdata.end(),uspqn);
+	auto result = mtrk_event_t(dt,evdata.data(),evdata.size(),0x00u);
+	//auto it = midi_write_vl_field(result.begin(),result.end(),dt);
+	//std::copy(evdata.begin(),evdata.end(),it);
+	return result;
+}
+/*
+mtrk_event_t make_eot(const uint32_t&);
+mtrk_event_t make_timesig(const uint32_t&, const midi_timesig_t&);
+mtrk_event_t make_instname(const uint32_t&, const std::string&);
+mtrk_event_t make_trackname(const uint32_t&, const std::string&);
+*/
+
+
+
+
 
 
 bool is_channel(const mtrk_event_t& ev) {  // voice or mode
