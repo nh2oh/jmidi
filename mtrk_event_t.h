@@ -53,7 +53,13 @@ public:
 	// Default ctor; creates a "small" object representing a meta-text event
 	// w/ a payload length of 0.  
 	mtrk_event_t();
-	// delta_time, raw data
+	// delta_time, raw midi channel event data
+	// This ctor will convert any invalid values in the midi_ch_event_t 
+	// parameter silently so that the mtrk_event_t is valid.  To avoid 
+	// undefined behavior, it is the responsibility of the caller to ensure 
+	// the input is valid.  To generate valid data, status bytes are computed
+	// from the midi_ch_event_t parameter and the MSB is subsequently set to
+	// 1; similarly for data bytes.  
 	mtrk_event_t(uint32_t, const midi_ch_event_t&);
 	// Ctor for callers who have already run validate_mtrk_event_dtstart() on
 	// some underlying buffer.  Avoids re-calculation of the delta-time, 

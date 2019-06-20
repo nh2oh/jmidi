@@ -21,8 +21,7 @@ mtrk_event_t::mtrk_event_t() {
 	this->set_flag_small();
 }
 mtrk_event_t::mtrk_event_t(uint32_t dt, const midi_ch_event_t& md) {
-	//auto it = midi_write_vl_field(std::back_inserter(this->d_),dt);
-	auto it = midi_write_vl_field(this->d_.begin(),this->d_.end(),dt);
+	auto it = midi_write_vl_field(this->d_.begin(),this->d_.begin()+4,dt);
 	unsigned char s = 0x80u|(md.status_nybble);
 	s += 0x0Fu&(md.ch);
 	*it++ = s;
