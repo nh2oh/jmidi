@@ -46,7 +46,10 @@ std::string print(const mtrk_event_t&,
 // TODO:  Member enum class offs is absolutely disgusting
 // TODO:  Error handling for some of the ctors; default uninit value?
 // TODO:  Ctors for channel/meta/sysex data structs
-//
+// TODO:  It is kind of dumb that this container encodes data as stipulated
+// by the smf serialization spec... ex, meta tempo events are stored as be
+// on le archs... this makes reading/writing a pita.  Why not work w/ the
+// native data formats and convert to/from be for (de)serialization???
 //
 class mtrk_event_t {
 public:
@@ -328,6 +331,16 @@ uint32_t get_tempo(const mtrk_event_t&, uint32_t=500000);
 // stipulated by the MIDI std.  
 midi_timesig_t get_timesig(const mtrk_event_t&, midi_timesig_t={});
 
+// For all these make_* functions, parameter 1 is a delta-time.  
+// Parameter 2 is us/quarter-note
+mtrk_event_t make_tempo(const uint32_t&, const uint32_t&);
+mtrk_event_t make_eot(const uint32_t&);
+mtrk_event_t make_timesig(const uint32_t&, const midi_timesig_t&);
+mtrk_event_t make_instname(const uint32_t&, const std::string&);
+mtrk_event_t make_trackname(const uint32_t&, const std::string&);
+
+
+
 //
 // Channel event classification
 // Note that for many events, the status byte, as well as p1 and p2 are
@@ -377,33 +390,4 @@ bool is_onoff_pair(int, int, int, int);
 
 
 midi_ch_event_t get_channel_event(const mtrk_event_t&, midi_ch_event_t={});
-
-mtrk_event_t make_ch_event(uint32_t,midi_ch_event_t);
-
-
-
-/*
-//
-// Meta events
-//
-class text_event_t {
-public:
-	// Creates an event w/ payload=="text event"
-	text_event_t();
-	explicit text_event_t(const std::string&);
-
-	std::string text() const;
-	uint32_t delta_time() const;
-	uint32_t size() const;
-	uint32_t data_size() const;
-
-	// Setters return false upon failure (ex, if the caller attempts to
-	// pass a value too large).  
-	bool set_text(const std::string&);
-	//bool set_delta_time(uint32_t);
-private:
-	mtrk_event_t d_;
-};
-*/
-
 

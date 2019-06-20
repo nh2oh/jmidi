@@ -32,6 +32,45 @@ T be_2_native(InIt beg, InIt end) {
 };
 
 
+
+//
+// OIt native_2_be(OIt beg, OIt end, T val)
+//
+// Where OIt is an iterator to an array of unsigned char and T is an 
+// unsigned integer type, writes val into the range [beg, (end-beg)).  
+// end-beg must == sizeof(T):
+//
+template<typename T, typename OIt>
+OIt native_2_be(OIt beg, OIt end, T val) {
+	static_assert(std::is_same<
+		std::remove_cvref<decltype(*beg)>::type,unsigned char>::value);
+	static_assert(std::is_same<
+		std::remove_cvref<decltype(*end)>::type,unsigned char>::value);
+	static_assert(std::is_integral<T>::value);
+	static_assert(std::is_unsigned<T>::value);
+	static_assert((end-beg)==sizeof(T));
+	static_assert(sizeof(T)>=1);
+	
+	// Platform-independent conversion of val to a be-encoded value
+	T mask {0xFFu};
+	mask <<= CHAR_BIT*(sizeof(T)-1);
+	T be_val {0};
+	for (int i=0; i<sizeof(T); ++i) {
+		// Could do: while (mask>0); but there may be implementation-defined 
+		// behavior wrt how mask is wrapped when shifted off the end
+		be_val += mask&val;
+		mask >>= CHAR_BIT;
+	}
+	// Serialization; could be replaced w/ std::memcpy()
+	unsigned char *p = static_cast<unsigned char*>(static_cast<void*>(&be_val));
+	auto it=beg;
+	for (true; it!=end; ++it) {
+		*it = *p++;
+	}
+	return it;
+};
+
+
 // 
 // The max size of a vl field is 4 bytes, and the largest value it may encode is
 // 0x0FFFFFFF (BE-encoded as: FF FF FF 7F) => 268,435,455, which fits safely in
