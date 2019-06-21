@@ -746,6 +746,16 @@ meta_event_t classify_meta_event_impl(const uint16_t& d16) {
 		}
 	}
 }
+bool meta_hastext_impl(const uint16_t& t) {
+	auto mttype = classify_meta_event_impl(t);
+	return (mttype==meta_event_t::text 
+			|| mttype==meta_event_t::copyright
+			|| mttype==meta_event_t::instname
+			|| mttype==meta_event_t::trackname
+			|| mttype==meta_event_t::lyric
+			|| mttype==meta_event_t::marker
+			|| mttype==meta_event_t::cuepoint);
+}
 
 std::string print(const meta_event_t& mt) {
 	if (mt==meta_event_t::seqn) {
@@ -850,7 +860,7 @@ bool is_timesig(const mtrk_event_t& ev) {
 bool is_keysig(const mtrk_event_t& ev) {
 	return is_meta(ev, meta_event_t::keysig);
 }
-
+// TODO:  This should use meta_hastext_impl()...
 bool meta_has_text(const mtrk_event_t& ev) {
 	auto mttype = classify_meta_event(ev);
 	return (mttype==meta_event_t::text 
@@ -896,7 +906,7 @@ midi_timesig_t get_timesig(const mtrk_event_t& ev, midi_timesig_t def) {
 }
 
 mtrk_event_t make_tempo(const uint32_t& dt, const uint32_t& uspqn) {
-	std::array<unsigned char,7> evdata {0xFFu,0x51u,0x03u,0x00u,0x00u,0x00u,0x00u};
+	std::array<unsigned char,6> evdata {0xFFu,0x51u,0x03u,0x00u,0x00u,0x00u};
 	write_24bit_be((uspqn>0xFFFFFFu ? 0xFFFFFFu : uspqn), evdata.begin()+3);
 	auto result = mtrk_event_t(dt,evdata.data(),evdata.size(),0x00u);
 	return result;
@@ -912,11 +922,31 @@ mtrk_event_t make_timesig(const uint32_t& dt, const midi_timesig_t& ts) {
 	auto result = mtrk_event_t(dt,evdata.data(),evdata.size(),0x00u);
 	return result;
 }
-/*
-mtrk_event_t make_timesig(const uint32_t&, const midi_timesig_t&);
-mtrk_event_t make_instname(const uint32_t&, const std::string&);
-mtrk_event_t make_trackname(const uint32_t&, const std::string&);
-*/
+mtrk_event_t make_instname(const uint32_t& dt, const std::string& s) {
+	return make_meta_generic_text(dt,0x04u,s);
+}
+mtrk_event_t make_trackname(const uint32_t& dt, const std::string& s) {
+	return make_meta_generic_text(dt,0x03u,s);
+}
+
+mtrk_event_t make_meta_generic_text(const uint32_t& dt, const uint8_t type, 
+									const std::string& s) {
+	uint16_t mttb = 0xFF00u + type;
+	if (!meta_hastext_impl(mttb)) {
+		// TODO:  This probably breaks nrvo?
+		return mtrk_event_t();
+	}
+	std::vector<unsigned char> evdata;
+	evdata.reserve(sizeof(mtrk_event_t));
+	auto it = midi_write_vl_field(std::back_inserter(evdata),dt);
+	evdata.push_back(0xFFu);
+	evdata.push_back(type);
+	it = midi_write_vl_field(std::back_inserter(evdata),s.size());
+	std::copy(s.begin(),s.end(),std::back_inserter(evdata));
+	auto result = mtrk_event_t(evdata.data(),evdata.size(),0x00u);
+	return result;
+}
+
 
 
 

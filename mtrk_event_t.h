@@ -40,7 +40,9 @@ std::string print(const mtrk_event_t&,
 // determine the object type dynamically.  One would not have to process the
 // delta-time field.  Presumably .type() is the most common method called on
 // these objects.  
+// For case big, I could then cache the meta type-byte as well...
 //
+// TODO:  Add typedefs so std::back_inserter() can be used.  
 // TODO:  This exposes a lot of dangerous getters
 // TODO:  ==,!= operators
 // TODO:  Member enum class offs is absolutely disgusting
@@ -301,6 +303,7 @@ enum class meta_event_t : uint16_t {
 	unknown = 0xFFFFu
 };
 meta_event_t classify_meta_event_impl(const uint16_t&);
+bool meta_hastext_impl(const uint16_t&);
 
 meta_event_t classify_meta_event(const mtrk_event_t&);
 std::string print(const meta_event_t&);
@@ -345,11 +348,16 @@ midi_timesig_t get_timesig(const mtrk_event_t&, midi_timesig_t={});
 // max value.  
 mtrk_event_t make_tempo(const uint32_t&, const uint32_t&);
 mtrk_event_t make_eot(const uint32_t&);
+// TODO:  Are there bounds on the values of the ts params?
 mtrk_event_t make_timesig(const uint32_t&, const midi_timesig_t&);
 mtrk_event_t make_instname(const uint32_t&, const std::string&);
 mtrk_event_t make_trackname(const uint32_t&, const std::string&);
-
-
+// Writes the delta time, 0xFF, type, a vl-length, then the string into
+// the event.  If the uint8_t type byte does not correspond to a
+// text-containing meta event, returns a default-constructed mtrk_event_t
+// (which is a meta text event w/ payload size 0).  
+mtrk_event_t make_meta_generic_text(const uint32_t&, const uint8_t,
+									const std::string&);
 
 //
 // Channel event classification
