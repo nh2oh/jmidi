@@ -18,8 +18,7 @@ template<typename T, typename InIt>
 T be_2_native(InIt beg, InIt end) {
 	static_assert(std::is_same<
 		std::remove_cvref<decltype(*beg)>::type,unsigned char>::value);
-	static_assert(std::is_integral<T>::value);
-	static_assert(std::is_unsigned<T>::value);
+	static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value);
 	T result {0};
 	auto niter = sizeof(T)<=(end-beg) ? sizeof(T) : (end-beg);
 	auto it = beg;
@@ -29,34 +28,6 @@ T be_2_native(InIt beg, InIt end) {
 		++it;
 	}
 	return result;
-};
-
-
-
-//
-// OIt native_2_be(OIt beg, OIt end, T val)
-//
-// Where OIt is an iterator to an array of unsigned char and T is an 
-// unsigned integer type, writes val into the range [beg, (end-beg)).  
-// end-beg must == sizeof(T):
-//
-template<typename T, typename OIt>
-OIt write_be(OIt beg, OIt end, T val) {
-	static_assert(std::is_same<
-		std::remove_cvref<decltype(*beg)>::type,unsigned char>::value);
-	static_assert(std::is_same<
-		std::remove_cvref<decltype(*end)>::type,unsigned char>::value);
-	static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value);
-	static_assert(sizeof(T)>=1);
-	
-	auto be_val = native2be(val);
-	// Serialization; could be replaced w/ std::memcpy()
-	unsigned char *p = static_cast<unsigned char*>(static_cast<void*>(&be_val));
-	auto it=beg;
-	for (true; it!=end; ++it) {
-		*it = *p++;
-	}
-	return it;
 };
 
 
@@ -80,7 +51,7 @@ T native2be(T val) {
 	T mask {0xFFu};
 	for (int i=0; i<sizeof(T); ++i) {
 		be_val <<= CHAR_BIT;
-		auto temp = ((mask&le_val) >> (i*CHAR_BIT));
+		auto temp = ((mask&val) >> (i*CHAR_BIT));
 		be_val += temp;
 		mask <<= CHAR_BIT;
 	}
@@ -89,36 +60,65 @@ T native2be(T val) {
 
 
 //
-// OIt native_2_24bit_be(OIt beg, OIt end, T val) {
+// OIt write_bytes(T val, OIt dest)
+//
+// Writes sizeof(T) bytes into the output iterator dest.  Returns an 
+// iterator pointing to into the destination range one past the last 
+// element copied.  
+//
+template<typename T, typename OIt>
+OIt write_bytes(T val, OIt dest) {
+	static_assert(std::is_same<
+		std::remove_cvref<decltype(*dest)>::type,unsigned char>::value);
+
+	unsigned char *p = static_cast<unsigned char*>(static_cast<void*>(&val));
+	for (int i=0; i<sizeof(T); ++i) {
+		*dest++ = *p++;
+	}
+	return dest;
+
+	// Alternatively:
+	//auto src = static_cast<unsigned char*>(static_cast<void*>(&val));
+	//std::memcpy(dest,src,sizeof(T));
+	// However, memcpy() returns a void* (?)
+};
+
+// 
+// OIt write_bytes(T val, std::size_t n, OIt dest)
+//
+// Writes min(sizeof(T), n) bytes into the output iterator dest.  Returns 
+// an iterator pointing to into the destination range one past the last 
+// element copied.  
+//
+template<typename T, typename OIt>
+OIt write_bytes(T val, std::size_t n, OIt dest) {
+	static_assert(std::is_same<
+		std::remove_cvref<decltype(*dest)>::type,unsigned char>::value);
+
+	auto niter = sizeof(T)<=n ? sizeof(T) : n;
+	unsigned char *p = static_cast<unsigned char*>(static_cast<void*>(&val));
+	for (int i=0; i<niter; ++i) {
+		*dest++ = *p++;
+	}
+	return dest;
+};
+
+
+//
+// OIt write_24bit_be(uint32_t val, OIt dest) {
 //
 // Where OIt is an iterator to an array of unsigned char and T is an 
-// unsigned integer type, writes val into the range [beg, (end-beg)).  
-// end-beg must == sizeof(T):
+// unsigned integer type, writes the 3 most significant bytes of val
+// in be format into dest.  Returns an iterator pointing to into the 
+// destination range one past the last element copied.  
 //
 template<typename OIt>
-OIt write_24bit_be(OIt beg, OIt end, uint32_t val) {
+OIt write_24bit_be(uint32_t val, OIt dest) {
 	static_assert(std::is_same<
-		std::remove_cvref<decltype(*beg)>::type,unsigned char>::value);
-	static_assert(std::is_same<
-		std::remove_cvref<decltype(*end)>::type,unsigned char>::value);
+		std::remove_cvref<decltype(*dest)>::type,unsigned char>::value);
 	
-	// Platform-independent conversion of val to a be-encoded value
-	uint32_t mask {0xFFu};
-	uint32_t be_val {0};
-	for (int i=0; i<sizeof(uint32_t); ++i) {
-		auto temp = mask&val;
-		temp <<= (sizeof(uint32_t)-1-i)*CHAR_BIT;
-		be_val += temp;
-		mask <<= CHAR_BIT;
-	}
-	// Serialization; could be replaced w/ std::memcpy()
-	unsigned char *p = static_cast<unsigned char*>(static_cast<void*>(&be_val));
-	++p;  // Skip the least-sig byte
-	auto it=beg;
-	for (int i=0; ((it!=end)&&(i<4)); ++i) {
-		*it++ = *p++;
-	}
-	return it;
+	auto be_val = native2be(val);
+	return write_bytes(be_val,3,dest);
 };
 
 

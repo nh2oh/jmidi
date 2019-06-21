@@ -896,12 +896,9 @@ midi_timesig_t get_timesig(const mtrk_event_t& ev, midi_timesig_t def) {
 }
 
 mtrk_event_t make_tempo(const uint32_t& dt, const uint32_t& uspqn) {
-	//;  // meta text event w/ payload size==0
 	std::array<unsigned char,7> evdata {0xFFu,0x51u,0x03u,0x00u,0x00u,0x00u,0x00u};
-	write_24bit_be(evdata.begin()+3,evdata.end(),uspqn);
+	write_24bit_be(uspqn,evdata.begin()+3);
 	auto result = mtrk_event_t(dt,evdata.data(),evdata.size(),0x00u);
-	//auto it = midi_write_vl_field(result.begin(),result.end(),dt);
-	//std::copy(evdata.begin(),evdata.end(),it);
 	return result;
 }
 /*
