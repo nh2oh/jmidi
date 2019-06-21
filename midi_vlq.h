@@ -76,7 +76,6 @@ OIt write_bytes(T val, OIt dest) {
 		*dest++ = *p++;
 	}
 	return dest;
-
 	// Alternatively:
 	//auto src = static_cast<unsigned char*>(static_cast<void*>(&val));
 	//std::memcpy(dest,src,sizeof(T));
@@ -108,9 +107,9 @@ OIt write_bytes(T val, std::size_t n, OIt dest) {
 // OIt write_24bit_be(uint32_t val, OIt dest) {
 //
 // Where OIt is an iterator to an array of unsigned char and T is an 
-// unsigned integer type, writes the 3 most significant bytes of val
-// in be format into dest.  Returns an iterator pointing to into the 
-// destination range one past the last element copied.  
+// unsigned integer type, writes the 3 bytes of val _following_ the most
+// significant into dest (in be format).  Returns an iterator pointing 
+// to into the destination range one past the last element copied.  
 //
 template<typename OIt>
 OIt write_24bit_be(uint32_t val, OIt dest) {
@@ -118,7 +117,12 @@ OIt write_24bit_be(uint32_t val, OIt dest) {
 		std::remove_cvref<decltype(*dest)>::type,unsigned char>::value);
 	
 	auto be_val = native2be(val);
-	return write_bytes(be_val,3,dest);
+	unsigned char *p = static_cast<unsigned char*>(static_cast<void*>(&be_val));
+	++p;  // Truncate the most-significant byte
+	for (int i=0; i<3; ++i) {
+		*dest++ = *p++;
+	}
+	return dest;
 };
 
 
