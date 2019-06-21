@@ -28,11 +28,12 @@ uint32_t sec2ticks(const double&, const midi_time_t&);
 // the time signature is assumed to be 4/4, and the tempo 120 beats per 
 // minute.
 struct midi_timesig_t {
-	uint8_t num {4};
-	uint8_t log2denom {2};  // denom == std::exp2(log2denom)
-	uint8_t clckspclk {24};  // "Number of MIDI clocks in a metronome tick"
-	uint8_t ntd32pq {8};  // "Number of notated 32'nd notes per MIDI q nt"
+	uint8_t num {4};  // "nn"
+	uint8_t log2denom {2};  // denom == std::exp2(log2denom); "dd"
+	uint8_t clckspclk {24};  // "Number of MIDI clocks in a metronome tick"; "cc"
+	uint8_t ntd32pq {8};  // "Number of notated 32'nd notes per MIDI q nt"; "bb"
 };
+bool operator==(const midi_timesig_t&, const midi_timesig_t&);
 
 enum : uint8_t {
 	note_off = 0x80u,

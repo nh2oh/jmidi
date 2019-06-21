@@ -901,8 +901,18 @@ mtrk_event_t make_tempo(const uint32_t& dt, const uint32_t& uspqn) {
 	auto result = mtrk_event_t(dt,evdata.data(),evdata.size(),0x00u);
 	return result;
 }
+mtrk_event_t make_eot(const uint32_t& dt) {
+	std::array<unsigned char,3> evdata {0xFFu,0x2Fu,0x00u};
+	auto result = mtrk_event_t(dt,evdata.data(),evdata.size(),0x00u);
+	return result;
+}
+mtrk_event_t make_timesig(const uint32_t& dt, const midi_timesig_t& ts) {
+	std::array<unsigned char,7> evdata {0xFFu,0x58u,0x04u,
+		ts.num,ts.log2denom,ts.clckspclk,ts.ntd32pq};
+	auto result = mtrk_event_t(dt,evdata.data(),evdata.size(),0x00u);
+	return result;
+}
 /*
-mtrk_event_t make_eot(const uint32_t&);
 mtrk_event_t make_timesig(const uint32_t&, const midi_timesig_t&);
 mtrk_event_t make_instname(const uint32_t&, const std::string&);
 mtrk_event_t make_trackname(const uint32_t&, const std::string&);

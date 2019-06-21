@@ -15,6 +15,13 @@ uint32_t sec2ticks(const double& sec, const midi_time_t& t) {
 	return static_cast<uint32_t>(std::round(sec*(t.tpq)*(1.0/t.uspq)*1000000.0));
 }
 
+bool operator==(const midi_timesig_t& rhs, const midi_timesig_t& lhs) {
+	return((rhs.clckspclk == lhs.clckspclk)
+		&& (rhs.log2denom == lhs.log2denom)
+		&& (rhs.ntd32pq == lhs.ntd32pq)
+		&& (rhs.num == lhs.num));
+}
+
 validate_chunk_header_result_t validate_chunk_header(const unsigned char *p, uint32_t max_size) {
 	validate_chunk_header_result_t result {};
 	if (max_size < 8) {
