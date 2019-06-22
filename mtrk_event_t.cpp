@@ -813,8 +813,6 @@ bool is_meta(const mtrk_event_t& ev, const meta_event_t& mtype) {
 	if (ev.type()==smf_event_type::meta) {
 		auto it = ev.event_begin();
 		return classify_meta_event_impl(dbk::be_2_native<uint16_t>(&*it))==mtype;
-		//auto p = ev.data_skipdt();
-		//return classify_meta_event_impl(dbk::be_2_native<uint16_t>(p))==mtype;
 	}
 	return false;
 }
@@ -863,13 +861,7 @@ bool is_keysig(const mtrk_event_t& ev) {
 
 bool meta_has_text(const mtrk_event_t& ev) {
 	auto mttype = classify_meta_event(ev);
-	return meta_hastext_impl(static_cast<uint16_t>(mttype)); /*(mttype==meta_event_t::text 
-			|| mttype==meta_event_t::copyright
-			|| mttype==meta_event_t::instname
-			|| mttype==meta_event_t::trackname
-			|| mttype==meta_event_t::lyric
-			|| mttype==meta_event_t::marker
-			|| mttype==meta_event_t::cuepoint);*/
+	return meta_hastext_impl(static_cast<uint16_t>(mttype));
 }
 
 std::string meta_generic_gettext(const mtrk_event_t& ev) {
@@ -923,16 +915,30 @@ mtrk_event_t make_timesig(const uint32_t& dt, const midi_timesig_t& ts) {
 	return result;
 }
 mtrk_event_t make_instname(const uint32_t& dt, const std::string& s) {
-	return make_meta_generic_text(dt,0x04u,s);
+	return make_meta_generic_text(dt,meta_event_t::instname,s);
 }
 mtrk_event_t make_trackname(const uint32_t& dt, const std::string& s) {
-	return make_meta_generic_text(dt,0x03u,s);
+	return make_meta_generic_text(dt,meta_event_t::trackname,s);
 }
-
-mtrk_event_t make_meta_generic_text(const uint32_t& dt, const uint8_t type, 
+mtrk_event_t make_lyric(const uint32_t& dt, const std::string& s) {
+	return make_meta_generic_text(dt,meta_event_t::lyric,s);
+}
+mtrk_event_t make_marker(const uint32_t& dt, const std::string& s) {
+	return make_meta_generic_text(dt,meta_event_t::marker,s);
+}
+mtrk_event_t make_cuepoint(const uint32_t& dt, const std::string& s) {
+	return make_meta_generic_text(dt,meta_event_t::cuepoint,s);
+}
+mtrk_event_t make_text(const uint32_t& dt, const std::string& s) {
+	return make_meta_generic_text(dt,meta_event_t::text,s);
+}
+mtrk_event_t make_copyright(const uint32_t& dt, const std::string& s) {
+	return make_meta_generic_text(dt,meta_event_t::copyright,s);
+}
+mtrk_event_t make_meta_generic_text(const uint32_t& dt, const meta_event_t& type, 
 									const std::string& s) {
-	uint16_t mttb = 0xFF00u + type;
-	if (!meta_hastext_impl(mttb)) {
+	auto type_int16 = static_cast<uint16_t>(type);  // TODO:  Gross
+	if (!meta_hastext_impl(type_int16)) {
 		// TODO:  This probably breaks nrvo?
 		return mtrk_event_t();
 	}
@@ -940,7 +946,7 @@ mtrk_event_t make_meta_generic_text(const uint32_t& dt, const uint8_t type,
 	evdata.reserve(sizeof(mtrk_event_t));
 	auto it = midi_write_vl_field(std::back_inserter(evdata),dt);
 	evdata.push_back(0xFFu);
-	evdata.push_back(type);
+	evdata.push_back(static_cast<uint8_t>(type_int16&0x00FFu));
 	it = midi_write_vl_field(std::back_inserter(evdata),s.size());
 	std::copy(s.begin(),s.end(),std::back_inserter(evdata));
 	auto result = mtrk_event_t(evdata.data(),evdata.size(),0x00u);

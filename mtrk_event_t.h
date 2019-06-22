@@ -370,11 +370,14 @@ mtrk_event_t make_instname(const uint32_t&, const std::string&);
 mtrk_event_t make_trackname(const uint32_t&, const std::string&);
 mtrk_event_t make_lyric(const uint32_t&, const std::string&);
 mtrk_event_t make_marker(const uint32_t&, const std::string&);
+mtrk_event_t make_cuepoint(const uint32_t&, const std::string&);
+mtrk_event_t make_text(const uint32_t&, const std::string&);
+mtrk_event_t make_copyright(const uint32_t&, const std::string&);
 // Writes the delta time, 0xFF, type, a vl-length, then the string into
 // the event.  If the uint8_t type byte does not correspond to a
 // text-containing meta event, returns a default-constructed mtrk_event_t
 // (which is a meta text event w/ payload size 0).  
-mtrk_event_t make_meta_generic_text(const uint32_t&, const uint8_t,
+mtrk_event_t make_meta_generic_text(const uint32_t&, const meta_event_t&,
 									const std::string&);
 
 //
