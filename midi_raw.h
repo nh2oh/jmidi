@@ -61,7 +61,9 @@ struct midi_ch_event_t {
 	uint8_t p1 {0x00u};
 	uint8_t p2 {0x00u};
 };
-
+midi_ch_event_t normalize(midi_ch_event_t);
+bool is_note_on(const midi_ch_event_t&);
+bool is_note_off(const midi_ch_event_t&);
 
 //template<typename T>
 //uint8_t status_nybble(const T& md) {

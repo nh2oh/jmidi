@@ -3,7 +3,32 @@
 #include <type_traits>  // std::enable_if<>, is_integral<>, is_unsigned<>
 #include <cstdint>
 #include <cstring>
+#include <algorithm>
 
+/*
+// A uint32_t clamped on [0,0x0FFFFFFFu] w/ implicit conversion from/to
+// other numeric types.  
+class midi_vlq {
+public:
+	template<typename T>
+	midi_vlq(const T& val_in) {
+		if (val_in < 0) {
+			this->val_=0;
+		} else if (val_in > 0x0FFFFFFFu) {
+			this->val_= 0x0FFFFFFFu;
+		} else {
+			this->val_= static_cast<uint32_t>(val_in);
+		}
+	};
+
+	template<typename T>
+	operator T() const {
+		return static_cast<T>(this->val_);
+	};
+private:
+	uint32_t val_ {0};
+};
+*/
 
 
 //

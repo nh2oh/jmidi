@@ -4,7 +4,7 @@
 #include <string>
 #include <cstdint>
 #include <cmath>  // std::round()
-
+#include <algorithm>  // std::max()
 
 
 double ticks2sec(const uint32_t& tks, const midi_time_t& t) {
@@ -34,6 +34,26 @@ bool is_major(const midi_keysig_t& ks) {
 bool is_minor(const midi_keysig_t& ks) {
 	return ks.mi==1;
 }
+midi_ch_event_t normalize(midi_ch_event_t md) {
+	md.status_nybble = 0xF0u&(0x80u|(md.status_nybble));
+	md.ch &= 0x0Fu; // std::max(md.ch,15);
+	md.p1 &= 0x7Fu; 
+	md.p2 &= 0x7Fu; 
+	return md;
+}
+bool is_note_on(const midi_ch_event_t& md) {
+	return (md.status_nybble==0x90u && (md.p2 > 0));
+}
+bool is_note_off(const midi_ch_event_t& md) {
+	return ((md.status_nybble==0x80u)
+			|| (md.status_nybble==0x90u && (md.p2==0)));
+}
+
+
+
+
+
+
 
 
 

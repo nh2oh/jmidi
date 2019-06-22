@@ -292,13 +292,27 @@ private:
 
 
 //
-// Meta event classification
+// Meta event classification & data access.  Functions to classify and extract 
+// data from mtrk_event_t's containing meta events.  
 //
-// I include the leading 0xFF byte so that it is possible to have "unknown"
-// and "invalid" message types.  Some meta events have fixed-lengths; 
-// functions classify_meta_event(), is_meta() etc do not verify these 
-// values, and are not generic validation functions.  
+// These classification is_*() functions examine payload_begin() of the
+// event passed in for the 0xFF and subsequent meta type byte and return
+// true if the correct signature is present.  They do _not_ verify other
+// important aspects of the the event, ex, if size() is large enough to
+// contain the event, or, for events with fixed size specified in the MIDI
+// std (ex, a timesig always has a payload of 4 bytes), whether the length
+// field is correct.  This means that the get_{timesig,keysig,...}() family
+// of functions have to make these checks before extracting the payload.  
+// These functions are designed this way because A) it should be impossible 
+// to "safely" (ie, using only library-provided factory functions and w/o 
+// calling unsafe accessors to directly modify the byte array for the event)
+// create or obtain an mtrk_event_t invalid in this way, and B) because in 
+// practice i expect calls to is_*() functions to be far more frequent than 
+// calls to get_*() functions and i want to optimize for the common case.  
 //
+// Meta event categories.  I include the leading 0xFF byte so that it is 
+// possible to have "unknown" and "invalid" message types.  
+// 
 enum class meta_event_t : uint16_t {
 	seqn = 0xFF00u,  // Sequence _number_
 	text = 0xFF01u,
@@ -321,20 +335,6 @@ enum class meta_event_t : uint16_t {
 };
 meta_event_t classify_meta_event_impl(const uint16_t&);
 bool meta_hastext_impl(const uint16_t&);
-// 
-// These classification is_*() functions examine payload_begin() of the
-// event passed in for the 0xFF and subsequent meta type byte and return
-// true if the corrext signature is present.  They do _not_ verify other
-// important aspects of the the event, ex, if size() is large enough to
-// contain the event.  This means that the get_{timesig,keysig,...}() 
-// family of functions have to make these checks while extracting the
-// payload.  This is so because A) it should be impossible to "safely" (ie,
-// w/o using unsafe accessors to directly modify the byte array for the 
-// event) create or obtain an mtrk_event_t invalid in this way, and B) 
-// because in practice i expect calls to is_*() functions to be far more 
-// frequent than calls to get_*() functions and i want to optimize for the
-// common case.  
-//
 meta_event_t classify_meta_event(const mtrk_event_t&);
 std::string print(const meta_event_t&);
 bool is_meta(const mtrk_event_t&, const meta_event_t&);
@@ -353,7 +353,7 @@ bool is_tempo(const mtrk_event_t&);
 bool is_smpteoffset(const mtrk_event_t&);
 bool is_timesig(const mtrk_event_t&);
 bool is_keysig(const mtrk_event_t&);
-bool is_seqspeific(const mtrk_event_t&);
+bool is_seqspecific(const mtrk_event_t&);
 // Returns true if the event is a meta_event_t w/a text payload,
 // ex:  meta_event_t::text, meta_event_t::lyric, etc. 
 bool meta_has_text(const mtrk_event_t&);
@@ -372,11 +372,13 @@ midi_timesig_t get_timesig(const mtrk_event_t&, midi_timesig_t={});
 // to C-major.  
 midi_keysig_t get_keysig(const mtrk_event_t&, midi_keysig_t={});
 // Gets the payload for a sequencer-specific meta-event into a vector of
-// unsigned char.  Callers can use the second overload to pass in a ref
-// to a preallocated vector.  In this latter case, if ev is a 
-// meta_event_t::seqspecific, clear() is called on the passed in vector and
-// the event payload is push_back()'ed into it.  If the event is not a
-// meta_event_t::seqspecific, the passed in vector is returned unmodified.  
+// unsigned char.  For the first (sing e argument) overload, if the event is
+// not a meta_event_t::seqspecific, an empty vector is returned.  Callers can 
+// use the second overload to pass in a ref to a preallocated vector.  In 
+// this latter case, if ev is a meta_event_t::seqspecific, clear() is called
+// on the passed in vector and the event payload is push_back()'ed into it.  
+// If the event is not a meta_event_t::seqspecific, the passed in vector is 
+// returned unmodified.  
 std::vector<unsigned char> get_seqspecific(const mtrk_event_t&);
 std::vector<unsigned char> get_seqspecific(const mtrk_event_t&, std::vector<unsigned char>&);
 
@@ -429,6 +431,9 @@ mtrk_event_t make_meta_generic_text(const uint32_t&, const meta_event_t&,
 // In the future, this set of functions may be expanded to things like 
 // is_bank_select(), is_pan(), is_foot_controller(), etc.  These require 
 // reading p1.  
+//
+// TODO:  Why do these not call mtrk_event_t::type() as the is_meta_*() 
+// functions do?
 bool is_channel(const mtrk_event_t&);
 bool is_channel_voice(const mtrk_event_t&);
 bool is_channel_mode(const mtrk_event_t&);
@@ -457,4 +462,21 @@ bool is_onoff_pair(int, int, int, int);
 
 
 midi_ch_event_t get_channel_event(const mtrk_event_t&, midi_ch_event_t={});
+
+
+mtrk_event_t make_ch_event_generic_unsafe(const uint32_t&, const midi_ch_event_t&);
+// The make_*() functions below call normalize(midi_ch_event_t) on the input
+// and thus silently convert invalid values for the data & status bytes into
+// valid values.  These values may be unexpected; users should ensure they
+// are passing valid data.  This is in keeping w/ the practice that the 
+// factory functions can not be used to create an invalid mtrk_event_t.  
+//
+// Sets the status nybble to 0x90u and p2 to be the greater of the value
+// passed in or 1 (a note-on event can not have a velocity of 0).  
+mtrk_event_t make_note_on(const uint32_t&, midi_ch_event_t);
+mtrk_event_t make_note_off(const uint32_t&, midi_ch_event_t);
+// Makes a channel event w/ a status nybble of 0x90u (normally => note on),
+// but w/a p2 of 0.  
+mtrk_event_t make_note_off90(const uint32_t&, midi_ch_event_t);
+
 

@@ -1077,54 +1077,26 @@ midi_ch_event_t get_channel_event(const mtrk_event_t& ev, midi_ch_event_t def) {
 	return result;
 }
 
-
-/*
-//
-// Meta events
-//
-text_event_t::text_event_t() {
-	std::array<unsigned char,14> data {0x00u,0xFFu,0x01u,0x0A,
-		't','e','x','t',' ','e','v','e','n','t'};
-	d_ = mtrk_event_t(&(data[0]),data.size(),0x00u);
-}
-text_event_t::text_event_t(const std::string& s) {
-	std::vector<unsigned char> data {0x00u,0xFFu,0x01u};
-
-	uint32_t payload_sz = 0;
-	if (s.size() > std::numeric_limits<uint32_t>::max()) {
-		payload_sz = std::numeric_limits<uint32_t>::max();
-	} else {
-		payload_sz = static_cast<uint32_t>(s.size());
-	}
-	midi_write_vl_field(std::back_inserter(data),payload_sz);
-
-	for (const auto& e: s) {
-		data.push_back(e);
-	};
-	
-	d_ = mtrk_event_t(&(data[0]),data.size(),0x00u);
-}
-std::string text_event_t::text() const {
-	const unsigned char *p = this->d_.data();
-	auto mt = mtrk_event_parse_meta_dtstart_unsafe(p);
-	p += mt.payload_offset;
-	std::string result(reinterpret_cast<const char*>(p),mt.length);
+mtrk_event_t make_ch_event_generic_unsafe(const uint32_t& dt, const midi_ch_event_t& md) {
+	std::array<unsigned char,3> evdata {(md.status_nybble|md.ch),md.p1,md.p2};
+	auto result = mtrk_event_t(dt,evdata.data(),evdata.size(),0x00u);
 	return result;
 }
-uint32_t text_event_t::delta_time() const {
-	return this->d_.delta_time();
+mtrk_event_t make_note_on(const uint32_t& dt, midi_ch_event_t md) {
+	md = normalize(md);
+	md.status_nybble = 0x90u;
+	md.p2 = md.p2 > 0 ? md.p2 : 1;
+	return make_ch_event_generic_unsafe(dt,md);
 }
-uint32_t text_event_t::size() const {
-	return this->d_.size();
+mtrk_event_t make_note_off(const uint32_t& dt, midi_ch_event_t md) {
+	md = normalize(md);
+	md.status_nybble = 0x80u;
+	return make_ch_event_generic_unsafe(dt,md);
 }
-uint32_t text_event_t::data_size() const {
-	return this->d_.data_size();
+mtrk_event_t make_note_off90(const uint32_t& dt, midi_ch_event_t md) {
+	md = normalize(md);
+	md.status_nybble = 0x90u;
+	md.p2 = 0;
+	return make_ch_event_generic_unsafe(dt,md);
 }
-
-bool text_event_t::set_text(const std::string& s) {
-	text_event_t txtev(s);
-	this->d_ = txtev.d_;
-	return true;
-}
-*/
 
