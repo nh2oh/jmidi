@@ -23,16 +23,36 @@ std::string print(const mtrk_event_t&,
 //
 // mtrk_event_t:  An sbo-featured container for mtrk events
 //
+// An mtrk_event_t is a container for storing and working with byte
+// sequences representing mtrk events (including the event delta-time).  
+// An mtrk_event_t stores and provides direct access (both read and 
+// write) to the sequence of bytes (unsigned char) encoding the event.  To
+// make access to event data faster, some information is "cached" outside 
+// the byte sequence.  
+//
 // A side effect of always storing the midi-status byte applic. to the event
-// in midi_status_ is that running-status events extracted from a file can 
-// be stored elsewhere and interpreted correctly later.  For example, in 
-// linking note pairs, pairs of corresponding on and off events are collected
-// into a vector of linked events.  A second consequence is that events
-// intended to be "serialized" as running-status events can be created and
-// be meaningfull outside the event sequence in which they are to occur.  
-// A downside is that insertion of an event intended to be in rs into an
-// event stream is more complicated since insertion may change its meaning
-// & it is not clear whether or not the user intended this.  
+// in midi_status_ is that running-status events copied out of an mtrk_t
+// retain their meaning out of that context, and can be stored elsewhere 
+// but still be interpreted correctly.  A second feature is that an event
+// can be marked as "serialize as running status [if possible]."  A downside
+// is that it breaks the notion that a user can examine the byte sequence
+// on [begin(),end()) and have all the information pertaining to the event;
+// it introduces a "shadow" store of data outside the byte sequence.  I do
+// not know whether or not the upsides of this outweigh the downsides.  
+//
+// The choice to store mtrk events directly as the byte array as specified by
+// the MIDI spec (and not as some processed aggregate of native types, ex, 
+// with a uint32_t for the delta-time, an enum for the sme_event_type, etc)
+// is in keeping with the overall philosophy of the library to facilitate
+// lightweight and straightforward manipulation of MIDI data.  All users 
+// working with a MIDI library are presumed to know something about MIDI; 
+// they are not presumed to be (or want to be) intimately fimilar with the 
+// idiosyncratic details of an overly complicated library.  
+// 
+// Since write access to the underlying byte array is provided, it is hard for
+// this container to maintain any invariants.  
+// TODO:  Dirty bit set whenever a non-const accessor function is called?  
+//        Triggers re-parsing of the event on next use of the container?
 //
 // TODO:  
 // If midi_status_ held the first byte following the delta-time in all cases
@@ -44,14 +64,10 @@ std::string print(const mtrk_event_t&,
 //
 // TODO:  Add typedefs so std::back_inserter() can be used.  
 // TODO:  This exposes a lot of dangerous getters
-// TODO:  ==,!= operators
 // TODO:  Member enum class offs is absolutely disgusting
 // TODO:  Error handling for some of the ctors; default uninit value?
 // TODO:  Ctors for channel/meta/sysex data structs
-// TODO:  It is kind of dumb that this container encodes data as stipulated
-// by the smf serialization spec... ex, meta tempo events are stored as be
-// on le archs... this makes reading/writing a pita.  Why not work w/ the
-// native data formats and convert to/from be for (de)serialization???
+// 
 //
 class mtrk_event_t {
 public:
