@@ -353,10 +353,15 @@ uint32_t get_tempo(const mtrk_event_t&, uint32_t=500000);
 // A default {}-constructed midi_timesig_t contains the defaults as
 // stipulated by the MIDI std.  
 midi_timesig_t get_timesig(const mtrk_event_t&, midi_timesig_t={});
+// A default {}-constructed midi_keysig_t contains defaults corresponding
+// to C-major.  
+midi_keysig_t get_keysig(const mtrk_event_t&, midi_keysig_t={});
 
 //
 // For all these make_* functions, parameter 1 is a delta-time.  
 //
+mtrk_event_t make_seqn(const uint32_t&, const uint16_t&);
+mtrk_event_t make_chprefix(const uint32_t&, const uint8_t&);
 // mtrk_event_t make_tempo(const uint32_t&, const uint32_t&)
 // Parameter 2 is us/quarter-note
 // A meta tempo event stores the tempo as a 24-bit int, hence the max

@@ -35,6 +35,17 @@ struct midi_timesig_t {
 };
 bool operator==(const midi_timesig_t&, const midi_timesig_t&);
 
+// P.139
+// The default-constructed values of si==0, mi==0 => C-major
+struct midi_keysig_t {
+	int8_t sf {0};  // 0=> key of C;  >0 => n sharps;  <0 => n flats
+	int8_t mi {0};  // 0=>major, 1=>minor
+};
+uint8_t nsharps(const midi_keysig_t&);
+uint8_t nflats(const midi_keysig_t&);
+bool is_major(const midi_keysig_t&);
+bool is_minor(const midi_keysig_t&);
+
 enum : uint8_t {
 	note_off = 0x80u,
 	note_on = 0x90u,

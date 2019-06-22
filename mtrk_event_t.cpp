@@ -888,7 +888,6 @@ midi_timesig_t get_timesig(const mtrk_event_t& ev, midi_timesig_t def) {
 	if ((ev.end()-it) != 4) {
 		return def;
 	}
-
 	midi_timesig_t result {};
 	result.num = *it++;
 	result.log2denom = *it++;
@@ -896,7 +895,31 @@ midi_timesig_t get_timesig(const mtrk_event_t& ev, midi_timesig_t def) {
 	result.ntd32pq = *it++;
 	return result;
 }
-
+midi_keysig_t get_keysig(const mtrk_event_t& ev, midi_keysig_t def) {
+	if (!is_keysig(ev)) {
+		return def;
+	}
+	auto it = ev.payload_begin();
+	if ((ev.end()-it) != 2) {
+		return def;
+	}
+	midi_keysig_t result {};
+	result.sf = *it++;
+	result.mi = *it++;
+	return result;
+}
+mtrk_event_t make_seqn(const uint32_t& dt, const uint16_t& seqn) {
+	std::array<unsigned char,5> evdata {0xFFu,0x00u,0x02u,0x00u,0x00u};
+	write_16bit_be(seqn, evdata.begin()+3);
+	auto result = mtrk_event_t(dt,evdata.data(),evdata.size(),0x00u);
+	return result;
+}
+mtrk_event_t make_chprefix(const uint32_t& dt, const uint8_t& ch) {
+	std::array<unsigned char,4> evdata {0xFFu,0x20u,0x01u,0x00u};
+	write_bytes(ch, evdata.begin()+3);
+	auto result = mtrk_event_t(dt,evdata.data(),evdata.size(),0x00u);
+	return result;
+}
 mtrk_event_t make_tempo(const uint32_t& dt, const uint32_t& uspqn) {
 	std::array<unsigned char,6> evdata {0xFFu,0x51u,0x03u,0x00u,0x00u,0x00u};
 	write_24bit_be((uspqn>0xFFFFFFu ? 0xFFFFFFu : uspqn), evdata.begin()+3);

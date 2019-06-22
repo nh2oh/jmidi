@@ -22,6 +22,22 @@ bool operator==(const midi_timesig_t& rhs, const midi_timesig_t& lhs) {
 		&& (rhs.num == lhs.num));
 }
 
+uint8_t nsharps(const midi_keysig_t& ks) {
+	return (ks.sf >= 0) ? ks.sf : 0;
+}
+uint8_t nflats(const midi_keysig_t& ks) {
+	return (ks.sf <= 0) ? (-1)*ks.sf : 0;
+}
+bool is_major(const midi_keysig_t& ks) {
+	return ks.mi==0;
+}
+bool is_minor(const midi_keysig_t& ks) {
+	return ks.mi==1;
+}
+
+
+
+
 validate_chunk_header_result_t validate_chunk_header(const unsigned char *p, uint32_t max_size) {
 	validate_chunk_header_result_t result {};
 	if (max_size < 8) {

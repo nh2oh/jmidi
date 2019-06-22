@@ -124,7 +124,19 @@ OIt write_24bit_be(uint32_t val, OIt dest) {
 	}
 	return dest;
 };
-
+// TODO:  Could use write_bytes() here
+template<typename OIt>
+OIt write_16bit_be(uint16_t val, OIt dest) {
+	static_assert(std::is_same<
+		std::remove_cvref<decltype(*dest)>::type,unsigned char>::value);
+	
+	auto be_val = native2be(val);
+	unsigned char *p = static_cast<unsigned char*>(static_cast<void*>(&be_val));
+	for (int i=0; i<3; ++i) {
+		*dest++ = *p++;
+	}
+	return dest;
+};
 
 // 
 // The max size of a vl field is 4 bytes, and the largest value it may encode is
