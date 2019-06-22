@@ -860,16 +860,16 @@ bool is_timesig(const mtrk_event_t& ev) {
 bool is_keysig(const mtrk_event_t& ev) {
 	return is_meta(ev, meta_event_t::keysig);
 }
-// TODO:  This should use meta_hastext_impl()...
+
 bool meta_has_text(const mtrk_event_t& ev) {
 	auto mttype = classify_meta_event(ev);
-	return (mttype==meta_event_t::text 
+	return meta_hastext_impl(static_cast<uint16_t>(mttype)); /*(mttype==meta_event_t::text 
 			|| mttype==meta_event_t::copyright
 			|| mttype==meta_event_t::instname
 			|| mttype==meta_event_t::trackname
 			|| mttype==meta_event_t::lyric
 			|| mttype==meta_event_t::marker
-			|| mttype==meta_event_t::cuepoint);
+			|| mttype==meta_event_t::cuepoint);*/
 }
 
 std::string meta_generic_gettext(const mtrk_event_t& ev) {

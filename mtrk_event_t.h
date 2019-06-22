@@ -299,10 +299,10 @@ private:
 // values, and are not generic validation functions.  
 //
 enum class meta_event_t : uint16_t {
-	seqn = 0xFF00u,
+	seqn = 0xFF00u,  // Sequence _number_
 	text = 0xFF01u,
 	copyright = 0xFF02u,
-	trackname = 0xFF03u,
+	trackname = 0xFF03u,  // AKA "sequence name"
 	instname = 0xFF04u,
 	lyric = 0xFF05u,
 	marker = 0xFF06u,
@@ -368,6 +368,8 @@ mtrk_event_t make_eot(const uint32_t&);
 mtrk_event_t make_timesig(const uint32_t&, const midi_timesig_t&);
 mtrk_event_t make_instname(const uint32_t&, const std::string&);
 mtrk_event_t make_trackname(const uint32_t&, const std::string&);
+mtrk_event_t make_lyric(const uint32_t&, const std::string&);
+mtrk_event_t make_marker(const uint32_t&, const std::string&);
 // Writes the delta time, 0xFF, type, a vl-length, then the string into
 // the event.  If the uint8_t type byte does not correspond to a
 // text-containing meta event, returns a default-constructed mtrk_event_t
