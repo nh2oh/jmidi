@@ -858,6 +858,9 @@ bool is_timesig(const mtrk_event_t& ev) {
 bool is_keysig(const mtrk_event_t& ev) {
 	return is_meta(ev, meta_event_t::keysig);
 }
+bool is_seqspecific(const mtrk_event_t& ev) {
+	return is_meta(ev, meta_event_t::seqspecific);
+}
 
 bool meta_has_text(const mtrk_event_t& ev) {
 	auto mttype = classify_meta_event(ev);
@@ -907,6 +910,21 @@ midi_keysig_t get_keysig(const mtrk_event_t& ev, midi_keysig_t def) {
 	result.sf = *it++;
 	result.mi = *it++;
 	return result;
+}
+std::vector<unsigned char> get_seqspecific(const mtrk_event_t& ev) {
+	auto v = std::vector<unsigned char>();
+	return get_seqspecific(ev,v);
+}
+std::vector<unsigned char> get_seqspecific(const mtrk_event_t& ev, 
+								std::vector<unsigned char>& data) {
+	if (!is_seqspecific(ev)) {
+		return data;
+	}
+	data.clear();
+	for (auto it=ev.payload_begin(); it!=ev.end(); ++it) {
+		data.push_back(*it);
+	}
+	return data;
 }
 mtrk_event_t make_seqn(const uint32_t& dt, const uint16_t& seqn) {
 	std::array<unsigned char,5> evdata {0xFFu,0x00u,0x02u,0x00u,0x00u};

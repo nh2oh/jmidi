@@ -135,6 +135,7 @@ public:
 	const unsigned char *data() const;
 
 	uint32_t data_size() const;  // Not including the delta-t
+	// TODO:  payload_size()
 	uint32_t size() const;  // Includes delta-t
 	// If is_small(), reports the size of the d_ array, which is the maximum
 	// size of an event that the 'small' state can contain.  
@@ -320,7 +321,20 @@ enum class meta_event_t : uint16_t {
 };
 meta_event_t classify_meta_event_impl(const uint16_t&);
 bool meta_hastext_impl(const uint16_t&);
-
+// 
+// These classification is_*() functions examine payload_begin() of the
+// event passed in for the 0xFF and subsequent meta type byte and return
+// true if the corrext signature is present.  They do _not_ verify other
+// important aspects of the the event, ex, if size() is large enough to
+// contain the event.  This means that the get_{timesig,keysig,...}() 
+// family of functions have to make these checks while extracting the
+// payload.  This is so because A) it should be impossible to "safely" (ie,
+// w/o using unsafe accessors to directly modify the byte array for the 
+// event) create or obtain an mtrk_event_t invalid in this way, and B) 
+// because in practice i expect calls to is_*() functions to be far more 
+// frequent than calls to get_*() functions and i want to optimize for the
+// common case.  
+//
 meta_event_t classify_meta_event(const mtrk_event_t&);
 std::string print(const meta_event_t&);
 bool is_meta(const mtrk_event_t&, const meta_event_t&);
@@ -339,6 +353,7 @@ bool is_tempo(const mtrk_event_t&);
 bool is_smpteoffset(const mtrk_event_t&);
 bool is_timesig(const mtrk_event_t&);
 bool is_keysig(const mtrk_event_t&);
+bool is_seqspeific(const mtrk_event_t&);
 // Returns true if the event is a meta_event_t w/a text payload,
 // ex:  meta_event_t::text, meta_event_t::lyric, etc. 
 bool meta_has_text(const mtrk_event_t&);
@@ -356,6 +371,14 @@ midi_timesig_t get_timesig(const mtrk_event_t&, midi_timesig_t={});
 // A default {}-constructed midi_keysig_t contains defaults corresponding
 // to C-major.  
 midi_keysig_t get_keysig(const mtrk_event_t&, midi_keysig_t={});
+// Gets the payload for a sequencer-specific meta-event into a vector of
+// unsigned char.  Callers can use the second overload to pass in a ref
+// to a preallocated vector.  In this latter case, if ev is a 
+// meta_event_t::seqspecific, clear() is called on the passed in vector and
+// the event payload is push_back()'ed into it.  If the event is not a
+// meta_event_t::seqspecific, the passed in vector is returned unmodified.  
+std::vector<unsigned char> get_seqspecific(const mtrk_event_t&);
+std::vector<unsigned char> get_seqspecific(const mtrk_event_t&, std::vector<unsigned char>&);
 
 //
 // For all these make_* functions, parameter 1 is a delta-time.  
