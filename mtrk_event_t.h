@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <array>
 #include <vector>
+#include <memory>
 
 class mtrk_event_t;
 class mtrk_event_iterator_t;
@@ -62,6 +63,50 @@ std::string print(const mtrk_event_t&,
 // these objects.  
 // For case big, I could then cache the meta type-byte as well...
 //
+
+// CRTP?  small_t, big_t have different underlying layouts but implement
+// the same interface.  
+// flags:  [issmall, isdirty, isrs, unused, unused, unused, dt_size-1]
+struct small_t {
+	unsigned char flags;
+	std::array<unsigned char,23> d;
+};
+struct big_t {
+	unsigned char flags;
+	// [dt field (vlq), unsigned char sb, unsigned char p1, unsigned char p2]
+	std::array<unsigned char,7> cache;
+	unsigned char* p;  // 16
+	uint32_t sz;  // 20
+	uint32_t cap;  // 24
+
+	unsigned char* data();
+	unsigned char* event_begin();
+	unsigned char* payload_begin();
+	unsigned char* end();
+};
+struct sbo_t {
+	union sbou_t {
+		small_t s;
+		big_t b;
+	};
+	sbou_t d;
+
+	unsigned char* data();
+	bool is_big() const;
+	bool is_small() const;
+	bool is_clean() const;
+
+	void set_flag_clean();
+	void set_flag_dirty();
+	void set_flag_big();
+	void set_flag_small();
+};
+
+constexpr auto szs = sizeof(small_t);
+constexpr auto szb = sizeof(big_t);
+constexpr auto szsbo = sizeof(sbo_t);
+
+
 // TODO:  Add typedefs so std::back_inserter() can be used.  
 // TODO:  This exposes a lot of dangerous getters
 // TODO:  Member enum class offs is absolutely disgusting

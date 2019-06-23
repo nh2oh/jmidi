@@ -5,7 +5,7 @@
 #include <cstring>
 #include <algorithm>
 
-/*
+
 // A uint32_t clamped on [0,0x0FFFFFFFu] w/ implicit conversion from/to
 // other numeric types.  
 class midi_vlq {
@@ -28,7 +28,7 @@ public:
 private:
 	uint32_t val_ {0};
 };
-*/
+constexpr int nbytes(const midi_vlq&);
 
 
 //
