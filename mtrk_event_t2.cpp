@@ -12,6 +12,55 @@
 
 
 
+std::string print(const mtrk_event_t2& evnt, mtrk_sbo_print_opts opts) {
+	std::string s {};
+	s += ("delta_time = " + std::to_string(evnt.delta_time()) + ", ");
+	s += ("type = " + print(evnt.type()) + ", ");
+	s += ("size = " + std::to_string(evnt.size()) + ", ");
+	s += ("data_size = " + std::to_string(evnt.data_size()) + "\n");
+	
+	s += "\t[";
+	dbk::print_hexascii(evnt.dt_begin(),evnt.dt_end(),std::back_inserter(s),'\0',' ');
+	s += "] ";
+	dbk::print_hexascii(evnt.event_begin(),evnt.end(),std::back_inserter(s),'\0',' ');
+	
+	if (opts == mtrk_sbo_print_opts::detail || opts == mtrk_sbo_print_opts::debug) {
+		if (evnt.type()==smf_event_type::meta) {
+			s += "\n";
+			s += ("\tmeta type: " + print(classify_meta_event(evnt)) + "; ");
+			if (meta_has_text(evnt)) {
+				s += ("text payload: \"" + meta_generic_gettext(evnt) + "\"; ");
+			} else if (is_tempo(evnt)) {
+				s += ("value = " + std::to_string(get_tempo(evnt)) + " us/q; ");
+			} else if (is_timesig(evnt)) {
+				auto data = get_timesig(evnt);
+				s += ("value = " + std::to_string(data.num) + "/" 
+					+ std::to_string(static_cast<int>(std::exp2(data.log2denom)))
+					+ ", " + std::to_string(data.clckspclk) + " MIDI clocks/click, "
+					+ std::to_string(data.ntd32pq) + " notated 32'nd nts / MIDI q nt; ");
+			}
+		}
+	} 
+	if (opts == mtrk_sbo_print_opts::debug) {
+		s += "\n\t";
+		if (evnt.is_small()) {
+			s += "sbo=>small = ";
+		} else {
+			s += "sbo=>big   = ";
+		}
+		s += "{";
+		dbk::print_hexascii(evnt.raw_begin(),evnt.raw_end(),
+			std::back_inserter(s),'\0',' ');
+		s += "}; \n";
+		s += "\tbigsmall_flag = ";
+		auto f = evnt.flags();
+		s += dbk::print_hexascii(&f, 1, ' ');
+	}
+	return s;
+}
+
+
+
 unsigned char *mtrk_event_t2::small_t::begin() {
 	return &(this->d_[0]);
 }
@@ -93,6 +142,52 @@ uint64_t mtrk_event_t2::sbo_t::capacity() const {
 		return this->u_.b_.capacity();
 	}
 }
+uint32_t mtrk_event_t2::sbo_t::resize(uint32_t new_cap) {
+	new_cap = std::max(static_cast<uint64_t>(new_cap),this->small_capacity());
+	if (new_cap == this->small_capacity()) {
+		// Resize the object to fit in a small_t.  If it's presently small,
+		// do nothing.  
+		if (this->is_big()) {
+			auto p = this->u_.b_.p_;
+			auto sz = this->u_.b_.sz_;
+			auto new_sz = std::min(sz,new_cap);
+			this->zero_object();
+			this->set_flag_small();
+			std::copy(p,p+new_sz,this->u_.s_.begin());
+			// No need to std::fill(...,0x00u); already called zero_object()
+			delete p;
+		}
+	} else if (new_cap > this->small_capacity()) {
+		// After resizing, the object will be held in a big_t
+		if (this->is_big()) {  // presently big
+			if (new_cap != this->u_.b_.cap_) {  // ... and are changing the cap
+				auto p = this->u_.b_.p_;
+				auto sz = this->u_.b_.sz_;
+				auto new_sz = std::min(sz,new_cap);
+				// Note that if new_cap is < sz, the data will be truncated
+				// and the object will almost certainly be invalid.  
+				unsigned char *new_p = new unsigned char[new_cap];
+				auto new_end = std::copy(p,p+new_sz,new_p);
+				std::fill(new_end,new_p+new_cap,0x00u);
+				delete p;
+				this->big_adopt(new_p,new_sz,new_cap);
+				this->set_flag_big();
+			}
+			// if already big and new_cap==present cap;  do nothing
+		} else {  // presently small 
+			// Copy the present small object into a new big object.  The present
+			// capacity of small_capacity() is < new_cap
+			auto sz = this->u_.s_.size();
+			unsigned char *new_p = new unsigned char[new_cap];
+			auto new_end = std::copy(this->u_.s_.begin(),this->u_.s_.end(),new_p);
+			std::fill(new_end,new_p+new_cap,0x00u);
+			this->zero_object();
+			this->big_adopt(new_p,sz,new_cap);
+			this->set_flag_big();
+		}
+	}
+	return new_cap;
+}
 constexpr uint64_t mtrk_event_t2::sbo_t::small_capacity() {
 	return this->u_.s_.capacity();
 }
@@ -123,6 +218,18 @@ const unsigned char *mtrk_event_t2::sbo_t::end() const {
 	} else {
 		return this->u_.b_.end();
 	}
+}
+unsigned char *mtrk_event_t2::sbo_t::raw_begin() {
+	return &(this->u_.raw_[0]);
+}
+const unsigned char *mtrk_event_t2::sbo_t::raw_begin() const {
+	return &(this->u_.raw_[0]);
+}
+unsigned char *mtrk_event_t2::sbo_t::raw_end() {
+	return &(this->u_.raw_[0]) + this->u_.raw_.size();
+}
+const unsigned char *mtrk_event_t2::sbo_t::raw_end() const {
+	return &(this->u_.raw_[0]) + this->u_.raw_.size();
 }
 
 // Default ctor creates a meta text-event of length 0 
@@ -346,6 +453,13 @@ mtrk_event_iterator_t2 mtrk_event_t2::payload_begin() {
 	} // else { smf_event_type::channel_voice, _mode, unknown, invalid...
 	return it;
 }
+const unsigned char& mtrk_event_t2::operator[](uint32_t i) const {
+	return *(this->data()+i);
+};
+unsigned char& mtrk_event_t2::operator[](uint32_t i) {
+	return *(this->data()+i);
+};
+
 
 smf_event_type mtrk_event_t2::type() const {
 	auto p = advance_to_vlq_end(this->data());
@@ -354,11 +468,68 @@ smf_event_type mtrk_event_t2::type() const {
 	// calls classify_status_byte(get_status_byte(s,rs)); here, i do not 
 	// need to worry about the possibility of the rs byte.  
 }
+uint32_t mtrk_event_t2::delta_time() const {
+	return midi_interpret_vl_field(this->data()).val;
+}
+unsigned char mtrk_event_t2::status_byte() const {
+	auto p = advance_to_vlq_end(this->data());
+	return *p;
+}
+unsigned char mtrk_event_t2::running_status() const {
+	auto p = advance_to_vlq_end(this->data());
+	return get_running_status_byte(*p,0x00u);
+}
+uint32_t mtrk_event_t2::data_size() const {  // Not indluding delta-t
+	return mtrk_event_get_data_size_dtstart_unsafe(this->data(),0x00u);
+}
 
 
+uint32_t mtrk_event_t2::set_delta_time(uint32_t dt) {
+	auto new_dt_size = midi_vl_field_size(dt);
+	auto curr_dt_size = this->dt_end()-this->begin();
+	if (curr_dt_size == new_dt_size) {
+		midi_write_vl_field(this->begin(),dt);
+	} else if (curr_dt_size > new_dt_size) {
+		midi_rewrite_dt_field_unsafe(dt,this->data(),0x00u);
+	} else if (curr_dt_size < new_dt_size) {
+		// The new dt is bigger than the current dt, and w/ the new
+		// dt, the event...
+		auto new_size = this->size()+(new_dt_size-curr_dt_size);
+		if (this->capacity() >= new_size) {  // ... still fits
+			midi_rewrite_dt_field_unsafe(dt,this->data(),0x00u);
+		} else {  // ... won't fit
+			this->d_.resize(new_size);
+			midi_rewrite_dt_field_unsafe(dt,this->data(),0x00u);
+			//unsigned char *new_p = new unsigned char[new_size];
+			//auto curr_end = midi_write_vl_field(new_p,dt);
+			//curr_end = std::copy(this->begin(),this->end(),curr_end);
+			//std::fill(curr_end,new_p+new_size,0x00u);
+			//this->d_.free_if_big();
+			//this->d_.set_flag_big();
+			//this->d_.big_adopt(new_p,new_size,new_size);
+		}
+	}
+	return this->delta_time();
+}
 
-
-
+bool mtrk_event_t2::operator==(const mtrk_event_t2& rhs) const {
+	auto it_lhs = this->begin();  auto lhs_end = this->end();
+	auto it_rhs = rhs.begin();  auto rhs_end = rhs.end();
+	if ((lhs_end-it_lhs) != (rhs_end-it_rhs)) {
+		return false;
+	}
+	while (it_lhs!=lhs_end && it_rhs!=rhs_end) {
+		if (*it_lhs != *it_rhs) {
+			return false;
+		}
+		++it_lhs;
+		++it_rhs;
+	}
+	return true;
+}
+bool mtrk_event_t2::operator!=(const mtrk_event_t2& rhs) const {
+	return !(*this==rhs);
+}
 
 
 void mtrk_event_t2::default_init() {
@@ -367,6 +538,23 @@ void mtrk_event_t2::default_init() {
 	auto end = std::copy(evdata.begin(),evdata.end(),this->d_.begin());
 	std::fill(end,this->d_.end(),0x00u);
 }
+const unsigned char *mtrk_event_t2::raw_begin() const {
+	return this->d_.raw_begin();
+}
+const unsigned char *mtrk_event_t2::raw_end() const {
+	return this->d_.raw_end();
+}
+unsigned char mtrk_event_t2::flags() const {
+	return *(this->d_.raw_begin());
+}
+bool mtrk_event_t2::is_big() const {
+	return !(this->flags()&0x80u);
+}
+bool mtrk_event_t2::is_small() const {
+	return !(this->is_big());
+}
+
+
 
 
 
@@ -377,14 +565,6 @@ void mtrk_event_t2::default_init() {
 
 
 
-
-
-mtrk_event_const_iterator_t mtrk_event_t2::end() const {
-	return this->begin()+this->size();
-}
-mtrk_event_iterator_t mtrk_event_t2::end() {
-	return this->begin()+this->size();
-}
 std::string mtrk_event_t2::text_payload() const {
 	std::string s {};
 	if (this->type()==smf_event_type::meta 
@@ -422,118 +602,12 @@ mtrk_event_t2::channel_event_data_t mtrk_event_t2::midi_data() const {
 
 	return result;
 }
-const unsigned char& mtrk_event_t2::operator[](uint32_t i) const {
-	const auto& r = *(this->data()+i);
-	return r;
-};
-unsigned char& mtrk_event_t2::operator[](uint32_t i) {
-	return *(this->data()+i);
-};
-const unsigned char *mtrk_event_t2::data() const {
-	if (this->is_small()) {
-		return this->small_ptr();
-	} else {
-		return this->big_ptr();
-	}
-}
-unsigned char *mtrk_event_t2::data() {
-	if (this->is_small()) {
-		return this->small_ptr();
-	} else {
-		return this->big_ptr();
-	}
-}
-const unsigned char *mtrk_event_t2::raw_data() const {
-	return &(this->d_[0]);
-}
-const unsigned char *mtrk_event_t2::raw_flag() const {
-	return &(this->flags_);
-}
-uint32_t mtrk_event_t2::delta_time() const {
-	if (this->is_small()) {
-		return midi_interpret_vl_field(this->data()).val;
-	} else {
-		return this->big_delta_t();
-	}
-}
-unsigned char mtrk_event_t2::status_byte() const {
-	// Since at present this->midi_status_ is == 0x00u for meta or sysex
-	// events, have to check for its validity.  
-	if ((this->midi_status_ & 0x80u) == 0x80u) {
-		return this->midi_status_;
-	} else {
-		return *(this->event_begin());
-	}
-}
-unsigned char mtrk_event_t2::running_status() const {
-	// Since at present this->midi_status_ is == 0x00u for meta or sysex
-	// events, have to check for its validity.  
-	return get_running_status_byte(this->midi_status_,*(this->event_begin()));
-}
-smf_event_type mtrk_event_t2::type() const {
-	if (is_small()) {
-		// TODO:  Arbitary max_size==6
-		return classify_mtrk_event_dtstart(this->data(),this->midi_status_,6);
-	} else {
-		return this->big_smf_event_type();
-	}
-}
-uint32_t mtrk_event_t2::data_size() const {  // Not indluding delta-t
-	if (this->is_small()) {
-		return mtrk_event_get_data_size_dtstart_unsafe(this->small_ptr(),this->midi_status_);
-	} else {
-		return mtrk_event_get_data_size_dtstart_unsafe(this->big_ptr(),this->midi_status_);
-	}
-}
-uint32_t mtrk_event_t2::size() const {  // Includes the contrib from delta-t
-	if (this->is_small()) {
-		return mtrk_event_get_size_dtstart_unsafe(this->small_ptr(),this->midi_status_);
-	} else {
-		return this->big_size();
-	}
-}
 
-bool mtrk_event_t2::set_delta_time(uint32_t dt) {
-	uint64_t sbo_sz = static_cast<uint64_t>(offs::max_size_sbo);
-	auto new_dt_size = midi_vl_field_size(dt);
-	auto new_size = this->data_size() + new_dt_size;
-	if ((this->is_small() && new_size<=sbo_sz)
-				|| (this->is_big() && new_size<=this->big_cap())) {
-		// The new value fits in whatever storage was holding the old
-		// value.   
-		// TODO:  It's possible that the present value is_big() but
-		// w/ the new dt the size() is such that it will fit in the sbo.  
-		// TODO:  If shrinking the size, does this leave trash at the end
-		// of the event?
-		midi_rewrite_dt_field_unsafe(dt,this->data(),this->midi_status_);
-	} else if (this->is_small() && new_size>sbo_sz) {
-		// Present value fits in the sbo, but the new value does not.  
-		this->small2big(new_size);
-		midi_rewrite_dt_field_unsafe(dt,this->data(),this->midi_status_);
-	} else if (this->is_big() && new_size>this->big_cap()) {
-		this->big_resize(new_size);
-		midi_rewrite_dt_field_unsafe(dt,this->data(),this->midi_status_);
-	}
-	return true;
-}
-bool mtrk_event_t2::operator==(const mtrk_event_t2& rhs) const {
-	if (this->size() != rhs.size()) {
-		return false;
-	}
-	auto it_lhs = this->begin();
-	auto it_rhs = rhs.begin();
-	while (it_lhs!=this->end() && it_rhs!=rhs.end()) {
-		if (*it_lhs != *it_rhs) {
-			return false;
-		}
-		++it_lhs;
-		++it_rhs;
-	}
-	return true;
-}
-bool mtrk_event_t2::operator!=(const mtrk_event_t2& rhs) const {
-	return !(*this==rhs);
-}
+
+
+
+
+
 bool mtrk_event_t2::validate() const {
 	bool tf = true;
 
@@ -629,203 +703,4 @@ bool mtrk_event_t2::validate() const {
 }
 
 
-bool mtrk_event_t2::is_big() const {
-	return (this->flags_&0x80u)==0x00u;
-}
-bool mtrk_event_t2::is_small() const {
-	return !(this->is_big());
-}
-
-void mtrk_event_t2::clear_nofree() {
-	// A meta text-event of length 0 
-	this->d_ = {0x00,0xFF,0x01,0x00,
-		0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-		0x00,0x00,0x00,0x00,0x00};
-	this->midi_status_ = 0x00;
-	this->flags_ = 0x00;
-	this->set_flag_small();
-}
-
-// p (which already contains the object data) is adpoted by the container.  
-// The caller should _not_ delete p, as the contents are not copied out into
-// a newly created "owned" buffer.  This function does not rely on any 
-// local object data members either directly or indirectly through getters
-// (midi_status_, this->delta_time(), etc).  It is perfectly fine for the 
-// object to be initially in a completely invalid state.  
-// If the object is initially big, init_big() does not free the old buffer,
-// it merely overwrites the existing ptr, size, cap with their new values.  
-// It is the responsibility of the caller to delete the old big_ptr() before
-// calling init_big() w/ the ptr to the new buffer, or memory will leak.  
-// ptr, size, capacity, running-status
-//
-// TODO:  Why not an overload of this for when type, delta-time, rs, etc
-// is known by the caller (avoid recomputation...) ?
-bool mtrk_event_t2::init_big(unsigned char *p, uint32_t sz, uint32_t c, unsigned char rs) {
-	this->set_flag_big();
-
-	// Set the 3 big-container parameters to point to the remote data
-	this->set_big_ptr(p);
-	this->set_big_size(sz);
-	this->set_big_cap(c);
-	
-	// Set the local "cached" values of delta-time and event type from the
-	// remote data.  These values are stored in the d_ array, so setters
-	// that know the offsets and can do the serialization correctly are used.  
-	auto dt = midi_interpret_vl_field(p);
-	this->set_big_cached_delta_t(dt.val);
-	//TODO:  Arbitrary max_size==6
-	this->set_big_cached_smf_event_type(classify_mtrk_event_dtstart(p,rs,6));
-
-	// The two d_-external values to set are midi_status_ and flags
-	this->midi_status_ = get_running_status_byte(*(p+dt.N),rs);
-
-	// TODO:  Error checking for dt fields etc; perhaps call clear_nofree()
-	// and return false
-	return true;
-}
-bool mtrk_event_t2::small2big(uint32_t c) {
-	if (!is_small()) {
-		std::abort();
-	}
-	unsigned char *p = new unsigned char[c];
-	std::copy(this->d_.begin(),this->d_.end(),p);
-	init_big(p,this->size(),c,this->midi_status_);
-
-	return true;
-}
-// Allocates a new unsigned char[] w/ capacity as supplied, copies the
-// present data into the new array, frees the old array, and sets the "big"
-// params as necessary.  
-bool mtrk_event_t2::big_resize(uint32_t c) {
-	if (!is_big()) {
-		std::abort();
-	}
-
-	unsigned char *p = new unsigned char[c];
-	std::copy(this->data(),this->data()+this->size(),p);
-	delete this->big_ptr();
-	init_big(p,this->size(),c,this->midi_status_);
-
-	return true;
-}
-
-
-void mtrk_event_t2::set_flag_big() {
-	this->flags_ &= 0x7Fu;
-}
-void mtrk_event_t2::set_flag_small() {
-	this->flags_ |= 0x80u;
-}
-
-unsigned char *mtrk_event_t2::big_ptr() const {
-	unsigned char *p {nullptr};
-	uint64_t o = static_cast<uint64_t>(offs::ptr);
-	std::memcpy(&p,&(this->d_[o]),sizeof(p));
-	return p;
-}
-unsigned char *mtrk_event_t2::small_ptr() const {
-	return const_cast<unsigned char*>(&(this->d_[0]));
-}
-unsigned char *mtrk_event_t2::set_big_ptr(unsigned char *p) {
-	if (this->is_small()) {
-		std::abort();
-	}
-	uint64_t o = static_cast<uint64_t>(offs::ptr);
-	std::memcpy(&(this->d_[o]),&p,sizeof(p));
-	return p;
-}
-uint32_t mtrk_event_t2::big_size() const {
-	uint32_t sz {0};
-	uint64_t o = static_cast<uint64_t>(offs::size);
-	std::memcpy(&sz,&(this->d_[o]),sizeof(uint32_t));
-	return sz;
-}
-uint32_t mtrk_event_t2::set_big_size(uint32_t sz) {
-	if (this->is_small()) {
-		std::abort();
-	}
-	uint64_t o = static_cast<uint64_t>(offs::size);
-	std::memcpy(&(this->d_[o]),&sz,sizeof(uint32_t));
-	return sz;
-}
-uint32_t mtrk_event_t2::big_cap() const {
-	uint32_t c {0};
-	uint64_t o = static_cast<uint64_t>(offs::cap);
-	std::memcpy(&c,&(this->d_[o]),sizeof(uint32_t));
-	return c;
-}
-uint32_t mtrk_event_t2::set_big_cap(uint32_t c) {
-	uint64_t o = static_cast<uint64_t>(offs::cap);
-	std::memcpy(&(this->d_[o]),&c,sizeof(uint32_t));
-	return c;
-}
-uint32_t mtrk_event_t2::big_delta_t() const {
-	uint32_t dt {0};
-	uint64_t o = static_cast<uint64_t>(offs::dt);
-	std::memcpy(&dt,&(this->d_[o]),sizeof(uint32_t));
-	return dt;
-}
-uint32_t mtrk_event_t2::set_big_cached_delta_t(uint32_t dt) {
-	// Sets the local "cached" dt value
-	uint64_t o = static_cast<uint64_t>(offs::dt);
-	std::memcpy(&(this->d_[o]),&dt,sizeof(uint32_t));
-	return dt;
-}
-smf_event_type mtrk_event_t2::big_smf_event_type() const {
-	smf_event_type t {smf_event_type::invalid};
-	uint64_t o = static_cast<uint64_t>(offs::type);
-	std::memcpy(&t,&(this->d_[o]),sizeof(smf_event_type));
-	return t;
-}
-smf_event_type mtrk_event_t2::set_big_cached_smf_event_type(smf_event_type t) {
-	uint64_t o = static_cast<uint64_t>(offs::type);
-	std::memcpy(&(this->d_[o]),&t,sizeof(smf_event_type));
-	return t;
-}
-
-
-std::string print(const mtrk_event_t2& evnt, mtrk_sbo_print_opts opts) {
-	std::string s {};
-	s += ("delta_time = " + std::to_string(evnt.delta_time()) + ", ");
-	s += ("type = " + print(evnt.type()) + ", ");
-	s += ("size = " + std::to_string(evnt.size()) + ", ");
-	s += ("data_size = " + std::to_string(evnt.data_size()) + "\n");
-	
-	s += "\t[";
-	dbk::print_hexascii(evnt.dt_begin(),evnt.dt_end(),std::back_inserter(s),'\0',' ');
-	s += "] ";
-	dbk::print_hexascii(evnt.event_begin(),evnt.end(),std::back_inserter(s),'\0',' ');
-	
-	if (opts == mtrk_sbo_print_opts::detail || opts == mtrk_sbo_print_opts::debug) {
-		if (evnt.type()==smf_event_type::meta) {
-			s += "\n";
-			s += ("\tmeta type: " + print(classify_meta_event(evnt)) + "; ");
-			if (meta_has_text(evnt)) {
-				s += ("text payload: \"" + meta_generic_gettext(evnt) + "\"; ");
-			} else if (is_tempo(evnt)) {
-				s += ("value = " + std::to_string(get_tempo(evnt)) + " us/q; ");
-			} else if (is_timesig(evnt)) {
-				auto data = get_timesig(evnt);
-				s += ("value = " + std::to_string(data.num) + "/" 
-					+ std::to_string(static_cast<int>(std::exp2(data.log2denom)))
-					+ ", " + std::to_string(data.clckspclk) + " MIDI clocks/click, "
-					+ std::to_string(data.ntd32pq) + " notated 32'nd nts / MIDI q nt; ");
-			}
-		}
-	} 
-	if (opts == mtrk_sbo_print_opts::debug) {
-		s += "\n\t";
-		if (evnt.is_small()) {
-			s += "sbo=>small = ";
-		} else {
-			s += "sbo=>big   = ";
-		}
-		s += "{";
-		s += dbk::print_hexascii(evnt.raw_data(), sizeof(mtrk_event_t2), ' ');
-		s += "}; \n";
-		s += "\tbigsmall_flag = ";
-		s += dbk::print_hexascii(evnt.raw_flag(), 1, ' ');
-	}
-	return s;
-}
 */

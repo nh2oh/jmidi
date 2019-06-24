@@ -87,17 +87,10 @@ public:
 	mtrk_event_t2& operator=(mtrk_event_t2&&) noexcept;	
 	// Dtor
 	~mtrk_event_t2();
-	/*
-	const unsigned char& operator[](uint32_t) const;
-	unsigned char& operator[](uint32_t);
 
-	uint32_t data_size() const;  // Not including the delta-t
-	// TODO:  payload_size()
-	// If is_small(), reports the size of the d_ array, which is the maximum
-	// size of an event that the 'small' state can contain.  
-	*/
 	uint64_t size() const;
 	uint64_t capacity() const;
+
 
 	// Iterators allowing access to the underlying unsigned char array
 	//
@@ -126,19 +119,33 @@ public:
 	// delta_t... redundant...
 	mtrk_event_const_iterator_t2 payload_begin() const;
 	mtrk_event_iterator_t2 payload_begin();
+	const unsigned char& operator[](uint32_t) const;
+	unsigned char& operator[](uint32_t);
 
 	// Getters
 	//
 	smf_event_type type() const;
-
-	/*
-	// Getters
+	uint32_t delta_time() const;
 	unsigned char status_byte() const;
 	// The value of the running-status _after_ this event has passed
 	unsigned char running_status() const;
+	uint32_t data_size() const;  // Not including the delta-t
+
+	// Setters
+	//
+	uint32_t set_delta_time(uint32_t);
+
+
+	bool operator==(const mtrk_event_t2&) const;
+	bool operator!=(const mtrk_event_t2&) const;
+
+
+	// TODO:  All the crap in validate() should just be moved into 
+	// indep. unit tests
+	// bool validate() const;
+	/*
+	// Getters
 	
-	uint32_t delta_time() const;
-	bool set_delta_time(uint32_t);
 	// For meta events w/ a text payload, copies the payload to a
 	// std::string;  Returns an empty std::string otherwise.  
 	std::string text_payload() const;
@@ -155,13 +162,6 @@ public:
 		bool is_running_status {false};
 	};
 	channel_event_data_t midi_data() const;
-
-	bool is_big() const;
-	bool is_small() const;
-	bool validate() const;
-
-	bool operator==(const mtrk_event_t2&) const;
-	bool operator!=(const mtrk_event_t2&) const;
 	*/
 private:
 	struct small_t {
@@ -194,13 +194,27 @@ private:
 		constexpr uint64_t small_capacity();
 		uint64_t size() const;
 		uint64_t capacity() const;
+		// resize(uint32_t new_cap) Sets the _capacity_ to 
+		// std::max(capacity(),new_cap).  Note that the smallest possible
+		// capacity is small_capacity().  If new_cap is < size(), the event
+		// will be truncated and become invalid in a way that almost 
+		// certainly will violate the invariants of mtrk_event_t and in fact
+		// also those of sbo_t (the size() calculations will not be correct).
+		// Sets the big/small flag & allocates/frees memory as appropriate.  
+		uint32_t resize(uint32_t);
 		unsigned char* begin();
 		const unsigned char* begin() const;
 		unsigned char* end();
 		const unsigned char* end() const;
+		unsigned char* raw_begin();
+		const unsigned char* raw_begin() const;
+		unsigned char* raw_end();
+		const unsigned char* raw_end() const;
 		void set_flag_big();
 		void set_flag_small();
 		void free_if_big();  // preserves the initial big/small flag state
+		// sets flag big.  If the object is big @ the time of the call, 
+		// the old memory is not freed.  Call free_if_big() first.  
 		void big_adopt(unsigned char*, uint32_t, uint32_t);  // ptr, size, capacity
 		// Sets the small-object flag, then sets all non-flag data members 
 		// of b_ or s_ (as appropriate) to 0; if u_.is_big(), the memory is 
@@ -210,6 +224,7 @@ private:
 		union sbou_t {
 			small_t s_;
 			big_t b_;
+			std::array<unsigned char,sizeof(small_t)> raw_;
 		};
 		sbou_t u_;
 
@@ -225,59 +240,14 @@ private:
 	// event.  Ignore the big/small flag of the union; do not free memory
 	// if big.  
 	void default_init();
+	const unsigned char *raw_begin() const;
+	const unsigned char *raw_end() const;
+	unsigned char flags() const;
+	bool is_big() const;
+	bool is_small() const;
 
-	/*
-	
-	// Ptr to this->data_[0], w/o regard to this->is_small()
-	const unsigned char *raw_data() const;
-	// ptr to this->flags_
-	const unsigned char *raw_flag() const;
-
-	// Causes the container to "adopt" the data at p (writes p and the 
-	// associated size, capacity into this->d_).  Note: data at p is _not_
-	// copied into a new buffer.  Caller should not delete p after calling.  
-	// The initial state of the container is completely overwritten w/o 
-	// discretion; if is_big(), big_ptr() is _not_ freed.  Callers not wanting
-	// to leak memory should first check is_big() and free big_ptr() as 
-	// necessary.  This function does not rely in any way on the initial
-	// state of the object; it is perfectly fine for the object to be 
-	// initially in a completely invalid state.  
-	// args:  ptr, size, cap, running status
-	bool init_big(unsigned char *, uint32_t, uint32_t, unsigned char); 
-	// If is_small(), make big with capacity as specified.  All data from the 
-	// local d_ array is copied into the new remote buffer.  
-	bool small2big(uint32_t);
-	bool big_resize(uint32_t);
-
-	// Zero all data members.  No attempt to query the state of the object
-	// is made; if is_big() the memory will leak.  
-	void clear_nofree();
-
-	void set_flag_small();
-	void set_flag_big();
-
-	// Getters {big,small}_ptr() get a pointer to the first byte of
-	// the underlying data array (the first byte of the dt field).  Neither
-	// checks for the container size; the caller must be careful to call the
-	// correct function.  These are the "unsafe" versions of .data().  
-	unsigned char *big_ptr() const;  // getter
-	unsigned char *small_ptr() const;  // getter
-	unsigned char *set_big_ptr(unsigned char *p);  // setter
-	// Getters to read the locally-cached size() field in the case of 
-	// this->is_big().  Does not check if this->is_big(); must not be called
-	// if this->is_small().  This is the unsafe version of .size().  
-	uint32_t big_size() const;  // getter
-	uint32_t set_big_size(uint32_t);  // setter
-	uint32_t big_cap() const;  // getter
-	uint32_t set_big_cap(uint32_t);  // setter
-	uint32_t big_delta_t() const;  // shortcut to determining the ft if is_big()
-	uint32_t set_big_cached_delta_t(uint32_t);
-	smf_event_type big_smf_event_type() const;  // shortcut to determining the type if is_big()
-	smf_event_type set_big_cached_smf_event_type(smf_event_type);
-	*/
 	friend std::string print(const mtrk_event_t2&,
 			mtrk_sbo_print_opts);
-
 };
 
 
