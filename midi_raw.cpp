@@ -430,6 +430,11 @@ smf_event_type classify_mtrk_event_dtstart(const unsigned char *p,
 	max_sz -= dt.N;
 	return classify_status_byte(*p,rs);
 }
+smf_event_type classify_mtrk_event_dtstart_unsafe(const unsigned char *p,
+									unsigned char rs) {
+	p = advance_to_vlq_end(p);
+	return classify_status_byte(*p,rs);
+}
 
 uint32_t channel_event_get_data_size(const unsigned char *p, unsigned char rs) {
 	auto s = get_status_byte(*p,rs);

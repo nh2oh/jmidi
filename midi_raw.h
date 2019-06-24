@@ -274,6 +274,8 @@ unsigned char get_running_status_byte(unsigned char, unsigned char);
 // by two invalid data bytes will evaluate to smf_event_type::channel_voice.  
 smf_event_type classify_mtrk_event_dtstart(const unsigned char *, 
 										unsigned char=0x00u, uint32_t=0);
+smf_event_type classify_mtrk_event_dtstart_unsafe(const unsigned char *, 
+										unsigned char=0x00u);
 
 // The most lightweight data_size calculators in the lib.  No error 
 // checking (other than will not read past max_size).  Behavior is 

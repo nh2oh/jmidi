@@ -199,7 +199,14 @@ midi_vl_field_interpreted midi_interpret_vl_field(InIt it) {
 	result.is_valid = !(*it & 0x80);
 	return result;
 };
-
+// Advance the iterator to the end of the vlq; do notparse the field
+template<typename InIt>
+InIt advance_to_vlq_end(InIt it) {
+	while((*it++)&0x80u) {
+		true;
+	}
+	return it;
+};
 
 
 

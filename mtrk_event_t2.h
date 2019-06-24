@@ -88,6 +88,17 @@ public:
 	// Dtor
 	~mtrk_event_t2();
 	/*
+	const unsigned char& operator[](uint32_t) const;
+	unsigned char& operator[](uint32_t);
+
+	uint32_t data_size() const;  // Not including the delta-t
+	// TODO:  payload_size()
+	// If is_small(), reports the size of the d_ array, which is the maximum
+	// size of an event that the 'small' state can contain.  
+	*/
+	uint64_t size() const;
+	uint64_t capacity() const;
+
 	// Iterators allowing access to the underlying unsigned char array
 	//
 	// begin(), dt_begin() both return iterators to the first byte of the 
@@ -98,45 +109,34 @@ public:
 	// payload_begin() returns an iterator to the first byte following
 	// the delta_t field for midi events, and to the first byte following
 	// the vlq length field for sysex and meta events.  
-	
-	mtrk_event_iterator_t begin();
-	mtrk_event_const_iterator_t dt_begin() const;
-	mtrk_event_iterator_t dt_begin();
-	mtrk_event_const_iterator_t dt_end() const;
-	mtrk_event_iterator_t dt_end();
-	mtrk_event_const_iterator_t event_begin() const;
-	mtrk_event_iterator_t event_begin();
-	mtrk_event_const_iterator_t payload_begin() const;
-	mtrk_event_iterator_t payload_begin();
-	mtrk_event_const_iterator_t end() const;
-	mtrk_event_iterator_t end();	
-
-	const unsigned char& operator[](uint32_t) const;
-	unsigned char& operator[](uint32_t);
-	unsigned char *data();
-	const unsigned char *data() const;
-
-	uint32_t data_size() const;  // Not including the delta-t
-	// TODO:  payload_size()
-	uint32_t size() const;  // Includes delta-t
-	// If is_small(), reports the size of the d_ array, which is the maximum
-	// size of an event that the 'small' state can contain.  
-	*/
-	uint64_t size() const;
-	uint64_t capacity() const;
-
 	unsigned char *data();
 	const unsigned char *data() const;
 	mtrk_event_iterator_t2 begin();
 	mtrk_event_const_iterator_t2 begin() const;
 	mtrk_event_iterator_t2 end();
 	mtrk_event_const_iterator_t2 end() const;
+	mtrk_event_const_iterator_t2 dt_begin() const;
+	mtrk_event_iterator_t2 dt_begin();
+	mtrk_event_const_iterator_t2 dt_end() const;
+	mtrk_event_iterator_t2 dt_end();
+	mtrk_event_const_iterator_t2 event_begin() const;
+	mtrk_event_iterator_t2 event_begin();
+	// TODO:  These call type(), which advances past the delta_t to determine
+	// the status byte, then they manually advance a local iterator past the 
+	// delta_t... redundant...
+	mtrk_event_const_iterator_t2 payload_begin() const;
+	mtrk_event_iterator_t2 payload_begin();
+
+	// Getters
+	//
+	smf_event_type type() const;
+
 	/*
 	// Getters
 	unsigned char status_byte() const;
 	// The value of the running-status _after_ this event has passed
 	unsigned char running_status() const;
-	smf_event_type type() const;
+	
 	uint32_t delta_time() const;
 	bool set_delta_time(uint32_t);
 	// For meta events w/ a text payload, copies the payload to a
@@ -219,6 +219,12 @@ private:
 	static_assert(sizeof(small_t)==sizeof(big_t));
 	static_assert(sizeof(small_t)==sizeof(sbo_t));
 	sbo_t d_;
+
+	// Called by the default ctor mtrk_event_t2()
+	// Overwrites *this w/ the default ctor'd value of a length 0 meta text
+	// event.  Ignore the big/small flag of the union; do not free memory
+	// if big.  
+	void default_init();
 
 	/*
 	
