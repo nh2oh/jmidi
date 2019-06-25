@@ -3,6 +3,11 @@
 #include <string>
 #include <cstdint>
 
+template<typename It>
+struct iterator_range_t {
+	It begin;
+	It end;
+};
 
 
 // midi_time_t 

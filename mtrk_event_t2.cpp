@@ -5,13 +5,11 @@
 #include "dbklib\byte_manipulation.h"
 #include <string>
 #include <cstdint>
-#include <cstring>  // std::memcpy()
-#include <exception>  // std::abort()
 #include <algorithm>  
-#include <utility>  // std::move()
 
 
-/*
+
+
 std::string print(const mtrk_event_t2& evnt, mtrk_sbo_print_opts opts) {
 	std::string s {};
 	s += ("delta_time = " + std::to_string(evnt.delta_time()) + ", ");
@@ -58,7 +56,7 @@ std::string print(const mtrk_event_t2& evnt, mtrk_sbo_print_opts opts) {
 	}
 	return s;
 }
-*/
+
 
 
 // Default ctor creates a meta text-event of length 0 
@@ -235,10 +233,10 @@ mtrk_event_const_iterator_t2 mtrk_event_t2::begin() const {
 	return mtrk_event_const_iterator_t2(*this);
 }
 mtrk_event_iterator_t2 mtrk_event_t2::end() {
-	return mtrk_event_iterator_t2(*this);
+	return this->begin()+this->size();
 }
 mtrk_event_const_iterator_t2 mtrk_event_t2::end() const {
-	return mtrk_event_const_iterator_t2(*this);
+	return this->begin()+this->size();
 }
 mtrk_event_const_iterator_t2 mtrk_event_t2::dt_begin() const {
 	return this->begin();
@@ -281,6 +279,32 @@ mtrk_event_iterator_t2 mtrk_event_t2::payload_begin() {
 		it = advance_to_vlq_end(it);
 	} // else { smf_event_type::channel_voice, _mode, unknown, invalid...
 	return it;
+}
+iterator_range_t<mtrk_event_const_iterator_t2> mtrk_event_t2::payload_range() const {
+	auto sz = this->size();
+	auto it = this->event_begin();
+	if (this->type()==smf_event_type::meta) {
+		it += 2;  // 0xFFu, type-byte
+		it = advance_to_vlq_end(it);
+	} else if (this->type()==smf_event_type::sysex_f0
+					|| this->type()==smf_event_type::sysex_f7) {
+		it += 1;  // 0xF0u or 0xF7u
+		it = advance_to_vlq_end(it);
+	} // else { smf_event_type::channel_voice, _mode, unknown, invalid...
+	return {it,this->end()};
+}
+iterator_range_t<mtrk_event_iterator_t2> mtrk_event_t2::payload_range() {
+	auto sz = this->size();
+	auto it = this->event_begin();
+	if (this->type()==smf_event_type::meta) {
+		it += 2;  // 0xFFu, type-byte
+		it = advance_to_vlq_end(it);
+	} else if (this->type()==smf_event_type::sysex_f0
+					|| this->type()==smf_event_type::sysex_f7) {
+		it += 1;  // 0xF0u or 0xF7u
+		it = advance_to_vlq_end(it);
+	} // else { smf_event_type::channel_voice, _mode, unknown, invalid...
+	return {it,this->end()};
 }
 const unsigned char& mtrk_event_t2::operator[](uint32_t i) const {
 	return *(this->data()+i);

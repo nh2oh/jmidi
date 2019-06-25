@@ -1,11 +1,10 @@
 #pragma once
 #include "mtrk_event_t_internal.h"
 #include "midi_raw.h"  // declares smf_event_type
-#include <string>
+#include <string>  // For declaration of print()
 #include <cstdint>
-#include <array>
-#include <vector>
-#include <memory>
+
+
 
 class mtrk_event_t2;
 class mtrk_event_iterator_t2;
@@ -32,7 +31,7 @@ std::string print(const mtrk_event_t2&,
 //
 // The choice to store mtrk events directly as the byte array as specified by
 // the MIDI spec (and not as some processed aggregate of native types, ex, 
-// with a uint32_t for the delta-time, an enum for the sme_event_type, etc)
+// with a uint32_t for the delta-time, an enum for the smf_event_type, etc)
 // is in keeping with the overall philosophy of the library to facilitate
 // lightweight and straightforward manipulation of MIDI data.  All users 
 // working with a MIDI library are presumed to know something about MIDI; 
@@ -44,8 +43,15 @@ std::string print(const mtrk_event_t2&,
 //
 
 
-
-
+// TODO:  If the sbo class prevented 'big' sbo's w/ capacity less than
+// sizeof(small_t) - 1, i could implement mtrk_event_t.size() with
+// mtrk_event_get_size_dtstart_unsafe() (instead of the 'safe' version)
+// and return the lesser of the result and a call to sbo_t.capacity().  
+//
+// TODO:  The sbo types should not have size() methods, and big_t should
+// not have a sz_ field (only uint64_t cap_).  size() is dynamic and
+// should be implemented in the outter event container, not the sbo_t.  
+//
 // TODO:  Add typedefs so std::back_inserter() can be used.  
 // TODO:  Error handling for some of the ctors
 // TODO:  Ctors for channel/meta/sysex data structs
@@ -118,6 +124,8 @@ public:
 	// delta_t... redundant...
 	mtrk_event_const_iterator_t2 payload_begin() const;
 	mtrk_event_iterator_t2 payload_begin();
+	iterator_range_t<mtrk_event_const_iterator_t2> payload_range() const;
+	iterator_range_t<mtrk_event_iterator_t2> payload_range();
 	const unsigned char& operator[](uint32_t) const;
 	unsigned char& operator[](uint32_t);
 
