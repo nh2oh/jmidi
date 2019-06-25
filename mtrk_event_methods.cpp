@@ -177,9 +177,9 @@ std::string meta_generic_gettext(const mtrk_event_t2& ev) {
 	if (!meta_has_text(ev)) {
 		return s;
 	}
-
-	s.reserve()
-	s = ev.text_payload();
+	auto its = ev.payload_range();
+	s.reserve(its.end-its.begin);
+	std::copy(its.begin,its.end,std::back_inserter(s));
 	return s;
 }
 
@@ -187,7 +187,8 @@ uint32_t get_tempo(const mtrk_event_t2& ev, uint32_t def) {
 	if (!is_tempo(ev)) {
 		return def;
 	}
-	return ev.uint32_payload();
+	auto its = ev.payload_range();
+	return be_2_native<uint32_t>(its.begin,its.end);
 }
 
 midi_timesig_t get_timesig(const mtrk_event_t2& ev, midi_timesig_t def) {
@@ -306,35 +307,59 @@ mtrk_event_t2 make_meta_generic_text(const uint32_t& dt, const meta_event_t& typ
 
 
 
-
+midi_ch_event_t get_channel_event(const mtrk_event_t2& ev, midi_ch_event_t def) {
+	auto result = get_channel_event_impl(ev);
+	if (!is_valid_ch_data(result)) {
+		return def;
+	}
+	return result;
+}
+midi_ch_event_t get_channel_event_impl(const mtrk_event_t2& ev) {
+	auto its = ev.payload_range();
+	midi_ch_event_t result {};
+	result.status_nybble = ((*its.begin) & 0xF0u);
+	result.ch = ((*its.begin) & 0x0Fu);
+	++its.begin;
+	result.p1 = *its.begin;
+	++its.begin;
+	if (its.begin != its.end) {
+		result.p2 = *its.begin;
+	}
+	return result;
+}
 bool is_channel(const mtrk_event_t2& ev) {  // voice or mode
-	auto s = ev.status_byte();
-	return ((s&0x80u)==0x80u && (s&0xF0u)!=0xF0u);
+	return is_valid_ch_data(get_channel_event_impl(ev));
 }
 bool is_channel_voice(const mtrk_event_t2& ev) {
-	auto md = ev.midi_data();
-	if (!md.is_valid || (md.status_nybble == 0xB0u)) {
+	auto md = get_channel_event_impl(ev);
+	if (!is_valid_ch_data(md)) {
 		return false;
 	}
-	return (((md.p1>>3)&0x0Fu)!=0x0Fu);
+	if ((md.status_nybble==0xB0u) && ((md.p1&0x78u)==0x78u)) {
+		// => ev is a channel_mode, not channel_voice event
+		// 0x78u  == 0b01111000u; see Table I of the MIDI std
+		return false;
+	}
+	return true;
 }
 bool is_channel_mode(const mtrk_event_t2& ev) {
-	auto md = ev.midi_data();
-	if (!md.is_valid || (md.status_nybble != 0xB0u)) {
+	auto md = get_channel_event_impl(ev);
+	if (!is_valid_ch_data(md)) {
 		return false;
 	}
-	return (((md.p1>>3)&0x0Fu)==0x0Fu);
+	if ((md.status_nybble!=0xB0u) || ((md.p1&0x78u)!=0x78u)) {
+		// 0x78u  == 0b01111000u; see Table I of the MIDI std
+		return false;
+	}
+	return true;
 }
 bool is_note_on(const mtrk_event_t2& ev) {
-	auto md = ev.midi_data();
-	return (md.is_valid 
-		&& md.status_nybble==0x90u && (md.p2 > 0));
+	auto md = get_channel_event_impl(ev);
+	return is_note_on(md);
 }
 bool is_note_off(const mtrk_event_t2& ev) {
-	auto md = ev.midi_data();
-	return (md.is_valid && 
-		((md.status_nybble==0x80u)
-			|| (md.status_nybble==0x90u && (md.p2==0))));
+	auto md = get_channel_event_impl(ev);
+	return is_note_off(md);
 }
 bool is_key_aftertouch(const mtrk_event_t2& ev) {
 	return ((ev.status_byte() & 0xF0u) == 0xA0u);
@@ -356,33 +381,22 @@ bool is_onoff_pair(const mtrk_event_t2& on, const mtrk_event_t2& off) {
 	if (!is_note_on(on) || !is_note_off(off)) {
 		return false;
 	}
-	auto on_md = on.midi_data();
-	auto off_md = off.midi_data();
+	auto on_md = get_channel_event(on);  //auto on_md = on.midi_data();
+	auto off_md = get_channel_event(off);  //auto off_md = off.midi_data();
 	return is_onoff_pair(on_md.ch,on_md.p1,off_md.ch,off_md.p1);
 }
 bool is_onoff_pair(int on_ch, int on_note, const mtrk_event_t2& off) {
 	if (!is_note_off(off)) {
 		return false;
 	}
-	auto off_md = off.midi_data();
+	auto off_md = get_channel_event(off);  //.midi_data();
 	return is_onoff_pair(on_ch,on_note,off_md.ch,off_md.p1);
 }
 bool is_onoff_pair(int on_ch, int on_note, int off_ch, int off_note) {
 	return (on_ch==off_ch && on_note==off_note);
 }
 
-midi_ch_event_t get_channel_event(const mtrk_event_t2& ev, midi_ch_event_t def) {
-	if (!is_channel(ev)) {
-		return def;
-	}
-	auto md = ev.midi_data();
-	midi_ch_event_t result {};
-	result.status_nybble = md.status_nybble;
-	result.ch = md.ch;
-	result.p1 = md.p1;
-	result.p2 = md.p2;
-	return result;
-}
+
 
 mtrk_event_t2 make_ch_event_generic_unsafe(const uint32_t& dt, const midi_ch_event_t& md) {
 	std::array<unsigned char,3> evdata {(md.status_nybble|md.ch),md.p1,md.p2};

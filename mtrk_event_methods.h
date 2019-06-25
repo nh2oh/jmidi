@@ -147,8 +147,8 @@ mtrk_event_t2 make_meta_generic_text(const uint32_t&, const meta_event_t&,
 // is_bank_select(), is_pan(), is_foot_controller(), etc.  These require 
 // reading p1.  
 //
-// TODO:  Why do these not call mtrk_event_t2::type() as the is_meta_*() 
-// functions do?
+midi_ch_event_t get_channel_event(const mtrk_event_t2&, midi_ch_event_t={});
+midi_ch_event_t get_channel_event_impl(const mtrk_event_t2&);
 bool is_channel(const mtrk_event_t2&);
 bool is_channel_voice(const mtrk_event_t2&);
 bool is_channel_mode(const mtrk_event_t2&);

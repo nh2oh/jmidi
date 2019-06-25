@@ -34,6 +34,23 @@ bool is_major(const midi_keysig_t& ks) {
 bool is_minor(const midi_keysig_t& ks) {
 	return ks.mi==1;
 }
+bool is_valid_ch_data(const midi_ch_event_t& md) {
+	auto s = ((md.status_nybble & 0xF0u) + (md.ch & 0x0Fu));
+	if (!is_channel_status_byte(s)) {
+		return false;
+	}
+	if (md.ch > 0x0Fu) {
+		return false;
+	}
+	if (!is_data_byte(md.p1)) {
+		return false;
+	}
+	if ((channel_status_byte_n_data_bytes(s)==2) && !is_data_byte(md.p2)) {
+		return false;
+	}
+	return true;
+}
+
 midi_ch_event_t normalize(midi_ch_event_t md) {
 	md.status_nybble = 0xF0u&(0x80u|(md.status_nybble));
 	md.ch &= 0x0Fu; // std::max(md.ch,15);
@@ -42,11 +59,14 @@ midi_ch_event_t normalize(midi_ch_event_t md) {
 	return md;
 }
 bool is_note_on(const midi_ch_event_t& md) {
-	return (md.status_nybble==0x90u && (md.p2 > 0));
+	return (is_valid_ch_data(md)
+		&& md.status_nybble==0x90u
+		&& (md.p2 > 0));
 }
 bool is_note_off(const midi_ch_event_t& md) {
-	return ((md.status_nybble==0x80u)
-			|| (md.status_nybble==0x90u && (md.p2==0)));
+	return (is_valid_ch_data(md)
+		&& ((md.status_nybble==0x80u)
+			|| (md.status_nybble==0x90u && (md.p2==0))));
 }
 
 
