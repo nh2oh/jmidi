@@ -3,6 +3,7 @@
 #include "midi_raw_test_parts.h"
 #include "mthd_t.h"
 #include "mtrk_event_t.h"
+#include "mtrk_event_methods.h"
 #include "smf_t.h"
 #include "dbklib\binfile.h"
 #include "dbklib\byte_manipulation.h"

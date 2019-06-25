@@ -1,5 +1,6 @@
 #pragma once
 #include "mtrk_event_t.h"
+#include "mtrk_event_methods.h"
 #include <string>
 #include <cstdint>
 
@@ -39,7 +40,7 @@ struct tk_integrator_t : integrator_t {
 struct lyric_integrator_t : integrator_t {
 	lyric_integrator_t& operator+=(const mtrk_event_t& ev) override {
 		if (is_lyric(ev)) {
-			this->val_ = ev.text_payload();
+			this->val_ = meta_generic_gettext(ev);  // ev.text_payload();
 			return *this;
 		}
 	};

@@ -1,10 +1,10 @@
 #pragma once
+#include "mtrk_event_t_internal.h"
 #include "midi_raw.h"  // declares smf_event_type
-#include <string>
+#include <string>  // For declaration of print()
 #include <cstdint>
-#include <array>
-#include <vector>
-#include <memory>
+
+
 
 class mtrk_event_t;
 class mtrk_event_iterator_t;
@@ -27,23 +27,11 @@ std::string print(const mtrk_event_t&,
 // An mtrk_event_t is a container for storing and working with byte
 // sequences representing mtrk events (including the event delta-time).  
 // An mtrk_event_t stores and provides direct access (both read and 
-// write) to the sequence of bytes (unsigned char) encoding the event.  To
-// make access to event data faster, some information is "cached" outside 
-// the byte sequence.  
-//
-// A side effect of always storing the midi-status byte applic. to the event
-// in midi_status_ is that running-status events copied out of an mtrk_t
-// retain their meaning out of that context, and can be stored elsewhere 
-// but still be interpreted correctly.  A second feature is that an event
-// can be marked as "serialize as running status [if possible]."  A downside
-// is that it breaks the notion that a user can examine the byte sequence
-// on [begin(),end()) and have all the information pertaining to the event;
-// it introduces a "shadow" store of data outside the byte sequence.  I do
-// not know whether or not the upsides of this outweigh the downsides.  
+// write) to the sequence of bytes (unsigned char) encoding the event.  
 //
 // The choice to store mtrk events directly as the byte array as specified by
 // the MIDI spec (and not as some processed aggregate of native types, ex, 
-// with a uint32_t for the delta-time, an enum for the sme_event_type, etc)
+// with a uint32_t for the delta-time, an enum for the smf_event_type, etc)
 // is in keeping with the overall philosophy of the library to facilitate
 // lightweight and straightforward manipulation of MIDI data.  All users 
 // working with a MIDI library are presumed to know something about MIDI; 
@@ -52,85 +40,28 @@ std::string print(const mtrk_event_t&,
 // 
 // Since write access to the underlying byte array is provided, it is hard for
 // this container to maintain any invariants.  
-// TODO:  Dirty bit set whenever a non-const accessor function is called?  
-//        Triggers re-parsing of the event on next use of the container?
-//
-// TODO:  
-// If midi_status_ held the first byte following the delta-time in all cases
-// (including for sysex,meta,etc events), it would be _way_ more effecient to
-// determine the object type dynamically.  One would not have to process the
-// delta-time field.  Presumably .type() is the most common method called on
-// these objects.  
-// For case big, I could then cache the meta type-byte as well...
 //
 
-// CRTP?  small_t, big_t have different underlying layouts but implement
-// the same interface.  
-// flags:  [issmall, isdirty, isrs, unused, unused, unused, dt_size-1]
-struct small_t {
-	unsigned char flags;
-	std::array<unsigned char,23> d;
-};
-struct big_t {
-	unsigned char flags;
-	// [dt field (vlq), unsigned char sb, unsigned char p1, unsigned char p2]
-	std::array<unsigned char,7> cache;
-	unsigned char* p;  // 16
-	uint32_t sz;  // 20
-	uint32_t cap;  // 24
 
-	unsigned char* data();
-	unsigned char* event_begin();
-	unsigned char* payload_begin();
-	unsigned char* end();
-};
-struct sbo_t {
-	union sbou_t {
-		small_t s;
-		big_t b;
-	};
-	sbou_t d;
-
-	unsigned char* data();
-	bool is_big() const;
-	bool is_small() const;
-	bool is_clean() const;
-
-	void set_flag_clean();
-	void set_flag_dirty();
-	void set_flag_big();
-	void set_flag_small();
-};
-
-constexpr auto szs = sizeof(small_t);
-constexpr auto szb = sizeof(big_t);
-constexpr auto szsbo = sizeof(sbo_t);
-
-
+// TODO:  If the sbo class prevented 'big' sbo's w/ capacity less than
+// sizeof(small_t) - 1, i could implement mtrk_event_t.size() with
+// mtrk_event_get_size_dtstart_unsafe() (instead of the 'safe' version)
+// and return the lesser of the result and a call to sbo_t.capacity().  
+//
+// TODO:  The sbo types should not have size() methods, and big_t should
+// not have a sz_ field (only uint64_t cap_).  size() is dynamic and
+// should be implemented in the outter event container, not the sbo_t.  
+//
 // TODO:  Add typedefs so std::back_inserter() can be used.  
-// TODO:  This exposes a lot of dangerous getters
-// TODO:  Member enum class offs is absolutely disgusting
-// TODO:  Error handling for some of the ctors; default uninit value?
+// TODO:  Error handling for some of the ctors
 // TODO:  Ctors for channel/meta/sysex data structs
-// 
+// TODO:  Safe resize()/reserve()
 //
 class mtrk_event_t {
 public:
 	// Default ctor; creates a "small" object representing a meta-text event
 	// w/ a payload length of 0.  
 	mtrk_event_t();
-	// delta_time, raw midi channel event data
-	// This ctor will convert any invalid values in the midi_ch_event_t 
-	// parameter silently so that the mtrk_event_t is valid.  To avoid 
-	// undefined behavior, it is the responsibility of the caller to ensure 
-	// the input is valid.  To generate valid data, status bytes are computed
-	// from the midi_ch_event_t parameter and the MSB is subsequently set to
-	// 1; similarly for data bytes.  
-	mtrk_event_t(uint32_t, const midi_ch_event_t&);
-	// Ctor for callers who have already run validate_mtrk_event_dtstart() on
-	// some underlying buffer.  Avoids re-calculation of the delta-time, 
-	// running-status, event type, etc.  
-	mtrk_event_t(const unsigned char*, const validate_mtrk_event_result_t&);
 	// Ctors for callers who have pre-computed the exact size of the event 
 	// and who can also supply a midi status byte (if needed).  In the first
 	// overload, parameter 1 is a pointer to the first byte of the delta-time
@@ -140,6 +71,17 @@ public:
 	// "event" data).  
 	mtrk_event_t(const unsigned char*, uint32_t, unsigned char=0);
 	mtrk_event_t(const uint32_t&, const unsigned char*, uint32_t, unsigned char=0);
+	// delta_time, raw midi channel event data
+	// This ctor calls normalize() on the midi_ch_event_t parameter before
+	// the data is copied into the event array; invalid values in this 
+	// parameter may lead to an event with unexpected behavior.  
+	mtrk_event_t(uint32_t, midi_ch_event_t);
+	// TODO:  the field validate_mtrk_event_result_t.running_status is obtained by
+	// a call to get_running status() not get_status_byte().  The meaning is not
+	// quite the same; this is probably a bug.  
+	mtrk_event_t(const unsigned char *p, 
+		const validate_mtrk_event_result_t& ev)
+		: mtrk_event_t::mtrk_event_t(p,ev.size,ev.running_status) {};
 	// Copy ctor
 	mtrk_event_t(const mtrk_event_t&);
 	// Copy assignment; overwrites a pre-existing lhs 'this' w/ rhs
@@ -147,9 +89,13 @@ public:
 	// Move ctor
 	mtrk_event_t(mtrk_event_t&&) noexcept;
 	// Move assignment
-	mtrk_event_t& operator=(mtrk_event_t&&) noexcept;
+	mtrk_event_t& operator=(mtrk_event_t&&) noexcept;	
 	// Dtor
 	~mtrk_event_t();
+
+	uint64_t size() const;
+	uint64_t capacity() const;
+
 
 	// Iterators allowing access to the underlying unsigned char array
 	//
@@ -161,38 +107,52 @@ public:
 	// payload_begin() returns an iterator to the first byte following
 	// the delta_t field for midi events, and to the first byte following
 	// the vlq length field for sysex and meta events.  
-	mtrk_event_const_iterator_t begin() const;
+	unsigned char *data();
+	const unsigned char *data() const;
 	mtrk_event_iterator_t begin();
+	mtrk_event_const_iterator_t begin() const;
+	mtrk_event_iterator_t end();
+	mtrk_event_const_iterator_t end() const;
 	mtrk_event_const_iterator_t dt_begin() const;
 	mtrk_event_iterator_t dt_begin();
 	mtrk_event_const_iterator_t dt_end() const;
 	mtrk_event_iterator_t dt_end();
 	mtrk_event_const_iterator_t event_begin() const;
 	mtrk_event_iterator_t event_begin();
+	// TODO:  These call type(), which advances past the delta_t to determine
+	// the status byte, then they manually advance a local iterator past the 
+	// delta_t... redundant...
 	mtrk_event_const_iterator_t payload_begin() const;
 	mtrk_event_iterator_t payload_begin();
-	mtrk_event_const_iterator_t end() const;
-	mtrk_event_iterator_t end();	
-
+	iterator_range_t<mtrk_event_const_iterator_t> payload_range() const;
+	iterator_range_t<mtrk_event_iterator_t> payload_range();
 	const unsigned char& operator[](uint32_t) const;
 	unsigned char& operator[](uint32_t);
-	unsigned char *data();
-	const unsigned char *data() const;
-
-	uint32_t data_size() const;  // Not including the delta-t
-	// TODO:  payload_size()
-	uint32_t size() const;  // Includes delta-t
-	// If is_small(), reports the size of the d_ array, which is the maximum
-	// size of an event that the 'small' state can contain.  
-	uint32_t capacity() const;
 
 	// Getters
+	//
+	smf_event_type type() const;
+	uint32_t delta_time() const;
 	unsigned char status_byte() const;
 	// The value of the running-status _after_ this event has passed
 	unsigned char running_status() const;
-	smf_event_type type() const;
-	uint32_t delta_time() const;
-	bool set_delta_time(uint32_t);
+	uint32_t data_size() const;  // Not including the delta-t
+
+	// Setters
+	//
+	uint32_t set_delta_time(uint32_t);
+
+
+	bool operator==(const mtrk_event_t&) const;
+	bool operator!=(const mtrk_event_t&) const;
+
+
+	// TODO:  All the crap in validate() should just be moved into 
+	// indep. unit tests
+	// bool validate() const;
+	/*
+	// Getters
+	
 	// For meta events w/ a text payload, copies the payload to a
 	// std::string;  Returns an empty std::string otherwise.  
 	std::string text_payload() const;
@@ -209,319 +169,24 @@ public:
 		bool is_running_status {false};
 	};
 	channel_event_data_t midi_data() const;
+	*/
+private:
+	mtrk_event_t_internal::sbo_t d_;
 
+	// Called by the default ctor mtrk_event_t()
+	// Overwrites *this w/ the default ctor'd value of a length 0 meta text
+	// event.  Ignore the big/small flag of the union; do not free memory
+	// if big.  
+	void default_init();
+	const unsigned char *raw_begin() const;
+	const unsigned char *raw_end() const;
+	unsigned char flags() const;
 	bool is_big() const;
 	bool is_small() const;
-	bool validate() const;
-
-	bool operator==(const mtrk_event_t&) const;
-	bool operator!=(const mtrk_event_t&) const;
-private:
-	enum class offs {
-		ptr = 0,
-		size = 0 + sizeof(unsigned char*),
-		cap = 0 + sizeof(unsigned char*) + sizeof(uint32_t),
-		dt = 0 + sizeof(unsigned char*) + 2*sizeof(uint32_t),
-		type = 0 + sizeof(unsigned char*) + 3*sizeof(uint32_t),
-		// Not really an "offset":
-		max_size_sbo = sizeof(unsigned char*) + 3*sizeof(uint32_t) + 2
-	};
-
-	//
-	// Private data:  Overall object size is 24 bytes
-	// std::array<unsigned char,22> d_;
-	// unsigned char midi_status_;
-	// unsigned char flags_;
-	// 
-	// midi_status_ is _always_ the status applicable to the object.  Thus, if
-	// the object stores a midi event w/ no status byte (ie, the event is in
-	// running-status), the value of midi_status_ is the corresponding running
-	// status byte.  For midi messages w/ an event-local status byte, 
-	// midi_status_ is a copy of this value.  For meta or sysex events, 
-	// midi_status_ == 0x00u.  
-	//
-	// Case big:  Probably meta or sysex_f0/f7, but _could_ be midi (rs or 
-	// non-rs); after all, there is no reason an event w/ size() < 22 bytes 
-	// can not be put on the heap.  
-	// Following the three "buffer parameters" ptr, size, capacity are two 
-	// data members redundant w/ the data at p.  These are object-local 
-	// "cached" versions of the remote data that prevent an indirection when
-	// a user calls delta_time() or type().  The object must take care to keep
-	// these in sync w/ the remote raw data (ex, on a call to 
-	// set_delta_time()).  
-	// 
-	// d_ ~ { 
-	//     unsigned char *p;      // cum sizeof()==8
-	//     unit32_t size sz;      // cum sizeof()==12
-	//     uint32_t capacity c;   // cum sizeof()==16
-	//
-	//     uint32_t delta_t.val;  // fixed size version of the vl quantity
-	//     smf_event_type b21;    // 
-	//     unsigned char b22;     // unused
-	// };  // sizeof() => 22
-	//
-	//
-	// Case small:  meta, sysex_f0/f7, midi (rs or non-rs), unknown.  
-	// If a midi event and b1 is a valid status byte, b1 and midi_status must
-	// match.  Otherwise, if a midi event and b1 is a data byte, midi_status
-	// is the running-status value.  midi_status is always the value of the
-	// midi status applic. to the present event, no matter what the state of
-	// b1.  
-	// d_ ~ {
-	//     midi-vl-field delta_t;
-	//     unsigned char b(delta_t.N+1);  // byte 1 following the vl dt field
-	//     unsigned char b(delta_t.N+2);  // byte 2 following the vl dt field
-	//     unsigned char b(delta_t.N+3);  // byte 3 following the vl dt field
-	//     ...
-	//     unsigned char b22;  // byte n-1 following the vl event start
-	// };  // sizeof() => 22
-	//
-	std::array<unsigned char,22> d_ {0x00u};
-	unsigned char midi_status_ {0x00u};  // always the applic. midi status
-	unsigned char flags_ {0x80u};  // 0x00u=>big; NB:  defaults to "small"
-	static_assert(static_cast<uint32_t>(offs::max_size_sbo)==sizeof(d_));
-	static_assert(sizeof(d_)==22);
-	static_assert(static_cast<uint32_t>(offs::max_size_sbo)==22);
-	
-	// Ptr to this->data_[0], w/o regard to this->is_small()
-	const unsigned char *raw_data() const;
-	// ptr to this->flags_
-	const unsigned char *raw_flag() const;
-
-	// Causes the container to "adopt" the data at p (writes p and the 
-	// associated size, capacity into this->d_).  Note: data at p is _not_
-	// copied into a new buffer.  Caller should not delete p after calling.  
-	// The initial state of the container is completely overwritten w/o 
-	// discretion; if is_big(), big_ptr() is _not_ freed.  Callers not wanting
-	// to leak memory should first check is_big() and free big_ptr() as 
-	// necessary.  This function does not rely in any way on the initial
-	// state of the object; it is perfectly fine for the object to be 
-	// initially in a completely invalid state.  
-	// args:  ptr, size, cap, running status
-	bool init_big(unsigned char *, uint32_t, uint32_t, unsigned char); 
-	// If is_small(), make big with capacity as specified.  All data from the 
-	// local d_ array is copied into the new remote buffer.  
-	bool small2big(uint32_t);
-	bool big_resize(uint32_t);
-
-	// Zero all data members.  No attempt to query the state of the object
-	// is made; if is_big() the memory will leak.  
-	void clear_nofree();
-
-	void set_flag_small();
-	void set_flag_big();
-
-	// Getters {big,small}_ptr() get a pointer to the first byte of
-	// the underlying data array (the first byte of the dt field).  Neither
-	// checks for the container size; the caller must be careful to call the
-	// correct function.  These are the "unsafe" versions of .data().  
-	unsigned char *big_ptr() const;  // getter
-	unsigned char *small_ptr() const;  // getter
-	unsigned char *set_big_ptr(unsigned char *p);  // setter
-	// Getters to read the locally-cached size() field in the case of 
-	// this->is_big().  Does not check if this->is_big(); must not be called
-	// if this->is_small().  This is the unsafe version of .size().  
-	uint32_t big_size() const;  // getter
-	uint32_t set_big_size(uint32_t);  // setter
-	uint32_t big_cap() const;  // getter
-	uint32_t set_big_cap(uint32_t);  // setter
-	uint32_t big_delta_t() const;  // shortcut to determining the ft if is_big()
-	uint32_t set_big_cached_delta_t(uint32_t);
-	smf_event_type big_smf_event_type() const;  // shortcut to determining the type if is_big()
-	smf_event_type set_big_cached_smf_event_type(smf_event_type);
 
 	friend std::string print(const mtrk_event_t&,
 			mtrk_sbo_print_opts);
 };
 
-
-
-//
-// Meta event classification & data access.  Functions to classify and extract 
-// data from mtrk_event_t's containing meta events.  
-//
-// These classification is_*() functions examine payload_begin() of the
-// event passed in for the 0xFF and subsequent meta type byte and return
-// true if the correct signature is present.  They do _not_ verify other
-// important aspects of the the event, ex, if size() is large enough to
-// contain the event, or, for events with fixed size specified in the MIDI
-// std (ex, a timesig always has a payload of 4 bytes), whether the length
-// field is correct.  This means that the get_{timesig,keysig,...}() family
-// of functions have to make these checks before extracting the payload.  
-// These functions are designed this way because A) it should be impossible 
-// to "safely" (ie, using only library-provided factory functions and w/o 
-// calling unsafe accessors to directly modify the byte array for the event)
-// create or obtain an mtrk_event_t invalid in this way, and B) because in 
-// practice i expect calls to is_*() functions to be far more frequent than 
-// calls to get_*() functions and i want to optimize for the common case.  
-//
-// Meta event categories.  I include the leading 0xFF byte so that it is 
-// possible to have "unknown" and "invalid" message types.  
-// 
-enum class meta_event_t : uint16_t {
-	seqn = 0xFF00u,  // Sequence _number_
-	text = 0xFF01u,
-	copyright = 0xFF02u,
-	trackname = 0xFF03u,  // AKA "sequence name"
-	instname = 0xFF04u,
-	lyric = 0xFF05u,
-	marker = 0xFF06u,
-	cuepoint = 0xFF07u,
-	chprefix = 0xFF20u,
-	eot = 0xFF2Fu,
-	tempo = 0xFF51u,
-	smpteoffset = 0xFF54u,
-	timesig = 0xFF58u,
-	keysig = 0xFF59u,
-	seqspecific = 0xFF7Fu,
-
-	invalid = 0x0000u,
-	unknown = 0xFFFFu
-};
-meta_event_t classify_meta_event_impl(const uint16_t&);
-bool meta_hastext_impl(const uint16_t&);
-meta_event_t classify_meta_event(const mtrk_event_t&);
-std::string print(const meta_event_t&);
-bool is_meta(const mtrk_event_t&, const meta_event_t&);
-bool is_meta(const mtrk_event_t&);
-bool is_seqn(const mtrk_event_t&);
-bool is_text(const mtrk_event_t&);
-bool is_copyright(const mtrk_event_t&);
-bool is_trackname(const mtrk_event_t&);
-bool is_instname(const mtrk_event_t&);
-bool is_lyric(const mtrk_event_t&);
-bool is_marker(const mtrk_event_t&);
-bool is_cuepoint(const mtrk_event_t&);
-bool is_chprefix(const mtrk_event_t&);
-bool is_eot(const mtrk_event_t&);
-bool is_tempo(const mtrk_event_t&);
-bool is_smpteoffset(const mtrk_event_t&);
-bool is_timesig(const mtrk_event_t&);
-bool is_keysig(const mtrk_event_t&);
-bool is_seqspecific(const mtrk_event_t&);
-// Returns true if the event is a meta_event_t w/a text payload,
-// ex:  meta_event_t::text, meta_event_t::lyric, etc. 
-bool meta_has_text(const mtrk_event_t&);
-// Get the text of any meta event w/a text payload, ex:
-// meta_event_t::text, ::copyright, ::trackname, instname::, ...
-std::string meta_generic_gettext(const mtrk_event_t&);
-// TODO:  std::vector<unsigned char> meta_generic_getpayload(...
-
-// Value returned represents "usec/midi-q-nt"
-// 500000 => 120 q nts/min
-uint32_t get_tempo(const mtrk_event_t&, uint32_t=500000);
-// A default {}-constructed midi_timesig_t contains the defaults as
-// stipulated by the MIDI std.  
-midi_timesig_t get_timesig(const mtrk_event_t&, midi_timesig_t={});
-// A default {}-constructed midi_keysig_t contains defaults corresponding
-// to C-major.  
-midi_keysig_t get_keysig(const mtrk_event_t&, midi_keysig_t={});
-// Gets the payload for a sequencer-specific meta-event into a vector of
-// unsigned char.  For the first (sing e argument) overload, if the event is
-// not a meta_event_t::seqspecific, an empty vector is returned.  Callers can 
-// use the second overload to pass in a ref to a preallocated vector.  In 
-// this latter case, if ev is a meta_event_t::seqspecific, clear() is called
-// on the passed in vector and the event payload is push_back()'ed into it.  
-// If the event is not a meta_event_t::seqspecific, the passed in vector is 
-// returned unmodified.  
-std::vector<unsigned char> get_seqspecific(const mtrk_event_t&);
-std::vector<unsigned char> get_seqspecific(const mtrk_event_t&, std::vector<unsigned char>&);
-
-//
-// For all these make_* functions, parameter 1 is a delta-time.  
-//
-mtrk_event_t make_seqn(const uint32_t&, const uint16_t&);
-mtrk_event_t make_chprefix(const uint32_t&, const uint8_t&);
-// mtrk_event_t make_tempo(const uint32_t&, const uint32_t&)
-// Parameter 2 is us/quarter-note
-// A meta tempo event stores the tempo as a 24-bit int, hence the max
-// value is 0xFFFFFFu (==16777215); values larger are truncated to this
-// max value.  
-mtrk_event_t make_tempo(const uint32_t&, const uint32_t&);
-mtrk_event_t make_eot(const uint32_t&);
-// TODO:  Are there bounds on the values of the ts params?
-mtrk_event_t make_timesig(const uint32_t&, const midi_timesig_t&);
-mtrk_event_t make_instname(const uint32_t&, const std::string&);
-mtrk_event_t make_trackname(const uint32_t&, const std::string&);
-mtrk_event_t make_lyric(const uint32_t&, const std::string&);
-mtrk_event_t make_marker(const uint32_t&, const std::string&);
-mtrk_event_t make_cuepoint(const uint32_t&, const std::string&);
-mtrk_event_t make_text(const uint32_t&, const std::string&);
-mtrk_event_t make_copyright(const uint32_t&, const std::string&);
-// Writes the delta time, 0xFF, type, a vl-length, then the string into
-// the event.  If the uint8_t type byte does not correspond to a
-// text-containing meta event, returns a default-constructed mtrk_event_t
-// (which is a meta text event w/ payload size 0).  
-mtrk_event_t make_meta_generic_text(const uint32_t&, const meta_event_t&,
-									const std::string&);
-
-//
-// Channel event classification
-// Note that for many events, the status byte, as well as p1 and p2 are
-// needed to classify the event in a useful way.  For example, where 
-// s&0xF0u==0x90u, (nominally a note-on status byte), p2 has to be > 0 
-// for the event to qualify as a note-on (otherwise it is a note-off).  
-// Where s&0xF0u==0xB0u, p1 distinguishes a channel_voice from a channel_mode
-// event.  
-// For the purpose of creating an enum class to hold the channel_event types,
-// an underlying type of uint8_t, or even uint16_t may be insufficient.  
-// See also the enum class for meta event types where i included the leading 
-// 0xFFu to allow for ::invalid and ::unrecognized events.  One important
-// difference between here and the case of the meta events, however, is that
-// the meta event enum class can be static_cast to a uint16_t to obtain the
-// first two bytes of the meta event; this is not possible for channel events
-// because of the nature of the equality conditions, which involve shifting
-// and masking s, p1, p2, in different ways for each type.  
-//
-// In the future, this set of functions may be expanded to things like 
-// is_bank_select(), is_pan(), is_foot_controller(), etc.  These require 
-// reading p1.  
-//
-// TODO:  Why do these not call mtrk_event_t::type() as the is_meta_*() 
-// functions do?
-bool is_channel(const mtrk_event_t&);
-bool is_channel_voice(const mtrk_event_t&);
-bool is_channel_mode(const mtrk_event_t&);
-// is_note_on(), is_note_off() evaluate both the status nybble as well as
-// p2.  For a status nybble of 0x9nu, p2 must be > 0 for the  event to 
-// qualify as a note-on event.  Events w/a status nybble of 0x9nu and p2==0 
-// are considered note-off events.  
-bool is_note_on(const mtrk_event_t&);
-bool is_note_off(const mtrk_event_t&);
-bool is_key_aftertouch(const mtrk_event_t&);  // 0xAnu
-bool is_control_change(const mtrk_event_t&);
-bool is_program_change(const mtrk_event_t&);
-bool is_channel_aftertouch(const mtrk_event_t&);  // 0xDnu
-bool is_pitch_bend(const mtrk_event_t&);
-// TODO:  Not sure if the int,int... overloads should be here?
-// Should i put these in some sort of low-level implementation
-// file?  
-// is_onoff_pair(const mtrk_event_t& on, const mtrk_event_t& off)
-bool is_onoff_pair(const mtrk_event_t&, const mtrk_event_t&);
-// is_onoff_pair(int on_ch, int on_note, const mtrk_event_t& off)
-bool is_onoff_pair(int, int, const mtrk_event_t&);
-// is_onoff_pair(int on_ch, int on_note, int off_ch, int off_note)
-bool is_onoff_pair(int, int, int, int);
-// TODO:  More generic is_onoff_pair(), ex for pedal up/down, other
-// control msgs.  
-
-
-midi_ch_event_t get_channel_event(const mtrk_event_t&, midi_ch_event_t={});
-
-
-mtrk_event_t make_ch_event_generic_unsafe(const uint32_t&, const midi_ch_event_t&);
-// The make_*() functions below call normalize(midi_ch_event_t) on the input
-// and thus silently convert invalid values for the data & status bytes into
-// valid values.  These values may be unexpected; users should ensure they
-// are passing valid data.  This is in keeping w/ the practice that the 
-// factory functions can not be used to create an invalid mtrk_event_t.  
-//
-// Sets the status nybble to 0x90u and p2 to be the greater of the value
-// passed in or 1 (a note-on event can not have a velocity of 0).  
-mtrk_event_t make_note_on(const uint32_t&, midi_ch_event_t);
-mtrk_event_t make_note_off(const uint32_t&, midi_ch_event_t);
-// Makes a channel event w/ a status nybble of 0x90u (normally => note on),
-// but w/a p2 of 0.  
-mtrk_event_t make_note_off90(const uint32_t&, midi_ch_event_t);
 
 

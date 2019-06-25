@@ -1,5 +1,6 @@
 #include "mtrk_t.h"
 #include "mtrk_event_t.h"
+#include "mtrk_event_methods.h"
 #include "mtrk_iterator_t.h"
 #include "mtrk_event_iterator_t.h"
 #include "dbklib\byte_manipulation.h"
@@ -254,7 +255,7 @@ mtrk_t::validate_t mtrk_t::validate() const {
 	};
 	std::vector<sounding_notes_t> sounding;
 	sounding.reserve(10);  // Expect <= 10 simultaniously sounding notes???
-	mtrk_event_t::channel_event_data_t curr_chev_data;
+	midi_ch_event_t curr_chev_data;  //mtrk_event_t::channel_event_data_t curr_chev_data;
 	auto is_matching_onoff 
 		= [&curr_chev_data](const sounding_notes_t& sev) -> bool {
 		return is_onoff_pair(sev.ch,sev.note,
@@ -278,7 +279,7 @@ mtrk_t::validate_t mtrk_t::validate() const {
 		found_ch_ev = (found_ch_ev || (curr_event_type == smf_event_type::channel));
 		
 		if (is_note_on(this->evnts_[i])) {
-			curr_chev_data = this->evnts_[i].midi_data();
+			curr_chev_data = get_channel_event(this->evnts_[i]);  //curr_chev_data = this->evnts_[i].midi_data();
 			auto it = std::find_if(sounding.begin(),sounding.end(),
 				is_matching_onoff);
 			if (it!=sounding.end()) {
@@ -290,7 +291,7 @@ mtrk_t::validate_t mtrk_t::validate() const {
 			}  //it==sounding.end() => orphan "off" event
 			sounding.push_back({i,curr_chev_data.ch,curr_chev_data.p1});
 		} else if (is_note_off(this->evnts_[i])) {
-			curr_chev_data = this->evnts_[i].midi_data();
+			curr_chev_data = get_channel_event(this->evnts_[i]);  //curr_chev_data = this->evnts_[i].midi_data();
 			auto it = std::find_if(sounding.begin(),sounding.end(),
 				is_matching_onoff);
 			if (it!=sounding.end()) {
@@ -471,7 +472,7 @@ maybe_mtrk_t make_mtrk(const unsigned char *p, uint32_t max_sz) {
 	};
 	std::vector<sounding_notes_t> sounding;
 	sounding.reserve(10);  // Expect <= 10 simultaniously-sounding notes ???
-	mtrk_event_t::channel_event_data_t curr_chev_data;
+	midi_ch_event_t curr_chev_data;  //mtrk_event_t::channel_event_data_t curr_chev_data;
 	auto is_matching_off = [&curr_chev_data](const sounding_notes_t& sev)->bool {
 		return (curr_chev_data.ch==sev.ch
 			&& curr_chev_data.p1==sev.note);
@@ -506,10 +507,10 @@ maybe_mtrk_t make_mtrk(const unsigned char *p, uint32_t max_sz) {
 		
 		// Test for note-on/note-off event
 		if (is_note_on(curr_mtrk_event)) {
-			curr_chev_data = curr_mtrk_event.midi_data();
+			curr_chev_data = get_channel_event(curr_mtrk_event);  //curr_mtrk_event.midi_data();
 			sounding.push_back({o,curr_chev_data.ch,curr_chev_data.p1});
 		} else if (is_note_off(curr_mtrk_event)) {
-			curr_chev_data = curr_mtrk_event.midi_data();
+			curr_chev_data = get_channel_event(curr_mtrk_event);  //.midi_data();
 			auto it = std::find_if(sounding.begin(),sounding.end(),
 				is_matching_off);
 			if (it!=sounding.end()) {
@@ -662,7 +663,7 @@ std::string print_linked_onoff_pairs(const mtrk_t& mtrk) {
 
 	auto pairs = get_linked_onoff_pairs(mtrk.begin(),mtrk.end());
 	for (const auto e : pairs) {
-		ss << std::setw(w.ch) << std::to_string(e.on.it->midi_data().ch);
+		ss << std::setw(w.ch) << std::to_string(get_channel_event(*e.on.it).ch); //->midi_data().ch);
 		print_half(e.on.tk,*e.on.it);
 		ss << std::setw(w.sep) << " ";
 		print_half(e.off.tk,*e.off.it);
