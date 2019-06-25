@@ -184,9 +184,18 @@ private:
 	bool is_big() const;
 	bool is_small() const;
 
+	friend class mtrk_event_unit_test_helper_t;
 	friend std::string print(const mtrk_event_t&,
 			mtrk_sbo_print_opts);
 };
 
-
-
+class mtrk_event_unit_test_helper_t {
+public:
+	mtrk_event_unit_test_helper_t(mtrk_event_t& ev) : p_(&ev) {};
+	bool is_big();
+	bool is_small();
+	const unsigned char *raw_begin();
+	const unsigned char *raw_end();
+	unsigned char flags();
+	mtrk_event_t *p_;
+};

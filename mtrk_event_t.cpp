@@ -70,6 +70,7 @@ mtrk_event_t::mtrk_event_t() {
 // mtrk_container_iterator_t.  
 //
 mtrk_event_t::mtrk_event_t(const unsigned char *p, uint32_t sz, unsigned char rs) {
+	auto p_end = p+sz;
 	auto cap = sz;
 	auto dt = midi_interpret_vl_field(p,sz);
 	auto s = get_status_byte(*(p+dt.N),rs);
@@ -94,12 +95,13 @@ mtrk_event_t::mtrk_event_t(const unsigned char *p, uint32_t sz, unsigned char rs
 		++p;
 	}
 
-	dest_end = std::copy(p,p+(sz-dt.N),dest_end);
+	dest_end = std::copy(p,p_end,dest_end);
 	std::fill(dest_end,this->d_.end(),0x00u);
 }
 // TODO:  Clamp dt to the max allowable value
 mtrk_event_t::mtrk_event_t(const uint32_t& dt, const unsigned char *p, 
 										uint32_t sz, unsigned char rs) {
+	auto p_end = p+sz;
 	auto cap = sz;
 	auto dtN = midi_vl_field_size(dt);
 	cap += dtN;
@@ -125,11 +127,11 @@ mtrk_event_t::mtrk_event_t(const uint32_t& dt, const unsigned char *p,
 		++p;
 	}
 
-	dest_end = std::copy(p,p+(sz-dtN),dest_end);
+	dest_end = std::copy(p,p_end,dest_end);
 	std::fill(dest_end,this->d_.end(),0x00u);
 }
 mtrk_event_t::mtrk_event_t(uint32_t dt, midi_ch_event_t md) {
-	md = normalize(md);
+	//md = normalize(md);
 	this->d_.set_flag_small();
 	auto dest_end = midi_write_vl_field(this->d_.begin(),dt);
 	unsigned char s = 0x80u|(md.status_nybble);
@@ -215,7 +217,11 @@ mtrk_event_t::~mtrk_event_t() {
 }
 
 uint64_t mtrk_event_t::size() const {
-	return this->d_.size();
+	auto sz = mtrk_event_get_size_dtstart_unsafe(this->d_.begin(),0x00u);
+	auto cap = this->d_.capacity();
+	return sz > cap ? cap : sz;
+	//&(this->d_[0]) + mtrk_event_get_size_dtstart_unsafe(&(this->d_[0]),0x00u);
+	// return this->d_.size();
 }
 uint64_t mtrk_event_t::capacity() const {
 	return this->d_.capacity();
@@ -408,10 +414,21 @@ bool mtrk_event_t::is_small() const {
 	return !(this->is_big());
 }
 
-
-
-
-
+bool mtrk_event_unit_test_helper_t::is_big() {
+	return this->p_->is_big();
+}
+bool mtrk_event_unit_test_helper_t::is_small() {
+	return this->p_->is_small();
+}
+const unsigned char *mtrk_event_unit_test_helper_t::raw_begin() {
+	return this->p_->raw_begin();
+}
+const unsigned char *mtrk_event_unit_test_helper_t::raw_end() {
+	return this->p_->raw_begin();
+}
+unsigned char mtrk_event_unit_test_helper_t::flags() {
+	return this->p_->flags();
+}
 
 /*
 

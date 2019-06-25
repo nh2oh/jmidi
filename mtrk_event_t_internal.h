@@ -4,6 +4,9 @@
 
 namespace mtrk_event_t_internal {
 
+// TODO:   Need to implement the invariant that the capacity of a big_t
+// is never smaller than small_capacity()
+
 struct small_t {
 	unsigned char flags_;  // small => flags_&0x80u==0x80u
 	std::array<unsigned char,23> d_;
@@ -31,7 +34,7 @@ struct big_t {
 };
 class sbo_t {
 public:
-	constexpr uint64_t small_capacity();
+	constexpr uint64_t small_capacity() const;
 	uint64_t size() const;
 	uint64_t capacity() const;
 	// resize(uint32_t new_cap) Sets the _capacity_ to 

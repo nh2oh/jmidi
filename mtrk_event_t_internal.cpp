@@ -13,20 +13,22 @@ const unsigned char *small_t::begin() const {
 	return &(this->d_[0]);
 }
 unsigned char *small_t::end() {
-	return &(this->d_[0]) + mtrk_event_get_size_dtstart_unsafe(&(this->d_[0]),0x00u);
+	return &(this->d_[0]) + this->d_.size();  //) + mtrk_event_get_size_dtstart_unsafe(&(this->d_[0]),0x00u);
 }
 const unsigned char *small_t::end() const {
-	return &(this->d_[0]) + mtrk_event_get_size_dtstart_unsafe(&(this->d_[0]),0x00u);
+	return &(this->d_[0]) + this->d_.size();  //&(this->d_[0]) + mtrk_event_get_size_dtstart_unsafe(&(this->d_[0]),0x00u);
 }
 uint64_t small_t::size() const {
-	return mtrk_event_get_size_dtstart_unsafe(&(this->d_[0]),0x00u);
+	return this->d_.size(); //mtrk_event_get_size_dtstart_unsafe(&(this->d_[0]),0x00u);
 }
 constexpr uint64_t small_t::capacity() const {
-	static_assert(sizeof(this->d_) > 1);
-	return sizeof(this->d_)-1;
+	//static_assert(sizeof(this->d_) > 1);
+	//return sizeof(this->d_)-1;
+	return this->d_.size();
 }
 uint64_t big_t::size() const {
-	return this->sz_;
+	return this->cap_;
+	//return this->sz_;
 }
 uint64_t big_t::capacity() const {
 	return this->cap_;
@@ -38,10 +40,12 @@ const unsigned char *big_t::begin() const {
 	return this->p_;
 }
 unsigned char *big_t::end() {
-	return this->p_ + this->sz_;
+	return this->p_ + this->cap_;
+	//return this->p_ + this->sz_;
 }
 const unsigned char *big_t::end() const {
-	return this->p_ + this->sz_;
+	return this->p_ + this->cap_;
+	//return this->p_ + this->sz_;
 }
 bool sbo_t::is_small() const {
 	return ((this->u_.s_.flags_)&0x80u)==0x80u;
@@ -72,6 +76,9 @@ void sbo_t::zero_object() {
 	for (auto it=this->u_.s_.begin(); it!=this->u_.s_.end(); ++it) {
 		*it=0x00u;
 	}
+}
+constexpr uint64_t sbo_t::small_capacity() const {
+	return this->u_.s_.capacity();
 }
 uint64_t sbo_t::size() const {
 	if (this->is_small()) {
@@ -132,9 +139,6 @@ uint32_t sbo_t::resize(uint32_t new_cap) {
 		}
 	}
 	return new_cap;
-}
-constexpr uint64_t sbo_t::small_capacity() {
-	return this->u_.s_.capacity();
 }
 unsigned char *sbo_t::begin() {
 	if (this->is_small()) {
