@@ -69,8 +69,29 @@ bool is_note_off(const midi_ch_event_t& md) {
 			|| (md.status_nybble==0x90u && (md.p2==0))));
 }
 
-
-
+bool is_key_aftertouch(const midi_ch_event_t& md) {  // 0xAnu
+	return (is_valid_ch_data(md)
+		&& (md.status_nybble==0xA0u));
+}
+bool is_control_change(const midi_ch_event_t& md) {
+	return (is_valid_ch_data(md)
+		&& (md.status_nybble==0xB0u)
+		&& ((md.p1&0x78u)!=0x78u));
+	// The final condition verifies md is a channel_voice (not channel_mode)
+	// event.  0x78u  == 0b01111000u
+}
+bool is_program_change(const midi_ch_event_t& md) {
+	return (is_valid_ch_data(md)
+		&& (md.status_nybble==0xC0u));
+}
+bool is_channel_aftertouch(const midi_ch_event_t& md) {  // 0xDnu
+	return (is_valid_ch_data(md)
+		&& (md.status_nybble==0xD0u));
+}
+bool is_pitch_bend(const midi_ch_event_t& md) {
+	return (is_valid_ch_data(md)
+		&& (md.status_nybble==0xE0u));
+}
 
 
 

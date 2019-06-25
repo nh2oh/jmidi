@@ -317,14 +317,21 @@ midi_ch_event_t get_channel_event(const mtrk_event_t2& ev, midi_ch_event_t def) 
 midi_ch_event_t get_channel_event_impl(const mtrk_event_t2& ev) {
 	auto its = ev.payload_range();
 	midi_ch_event_t result {};
+	if (its.begin == its.end) {
+		return result;
+	}
 	result.status_nybble = ((*its.begin) & 0xF0u);
 	result.ch = ((*its.begin) & 0x0Fu);
 	++its.begin;
+	if (its.begin == its.end) {
+		return result;
+	}
 	result.p1 = *its.begin;
 	++its.begin;
-	if (its.begin != its.end) {
-		result.p2 = *its.begin;
+	if (its.begin == its.end) {
+		return result;
 	}
+	result.p2 = *its.begin;
 	return result;
 }
 bool is_channel(const mtrk_event_t2& ev) {  // voice or mode
@@ -354,42 +361,39 @@ bool is_channel_mode(const mtrk_event_t2& ev) {
 	return true;
 }
 bool is_note_on(const mtrk_event_t2& ev) {
-	auto md = get_channel_event_impl(ev);
-	return is_note_on(md);
+	return is_note_on(get_channel_event_impl(ev));
 }
 bool is_note_off(const mtrk_event_t2& ev) {
-	auto md = get_channel_event_impl(ev);
-	return is_note_off(md);
+	return is_note_off(get_channel_event_impl(ev));
 }
 bool is_key_aftertouch(const mtrk_event_t2& ev) {
-	return ((ev.status_byte() & 0xF0u) == 0xA0u);
+	return is_key_aftertouch(get_channel_event_impl(ev));
 }
 bool is_control_change(const mtrk_event_t2& ev) {
-	return (((ev.status_byte()&0xF0u)==0xB0u) 
-		&& is_channel_voice(ev));
+	return is_control_change(get_channel_event_impl(ev));
 }
 bool is_program_change(const mtrk_event_t2& ev) {
-	return ((ev.status_byte() & 0xF0u) == 0xC0u);
+	return is_program_change(get_channel_event_impl(ev));
 }
 bool is_channel_aftertouch(const mtrk_event_t2& ev) {
-	return ((ev.status_byte() & 0xF0u) == 0xD0u);
+	return is_channel_aftertouch(get_channel_event_impl(ev));
 }
 bool is_pitch_bend(const mtrk_event_t2& ev) {
 	return ((ev.status_byte() & 0xF0u) == 0xE0u);
 }
 bool is_onoff_pair(const mtrk_event_t2& on, const mtrk_event_t2& off) {
-	if (!is_note_on(on) || !is_note_off(off)) {
+	auto on_md = get_channel_event_impl(on);
+	auto off_md = get_channel_event_impl(off);
+	if (!is_note_on(on_md) || !is_note_off(off_md)) {
 		return false;
 	}
-	auto on_md = get_channel_event(on);  //auto on_md = on.midi_data();
-	auto off_md = get_channel_event(off);  //auto off_md = off.midi_data();
 	return is_onoff_pair(on_md.ch,on_md.p1,off_md.ch,off_md.p1);
 }
 bool is_onoff_pair(int on_ch, int on_note, const mtrk_event_t2& off) {
-	if (!is_note_off(off)) {
+	auto off_md = get_channel_event_impl(off);
+	if (!is_note_off(off_md)) {
 		return false;
 	}
-	auto off_md = get_channel_event(off);  //.midi_data();
 	return is_onoff_pair(on_ch,on_note,off_md.ch,off_md.p1);
 }
 bool is_onoff_pair(int on_ch, int on_note, int off_ch, int off_note) {

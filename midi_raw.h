@@ -72,6 +72,11 @@ bool is_valid_ch_data(const midi_ch_event_t&);
 midi_ch_event_t normalize(midi_ch_event_t);
 bool is_note_on(const midi_ch_event_t&);
 bool is_note_off(const midi_ch_event_t&);
+bool is_key_aftertouch(const midi_ch_event_t&);  // 0xAnu
+bool is_control_change(const midi_ch_event_t&);
+bool is_program_change(const midi_ch_event_t&);
+bool is_channel_aftertouch(const midi_ch_event_t&);  // 0xDnu
+bool is_pitch_bend(const midi_ch_event_t&); 
 
 //template<typename T>
 //uint8_t status_nybble(const T& md) {

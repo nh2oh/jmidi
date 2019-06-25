@@ -127,6 +127,12 @@ mtrk_event_t2 make_meta_generic_text(const uint32_t&, const meta_event_t&,
 
 //
 // Channel event classification
+//
+// The is_*(const mtrk_event_t2&) wrap the corresponding 
+// is_*(const midi_ch_event_t&) functions in midi_raw.h.  This is so because
+// the validation methods are ultimately needed to for the 
+// make_*(const midi_ch_event_t) functions.  
+//
 // Note that for many events, the status byte, as well as p1 and p2 are
 // needed to classify the event in a useful way.  For example, where 
 // s&0xF0u==0x90u, (nominally a note-on status byte), p2 has to be > 0 
@@ -148,6 +154,10 @@ mtrk_event_t2 make_meta_generic_text(const uint32_t&, const meta_event_t&,
 // reading p1.  
 //
 midi_ch_event_t get_channel_event(const mtrk_event_t2&, midi_ch_event_t={});
+// Copies at most the first 3 bytes of the range [payload_begin(),
+// payoad_end()) into the appropriate fields of a midi_ch_data_t.  Performs
+// no checks on the validity or type() of the input event beforehand, and
+// performs no validity checks on the result.  
 midi_ch_event_t get_channel_event_impl(const mtrk_event_t2&);
 bool is_channel(const mtrk_event_t2&);
 bool is_channel_voice(const mtrk_event_t2&);
@@ -165,7 +175,8 @@ bool is_channel_aftertouch(const mtrk_event_t2&);  // 0xDnu
 bool is_pitch_bend(const mtrk_event_t2&);
 // TODO:  Not sure if the int,int... overloads should be here?
 // Should i put these in some sort of low-level implementation
-// file?  
+// file?  Could be moved to midi_raw.h and implemented in terms of
+// midi_ch_data_t.  
 // is_onoff_pair(const mtrk_event_t2& on, const mtrk_event_t2& off)
 bool is_onoff_pair(const mtrk_event_t2&, const mtrk_event_t2&);
 // is_onoff_pair(int on_ch, int on_note, const mtrk_event_t2& off)
@@ -174,9 +185,6 @@ bool is_onoff_pair(int, int, const mtrk_event_t2&);
 bool is_onoff_pair(int, int, int, int);
 // TODO:  More generic is_onoff_pair(), ex for pedal up/down, other
 // control msgs.  
-
-
-midi_ch_event_t get_channel_event(const mtrk_event_t2&, midi_ch_event_t={});
 
 
 mtrk_event_t2 make_ch_event_generic_unsafe(const uint32_t&, const midi_ch_event_t&);
