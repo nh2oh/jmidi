@@ -105,8 +105,12 @@ mtrk_event_t::mtrk_event_t(const uint32_t& dt, const unsigned char *p,
 	auto cap = sz;
 	auto dtN = midi_vl_field_size(dt);
 	cap += dtN;
-	auto s = get_status_byte(*p,rs);  // TODO:  overflows if sz==0
-	bool has_local_status = (s==*p);
+	unsigned char s = 0x00u;
+	bool has_local_status = false;
+	if (sz>0) {
+		s = get_status_byte(*p,rs);
+		has_local_status = (sz>0) && (s==*p);
+	}
 	if (!has_local_status) {
 		cap += 1;
 	}
@@ -129,20 +133,12 @@ mtrk_event_t::mtrk_event_t(const uint32_t& dt, const unsigned char *p,
 	std::fill(dest_end,this->d_.end(),0x00u);
 }
 mtrk_event_t::mtrk_event_t(uint32_t dt, midi_ch_event_t md) {
-	//md = normalize(md);
 	this->d_.set_flag_small();
 	auto dest_end = midi_write_vl_field(this->d_.begin(),dt);
 	unsigned char s = (md.status_nybble)|(md.ch);
 	*dest_end++ = s;
 	*dest_end++ = (md.p1);
 	*dest_end++ = (md.p2);
-	//unsigned char s = 0x80u|(md.status_nybble);
-	//s += 0x0Fu&(md.ch);
-	//*dest_end++ = s;
-	//*dest_end++ = 0x7Fu&(md.p1);
-	//if (channel_status_byte_n_data_bytes(s)==2) {
-	//	*dest_end++ = 0x7Fu&(md.p2);
-	//}
 	std::fill(dest_end,this->d_.end(),0x00u);
 }
 //
@@ -222,8 +218,6 @@ uint64_t mtrk_event_t::size() const {
 	auto sz = mtrk_event_get_size_dtstart_unsafe(this->d_.begin(),0x00u);
 	auto cap = this->d_.capacity();
 	return sz > cap ? cap : sz;
-	//&(this->d_[0]) + mtrk_event_get_size_dtstart_unsafe(&(this->d_[0]),0x00u);
-	// return this->d_.size();
 }
 uint64_t mtrk_event_t::capacity() const {
 	return this->d_.capacity();
@@ -362,13 +356,6 @@ uint32_t mtrk_event_t::set_delta_time(uint32_t dt) {
 		} else {  // ... won't fit
 			this->d_.resize(new_size);
 			midi_rewrite_dt_field_unsafe(dt,this->data(),0x00u);
-			//unsigned char *new_p = new unsigned char[new_size];
-			//auto curr_end = midi_write_vl_field(new_p,dt);
-			//curr_end = std::copy(this->begin(),this->end(),curr_end);
-			//std::fill(curr_end,new_p+new_size,0x00u);
-			//this->d_.free_if_big();
-			//this->d_.set_flag_big();
-			//this->d_.big_adopt(new_p,new_size,new_size);
 		}
 	}
 	return this->delta_time();
@@ -432,148 +419,3 @@ unsigned char mtrk_event_unit_test_helper_t::flags() {
 	return this->p_->flags();
 }
 
-/*
-
-
-
-
-
-std::string mtrk_event_t::text_payload() const {
-	std::string s {};
-	if (this->type()==smf_event_type::meta 
-				|| this->type()==smf_event_type::sysex_f0
-				|| this->type()==smf_event_type::sysex_f7) {
-		std::copy(this->payload_begin(),this->end(),std::back_inserter(s));
-	}
-	return s;
-}
-uint32_t mtrk_event_t::uint32_payload() const {
-	return be_2_native<uint32_t>(this->payload_begin(),this->end());
-}
-mtrk_event_t::channel_event_data_t mtrk_event_t::midi_data() const {
-	mtrk_event_t::channel_event_data_t result {0x00u,0x80u,0x80u,0x80u};
-	result.is_valid = false;
-	// Note that 0x00u is invalid as a status nybble, and 0x80u is invalid
-	// as a channel number and value for p1, p2.  
-	if (this->type()==smf_event_type::channel) {
-		result.is_valid = true;
-		
-		auto dt = midi_interpret_vl_field(this->data());
-		auto p = this->data()+dt.N;
-		result.is_running_status = *p!=this->midi_status_;
-
-		result.status_nybble = this->midi_status_&0xF0u;
-		result.ch = this->midi_status_&0x0Fu;
-		if (!result.is_running_status) {
-			++p;
-		}
-		result.p1 = *p++;
-		if (channel_status_byte_n_data_bytes(this->midi_status_)==2) {
-			result.p2 = *p;
-		}
-	}
-
-	return result;
-}
-
-*/
-
-
-/*
-
-bool mtrk_event_t::validate() const {
-	bool tf = true;
-
-	if (this->is_small()) {
-		tf &= !this->is_big();
-		tf &= (this->small_ptr()==&(this->d_[0]));
-		tf &= (this->small_ptr()==this->data());
-		tf &= (this->small_ptr()==this->raw_data());
-
-		auto dt_loc = midi_interpret_vl_field(this->small_ptr());
-		tf &= (dt_loc.val==this->delta_time());
-		tf &= (dt_loc.N==midi_vl_field_size(this->delta_time()));
-
-		auto size_loc = mtrk_event_get_size_dtstart_unsafe(this->small_ptr(),this->midi_status_);
-		tf &= (size_loc==this->size());
-
-		// TODO:  arbitrary max_size==6
-		auto type_loc = classify_mtrk_event_dtstart(this->small_ptr(),this->midi_status_,6);
-		tf &= (type_loc==this->type());
-
-		// data_size() must be consistent w/ manual examination of the remote array
-		auto data_size_loc = mtrk_event_get_data_size_dtstart_unsafe(this->small_ptr(),this->midi_status_);
-		tf &= (data_size_loc==this->data_size());
-
-		// Capacity must == the size of the sbo
-		tf &= (this->capacity()==static_cast<uint32_t>(offs::max_size_sbo));
-	} else {  // big
-		tf &= this->is_big();
-		tf &= !this->is_small();
-		tf &= this->big_ptr()==this->data();
-		tf &= this->big_ptr()!=this->raw_data();
-
-		// Compare the local "cached" dt, size, type w/ that obtained from
-		// reading the remote array.  
-		auto dtval_loc = this->big_delta_t();
-		auto dt_remote = midi_interpret_vl_field(this->big_ptr());
-		tf &= (dt_remote.val==dtval_loc);
-		tf &= (dt_remote.N==midi_vl_field_size(dtval_loc));
-		tf &= (dt_remote.val==this->delta_time());
-
-		auto size_loc = this->big_size();
-		auto size_remote = mtrk_event_get_size_dtstart_unsafe(this->big_ptr(),this->midi_status_);
-		tf &= (size_loc==size_remote);
-		tf &= (size_loc==this->size());
-
-		auto type_loc = this->big_smf_event_type();
-		// TODO:  Arbitrary max_size==6
-		auto type_remote = classify_mtrk_event_dtstart(this->big_ptr(),this->midi_status_,6);
-		tf &= (type_loc==type_remote);
-		tf &= (this->type()==type_loc);
-
-		// data_size() must be consistent w/ manual examination of the remote array
-		auto data_size_remote = mtrk_event_get_data_size_dtstart_unsafe(this->big_ptr(),this->midi_status_);
-		tf &= (this->data_size()==data_size_remote);
-
-		// Sanity checks for size, capacity values
-		tf &= (this->big_size() >= 0);
-		tf &= (this->big_cap() >= this->big_size());
-	}
-
-	// Local midi_status_ field:  Tests are independent of is_big()/small()
-	// For midi events, this->midi_status_ must be == the status byte 
-	// applic to the event
-	if (this->type()==smf_event_type::channel) {
-		// Present event is a midi event
-		auto p = this->data()+midi_vl_field_size(this->delta_time());
-		if (is_channel_status_byte(*p)) {  // not running status
-			// The event-local status byte must match this->midi_status_
-			tf &= (*p==this->midi_status_);
-		} else {  // running status
-			// TODO:  This is confusing as hell...
-			// this->midi_status_ must accurately describe the # of midi
-			// data bytes.  
-			tf &= (is_channel_status_byte(this->midi_status_));
-			//auto nbytesmsg = midi_channel_event_n_bytes(this->midi_status_,0x00u)-1;
-			auto nbytesmsg = channel_event_get_data_size(p,this->midi_status_);
-			tf &= (is_data_byte(*p));
-			if (nbytesmsg==2) {
-				tf &= (is_data_byte(*++p));
-			}
-		}
-	}
-	// For non-midi-events, this->midi_status must ==0x00u
-	if (this->type()==smf_event_type::sysex_f0 
-			|| this->type()==smf_event_type::sysex_f7
-			|| this->type()==smf_event_type::meta
-			|| this->type()==smf_event_type::invalid) {
-		// Present event is _not_ a midi event
-		tf &= (this->midi_status_==0x00u);
-	}
-
-	return tf;
-}
-
-
-*/

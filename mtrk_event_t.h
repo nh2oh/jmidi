@@ -146,34 +146,8 @@ public:
 	//
 	uint32_t set_delta_time(uint32_t);
 
-
 	bool operator==(const mtrk_event_t&) const;
 	bool operator!=(const mtrk_event_t&) const;
-
-
-	// TODO:  All the crap in validate() should just be moved into 
-	// indep. unit tests
-	// bool validate() const;
-	/*
-	// Getters
-	
-	// For meta events w/ a text payload, copies the payload to a
-	// std::string;  Returns an empty std::string otherwise.  
-	std::string text_payload() const;
-	uint32_t uint32_payload() const;
-	// For channel events, gets the midi data, including.  For non-channel
-	// events, .is_valid==false and the value of all other fields is 
-	// undefined.  
-	struct channel_event_data_t {
-		uint8_t status_nybble {0x00u};  // most-significant nybble
-		uint8_t ch {0x00u};
-		uint8_t p1 {0x00u};
-		uint8_t p2 {0x00u};
-		bool is_valid {false};
-		bool is_running_status {false};
-	};
-	channel_event_data_t midi_data() const;
-	*/
 private:
 	mtrk_event_t_internal::sbo_t d_;
 
