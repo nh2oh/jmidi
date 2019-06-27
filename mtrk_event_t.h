@@ -1,5 +1,6 @@
 #pragma once
 #include "mtrk_event_t_internal.h"
+#include "mtrk_event_iterator_t.h"
 #include "midi_raw.h"  // declares smf_event_type
 #include <string>  // For declaration of print()
 #include <cstdint>
@@ -7,7 +8,7 @@
 
 
 class mtrk_event_t;
-class mtrk_event_iterator_t;
+//class mtrk_event_iterator_t;
 class mtrk_event_const_iterator_t;
 
 enum class mtrk_sbo_print_opts {
@@ -56,7 +57,9 @@ std::string print(const mtrk_event_t&,
 // TODO:  Error handling for some of the ctors
 // TODO:  Ctors for channel/meta/sysex data structs
 // TODO:  Safe resize()/reserve()
+// TODO:  Move print() to the _methods.h,.cpp
 //
+
 class mtrk_event_t {
 public:
 	// Default ctor; creates a "small" object representing a meta-text event
@@ -72,9 +75,10 @@ public:
 	mtrk_event_t(const unsigned char*, uint32_t, unsigned char=0);
 	mtrk_event_t(const uint32_t&, const unsigned char*, uint32_t, unsigned char=0);
 	// delta_time, raw midi channel event data
-	// This ctor calls normalize() on the midi_ch_event_t parameter before
-	// the data is copied into the event array; invalid values in this 
-	// parameter may lead to an event with unexpected behavior.  
+	// This ctor blindly writes the values in the midi_ch_event_t struct into 
+	// the object w/o any sort of validation whatsoever.  It is meant to be 
+	// the fastest way to write a midi_ch_event_t into an mtrk_event_t.  May 
+	// result in an invalid event w/ unexpected behavior.  
 	mtrk_event_t(uint32_t, midi_ch_event_t);
 	// TODO:  the field validate_mtrk_event_result_t.running_status is obtained by
 	// a call to get_running status() not get_status_byte().  The meaning is not

@@ -134,13 +134,17 @@ mtrk_event_t::mtrk_event_t(uint32_t dt, midi_ch_event_t md) {
 	//md = normalize(md);
 	this->d_.set_flag_small();
 	auto dest_end = midi_write_vl_field(this->d_.begin(),dt);
-	unsigned char s = 0x80u|(md.status_nybble);
-	s += 0x0Fu&(md.ch);
+	unsigned char s = (md.status_nybble)|(md.ch);
 	*dest_end++ = s;
-	*dest_end++ = 0x7Fu&(md.p1);
-	if (channel_status_byte_n_data_bytes(s)==2) {
-		*dest_end++ = 0x7Fu&(md.p2);
-	}
+	*dest_end++ = (md.p1);
+	*dest_end++ = (md.p2);
+	//unsigned char s = 0x80u|(md.status_nybble);
+	//s += 0x0Fu&(md.ch);
+	//*dest_end++ = s;
+	//*dest_end++ = 0x7Fu&(md.p1);
+	//if (channel_status_byte_n_data_bytes(s)==2) {
+	//	*dest_end++ = 0x7Fu&(md.p2);
+	//}
 	std::fill(dest_end,this->d_.end(),0x00u);
 }
 //

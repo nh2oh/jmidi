@@ -11,7 +11,7 @@ struct small_t {
 	unsigned char flags_;  // small => flags_&0x80u==0x80u
 	std::array<unsigned char,23> d_;
 
-	uint64_t size() const;
+	//uint64_t size() const;
 	constexpr uint64_t capacity() const;
 	unsigned char *begin();  // Returns &d[0]
 	const unsigned char *begin() const;  // Returns &d[0]
@@ -25,7 +25,7 @@ struct big_t {
 	uint32_t sz_;  // 20
 	uint32_t cap_;  // 24
 
-	uint64_t size() const;
+	//uint64_t size() const;
 	uint64_t capacity() const;
 	unsigned char *begin();  // Returns p
 	const unsigned char *begin() const;  // Returns p
@@ -35,7 +35,7 @@ struct big_t {
 class sbo_t {
 public:
 	constexpr uint64_t small_capacity() const;
-	uint64_t size() const;
+	//uint64_t size() const;
 	uint64_t capacity() const;
 	// resize(uint32_t new_cap) Sets the _capacity_ to 
 	// std::max(capacity(),new_cap).  Note that the smallest possible

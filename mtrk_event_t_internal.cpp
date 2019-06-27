@@ -18,18 +18,18 @@ unsigned char *small_t::end() {
 const unsigned char *small_t::end() const {
 	return &(this->d_[0]) + this->d_.size();  //&(this->d_[0]) + mtrk_event_get_size_dtstart_unsafe(&(this->d_[0]),0x00u);
 }
-uint64_t small_t::size() const {
+/*uint64_t small_t::size() const {
 	return this->d_.size(); //mtrk_event_get_size_dtstart_unsafe(&(this->d_[0]),0x00u);
-}
+}*/
 constexpr uint64_t small_t::capacity() const {
 	//static_assert(sizeof(this->d_) > 1);
 	//return sizeof(this->d_)-1;
 	return this->d_.size();
 }
-uint64_t big_t::size() const {
+/*uint64_t big_t::size() const {
 	return this->cap_;
 	//return this->sz_;
-}
+}*/
 uint64_t big_t::capacity() const {
 	return this->cap_;
 }
@@ -68,7 +68,7 @@ void sbo_t::free_if_big() {
 void sbo_t::big_adopt(unsigned char *p, uint32_t sz, uint32_t c) {
 	this->set_flag_big();
 	this->u_.b_.p_=p;
-	this->u_.b_.sz_=sz;
+	//this->u_.b_.sz_=sz;
 	this->u_.b_.cap_=c;
 }
 void sbo_t::zero_object() {
@@ -80,13 +80,13 @@ void sbo_t::zero_object() {
 constexpr uint64_t sbo_t::small_capacity() const {
 	return this->u_.s_.capacity();
 }
-uint64_t sbo_t::size() const {
+/*uint64_t sbo_t::size() const {
 	if (this->is_small()) {
 		return this->u_.s_.size();
 	} else {
 		return this->u_.b_.size();
 	}
-}
+}*/
 uint64_t sbo_t::capacity() const {
 	if (this->is_small()) {
 		return this->u_.s_.capacity();
@@ -114,12 +114,17 @@ uint32_t sbo_t::resize(uint32_t new_cap) {
 		if (this->is_big()) {  // presently big
 			if (new_cap != this->u_.b_.cap_) {  // ... and are changing the cap
 				auto p = this->u_.b_.p_;
-				auto sz = this->u_.b_.sz_;
+
+				// Part of the attempt to remove the size() method:
+				//auto sz = this->u_.b_.sz_;
+				auto sz = this->u_.b_.cap_;
 				auto new_sz = std::min(sz,new_cap);
+				auto n_copy = std::min(this->u_.b_.cap_,new_cap);
+
 				// Note that if new_cap is < sz, the data will be truncated
 				// and the object will almost certainly be invalid.  
 				unsigned char *new_p = new unsigned char[new_cap];
-				auto new_end = std::copy(p,p+new_sz,new_p);
+				auto new_end = std::copy(p,p+n_copy,new_p);
 				std::fill(new_end,new_p+new_cap,0x00u);
 				delete p;
 				this->big_adopt(new_p,new_sz,new_cap);
@@ -129,7 +134,10 @@ uint32_t sbo_t::resize(uint32_t new_cap) {
 		} else {  // presently small 
 			// Copy the present small object into a new big object.  The present
 			// capacity of small_capacity() is < new_cap
-			auto sz = this->u_.s_.size();
+
+			// Part of the attempt to remove the size() method:
+			auto sz = new_cap;  //auto sz = this->u_.s_.size();
+
 			unsigned char *new_p = new unsigned char[new_cap];
 			auto new_end = std::copy(this->u_.s_.begin(),this->u_.s_.end(),new_p);
 			std::fill(new_end,new_p+new_cap,0x00u);
