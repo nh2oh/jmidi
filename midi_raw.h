@@ -51,6 +51,7 @@ uint8_t nflats(const midi_keysig_t&);
 bool is_major(const midi_keysig_t&);
 bool is_minor(const midi_keysig_t&);
 
+// TODO:  Missing 'select channel mode'
 enum : uint8_t {
 	note_off = 0x80u,
 	note_on = 0x90u,

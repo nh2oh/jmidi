@@ -105,7 +105,7 @@ mtrk_event_t::mtrk_event_t(const uint32_t& dt, const unsigned char *p,
 	auto cap = sz;
 	auto dtN = midi_vl_field_size(dt);
 	cap += dtN;
-	auto s = get_status_byte(*p,rs);
+	auto s = get_status_byte(*p,rs);  // TODO:  overflows if sz==0
 	bool has_local_status = (s==*p);
 	if (!has_local_status) {
 		cap += 1;
@@ -119,14 +119,12 @@ mtrk_event_t::mtrk_event_t(const uint32_t& dt, const unsigned char *p,
 		this->d_.big_adopt(new_p,sz,cap);
 	}
 	unsigned char *dest = this->d_.begin();
-	auto dest_end = std::copy(p,p+dtN,dest);
-	p+=dtN;
+	auto dest_end = midi_write_vl_field(dest,dt);
 	
 	*dest_end++ = s;
 	if (has_local_status) {
 		++p;
 	}
-
 	dest_end = std::copy(p,p_end,dest_end);
 	std::fill(dest_end,this->d_.end(),0x00u);
 }
