@@ -6,11 +6,11 @@
 #include <cstdint>
 
 
+// #including mtrk_event_iterator_t.h rather than fwd declaring; a user
+// who includes the container class should be able to construct the 
+// iterators.  
 
-class mtrk_event_t;
-//class mtrk_event_iterator_t;
-class mtrk_event_const_iterator_t;
-
+// For friend dcln print(const mtrk_event_t&, mtrk_sbo_print_opts)
 enum class mtrk_sbo_print_opts {
 	normal,
 	detail,
@@ -19,8 +19,7 @@ enum class mtrk_sbo_print_opts {
 	// data.  
 	debug  
 };
-std::string print(const mtrk_event_t&,
-			mtrk_sbo_print_opts=mtrk_sbo_print_opts::normal);
+
 
 //
 // mtrk_event_t:  An sbo-featured container for mtrk events
@@ -44,24 +43,25 @@ std::string print(const mtrk_event_t&,
 //
 
 
-// TODO:  If the sbo class prevented 'big' sbo's w/ capacity less than
-// sizeof(small_t) - 1, i could implement mtrk_event_t.size() with
-// mtrk_event_get_size_dtstart_unsafe() (instead of the 'safe' version)
-// and return the lesser of the result and a call to sbo_t.capacity().  
 //
-// TODO:  The sbo types should not have size() methods, and big_t should
-// not have a sz_ field (only uint64_t cap_).  size() is dynamic and
-// should be implemented in the outter event container, not the sbo_t.  
-//
-// TODO:  Add typedefs so std::back_inserter() can be used.  
-// TODO:  Error handling for some of the ctors
-// TODO:  Ctors for channel/meta/sysex data structs
+// TODO:  Error handling policy for some of the ctors
 // TODO:  Safe resize()/reserve()
-// TODO:  Move print() to the _methods.h,.cpp
+// TODO:  push_back()
 //
 
 class mtrk_event_t {
 public:
+	using value_type = unsigned char;
+	using size_type = uint32_t;
+	//using difference_type = std::ptrdiff_t;  // TODO:  Inconsistent
+	using reference = value_type&;
+	using const_reference = const value_type&;
+	using pointer = value_type*;
+	using const_pointer = const value_type*;
+	using iterator = mtrk_event_iterator_t;
+	using const_iterator = mtrk_event_const_iterator_t;
+	// TODO:  reverse_iterator, const_reverse_iterator
+
 	// Default ctor; creates a "small" object representing a meta-text event
 	// w/ a payload length of 0.  
 	mtrk_event_t();
@@ -93,7 +93,7 @@ public:
 	// Move ctor
 	mtrk_event_t(mtrk_event_t&&) noexcept;
 	// Move assignment
-	mtrk_event_t& operator=(mtrk_event_t&&) noexcept;	
+	mtrk_event_t& operator=(mtrk_event_t&&) noexcept;
 	// Dtor
 	~mtrk_event_t();
 

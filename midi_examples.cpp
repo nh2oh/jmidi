@@ -20,11 +20,10 @@
 
 
 int midi_example() {
+	//midi_mtrk_split_testing();
+	//std::cout << std::endl;
+	//std::cout << std::endl;
 
-	midi_mtrk_split_testing();
-
-	std::cout << std::endl;
-	std::cout << std::endl;
 	/*auto e1 = midi_ch_event_t {0x90u,1,57,25};
 	mtrk_event_t me1(157,e1);
 	auto e1md = get_channel_event(me1);
@@ -41,26 +40,23 @@ int midi_example() {
 
 	//std::string fn = "D:\\cpp\\nh2oh\\au\\gt_aulib\\test_data\\clementi_no_rs.mid";
 	//std::string fn = "D:\\cpp\\nh2oh\\au\\gt_aulib\\test_data\\tc_a_rs.mid";
-	std::string fn = "C:\\Users\\ben\\Desktop\\scr\\CLEMENTI.MID";
+	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\CLEMENTI.MID";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\A7.mid";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\test.mid";
-	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\hallelujah_joy_to_the_world.mid";
+	std::string fn = "C:\\Users\\ben\\Desktop\\scr\\hallelujah_joy_to_the_world.mid";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\twinkle.mid";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\test.mid";
-
-	
-
 
 	auto maybesmf = read_smf(fn);
 	if (!maybesmf) {
 		std::cout << "nope :(" << std::endl;
 		std::abort();
 	}
-	//std::cout << "print(maybesmf.smf):" << std::endl;
-	//std::cout << print(maybesmf.smf) << std::endl;
+	std::cout << "print(maybesmf.smf):" << std::endl;
+	std::cout << print(maybesmf.smf) << std::endl;
 
 	auto trk1 = maybesmf.smf.get_track(1);
-	std::cout << print_event_arrays(trk1) << std::endl;
+	//std::cout << print_event_arrays(trk1) << std::endl;
 	//std::cout << print(trk1) << std::endl;
 	std::cout << "print_linked_onoff_pairs(trk1):" << std::endl; 
 	std::cout << print_linked_onoff_pairs(trk1) << std::endl;

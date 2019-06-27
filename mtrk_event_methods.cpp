@@ -12,6 +12,56 @@
 
 
 
+
+std::string print(const mtrk_event_t& evnt, mtrk_sbo_print_opts opts) {
+	std::string s {};
+	s += ("delta_time = " + std::to_string(evnt.delta_time()) + ", ");
+	s += ("type = " + print(evnt.type()) + ", ");
+	s += ("size = " + std::to_string(evnt.size()) + ", ");
+	s += ("data_size = " + std::to_string(evnt.data_size()) + "\n");
+	
+	s += "\t[";
+	dbk::print_hexascii(evnt.dt_begin(),evnt.dt_end(),std::back_inserter(s),'\0',' ');
+	s += "] ";
+	dbk::print_hexascii(evnt.event_begin(),evnt.end(),std::back_inserter(s),'\0',' ');
+	
+	if (opts == mtrk_sbo_print_opts::detail || opts == mtrk_sbo_print_opts::debug) {
+		if (evnt.type()==smf_event_type::meta) {
+			s += "\n";
+			s += ("\tmeta type: " + print(classify_meta_event(evnt)) + "; ");
+			if (meta_has_text(evnt)) {
+				s += ("text payload: \"" + meta_generic_gettext(evnt) + "\"; ");
+			} else if (is_tempo(evnt)) {
+				s += ("value = " + std::to_string(get_tempo(evnt)) + " us/q; ");
+			} else if (is_timesig(evnt)) {
+				auto data = get_timesig(evnt);
+				s += ("value = " + std::to_string(data.num) + "/" 
+					+ std::to_string(static_cast<int>(std::exp2(data.log2denom)))
+					+ ", " + std::to_string(data.clckspclk) + " MIDI clocks/click, "
+					+ std::to_string(data.ntd32pq) + " notated 32'nd nts / MIDI q nt; ");
+			}
+		}
+	} 
+	if (opts == mtrk_sbo_print_opts::debug) {
+		s += "\n\t";
+		if (evnt.is_small()) {
+			s += "sbo=>small = ";
+		} else {
+			s += "sbo=>big   = ";
+		}
+		s += "{";
+		dbk::print_hexascii(evnt.raw_begin(),evnt.raw_end(),
+			std::back_inserter(s),'\0',' ');
+		s += "}; \n";
+		s += "\tbigsmall_flag = ";
+		auto f = evnt.flags();
+		s += dbk::print_hexascii(&f, 1, ' ');
+	}
+	return s;
+}
+
+
+
 meta_event_t classify_meta_event_impl(const uint16_t& d16) {
 	if (d16==static_cast<uint16_t>(meta_event_t::seqn)) {
 		return meta_event_t::seqn;

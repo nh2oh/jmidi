@@ -6,6 +6,10 @@
 #include <vector>
 
 
+std::string print(const mtrk_event_t&,
+			mtrk_sbo_print_opts=mtrk_sbo_print_opts::normal);
+
+
 //
 // Meta event classification & data access.  Functions to classify and extract 
 // data from mtrk_event_t's containing meta events.  
