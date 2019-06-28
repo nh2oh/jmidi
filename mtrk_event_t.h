@@ -6,7 +6,9 @@
 #include <cstdint>
 
 
-// For the friend dcln print(const mtrk_event_t&, mtrk_sbo_print_opts)
+// Needed for the friend dcln of 
+// print(const mtrk_event_t&, mtrk_sbo_print_opts).  
+// See mtrk_event_methods.h,.cpp
 enum class mtrk_sbo_print_opts {
 	normal,
 	detail,
@@ -40,7 +42,7 @@ enum class mtrk_sbo_print_opts {
 // idiosyncratic details of an overly complicated library.  
 // 
 
-//
+
 //
 // TODO:  Error handling policy for some of the ctors
 // TODO:  Safe resize()/reserve()

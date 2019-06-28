@@ -1,5 +1,4 @@
 #include "mtrk_event_t.h"
-#include "mtrk_event_iterator_t.h"
 #include "mtrk_event_methods.h"
 #include "midi_raw.h"
 #include "midi_vlq.h"
