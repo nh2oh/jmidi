@@ -5,7 +5,6 @@
 #include <cstdint>
 #include <vector>
 
-
 std::string print(const mtrk_event_t&,
 			mtrk_sbo_print_opts=mtrk_sbo_print_opts::normal);
 

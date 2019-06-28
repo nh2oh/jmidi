@@ -1,16 +1,12 @@
 #pragma once
 #include "mtrk_event_t_internal.h"
-#include "mtrk_event_iterator_t.h"
+#include "..\..\generic_iterator.h"
 #include "midi_raw.h"  // declares smf_event_type
 #include <string>  // For declaration of print()
 #include <cstdint>
 
 
-// #including mtrk_event_iterator_t.h rather than fwd declaring; a user
-// who includes the container class should be able to construct the 
-// iterators.  
-
-// For friend dcln print(const mtrk_event_t&, mtrk_sbo_print_opts)
+// For the friend dcln print(const mtrk_event_t&, mtrk_sbo_print_opts)
 enum class mtrk_sbo_print_opts {
 	normal,
 	detail,
@@ -24,10 +20,15 @@ enum class mtrk_sbo_print_opts {
 //
 // mtrk_event_t:  An sbo-featured container for mtrk events
 //
-// An mtrk_event_t is a container for storing and working with byte
-// sequences representing mtrk events (including the event delta-time).  
+// An mtrk_event_t is a "container" for storing and working with byte
+// sequences that represent MTrk events (for the purpose of this library,
+// an MTrk event is defined to include the the leading delta-time vlq).  
 // An mtrk_event_t stores and provides direct access (both read and 
-// write) to the sequence of bytes (unsigned char) encoding the event.  
+// write) to the sequence of bytes (unsigned char) encoding the event as 
+// stipulated by the MIDI std.  
+//
+// Since write access to the underlying byte array is provided, it is hard 
+// for this container to maintain any invariants.  
 //
 // The choice to store mtrk events directly as the byte array as specified by
 // the MIDI spec (and not as some processed aggregate of native types, ex, 
@@ -38,28 +39,34 @@ enum class mtrk_sbo_print_opts {
 // they are not presumed to be (or want to be) intimately fimilar with the 
 // idiosyncratic details of an overly complicated library.  
 // 
-// Since write access to the underlying byte array is provided, it is hard for
-// this container to maintain any invariants.  
+
 //
-
-
 //
 // TODO:  Error handling policy for some of the ctors
 // TODO:  Safe resize()/reserve()
 // TODO:  push_back()
 //
-
 class mtrk_event_t {
+private:
+	struct mtrk_event_container_types_t {
+		using value_type = unsigned char;
+		using size_type = uint32_t;
+		using difference_type = std::ptrdiff_t;  // TODO:  Inconsistent
+		using reference = value_type&;
+		using const_reference = const value_type&;
+		using pointer = value_type*;
+		using const_pointer = const value_type*;
+	};
 public:
-	using value_type = unsigned char;
-	using size_type = uint32_t;
-	//using difference_type = std::ptrdiff_t;  // TODO:  Inconsistent
-	using reference = value_type&;
-	using const_reference = const value_type&;
-	using pointer = value_type*;
-	using const_pointer = const value_type*;
-	using iterator = mtrk_event_iterator_t;
-	using const_iterator = mtrk_event_const_iterator_t;
+	using value_type = mtrk_event_container_types_t::value_type;
+	using size_type = mtrk_event_container_types_t::size_type;
+	using difference_type = mtrk_event_container_types_t::difference_type;  // TODO:  Inconsistent
+	using reference = mtrk_event_container_types_t::reference;
+	using const_reference = mtrk_event_container_types_t::const_reference;
+	using pointer = mtrk_event_container_types_t::pointer;
+	using const_pointer = mtrk_event_container_types_t::const_pointer;
+	using iterator = generic_ra_iterator<mtrk_event_container_types_t,false>;
+	using const_iterator = generic_ra_iterator<mtrk_event_container_types_t,true>;
 	// TODO:  reverse_iterator, const_reverse_iterator
 
 	// Default ctor; creates a "small" object representing a meta-text event
@@ -113,23 +120,23 @@ public:
 	// the vlq length field for sysex and meta events.  
 	unsigned char *data();
 	const unsigned char *data() const;
-	mtrk_event_iterator_t begin();
-	mtrk_event_const_iterator_t begin() const;
-	mtrk_event_iterator_t end();
-	mtrk_event_const_iterator_t end() const;
-	mtrk_event_const_iterator_t dt_begin() const;
-	mtrk_event_iterator_t dt_begin();
-	mtrk_event_const_iterator_t dt_end() const;
-	mtrk_event_iterator_t dt_end();
-	mtrk_event_const_iterator_t event_begin() const;
-	mtrk_event_iterator_t event_begin();
+	iterator begin();
+	const_iterator begin() const;
+	iterator end();
+	const_iterator end() const;
+	const_iterator dt_begin() const;
+	iterator dt_begin();
+	const_iterator dt_end() const;
+	iterator dt_end();
+	const_iterator event_begin() const;
+	iterator event_begin();
 	// TODO:  These call type(), which advances past the delta_t to determine
 	// the status byte, then they manually advance a local iterator past the 
 	// delta_t... redundant...
-	mtrk_event_const_iterator_t payload_begin() const;
-	mtrk_event_iterator_t payload_begin();
-	iterator_range_t<mtrk_event_const_iterator_t> payload_range() const;
-	iterator_range_t<mtrk_event_iterator_t> payload_range();
+	const_iterator payload_begin() const;
+	iterator payload_begin();
+	iterator_range_t<const_iterator> payload_range() const;
+	iterator_range_t<iterator> payload_range();
 	const unsigned char& operator[](uint32_t) const;
 	unsigned char& operator[](uint32_t);
 
@@ -166,6 +173,8 @@ private:
 	friend std::string print(const mtrk_event_t&,
 			mtrk_sbo_print_opts);
 };
+
+
 
 class mtrk_event_unit_test_helper_t {
 public:

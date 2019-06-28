@@ -6,7 +6,7 @@
 #include "dbklib\byte_manipulation.h"
 #include <string>
 #include <cstdint>
-#include <algorithm>  
+#include <algorithm>
 
 
 
@@ -179,37 +179,39 @@ unsigned char *mtrk_event_t::data() {
 const unsigned char *mtrk_event_t::data() const {
 	return this->d_.begin();
 }
-mtrk_event_iterator_t mtrk_event_t::begin() {
-	return mtrk_event_iterator_t(*this);
+mtrk_event_t::iterator mtrk_event_t::begin() {
+	return mtrk_event_t::iterator(this->data());
+	//return mtrk_event_iterator_t(*this);
 }
-mtrk_event_const_iterator_t mtrk_event_t::begin() const {
-	return mtrk_event_const_iterator_t(*this);
+mtrk_event_t::const_iterator mtrk_event_t::begin() const {
+	return mtrk_event_t::const_iterator(this->data());
+	//return mtrk_event_const_iterator_t(*this);
 }
-mtrk_event_iterator_t mtrk_event_t::end() {
+mtrk_event_t::iterator mtrk_event_t::end() {
 	return this->begin()+this->size();
 }
-mtrk_event_const_iterator_t mtrk_event_t::end() const {
+mtrk_event_t::const_iterator mtrk_event_t::end() const {
 	return this->begin()+this->size();
 }
-mtrk_event_const_iterator_t mtrk_event_t::dt_begin() const {
+mtrk_event_t::const_iterator mtrk_event_t::dt_begin() const {
 	return this->begin();
 }
-mtrk_event_iterator_t mtrk_event_t::dt_begin() {
+mtrk_event_t::iterator mtrk_event_t::dt_begin() {
 	return this->begin();
 }
-mtrk_event_const_iterator_t mtrk_event_t::dt_end() const {
+mtrk_event_t::const_iterator mtrk_event_t::dt_end() const {
 	return advance_to_vlq_end(this->begin());
 }
-mtrk_event_iterator_t mtrk_event_t::dt_end() {
+mtrk_event_t::iterator mtrk_event_t::dt_end() {
 	return advance_to_vlq_end(this->begin());
 }
-mtrk_event_const_iterator_t mtrk_event_t::event_begin() const {
+mtrk_event_t::const_iterator mtrk_event_t::event_begin() const {
 	return advance_to_vlq_end(this->begin());
 }
-mtrk_event_iterator_t mtrk_event_t::event_begin() {
+mtrk_event_t::iterator mtrk_event_t::event_begin() {
 	return advance_to_vlq_end(this->begin());
 }
-mtrk_event_const_iterator_t mtrk_event_t::payload_begin() const {
+mtrk_event_t::const_iterator mtrk_event_t::payload_begin() const {
 	auto it = this->event_begin();
 	if (this->type()==smf_event_type::meta) {
 		it += 2;  // 0xFFu, type-byte
@@ -221,7 +223,7 @@ mtrk_event_const_iterator_t mtrk_event_t::payload_begin() const {
 	} // else { smf_event_type::channel_voice, _mode, unknown, invalid...
 	return it;
 }
-mtrk_event_iterator_t mtrk_event_t::payload_begin() {
+mtrk_event_t::iterator mtrk_event_t::payload_begin() {
 	auto it = this->event_begin();
 	if (this->type()==smf_event_type::meta) {
 		it += 2;  // 0xFFu, type-byte
@@ -233,7 +235,7 @@ mtrk_event_iterator_t mtrk_event_t::payload_begin() {
 	} // else { smf_event_type::channel_voice, _mode, unknown, invalid...
 	return it;
 }
-iterator_range_t<mtrk_event_const_iterator_t> mtrk_event_t::payload_range() const {
+iterator_range_t<mtrk_event_t::const_iterator> mtrk_event_t::payload_range() const {
 	auto sz = this->size();
 	auto it = this->event_begin();
 	if (this->type()==smf_event_type::meta) {
@@ -246,7 +248,7 @@ iterator_range_t<mtrk_event_const_iterator_t> mtrk_event_t::payload_range() cons
 	} // else { smf_event_type::channel_voice, _mode, unknown, invalid...
 	return {it,this->end()};
 }
-iterator_range_t<mtrk_event_iterator_t> mtrk_event_t::payload_range() {
+iterator_range_t<mtrk_event_t::iterator> mtrk_event_t::payload_range() {
 	auto sz = this->size();
 	auto it = this->event_begin();
 	if (this->type()==smf_event_type::meta) {
