@@ -175,7 +175,17 @@ uint64_t mtrk_event_t::size() const {
 uint64_t mtrk_event_t::capacity() const {
 	return this->d_.capacity();
 }
-
+uint64_t mtrk_event_t::resize(uint64_t new_cap) {
+	if (new_cap > std::numeric_limits<uint32_t>::max()) {
+		new_cap = std::numeric_limits<uint32_t>::max();
+	}
+	uint32_t new_cap32 = static_cast<uint32_t>(new_cap);
+	return this->d_.resize(new_cap32);
+}
+uint64_t mtrk_event_t::reserve(uint64_t cap_in) {
+	auto new_cap = std::max(cap_in,this->capacity());
+	return this->resize(new_cap);
+}
 unsigned char *mtrk_event_t::data() {
 	return this->d_.begin();
 }

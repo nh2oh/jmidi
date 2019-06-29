@@ -514,9 +514,11 @@ uint32_t sysex_event_get_data_size(const unsigned char *p, uint32_t max_size) {
 
 uint32_t mtrk_event_get_data_size(const unsigned char *p, unsigned char rs,
 								uint32_t max_size) {
+	// TODO:  Need to check max_size > 0
 	uint32_t result = 0;
 	auto ev_type = classify_status_byte(*p,rs);  
 	if (ev_type==smf_event_type::channel) {
+		// TODO:  Ned to check max_size > 2 (?)
 		result += channel_event_get_data_size(p,rs);
 	} else if (ev_type==smf_event_type::meta) {
 		result += meta_event_get_data_size(p,max_size);

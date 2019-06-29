@@ -304,7 +304,8 @@ uint32_t channel_event_get_data_size(const unsigned char *, unsigned char);
 uint32_t meta_event_get_data_size(const unsigned char *, uint32_t);
 uint32_t sysex_event_get_data_size(const unsigned char *, uint32_t);
 //
-// Returns 0 if p points at smf_event_type::invalid || ::unrecognized, or
+// The non-_dtstart functions returns 0 if p points at smf_event_type::invalid
+// || smf_event_type::unrecognized, or
 // if the size of the event would exceed max_size.  Note that 0 is always
 // an invalid size for an smf event.  
 //

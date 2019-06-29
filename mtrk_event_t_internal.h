@@ -38,9 +38,9 @@ public:
 	//uint64_t size() const;
 	uint64_t capacity() const;
 	// resize(uint32_t new_cap) Sets the _capacity_ to 
-	// std::max(capacity(),new_cap).  Note that the smallest possible
-	// capacity is small_capacity().  If new_cap is < size(), the event
-	// will be truncated and become invalid in a way that almost 
+	// std::max(small_capacity(),new_cap).  Note therefore that the smallest 
+	// possible capacity is small_capacity().  If new_cap is < size(), the 
+	// event will be truncated and become invalid in a way that almost 
 	// certainly will violate the invariants of mtrk_event_t and in fact
 	// also those of sbo_t (the size() calculations will not be correct).
 	// Sets the big/small flag & allocates/frees memory as appropriate.  

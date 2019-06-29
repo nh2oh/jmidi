@@ -520,16 +520,24 @@ bool is_sysex_f7(const mtrk_event_t& ev) {
 }
 
 mtrk_event_t make_sysex_f0(const uint32_t& dt, const std::vector<unsigned char>& pyld) {
-	mtrk_event_t result(dt);
-
-	auto it = std::back_inserter(result);
-	if ((pyld.size()>0) && (pyld.front() != 0xF0u)) {
-		*it++ = 0xF0u;
+	auto payload_eff_size = pyld.size();
+	if ((pyld.size()>0) && (pyld.back()!=0xF7u)) {
+		++payload_eff_size;
 	}
+	auto sz_reserve = midi_vl_field_size(dt) + 1 + midi_vl_field_size(payload_eff_size)
+		+ payload_eff_size;
+	
+	auto result = mtrk_event_t();
+	result.reserve(sz_reserve);
+	auto it = result.begin();
+	it = midi_write_vl_field(it,dt);
+	*it++ = 0xF0u;
+	it = midi_write_vl_field(it,payload_eff_size);
 	it = std::copy(pyld.begin(),pyld.end(),it);
-	if ((pyld.size()>0) && (pyld.back() != 0xF7u)) {
+	if (pyld.size()!=payload_eff_size) {  // pyld is not F7-capped
 		*it++ = 0xF7u;
 	}
+
 	return result;
 }
 

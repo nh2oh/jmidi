@@ -110,6 +110,8 @@ public:
 
 	uint64_t size() const;
 	uint64_t capacity() const;
+	uint64_t resize(uint64_t);
+	uint64_t reserve(uint64_t);
 
 	// Iterators facilitating access to the underlying unsigned char array
 	//
