@@ -67,17 +67,21 @@ struct midi_ch_event_t {
 	uint8_t p1 {0x00u};
 	uint8_t p2 {0x00u};
 };
+// TODO:  Rename to "verify" ?
+bool verify(const midi_ch_event_t&);
 // "Forcefully" sets bits in the fields of the input midi_ch_event_t such
 // that they are valid values.  
-bool is_valid_ch_data(const midi_ch_event_t&);
+// TODO:  Change behavior to act more like "clamp" ?
 midi_ch_event_t normalize(midi_ch_event_t);
 bool is_note_on(const midi_ch_event_t&);
 bool is_note_off(const midi_ch_event_t&);
-bool is_key_aftertouch(const midi_ch_event_t&);  // 0xAnu
+bool is_key_pressure(const midi_ch_event_t&);  // 0xAnu
 bool is_control_change(const midi_ch_event_t&);
 bool is_program_change(const midi_ch_event_t&);
-bool is_channel_aftertouch(const midi_ch_event_t&);  // 0xDnu
+// TODO:  Rename channel_pressure
+bool is_channel_pressure(const midi_ch_event_t&);  // 0xDnu
 bool is_pitch_bend(const midi_ch_event_t&); 
+bool is_channel_mode(const midi_ch_event_t&);
 
 //template<typename T>
 //uint8_t status_nybble(const T& md) {

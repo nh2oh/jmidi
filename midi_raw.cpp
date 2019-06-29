@@ -34,7 +34,7 @@ bool is_major(const midi_keysig_t& ks) {
 bool is_minor(const midi_keysig_t& ks) {
 	return ks.mi==1;
 }
-bool is_valid_ch_data(const midi_ch_event_t& md) {
+bool verify(const midi_ch_event_t& md) {
 	auto s = ((md.status_nybble & 0xF0u) + (md.ch & 0x0Fu));
 	if (!is_channel_status_byte(s)) {
 		return false;
@@ -59,40 +59,46 @@ midi_ch_event_t normalize(midi_ch_event_t md) {
 	return md;
 }
 bool is_note_on(const midi_ch_event_t& md) {
-	return (is_valid_ch_data(md)
+	return (verify(md)
 		&& md.status_nybble==0x90u
 		&& (md.p2 > 0));
 }
 bool is_note_off(const midi_ch_event_t& md) {
-	return (is_valid_ch_data(md)
+	return (verify(md)
 		&& ((md.status_nybble==0x80u)
 			|| (md.status_nybble==0x90u && (md.p2==0))));
 }
 
-bool is_key_aftertouch(const midi_ch_event_t& md) {  // 0xAnu
-	return (is_valid_ch_data(md)
+bool is_key_pressure(const midi_ch_event_t& md) {  // 0xAnu
+	return (verify(md)
 		&& (md.status_nybble==0xA0u));
 }
 bool is_control_change(const midi_ch_event_t& md) {
-	return (is_valid_ch_data(md)
+	return (verify(md)
 		&& (md.status_nybble==0xB0u)
-		&& ((md.p1&0x78u)!=0x78u));
+		&& (md.p1 < 120));
 	// The final condition verifies md is a channel_voice (not channel_mode)
-	// event.  0x78u  == 0b01111000u
+	// event.  120  == 0b01111000u
 }
 bool is_program_change(const midi_ch_event_t& md) {
-	return (is_valid_ch_data(md)
+	return (verify(md)
 		&& (md.status_nybble==0xC0u));
 }
-bool is_channel_aftertouch(const midi_ch_event_t& md) {  // 0xDnu
-	return (is_valid_ch_data(md)
+bool is_channel_pressure(const midi_ch_event_t& md) {  // 0xDnu
+	return (verify(md)
 		&& (md.status_nybble==0xD0u));
 }
 bool is_pitch_bend(const midi_ch_event_t& md) {
-	return (is_valid_ch_data(md)
+	return (verify(md)
 		&& (md.status_nybble==0xE0u));
 }
-
+bool is_channel_mode(const midi_ch_event_t& md) {
+	return (verify(md)
+		&& (md.status_nybble==0xB0u)
+		&& (md.p1 >= 120));
+	// The final condition verifies md is not a control_change event.  
+	// 120  == 0b01111000u
+}
 
 
 

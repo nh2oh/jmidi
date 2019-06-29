@@ -171,10 +171,10 @@ bool is_channel_mode(const mtrk_event_t&);
 // are considered note-off events.  
 bool is_note_on(const mtrk_event_t&);
 bool is_note_off(const mtrk_event_t&);
-bool is_key_aftertouch(const mtrk_event_t&);  // 0xAnu
+bool is_key_pressure(const mtrk_event_t&);  // 0xAnu
 bool is_control_change(const mtrk_event_t&);
 bool is_program_change(const mtrk_event_t&);
-bool is_channel_aftertouch(const mtrk_event_t&);  // 0xDnu
+bool is_channel_pressure(const mtrk_event_t&);  // 0xDnu
 bool is_pitch_bend(const mtrk_event_t&);
 // TODO:  Not sure if the int,int... overloads should be here?
 // Should i put these in some sort of low-level implementation
@@ -189,7 +189,26 @@ bool is_onoff_pair(int, int, int, int);
 // TODO:  More generic is_onoff_pair(), ex for pedal up/down, other
 // control msgs.  
 
+//
+// Channel-event factories 
+//
+// "Safe" factory functions, which create mtrk_event_t objects encoding midi
+// channel events with payloads corresponding to the given delta-time and 
+// the event data in the midi_ch_event_t argument.  These functions overwrite
+// the value of the status nybble and other fields in the midi_ch_event_t   
+// argument as necessary so that the event that is returned always has the
+// intended type (where "intent" is inferred by the particular factory 
+// function and not necessarily the fields of the midi_ch_event_t input).  
+// For example, make_note_on() will return an mtrk_event_t w/ status nybble
+// == 0x90u, even if the status_nybble of the midi_ch_event_t passed in is
+// == 0xA0u.  
+//
+// Events w/ only one data byte (program_change and channel_pressure) have
+// md.p2 set to 0x00u.  
+//
 
+// TODO:  This is not really needed given the "unsafe" ctor
+// midi_event_t(const uint32_t& dt, const midi_ch_event_t& md)
 mtrk_event_t make_ch_event_generic_unsafe(const uint32_t&, const midi_ch_event_t&);
 // The make_*() functions below call normalize(midi_ch_event_t) on the input
 // and thus silently convert invalid values for the data & status bytes into
@@ -200,9 +219,17 @@ mtrk_event_t make_ch_event_generic_unsafe(const uint32_t&, const midi_ch_event_t
 // Sets the status nybble to 0x90u and p2 to be the greater of the value
 // passed in or 1 (a note-on event can not have a velocity of 0).  
 mtrk_event_t make_note_on(const uint32_t&, midi_ch_event_t);
+// Makes a channel event w/ status nybble == 0x80u
 mtrk_event_t make_note_off(const uint32_t&, midi_ch_event_t);
-// Makes a channel event w/ a status nybble of 0x90u (normally => note on),
+// Makes a channel event w/ status nybble == 0x90u (normally => note on),
 // but w/a p2 of 0.  
 mtrk_event_t make_note_off90(const uint32_t&, midi_ch_event_t);
+mtrk_event_t make_key_pressure(const uint32_t&, midi_ch_event_t);  // 0xA0u
+mtrk_event_t make_control_change(const uint32_t&, midi_ch_event_t);  // 0xB0u
+mtrk_event_t make_program_change(const uint32_t&, midi_ch_event_t);  // 0xC0u
+mtrk_event_t make_channel_pressure(const uint32_t&, midi_ch_event_t);  // 0xD0u
+mtrk_event_t make_pitch_bend(const uint32_t&, midi_ch_event_t);  // 0xE0u
+mtrk_event_t make_channel_mode(const uint32_t&, midi_ch_event_t);  // 0xB0u
+
 
 

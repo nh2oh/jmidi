@@ -358,7 +358,7 @@ mtrk_event_t make_meta_generic_text(const uint32_t& dt, const meta_event_t& type
 
 midi_ch_event_t get_channel_event(const mtrk_event_t& ev, midi_ch_event_t def) {
 	auto result = get_channel_event_impl(ev);
-	if (!is_valid_ch_data(result)) {
+	if (!verify(result)) {
 		return def;
 	}
 	return result;
@@ -384,11 +384,11 @@ midi_ch_event_t get_channel_event_impl(const mtrk_event_t& ev) {
 	return result;
 }
 bool is_channel(const mtrk_event_t& ev) {  // voice or mode
-	return is_valid_ch_data(get_channel_event_impl(ev));
+	return verify(get_channel_event_impl(ev));
 }
 bool is_channel_voice(const mtrk_event_t& ev) {
 	auto md = get_channel_event_impl(ev);
-	if (!is_valid_ch_data(md)) {
+	if (!verify(md)) {
 		return false;
 	}
 	if ((md.status_nybble==0xB0u) && ((md.p1&0x78u)==0x78u)) {
@@ -400,7 +400,7 @@ bool is_channel_voice(const mtrk_event_t& ev) {
 }
 bool is_channel_mode(const mtrk_event_t& ev) {
 	auto md = get_channel_event_impl(ev);
-	if (!is_valid_ch_data(md)) {
+	if (!verify(md)) {
 		return false;
 	}
 	if ((md.status_nybble!=0xB0u) || ((md.p1&0x78u)!=0x78u)) {
@@ -415,8 +415,8 @@ bool is_note_on(const mtrk_event_t& ev) {
 bool is_note_off(const mtrk_event_t& ev) {
 	return is_note_off(get_channel_event_impl(ev));
 }
-bool is_key_aftertouch(const mtrk_event_t& ev) {
-	return is_key_aftertouch(get_channel_event_impl(ev));
+bool is_key_pressure(const mtrk_event_t& ev) {
+	return is_key_pressure(get_channel_event_impl(ev));
 }
 bool is_control_change(const mtrk_event_t& ev) {
 	return is_control_change(get_channel_event_impl(ev));
@@ -424,8 +424,8 @@ bool is_control_change(const mtrk_event_t& ev) {
 bool is_program_change(const mtrk_event_t& ev) {
 	return is_program_change(get_channel_event_impl(ev));
 }
-bool is_channel_aftertouch(const mtrk_event_t& ev) {
-	return is_channel_aftertouch(get_channel_event_impl(ev));
+bool is_channel_pressure(const mtrk_event_t& ev) {
+	return is_channel_pressure(get_channel_event_impl(ev));
 }
 bool is_pitch_bend(const mtrk_event_t& ev) {
 	return ((ev.status_byte() & 0xF0u) == 0xE0u);
@@ -452,25 +452,62 @@ bool is_onoff_pair(int on_ch, int on_note, int off_ch, int off_note) {
 
 
 mtrk_event_t make_ch_event_generic_unsafe(const uint32_t& dt, const midi_ch_event_t& md) {
-	std::array<unsigned char,3> evdata {(md.status_nybble|md.ch),md.p1,md.p2};
-	auto result = mtrk_event_t(dt,evdata.data(),evdata.size(),0x00u);
-	return result;
+	//std::array<unsigned char,3> evdata {(md.status_nybble|md.ch),md.p1,md.p2};
+	//auto result = mtrk_event_t(dt,evdata.data(),evdata.size(),0x00u);
+	//return result;
+	return mtrk_event_t(dt,md);
 }
 mtrk_event_t make_note_on(const uint32_t& dt, midi_ch_event_t md) {
 	md = normalize(md);
 	md.status_nybble = 0x90u;
-	md.p2 = md.p2 > 0 ? md.p2 : 1;
-	return make_ch_event_generic_unsafe(dt,md);
+	md.p2 = md.p2 > 0 ? md.p2 : 1;  // A note-on event must have a velocity > 0
+	return mtrk_event_t(dt,md);
 }
 mtrk_event_t make_note_off(const uint32_t& dt, midi_ch_event_t md) {
 	md = normalize(md);
 	md.status_nybble = 0x80u;
-	return make_ch_event_generic_unsafe(dt,md);
+	return mtrk_event_t(dt,md);
 }
 mtrk_event_t make_note_off90(const uint32_t& dt, midi_ch_event_t md) {
 	md = normalize(md);
 	md.status_nybble = 0x90u;
 	md.p2 = 0;
-	return make_ch_event_generic_unsafe(dt,md);
+	return mtrk_event_t(dt,md);
 }
+mtrk_event_t make_key_pressure(const uint32_t& dt, midi_ch_event_t md) {
+	md = normalize(md);
+	md.status_nybble = 0xA0u;
+	return mtrk_event_t(dt,md);
+}
+mtrk_event_t make_control_change(const uint32_t& dt, midi_ch_event_t md) {
+	md = normalize(md);
+	md.status_nybble = 0xB0u;
+	md.p1 >= 120 ? 119 : md.p1;  // p1 >=120 (==0b01111000) => select_ch_mode
+	return mtrk_event_t(dt,md);
+}
+mtrk_event_t make_program_change(const uint32_t& dt, midi_ch_event_t md) {
+	md = normalize(md);
+	md.status_nybble = 0xC0u;
+	md.p2 = 0x00u;
+	return mtrk_event_t(dt,md);
+}
+mtrk_event_t make_channel_pressure(const uint32_t& dt, midi_ch_event_t md) {
+	md = normalize(md);
+	md.status_nybble = 0xD0u;
+	md.p2 = 0x00u;
+	return mtrk_event_t(dt,md);
+}
+mtrk_event_t make_pitch_bend(const uint32_t& dt, midi_ch_event_t md) {
+	md = normalize(md);
+	md.status_nybble = 0xE0u;
+	return mtrk_event_t(dt,md);
+}
+mtrk_event_t make_channel_mode(const uint32_t& dt, midi_ch_event_t md) {
+	md = normalize(md);
+	md.status_nybble = 0xB0u;
+	md.p1 < 120 ? 120 : md.p1;  // p1 <120 (==0b01111000) => control_change
+	return mtrk_event_t(dt,md);
+}
+
+
 
