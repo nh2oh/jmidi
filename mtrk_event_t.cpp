@@ -13,6 +13,10 @@
 mtrk_event_t::mtrk_event_t() {  
 	default_init();
 }
+mtrk_event_t::mtrk_event_t(uint32_t dt) {  
+	zero_init();
+	midi_write_vl_field(this->d_.begin(),dt);
+}
 //
 // For callers who have pre-computed the exact size of the event and who
 // can also supply a midi status byte if applicible, ex, an 
@@ -199,26 +203,26 @@ mtrk_event_t::iterator mtrk_event_t::dt_begin() {
 	return this->begin();
 }
 mtrk_event_t::const_iterator mtrk_event_t::dt_end() const {
-	return advance_to_vlq_end(this->begin());
+	return advance_to_dt_end(this->begin());
 }
 mtrk_event_t::iterator mtrk_event_t::dt_end() {
-	return advance_to_vlq_end(this->begin());
+	return advance_to_dt_end(this->begin());
 }
 mtrk_event_t::const_iterator mtrk_event_t::event_begin() const {
-	return advance_to_vlq_end(this->begin());
+	return advance_to_dt_end(this->begin());
 }
 mtrk_event_t::iterator mtrk_event_t::event_begin() {
-	return advance_to_vlq_end(this->begin());
+	return advance_to_dt_end(this->begin());
 }
 mtrk_event_t::const_iterator mtrk_event_t::payload_begin() const {
 	auto it = this->event_begin();
 	if (this->type()==smf_event_type::meta) {
 		it += 2;  // 0xFFu, type-byte
-		it = advance_to_vlq_end(it);
+		it = advance_to_dt_end(it);
 	} else if (this->type()==smf_event_type::sysex_f0
 					|| this->type()==smf_event_type::sysex_f7) {
 		it += 1;  // 0xF0u or 0xF7u
-		it = advance_to_vlq_end(it);
+		it = advance_to_dt_end(it);
 	} // else { smf_event_type::channel_voice, _mode, unknown, invalid...
 	return it;
 }
@@ -226,11 +230,11 @@ mtrk_event_t::iterator mtrk_event_t::payload_begin() {
 	auto it = this->event_begin();
 	if (this->type()==smf_event_type::meta) {
 		it += 2;  // 0xFFu, type-byte
-		it = advance_to_vlq_end(it);
+		it = advance_to_dt_end(it);
 	} else if (this->type()==smf_event_type::sysex_f0
 					|| this->type()==smf_event_type::sysex_f7) {
 		it += 1;  // 0xF0u or 0xF7u
-		it = advance_to_vlq_end(it);
+		it = advance_to_dt_end(it);
 	} // else { smf_event_type::channel_voice, _mode, unknown, invalid...
 	return it;
 }
@@ -239,11 +243,11 @@ iterator_range_t<mtrk_event_t::const_iterator> mtrk_event_t::payload_range() con
 	auto it = this->event_begin();
 	if (this->type()==smf_event_type::meta) {
 		it += 2;  // 0xFFu, type-byte
-		it = advance_to_vlq_end(it);
+		it = advance_to_dt_end(it);
 	} else if (this->type()==smf_event_type::sysex_f0
 					|| this->type()==smf_event_type::sysex_f7) {
 		it += 1;  // 0xF0u or 0xF7u
-		it = advance_to_vlq_end(it);
+		it = advance_to_dt_end(it);
 	} // else { smf_event_type::channel_voice, _mode, unknown, invalid...
 	return {it,this->end()};
 }
@@ -252,11 +256,11 @@ iterator_range_t<mtrk_event_t::iterator> mtrk_event_t::payload_range() {
 	auto it = this->event_begin();
 	if (this->type()==smf_event_type::meta) {
 		it += 2;  // 0xFFu, type-byte
-		it = advance_to_vlq_end(it);
+		it = advance_to_dt_end(it);
 	} else if (this->type()==smf_event_type::sysex_f0
 					|| this->type()==smf_event_type::sysex_f7) {
 		it += 1;  // 0xF0u or 0xF7u
-		it = advance_to_vlq_end(it);
+		it = advance_to_dt_end(it);
 	} // else { smf_event_type::channel_voice, _mode, unknown, invalid...
 	return {it,this->end()};
 }
@@ -269,7 +273,7 @@ unsigned char& mtrk_event_t::operator[](mtrk_event_t::size_type i) {
 
 
 smf_event_type mtrk_event_t::type() const {
-	auto p = advance_to_vlq_end(this->data());
+	auto p = advance_to_dt_end(this->data());
 	return classify_status_byte(*p);
 	// Faster than classify_mtrk_event_dtstart_unsafe(s,rs), b/c the latter
 	// calls classify_status_byte(get_status_byte(s,rs)); here, i do not 
@@ -279,11 +283,11 @@ uint32_t mtrk_event_t::delta_time() const {
 	return midi_interpret_vl_field(this->data()).val;
 }
 unsigned char mtrk_event_t::status_byte() const {
-	auto p = advance_to_vlq_end(this->data());
+	auto p = advance_to_dt_end(this->data());
 	return *p;
 }
 unsigned char mtrk_event_t::running_status() const {
-	auto p = advance_to_vlq_end(this->data());
+	auto p = advance_to_dt_end(this->data());
 	return get_running_status_byte(*p,0x00u);
 }
 uint32_t mtrk_event_t::data_size() const {  // Not indluding delta-t
@@ -353,6 +357,10 @@ void mtrk_event_t::default_init() {
 	std::array<unsigned char,4> evdata = {0x00,0xFF,0x01,0x00};
 	auto end = std::copy(evdata.begin(),evdata.end(),this->d_.begin());
 	std::fill(end,this->d_.end(),0x00u);
+}
+void mtrk_event_t::zero_init() {
+	this->d_.set_flag_small();
+	std::fill(this->d_.begin(),this->d_.end(),0x00u);
 }
 const unsigned char *mtrk_event_t::raw_begin() const {
 	return this->d_.raw_begin();

@@ -156,7 +156,6 @@ meta_event_t classify_meta_event(const mtrk_event_t& ev) {
 		return meta_event_t::invalid;
 	}
 	auto it = ev.event_begin();
-	//auto p = ev.data_skipdt();
 	uint16_t d16 = dbk::be_2_native<uint16_t>(&*it); // (p);
 	return classify_meta_event_impl(d16);
 }
@@ -510,4 +509,27 @@ mtrk_event_t make_channel_mode(const uint32_t& dt, midi_ch_event_t md) {
 }
 
 
+bool is_sysex(const mtrk_event_t& ev) {
+	return (is_sysex_f0(ev) || is_sysex_f7(ev));
+}
+bool is_sysex_f0(const mtrk_event_t& ev) {
+	return ev.type()==smf_event_type::sysex_f0;
+}
+bool is_sysex_f7(const mtrk_event_t& ev) {
+	return ev.type()==smf_event_type::sysex_f7;
+}
+
+mtrk_event_t make_sysex_f0(const uint32_t& dt, const std::vector<unsigned char>& pyld) {
+	mtrk_event_t result(dt);
+
+	auto it = std::back_inserter(result);
+	if ((pyld.size()>0) && (pyld.front() != 0xF0u)) {
+		*it++ = 0xF0u;
+	}
+	it = std::copy(pyld.begin(),pyld.end(),it);
+	if ((pyld.size()>0) && (pyld.back() != 0xF7u)) {
+		*it++ = 0xF7u;
+	}
+	return result;
+}
 

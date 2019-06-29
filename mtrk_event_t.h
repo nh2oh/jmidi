@@ -74,6 +74,8 @@ public:
 	// Default ctor; creates a "small" object representing a meta-text event
 	// w/ a payload length of 0.  
 	mtrk_event_t();
+	// "Empty" event consisting of a delta_time only
+	mtrk_event_t(uint32_t);
 	// Ctors for callers who have pre-computed the exact size of the event 
 	// and who can also supply a midi status byte (if needed).  In the first
 	// overload, parameter 1 is a pointer to the first byte of the delta-time
@@ -164,6 +166,7 @@ private:
 	// event.  Ignore the big/small flag of the union; do not free memory
 	// if big.  
 	void default_init();
+	void zero_init();
 	const unsigned char *raw_begin() const;
 	const unsigned char *raw_end() const;
 	unsigned char flags() const;

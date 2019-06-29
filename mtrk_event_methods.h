@@ -231,5 +231,12 @@ mtrk_event_t make_channel_pressure(const uint32_t&, midi_ch_event_t);  // 0xD0u
 mtrk_event_t make_pitch_bend(const uint32_t&, midi_ch_event_t);  // 0xE0u
 mtrk_event_t make_channel_mode(const uint32_t&, midi_ch_event_t);  // 0xB0u
 
+//
+// Sysex event classification
+//
+bool is_sysex(const mtrk_event_t&);
+bool is_sysex_f0(const mtrk_event_t&);
+bool is_sysex_f7(const mtrk_event_t&);
 
+mtrk_event_t make_sysex_f0(const uint32_t&, const std::vector<unsigned char>&);
 

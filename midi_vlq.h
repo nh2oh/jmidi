@@ -199,7 +199,7 @@ midi_vl_field_interpreted midi_interpret_vl_field(InIt it) {
 	result.is_valid = !(*it & 0x80);
 	return result;
 };
-// Advance the iterator to the end of the vlq; do notparse the field
+// Advance the iterator to the end of the vlq; do not parse the field
 template<typename InIt>
 InIt advance_to_vlq_end(InIt it) {
 	while((*it++)&0x80u) {
@@ -207,7 +207,16 @@ InIt advance_to_vlq_end(InIt it) {
 	}
 	return it;
 };
-
+// Advance the iterator to the end of the delta-time vlq or by 4 bytes,
+// whichever comes first; do not parse the field.  A delta-time vlq may
+// occupy a maximum of 4 bytes.  
+template<typename InIt>
+InIt advance_to_dt_end(InIt it) {
+	for (int n=0; ((n<4) && ((*it)&0x80u)); ++n) {
+		++it;
+	}
+	return it;
+};
 
 
 //
