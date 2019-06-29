@@ -7,7 +7,10 @@
 
 
 // A uint32_t clamped on [0,0x0FFFFFFFu] w/ implicit conversion from/to
-// other numeric types.  
+// other wider numeric types.  
+//
+// To be used something like: using midi_dt = midi_vlq<uint32_t>
+//
 class midi_vlq {
 public:
 	template<typename T>
@@ -21,7 +24,12 @@ public:
 		}
 	};
 
-	template<typename T>
+	// Silent conversion to unsigned integral types wide enough to accomodate
+	// a uint32_t.  
+	template<typename T, 
+		typename = typename std::enable_if<std::is_integral<T>::value 
+			&& std::is_unsigned<T>::value
+			&& (std::numeric_limits<T>::max()>=std::numeric_limits<uint32_t>::max()),T>::type>
 	operator T() const {
 		return static_cast<T>(this->val_);
 	};
@@ -212,8 +220,9 @@ InIt advance_to_vlq_end(InIt it) {
 // occupy a maximum of 4 bytes.  
 template<typename InIt>
 InIt advance_to_dt_end(InIt it) {
-	for (int n=0; ((n<4) && ((*it)&0x80u)); ++n) {
-		++it;
+	int n=0;
+	while ((n++<4) && ((*it++)&0x80u)) {
+		true;
 	}
 	return it;
 };
@@ -266,6 +275,24 @@ constexpr int midi_vl_field_size(T val) {
 		val >>= 7;
 		++n;
 	} while (val != 0);
+
+	return n;
+}
+//
+// Computes the size (in bytes) of the field required to encode a given 
+// value as a delta time.  Functions that write delta time vlq fields 
+// clamp the max allowable value to 0x0FFFFFFFu => 4 bytes, hence this never
+// returns > 4.  
+//
+template<typename T>
+constexpr int delta_time_field_size(T val) {
+	static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value,
+		"MIDI VL fields only encode unsigned integral values");
+	int n {0};
+	do {
+		val >>= 7;
+		++n;
+	} while ((val!=0) && (n<4));
 
 	return n;
 }
@@ -341,4 +368,40 @@ OutIt midi_write_vl_field(OutIt it, T val) {
 	return it;
 }
 
+// TODO:  This and all my other vlq functions are gross as hell
+template<typename T, typename OIt>
+OIt write_delta_time(T val, OIt it) {
+	static_assert(CHAR_BIT == 8);
+	static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value);
+
+	val &= 0x0FFFFFFFu;
+
+	uint32_t be_rep {0};
+	for (int i=0; val>0; ++i) {
+		if (i > 0) {
+			be_rep |= (0x80u<<(i*8));
+		}
+		be_rep += ((val&0x7Fu)<<(i*8));
+		val>>=7;
+	}
+	
+	uint8_t bytepos = 3;
+	uint32_t mask = 0xFF000000u;
+	while (((be_rep&mask)==0) && (mask>0)) {
+		mask>>=8;  --bytepos;
+	}
+
+	if (mask==0) {  // =>be_rep==0; still necessary to write out an 0x00u
+		*it=0x00u;
+		++it;
+	} else {
+		while (mask>0) {
+			*it = (be_rep&mask)>>(8*bytepos);
+			mask>>=8;  --bytepos;
+			++it;
+		}
+	}
+
+	return it;
+};
 

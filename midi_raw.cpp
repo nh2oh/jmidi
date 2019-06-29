@@ -772,7 +772,8 @@ unsigned char *midi_rewrite_dt_field_unsafe(uint32_t dt, unsigned char *p, unsig
 		//p_new_datastart = midi_write_vl_field(p,dt);
 	}
 
-	return midi_write_vl_field(p,dt);
+	//return midi_write_vl_field(p,dt);
+	return write_delta_time(dt,p);
 }
 
 

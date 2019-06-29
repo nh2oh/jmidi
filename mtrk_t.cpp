@@ -2,7 +2,6 @@
 #include "mtrk_event_t.h"
 #include "mtrk_event_methods.h"
 #include "mtrk_iterator_t.h"
-#include "mtrk_event_iterator_t.h"
 #include "dbklib\byte_manipulation.h"
 #include <string>
 #include <cstdint>

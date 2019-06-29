@@ -3,8 +3,9 @@
 #include <cstdint>
 #include <algorithm>  
 
-using namespace mtrk_event_t_internal;
+//using namespace mtrk_event_t_internal;
 
+namespace mtrk_event_t_internal {
 
 unsigned char *small_t::begin() {
 	return &(this->d_[0]);
@@ -189,3 +190,8 @@ const unsigned char *sbo_t::raw_end() const {
 	return &(this->u_.raw_[0]) + this->u_.raw_.size();
 }
 
+
+constexpr uint64_t small_capacity() {
+	return sizeof(mtrk_event_t_internal::small_t::d_);
+}
+};

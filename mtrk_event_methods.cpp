@@ -518,10 +518,10 @@ bool is_sysex_f0(const mtrk_event_t& ev) {
 bool is_sysex_f7(const mtrk_event_t& ev) {
 	return ev.type()==smf_event_type::sysex_f7;
 }
-
-mtrk_event_t make_sysex_f0(const uint32_t& dt, const std::vector<unsigned char>& pyld) {
+mtrk_event_t make_sysex_generic_impl(const uint32_t& dt, unsigned char type, 
+					bool f7_terminate, const std::vector<unsigned char>& pyld) {
 	auto payload_eff_size = pyld.size();
-	if ((pyld.size()>0) && (pyld.back()!=0xF7u)) {
+	if ((pyld.size()>0) && (pyld.back()!=0xF7u) && f7_terminate) {
 		++payload_eff_size;
 	}
 	auto sz_reserve = midi_vl_field_size(dt) + 1 + midi_vl_field_size(payload_eff_size)
@@ -531,13 +531,17 @@ mtrk_event_t make_sysex_f0(const uint32_t& dt, const std::vector<unsigned char>&
 	result.reserve(sz_reserve);
 	auto it = result.begin();
 	it = midi_write_vl_field(it,dt);
-	*it++ = 0xF0u;
+	*it++ = type;
 	it = midi_write_vl_field(it,payload_eff_size);
 	it = std::copy(pyld.begin(),pyld.end(),it);
-	if (pyld.size()!=payload_eff_size) {  // pyld is not F7-capped
+	if (pyld.size()!=payload_eff_size) {  // pyld is not F7-capped && f7_terminate
 		*it++ = 0xF7u;
 	}
-
 	return result;
 }
-
+mtrk_event_t make_sysex_f0(const uint32_t& dt, const std::vector<unsigned char>& pyld) {
+	return make_sysex_generic_impl(dt,0xF0u,true,pyld);
+}
+mtrk_event_t make_sysex_f7(const uint32_t& dt, const std::vector<unsigned char>& pyld) {
+	return make_sysex_generic_impl(dt,0xF7u,true,pyld);
+}

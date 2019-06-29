@@ -71,8 +71,7 @@ public:
 	using const_iterator = generic_ra_iterator<mtrk_event_container_types_t,true>;
 	// TODO:  reverse_iterator, const_reverse_iterator
 
-	// Default ctor; creates a "small" object representing a meta-text event
-	// w/ a payload length of 0.  
+	// Default ctor creates an small-capacity "empty" (zero-filled) event 
 	mtrk_event_t();
 	// "Empty" event consisting of a delta_time only
 	mtrk_event_t(uint32_t);

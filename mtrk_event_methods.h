@@ -237,6 +237,29 @@ mtrk_event_t make_channel_mode(const uint32_t&, midi_ch_event_t);  // 0xB0u
 bool is_sysex(const mtrk_event_t&);
 bool is_sysex_f0(const mtrk_event_t&);
 bool is_sysex_f7(const mtrk_event_t&);
-
+// Sysex factories
+// mtrk_event_t make_sysex_generic_impl(const uint32_t& delta_time, 
+//     unsigned char type_byte, bool terminate,
+//     const std::vector<unsigned char>& payload);
+mtrk_event_t make_sysex_generic_impl(const uint32_t&, unsigned char, bool, 
+	const std::vector<unsigned char>&);
+// Create a sysex event w/ type byte == 0xF0u and payload == to the contents 
+// of the provided vector.  In the event returned, the final byte of the 
+// payload is always 0xF7u, even if this is not the final byte of the input
+// vector.  If the final byte of the vector /is/ an 0xF7u, this is 
+// interpreted as the terminating F7 and an additional 0xF7u is _not_ written.  
+// Ex:
+// make_sysex_f0(0, {0x01u,0x02u,0x03u,0x04u})  // no terminal F7
+// =>  {0x00u,  0xF0u,  0x05u,  0x01u,0x02u,0x03u,0x04u,0xF7u}
+//
+// make_sysex_f0(0, {0x01u,0x02u,0x03u,0x04u,0xF7u})
+// =>  {0x00u,  0xF0u,  0x05u,  0x01u,0x02u,0x03u,0x04u,0xF7u}
+//
+// make_sysex_f0(0, {0x03u,0x04u,0xF7u,0xF7u})  // two terminal F7's
+// =>  {0x00u,  0xF0u,  0x04u,  0x03u,0x04u,0xF7u,0xF7u}
+//
+// make_sysex_f0(0, {0x04u,0xF7u,0xF7u,0xF7u})  // three terminal F7's
+// =>  {0x00u,  0xF0u,  0x04u,  0x04u,0xF7u,0xF7u,0xF7u}
 mtrk_event_t make_sysex_f0(const uint32_t&, const std::vector<unsigned char>&);
+mtrk_event_t make_sysex_f7(const uint32_t&, const std::vector<unsigned char>&);
 

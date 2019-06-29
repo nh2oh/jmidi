@@ -78,5 +78,8 @@ private:
 static_assert(sizeof(small_t)==sizeof(big_t));
 static_assert(sizeof(small_t)==sizeof(sbo_t));
 
+// TODO:  This won't link in my mtrk_event_t unit tests
+constexpr uint64_t small_capacity();
+
 };  // namespace mtrk_event_t_internal
 

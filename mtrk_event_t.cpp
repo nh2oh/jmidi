@@ -6,16 +6,16 @@
 #include <string>
 #include <cstdint>
 #include <algorithm>
+#include <limits>  // std::numeric_limits<uint32t>::max()
 
 
 
-// Default ctor creates a meta text-event of length 0 
 mtrk_event_t::mtrk_event_t() {  
-	default_init();
+	zero_init();
 }
 mtrk_event_t::mtrk_event_t(uint32_t dt) {  
 	zero_init();
-	midi_write_vl_field(this->d_.begin(),dt);
+	write_delta_time(dt,this->d_.begin());
 }
 //
 // For callers who have pre-computed the exact size of the event and who
@@ -145,7 +145,8 @@ mtrk_event_t& mtrk_event_t::operator=(const mtrk_event_t& rhs) {
 //
 mtrk_event_t::mtrk_event_t(mtrk_event_t&& rhs) noexcept {
 	this->d_ = rhs.d_;
-	rhs.default_init();
+	rhs.zero_init();
+	//rhs.default_init();
 	// Prevents ~rhs() from freeing its memory.  Sets the 'small' flag and
 	// zeros all elements of the data array.  
 }
@@ -155,7 +156,8 @@ mtrk_event_t::mtrk_event_t(mtrk_event_t&& rhs) noexcept {
 mtrk_event_t& mtrk_event_t::operator=(mtrk_event_t&& rhs) noexcept {
 	this->d_.free_if_big();
 	this->d_ = rhs.d_;
-	rhs.default_init();
+	rhs.zero_init();
+	//rhs.default_init();
 	// Prevents ~rhs() from freeing its memory.  Sets the 'small' flag and
 	// zeros all elements of the data array.  
 	return *this;
@@ -322,6 +324,31 @@ std::string mtrk_event_t::verify_explain() const {
 }
 
 uint32_t mtrk_event_t::set_delta_time(uint32_t dt) {
+	auto new_dt_size = delta_time_field_size(dt);
+	auto beg = this->begin();
+	auto curr_dt_size = advance_to_dt_end(beg)-beg;
+	if (curr_dt_size == new_dt_size) {
+		midi_write_vl_field(beg,dt);
+	} else if (curr_dt_size > new_dt_size) {
+		midi_rewrite_dt_field_unsafe(dt,this->data(),0x00u);
+	} else if (curr_dt_size < new_dt_size) {
+		// The new dt is bigger than the current dt, and w/ the new
+		// dt, the event...
+		auto curr_size = this->size();
+		auto new_size = this->size()+(new_dt_size-curr_dt_size);
+		if (this->capacity() >= new_size) {  // ... still fits
+			midi_rewrite_dt_field_unsafe(dt,this->data(),0x00u);
+		} else {  // ... won't fit
+			auto old_cap = this->capacity();
+			this->d_.resize(new_size);
+			auto new_cap = this->capacity();
+			midi_rewrite_dt_field_unsafe(dt,this->data(),0x00u);
+		}
+	}
+	return this->delta_time();
+}
+
+/*uint32_t mtrk_event_t::set_delta_time(uint32_t dt) {
 	auto new_dt_size = midi_vl_field_size(dt);
 	auto curr_dt_size = this->dt_end()-this->begin();
 	if (curr_dt_size == new_dt_size) {
@@ -340,7 +367,7 @@ uint32_t mtrk_event_t::set_delta_time(uint32_t dt) {
 		}
 	}
 	return this->delta_time();
-}
+}*/
 
 bool mtrk_event_t::operator==(const mtrk_event_t& rhs) const {
 	auto it_lhs = this->begin();  auto lhs_end = this->end();
