@@ -216,6 +216,9 @@ std::string print(const smf_event_type&);
 // validation of the event payload is left to the 
 // validate_{channel,sysex,meta}_event() family of functions.  
 //
+// TODO:  This should really be named something like:
+//    validate_mtrk_event_header(...)
+//
 // For any error condition whatsoever, returns smf_event_type::invalid.  
 // smf_event_type::unrecognized is _never_ returned.  Events that classify
 // as smf_event_type::unrecognized are reported as smf_event_type::invalid.  

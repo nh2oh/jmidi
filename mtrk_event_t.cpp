@@ -260,10 +260,10 @@ iterator_range_t<mtrk_event_t::iterator> mtrk_event_t::payload_range() {
 	} // else { smf_event_type::channel_voice, _mode, unknown, invalid...
 	return {it,this->end()};
 }
-const unsigned char& mtrk_event_t::operator[](uint32_t i) const {
+const unsigned char& mtrk_event_t::operator[](mtrk_event_t::size_type i) const {
 	return *(this->data()+i);
 };
-unsigned char& mtrk_event_t::operator[](uint32_t i) {
+unsigned char& mtrk_event_t::operator[](mtrk_event_t::size_type i) {
 	return *(this->data()+i);
 };
 
@@ -289,7 +289,23 @@ unsigned char mtrk_event_t::running_status() const {
 uint32_t mtrk_event_t::data_size() const {  // Not indluding delta-t
 	return mtrk_event_get_data_size_dtstart_unsafe(this->data(),0x00u);
 }
-
+bool mtrk_event_t::verify() const {
+	// TODO:  This is a bit ad-hoc; validate_mtrk_event_dtstart() does not 
+	// validate the event size, nor does it flag an error for 
+	// smf_event_type::invalid.  
+	// TODO:  This does not investigate "deeper" errors, ex, a timesig
+	// event w/ a too-small length field, or invalid data fields.  
+	auto cap = this->capacity();
+	auto vfy = validate_mtrk_event_dtstart(this->data(),0x00u,cap);
+	return (vfy.error==mtrk_event_validation_error::no_error
+		&& vfy.type!=smf_event_type::invalid
+		&& vfy.size<=cap);
+}
+std::string mtrk_event_t::verify_explain() const {
+	auto cap = this->capacity();
+	auto vfy = validate_mtrk_event_dtstart(this->data(),0x00u,cap);
+	return print(vfy.error);
+}
 
 uint32_t mtrk_event_t::set_delta_time(uint32_t dt) {
 	auto new_dt_size = midi_vl_field_size(dt);

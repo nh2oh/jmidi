@@ -26,8 +26,8 @@ enum class mtrk_sbo_print_opts {
 // sequences that represent MTrk events (for the purpose of this library,
 // an MTrk event is defined to include the the leading delta-time vlq).  
 // An mtrk_event_t stores and provides direct access (both read and 
-// write) to the sequence of bytes (unsigned char) encoding the event as 
-// stipulated by the MIDI std.  
+// write) to the sequence of bytes (unsigned char) encoding the event (as 
+// stipulated by the MIDI std).  
 //
 // Since write access to the underlying byte array is provided, it is hard 
 // for this container to maintain any invariants.  
@@ -53,7 +53,7 @@ private:
 	struct mtrk_event_container_types_t {
 		using value_type = unsigned char;
 		using size_type = uint32_t;
-		using difference_type = std::ptrdiff_t;  // TODO:  Inconsistent
+		using difference_type = std::ptrdiff_t;  // TODO:  Inconsistent w/ size_type
 		using reference = value_type&;
 		using const_reference = const value_type&;
 		using pointer = value_type*;
@@ -109,8 +109,7 @@ public:
 	uint64_t size() const;
 	uint64_t capacity() const;
 
-
-	// Iterators allowing access to the underlying unsigned char array
+	// Iterators facilitating access to the underlying unsigned char array
 	//
 	// begin(), dt_begin() both return iterators to the first byte of the 
 	// dt field.  The redundant dt_ versions are here for users who want
@@ -139,20 +138,20 @@ public:
 	iterator payload_begin();
 	iterator_range_t<const_iterator> payload_range() const;
 	iterator_range_t<iterator> payload_range();
-	const unsigned char& operator[](uint32_t) const;
-	unsigned char& operator[](uint32_t);
+	const unsigned char& operator[](size_type) const;
+	unsigned char& operator[](size_type);
 
 	// Getters
-	//
 	smf_event_type type() const;
 	uint32_t delta_time() const;
 	unsigned char status_byte() const;
 	// The value of the running-status _after_ this event has passed
 	unsigned char running_status() const;
 	uint32_t data_size() const;  // Not including the delta-t
+	bool verify() const;
+	std::string verify_explain() const;
 
 	// Setters
-	//
 	uint32_t set_delta_time(uint32_t);
 
 	bool operator==(const mtrk_event_t&) const;
