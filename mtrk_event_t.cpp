@@ -76,7 +76,7 @@ mtrk_event_t::mtrk_event_t(const uint32_t& dt, const unsigned char *p,
 		this->d_.big_adopt(new_p,sz,cap);
 	}
 	unsigned char *dest = this->d_.begin();
-	auto dest_end = midi_write_vl_field(dest,dt);
+	auto dest_end = write_delta_time(dt,dest);
 	
 	*dest_end++ = s;
 	if (has_local_status) {
@@ -87,7 +87,7 @@ mtrk_event_t::mtrk_event_t(const uint32_t& dt, const unsigned char *p,
 }
 mtrk_event_t::mtrk_event_t(uint32_t dt, midi_ch_event_t md) {
 	this->d_.set_flag_small();
-	auto dest_end = midi_write_vl_field(this->d_.begin(),dt);
+	auto dest_end = write_delta_time(dt,this->d_.begin());
 	unsigned char s = (md.status_nybble)|(md.ch);
 	*dest_end++ = s;
 	*dest_end++ = (md.p1);
@@ -146,7 +146,6 @@ mtrk_event_t& mtrk_event_t::operator=(const mtrk_event_t& rhs) {
 mtrk_event_t::mtrk_event_t(mtrk_event_t&& rhs) noexcept {
 	this->d_ = rhs.d_;
 	rhs.zero_init();
-	//rhs.default_init();
 	// Prevents ~rhs() from freeing its memory.  Sets the 'small' flag and
 	// zeros all elements of the data array.  
 }
@@ -157,7 +156,6 @@ mtrk_event_t& mtrk_event_t::operator=(mtrk_event_t&& rhs) noexcept {
 	this->d_.free_if_big();
 	this->d_ = rhs.d_;
 	rhs.zero_init();
-	//rhs.default_init();
 	// Prevents ~rhs() from freeing its memory.  Sets the 'small' flag and
 	// zeros all elements of the data array.  
 	return *this;
@@ -196,11 +194,9 @@ const unsigned char *mtrk_event_t::data() const {
 }
 mtrk_event_t::iterator mtrk_event_t::begin() {
 	return mtrk_event_t::iterator(this->data());
-	//return mtrk_event_iterator_t(*this);
 }
 mtrk_event_t::const_iterator mtrk_event_t::begin() const {
 	return mtrk_event_t::const_iterator(this->data());
-	//return mtrk_event_const_iterator_t(*this);
 }
 mtrk_event_t::iterator mtrk_event_t::end() {
 	return this->begin()+this->size();
@@ -328,7 +324,7 @@ uint32_t mtrk_event_t::set_delta_time(uint32_t dt) {
 	auto beg = this->begin();
 	auto curr_dt_size = advance_to_dt_end(beg)-beg;
 	if (curr_dt_size == new_dt_size) {
-		midi_write_vl_field(beg,dt);
+		write_delta_time(dt,beg);
 	} else if (curr_dt_size > new_dt_size) {
 		midi_rewrite_dt_field_unsafe(dt,this->data(),0x00u);
 	} else if (curr_dt_size < new_dt_size) {
@@ -348,26 +344,7 @@ uint32_t mtrk_event_t::set_delta_time(uint32_t dt) {
 	return this->delta_time();
 }
 
-/*uint32_t mtrk_event_t::set_delta_time(uint32_t dt) {
-	auto new_dt_size = midi_vl_field_size(dt);
-	auto curr_dt_size = this->dt_end()-this->begin();
-	if (curr_dt_size == new_dt_size) {
-		midi_write_vl_field(this->begin(),dt);
-	} else if (curr_dt_size > new_dt_size) {
-		midi_rewrite_dt_field_unsafe(dt,this->data(),0x00u);
-	} else if (curr_dt_size < new_dt_size) {
-		// The new dt is bigger than the current dt, and w/ the new
-		// dt, the event...
-		auto new_size = this->size()+(new_dt_size-curr_dt_size);
-		if (this->capacity() >= new_size) {  // ... still fits
-			midi_rewrite_dt_field_unsafe(dt,this->data(),0x00u);
-		} else {  // ... won't fit
-			this->d_.resize(new_size);
-			midi_rewrite_dt_field_unsafe(dt,this->data(),0x00u);
-		}
-	}
-	return this->delta_time();
-}*/
+
 
 bool mtrk_event_t::operator==(const mtrk_event_t& rhs) const {
 	auto it_lhs = this->begin();  auto lhs_end = this->end();

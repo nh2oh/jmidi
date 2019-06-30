@@ -20,6 +20,7 @@
 
 
 int midi_example() {
+	//midi_setdt_testing();
 	//midi_mtrk_split_testing();
 	//std::cout << std::endl;
 	//std::cout << std::endl;
@@ -108,6 +109,52 @@ int midi_example() {
 
 	return 0;
 }
+
+
+int midi_setdt_testing() {
+	std::vector<uint32_t> dts {
+		0x00u,0x40u,0x7Fu,  // field size == 1
+		0x80u,0x2000u,0x3FFFu,  // field size == 2
+		0x4000u,0x100000u,0x1FFFFFu,  // field size == 3
+		0x00200000u,0x08000000u,0x0FFFFFFFu,  // field size == 4
+		// Attempt to write values exceeding the allowed max; field size
+		// should be 4, and all values written should be == 0x0FFFFFFFu
+		0x1FFFFFFFu,0x2FFFFFFFu,0x7FFFFFFFu,0x8FFFFFFFu,
+		0x9FFFFFFFu,0xBFFFFFFFu,0xEFFFFFFFu,0xFFFFFFFFu
+	};
+	for (const auto& dt_init : dts) {
+		auto curr_ev = mtrk_event_t();
+		curr_ev.set_delta_time(dt_init);
+		mtrk_event_unit_test_helper_t h(curr_ev);
+		for (const auto& new_dt : dts) {
+			std::cout << "dt_init==" <<  dt_init << "; " 
+				<< "new_dt==" << new_dt << std::endl;
+			std::cout << print(curr_ev,mtrk_sbo_print_opts::debug) 
+				<< std::endl;
+
+			curr_ev.set_delta_time(new_dt);
+			std::cout << print(curr_ev,mtrk_sbo_print_opts::debug) 
+				<< std::endl;
+			std::cout << "-------------------------------------------" << std::endl << std::endl;
+
+			auto curr_dt_ans = (0x0FFFFFFFu&new_dt);
+			auto curr_dt_sz = 1;
+			if ((new_dt>=0x00u) && (new_dt < 0x80u)) {
+				curr_dt_sz = 1;
+			} else if ((new_dt>= 0x80u) && (new_dt<0x4000u)) {
+				curr_dt_sz = 2;
+			} else if ((new_dt>= 0x4000u) && (new_dt<0x00200000u)) {
+				curr_dt_sz = 3;
+			} else {
+				curr_dt_sz = 4;
+			}
+		}
+	}
+
+	return 0;
+}
+
+
 
 
 int raw_bytes_as_midi_file() {

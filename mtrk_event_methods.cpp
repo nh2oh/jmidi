@@ -341,9 +341,11 @@ mtrk_event_t make_meta_generic_text(const uint32_t& dt, const meta_event_t& type
 	}
 	std::vector<unsigned char> evdata;
 	evdata.reserve(sizeof(mtrk_event_t));
-	auto it = midi_write_vl_field(std::back_inserter(evdata),dt);
+	auto it = write_delta_time(dt,std::back_inserter(evdata));
 	evdata.push_back(0xFFu);
 	evdata.push_back(static_cast<uint8_t>(type_int16&0x00FFu));
+	// TODO:  midi_write_vl_field does not enforce a max size for the length
+	// field of 4 bytes.  
 	it = midi_write_vl_field(std::back_inserter(evdata),s.size());
 	std::copy(s.begin(),s.end(),std::back_inserter(evdata));
 	auto result = mtrk_event_t(evdata.data(),evdata.size(),0x00u);

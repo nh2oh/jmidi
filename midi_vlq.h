@@ -303,9 +303,6 @@ constexpr int delta_time_field_size(T val) {
 // to encode the value, only end-beg bytes will be written, and the field 
 // will be invalid, since the last byte written will not have its MSB==0.  
 //
-// TODO:  This is overly complex.  I can just make an unsigned char * to vlval
-// and write it out...
-//
 template<typename It, typename T>
 It midi_write_vl_field(It beg, It end, T val) {
 	static_assert(CHAR_BIT == 8);
@@ -337,8 +334,6 @@ It midi_write_vl_field(It beg, It end, T val) {
 }
 //
 // Overload that can take a std::back_inseter(some_container)
-// TODO:  This is overly complex.  I can just make an unsigned char * to vlval
-// and write it out...
 //
 template<typename OutIt, typename T>
 OutIt midi_write_vl_field(OutIt it, T val) {
@@ -368,7 +363,7 @@ OutIt midi_write_vl_field(OutIt it, T val) {
 	return it;
 }
 
-// TODO:  This and all my other vlq functions are gross as hell
+// Clamps the input value to [0,0x0FFFFFFF] == [0,268,435,455]
 template<typename T, typename OIt>
 OIt write_delta_time(T val, OIt it) {
 	static_assert(CHAR_BIT == 8);
