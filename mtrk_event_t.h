@@ -107,6 +107,13 @@ public:
 	// Dtor
 	~mtrk_event_t();
 
+	// Reads the delta-time, type-byte, and, as appropriate, any 
+	// subsequent bytes (ex the length field in a sysex or meta event) to
+	// determine the 'reported' size of the event in bytes.  Returns the 
+	// _smaller_ of this quantity and capacity().  Thus, if the header for
+	// a large event is written into an mtrk_event_t w/ insufficient 
+	// capacity, users working with operator[] or raw pointers obtained from
+	// data() will not have buffer overruns.  
 	uint64_t size() const;
 	uint64_t capacity() const;
 	uint64_t resize(uint64_t);
@@ -163,10 +170,9 @@ private:
 	mtrk_event_t_internal::sbo_t d_;
 
 	// Called by the default ctor mtrk_event_t()
-	// Overwrites *this w/ the default ctor'd value of a length 0 meta text
-	// event.  Ignore the big/small flag of the union; do not free memory
-	// if big.  
-	void default_init();
+	// Overwrites *this w/ the default ctor'd value of a 'small' event
+	// consisting of all zeros.  Ignores the big/small flag of the union;
+	// does not free memory if big.  
 	void zero_init();
 	const unsigned char *raw_begin() const;
 	const unsigned char *raw_end() const;

@@ -169,7 +169,7 @@ mtrk_event_t::~mtrk_event_t() {
 
 uint64_t mtrk_event_t::size() const {
 	auto sz = mtrk_event_get_size_dtstart_unsafe(this->d_.begin(),0x00u);
-	auto cap = this->d_.capacity();
+	auto cap = this->capacity();
 	return sz > cap ? cap : sz;
 }
 uint64_t mtrk_event_t::capacity() const {
@@ -344,8 +344,6 @@ uint32_t mtrk_event_t::set_delta_time(uint32_t dt) {
 	return this->delta_time();
 }
 
-
-
 bool mtrk_event_t::operator==(const mtrk_event_t& rhs) const {
 	auto it_lhs = this->begin();  auto lhs_end = this->end();
 	auto it_rhs = rhs.begin();  auto rhs_end = rhs.end();
@@ -365,13 +363,6 @@ bool mtrk_event_t::operator!=(const mtrk_event_t& rhs) const {
 	return !(*this==rhs);
 }
 
-
-void mtrk_event_t::default_init() {
-	this->d_.set_flag_small();
-	std::array<unsigned char,4> evdata = {0x00,0xFF,0x01,0x00};
-	auto end = std::copy(evdata.begin(),evdata.end(),this->d_.begin());
-	std::fill(end,this->d_.end(),0x00u);
-}
 void mtrk_event_t::zero_init() {
 	this->d_.set_flag_small();
 	std::fill(this->d_.begin(),this->d_.end(),0x00u);
