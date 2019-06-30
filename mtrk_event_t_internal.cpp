@@ -3,8 +3,6 @@
 #include <cstdint>
 #include <algorithm>  
 
-//using namespace mtrk_event_t_internal;
-
 namespace mtrk_event_t_internal {
 
 unsigned char *small_t::begin() {
@@ -14,23 +12,16 @@ const unsigned char *small_t::begin() const {
 	return &(this->d_[0]);
 }
 unsigned char *small_t::end() {
-	return &(this->d_[0]) + this->d_.size();  //) + mtrk_event_get_size_dtstart_unsafe(&(this->d_[0]),0x00u);
+	return &(this->d_[0]) + this->d_.size();
 }
 const unsigned char *small_t::end() const {
-	return &(this->d_[0]) + this->d_.size();  //&(this->d_[0]) + mtrk_event_get_size_dtstart_unsafe(&(this->d_[0]),0x00u);
+	return &(this->d_[0]) + this->d_.size();
 }
-/*uint64_t small_t::size() const {
-	return this->d_.size(); //mtrk_event_get_size_dtstart_unsafe(&(this->d_[0]),0x00u);
-}*/
 constexpr uint64_t small_t::capacity() const {
 	//static_assert(sizeof(this->d_) > 1);
 	//return sizeof(this->d_)-1;
 	return this->d_.size();
 }
-/*uint64_t big_t::size() const {
-	return this->cap_;
-	//return this->sz_;
-}*/
 uint64_t big_t::capacity() const {
 	return this->cap_;
 }
@@ -42,11 +33,9 @@ const unsigned char *big_t::begin() const {
 }
 unsigned char *big_t::end() {
 	return this->p_ + this->cap_;
-	//return this->p_ + this->sz_;
 }
 const unsigned char *big_t::end() const {
 	return this->p_ + this->cap_;
-	//return this->p_ + this->sz_;
 }
 bool sbo_t::is_small() const {
 	return ((this->u_.s_.flags_)&0x80u)==0x80u;
@@ -72,7 +61,7 @@ void sbo_t::big_adopt(unsigned char *p, uint32_t sz, uint32_t c) {
 	//this->u_.b_.sz_=sz;
 	this->u_.b_.cap_=c;
 }
-void sbo_t::zero_object() {
+void sbo_t::zero_local_object() {
 	this->set_flag_small();
 	for (auto it=this->u_.s_.begin(); it!=this->u_.s_.end(); ++it) {
 		*it=0x00u;
@@ -81,13 +70,6 @@ void sbo_t::zero_object() {
 constexpr uint64_t sbo_t::small_capacity() const {
 	return this->u_.s_.capacity();
 }
-/*uint64_t sbo_t::size() const {
-	if (this->is_small()) {
-		return this->u_.s_.size();
-	} else {
-		return this->u_.b_.size();
-	}
-}*/
 uint64_t sbo_t::capacity() const {
 	if (this->is_small()) {
 		return this->u_.s_.capacity();
@@ -102,11 +84,13 @@ uint32_t sbo_t::resize(uint32_t new_cap) {
 		// do nothing.  
 		if (this->is_big()) {
 			auto p = this->u_.b_.p_;
-			auto sz = this->u_.b_.sz_;
-			auto new_sz = std::min(sz,new_cap);
-			this->zero_object();
+			// Note that even though the present object is 'big', it is
+			// still possible that the size of its allocated buffer is
+			// _smaller_ than the capacity of a 'small' object.  
+			auto src_copy_nbytes = std::min(this->u_.b_.cap_,new_cap);
+			this->zero_local_object();
 			this->set_flag_small();
-			std::copy(p,p+new_sz,this->u_.s_.begin());
+			std::copy(p,p+src_copy_nbytes,this->u_.s_.begin());
 			// No need to std::fill(...,0x00u); already called zero_object()
 			delete p;
 		}
@@ -114,36 +98,28 @@ uint32_t sbo_t::resize(uint32_t new_cap) {
 		// After resizing, the object will be held in a big_t
 		if (this->is_big()) {  // presently big
 			if (new_cap != this->u_.b_.cap_) {  // ... and are changing the cap
+				// Note that new_cap may be > or < the present cap
 				auto p = this->u_.b_.p_;
-
-				// Part of the attempt to remove the size() method:
-				//auto sz = this->u_.b_.sz_;
-				auto sz = this->u_.b_.cap_;
-				auto new_sz = std::min(sz,new_cap);
-				auto n_copy = std::min(this->u_.b_.cap_,new_cap);
+				auto src_copy_nbytes = std::min(this->u_.b_.cap_,new_cap);
 
 				// Note that if new_cap is < sz, the data will be truncated
 				// and the object will almost certainly be invalid.  
 				unsigned char *new_p = new unsigned char[new_cap];
-				auto new_end = std::copy(p,p+n_copy,new_p);
+				auto new_end = std::copy(p,p+src_copy_nbytes,new_p);
 				std::fill(new_end,new_p+new_cap,0x00u);
 				delete p;
-				this->big_adopt(new_p,new_sz,new_cap);
+				this->big_adopt(new_p,0,new_cap);
 				this->set_flag_big();
 			}
 			// if already big and new_cap==present cap;  do nothing
 		} else {  // presently small 
 			// Copy the present small object into a new big object.  The present
 			// capacity of small_capacity() is < new_cap
-
-			// Part of the attempt to remove the size() method:
-			auto sz = new_cap;  //auto sz = this->u_.s_.size();
-
 			unsigned char *new_p = new unsigned char[new_cap];
 			auto new_end = std::copy(this->u_.s_.begin(),this->u_.s_.end(),new_p);
 			std::fill(new_end,new_p+new_cap,0x00u);
-			this->zero_object();
-			this->big_adopt(new_p,sz,new_cap);
+			this->zero_local_object();
+			this->big_adopt(new_p,0,new_cap);
 			this->set_flag_big();
 		}
 	}
@@ -194,4 +170,5 @@ const unsigned char *sbo_t::raw_end() const {
 constexpr uint64_t small_capacity() {
 	return sizeof(mtrk_event_t_internal::small_t::d_);
 }
-};
+
+};  // namespace mtrk_event_t_internal 
