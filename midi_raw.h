@@ -3,6 +3,8 @@
 #include <string>
 #include <cstdint>
 
+
+
 template<typename It>
 struct iterator_range_t {
 	It begin;
@@ -83,19 +85,7 @@ bool is_channel_pressure(const midi_ch_event_t&);  // 0xDnu
 bool is_pitch_bend(const midi_ch_event_t&); 
 bool is_channel_mode(const midi_ch_event_t&);
 
-//template<typename T>
-//uint8_t status_nybble(const T& md) {
-//	return md.status_nybble;
-//};
 
-//
-// TODO:  I have to include midi_vlq.h to get a dfn of 
-// struct midi_vl_field_interpreted, which is a data member of structs
-// declared below.  Do i really need this as a data member?
-//
-// TODO:  validate_, parse_, detect_ naming inconsistency
-// TODO:  The error handling here is complete ass
-//
 
 //
 // Validation & processing of generic SMF chunk headers

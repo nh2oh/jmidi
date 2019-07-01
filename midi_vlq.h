@@ -1,43 +1,12 @@
 #pragma once
+#include "..\\..\\clamped_value.h"
 #include <limits>  // CHAR_BIT
 #include <type_traits>  // std::enable_if<>, is_integral<>, is_unsigned<>
 #include <cstdint>
 #include <cstring>
 #include <algorithm>
 
-
-// A uint32_t clamped on [0,0x0FFFFFFFu] w/ implicit conversion from/to
-// other wider numeric types.  
-//
-// To be used something like: using midi_dt = midi_vlq<uint32_t>
-//
-class midi_vlq {
-public:
-	template<typename T>
-	midi_vlq(const T& val_in) {
-		if (val_in < 0) {
-			this->val_=0;
-		} else if (val_in > 0x0FFFFFFFu) {
-			this->val_= 0x0FFFFFFFu;
-		} else {
-			this->val_= static_cast<uint32_t>(val_in);
-		}
-	};
-
-	// Silent conversion to unsigned integral types wide enough to accomodate
-	// a uint32_t.  
-	template<typename T, 
-		typename = typename std::enable_if<std::is_integral<T>::value 
-			&& std::is_unsigned<T>::value
-			&& (std::numeric_limits<T>::max()>=std::numeric_limits<uint32_t>::max()),T>::type>
-	operator T() const {
-		return static_cast<T>(this->val_);
-	};
-private:
-	uint32_t val_ {0};
-};
-constexpr int nbytes(const midi_vlq&);
-
+using delta_time_t = clamped_value<uint32_t,0,0x0FFFFFFFu>;
 
 //
 // be_2_native<T>(InIt beg, InIt end) 
@@ -264,12 +233,12 @@ constexpr uint32_t midi_vl_field_equiv_value(T val) {
 }
 //
 // Computes the size (in bytes) of the field required to encode a given 
-// number as a vl-quantity.  
-// TODO:  Shifting a signed value is UB/ID
+// number as a MIDI vlq-quantity.  
 //
 template<typename T>
 constexpr int midi_vl_field_size(T val) {
-	static_assert(std::is_integral<T>::value,"MIDI VL fields only encode integral values");
+	static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value,
+		"MIDI VL fields only encode unsigned integral values");
 	int n {0};
 	do {
 		val >>= 7;
@@ -296,6 +265,8 @@ constexpr int delta_time_field_size(T val) {
 
 	return n;
 }
+
+
 // 
 // Encode a value in vl form and write it out into the range [beg,end).  
 //

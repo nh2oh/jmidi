@@ -336,7 +336,7 @@ mtrk_event_t make_meta_generic_text(const uint32_t& dt, const meta_event_t& type
 									const std::string& s) {
 	auto type_int16 = static_cast<uint16_t>(type);  // TODO:  Gross
 	if (!meta_hastext_impl(type_int16)) {
-		// TODO:  This probably breaks nrvo?
+		// TODO:  This probably breaks nrvo
 		return mtrk_event_t();
 	}
 	std::vector<unsigned char> evdata;

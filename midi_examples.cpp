@@ -20,6 +20,7 @@
 
 
 int midi_example() {
+	midi_clamped_value_testing();
 	//midi_setdt_testing();
 	//midi_mtrk_split_testing();
 	//std::cout << std::endl;
@@ -110,6 +111,17 @@ int midi_example() {
 	return 0;
 }
 
+int midi_clamped_value_testing() {
+	int64_t toobig = 0x2FFFFFFF;
+	delta_time_t dt_from_toobig(toobig);
+	std::cout << dt_from_toobig << std::endl;
+
+	int64_t a = 0x0FFFFFFFu;
+	int64_t i = 4;
+	int64_t result = 0;
+	int64_t exactresult = a + std::numeric_limits<uint32_t>::max(); 
+	return 0;
+}
 
 int midi_setdt_testing() {
 	std::vector<uint32_t> dts {
