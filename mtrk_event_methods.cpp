@@ -236,7 +236,7 @@ uint32_t get_tempo(const mtrk_event_t& ev, uint32_t def) {
 		return def;
 	}
 	auto its = ev.payload_range();
-	return be_2_native<uint32_t>(its.begin,its.end);
+	return read_be<uint32_t>(its.begin,its.end);
 }
 
 midi_timesig_t get_timesig(const mtrk_event_t& ev, midi_timesig_t def) {

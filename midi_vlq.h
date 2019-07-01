@@ -8,33 +8,10 @@
 
 using delta_time_t = clamped_value<uint32_t,0,0x0FFFFFFFu>;
 
-//
-// be_2_native<T>(InIt beg, InIt end) 
-//
-// Where InIt is an iterator to an array of unsigned char and T is an 
-// unsigned integer type, reads a BE-encoded value on 
-// [beg, beg+min(sizeof(T),(end-beg))) into a zero-initialized T:
-// T result {0}.  
-//
-template<typename T, typename InIt>
-T be_2_native(InIt beg, InIt end) {
-	static_assert(std::is_same<
-		std::remove_cvref<decltype(*beg)>::type,unsigned char>::value);
-	static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value);
-	T result {0};
-	auto niter = sizeof(T)<=(end-beg) ? sizeof(T) : (end-beg);
-	auto it = beg;
-	for (int i=0; i<niter; ++i) {
-		result <<= CHAR_BIT;
-		result += *it;
-		++it;
-	}
-	return result;
-};
-
 
 //
-// template<typename T> native2be(T val)
+// template<typename T> 
+// T to_be_byte_order(T val)
 //
 // Reorders the bytes in val such that the byte in least-significant position 
 // is in most significant position, and the byte in most-significant position
@@ -47,17 +24,57 @@ T be_2_native(InIt beg, InIt end) {
 // 0x12'34'56'78u (305419896) => 0x78'56'34'12u (2018915346)
 //
 template<typename T>
-T native2be(T val) {
+T to_be_byte_order(T val) {
 	static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value);
 	T be_val {0};
-	T mask {0xFFu};
 	for (int i=0; i<sizeof(T); ++i) {
 		be_val <<= CHAR_BIT;
-		auto temp = ((mask&val) >> (i*CHAR_BIT));
-		be_val += temp;
-		mask <<= CHAR_BIT;
+		be_val += (val&0xFFu);
+		val >>= CHAR_BIT;
 	}
 	return be_val;
+};
+
+
+//
+// template<typename T, typename InIt>
+// read_be<T>(InIt beg, InIt end) 
+//
+// Where InIt is an input-iterator into an array of unsigned char and T 
+// is an unsigned integer type, reads a BE-encoded value on 
+// [beg, beg+min(sizeof(T),(end-beg))) into a zero-initialized T
+// (T result {0}).  
+//
+// Note that the first byte in the sequence (*beg) is only interpreted as the
+// most-significant byte in a T if (end-beg) >= sizeof(T).  For a range
+// [beg,end) < sizeof(T), the first byte is sizeof(T)-(end-beg) bytes 'below'
+// the high byte of the T.  In all cases, the last byte read in corresponds to
+// the least-significant byte in the result.  
+// 
+// For example, to read a 24-bit BE-encoded uint into a 32-bit uint given a
+// data array 'data' encoding the 24-bit value:
+// std::array<unsigned char,3> data {0x01u, 0x02u, 0x03u};
+// Note that:
+// data.end()-data.begin() == 3 
+//                         < sizeof(uint32_t) == 4
+// auto result = read_be<uint32_t>(data.begin(),data.end());
+// yields a uint32_t result == 0x00'01'02'03u
+// Note that because (end-beg) < sizeof(uint32_t), the first byte in the 
+// array is not the most significant of the result.  
+//
+template<typename T, typename InIt>
+T read_be(InIt beg, InIt end) {
+	static_assert(std::is_same<
+		std::remove_cvref<decltype(*beg)>::type,unsigned char>::value);
+	static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value);
+	
+	auto niter = sizeof(T)<=(end-beg) ? sizeof(T) : (end-beg);
+	T result {0};
+	for (int i=0; i<niter; ++i) {
+		result <<= CHAR_BIT;
+		result += *beg++;
+	}
+	return result;
 };
 
 
@@ -118,7 +135,7 @@ OIt write_24bit_be(uint32_t val, OIt dest) {
 	static_assert(std::is_same<
 		std::remove_cvref<decltype(*dest)>::type,unsigned char>::value);
 	
-	auto be_val = native2be(val);
+	auto be_val = to_be_byte_order(val);
 	unsigned char *p = static_cast<unsigned char*>(static_cast<void*>(&be_val));
 	++p;  // Truncate the most-significant byte
 	for (int i=0; i<3; ++i) {
@@ -132,7 +149,7 @@ OIt write_16bit_be(uint16_t val, OIt dest) {
 	static_assert(std::is_same<
 		std::remove_cvref<decltype(*dest)>::type,unsigned char>::value);
 	
-	auto be_val = native2be(val);
+	auto be_val = to_be_byte_order(val);
 	unsigned char *p = static_cast<unsigned char*>(static_cast<void*>(&be_val));
 	for (int i=0; i<3; ++i) {
 		*dest++ = *p++;
@@ -197,6 +214,7 @@ InIt advance_to_dt_end(InIt it) {
 };
 
 
+
 //
 // Returns an integer with the bit representation of the input encoded as a midi
 // vl quantity.  Ex for:
@@ -212,20 +230,17 @@ InIt advance_to_dt_end(InIt it) {
 //
 template<typename T>
 constexpr uint32_t midi_vl_field_equiv_value(T val) {
-	static_assert(CHAR_BIT == 8);
-	static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value);
+	static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value,
+		"MIDI VL fields only encode unsigned integral values");
 	if (val > 0x0FFFFFFF) {
 		return 0;
 	}
 	uint32_t res {0};
-
 	for (int i=0; val>0; ++i) {
 		if (i > 0) {
-			res |= (0x80<<(i*8));
+			res |= (0x80u<<(i*CHAR_BIT));
 		}
-		res += (val & 0x7Fu)<<(i*8);
-		// The u is needed on the 0x7F; otherwise (val & 0x7F) may be cast to a signed
-		// type (ex, if T == uint16_t), for which left-shift is implementation-defined.  
+		res += (val & 0x7Fu)<<(i*CHAR_BIT);
 		val>>=7;
 	}
 
@@ -341,7 +356,8 @@ OIt write_delta_time(T val, OIt it) {
 	static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value);
 
 	val &= 0x0FFFFFFFu;
-
+	return midi_write_vl_field(it,val);
+	/*
 	uint32_t be_rep {0};
 	for (int i=0; val>0; ++i) {
 		if (i > 0) {
@@ -368,6 +384,6 @@ OIt write_delta_time(T val, OIt it) {
 		}
 	}
 
-	return it;
+	return it;*/
 };
 
