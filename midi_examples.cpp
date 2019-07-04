@@ -20,9 +20,9 @@
 
 
 int midi_example() {
-	midi_clamped_value_testing();
+	//midi_clamped_value_testing();
 	//midi_setdt_testing();
-	//midi_mtrk_split_testing();
+	midi_mtrk_split_testing();
 	//std::cout << std::endl;
 	//std::cout << std::endl;
 
@@ -259,6 +259,11 @@ int midi_mtrk_split_testing() {
 		{{0x05u,0x90u,0x48u,0x59u}, 0, 5},
 		{{0x81u,0x05u,0x80u,0x48u,0x17u}, 5, 138},
 
+		{{0x00u,0x90u,0x49u,0x0Cu}, 138, 138},  // 73 on
+		{{0x00u,0x90u,0x50u,0x0Cu}, 138, 138},
+		{{0x00u,0x80u,0x49u,0x0Cu}, 138, 138},  // 73 off
+		{{0x00u,0x80u,0x50u,0x0Cu}, 138, 138},
+
 		{{0x07u,0x90u,0x4Cu,0x5Fu}, 138, 145},
 		{{0x43u,0x90u,0x48u,0x58u}, 145, 212},
 		{{0x10u,0x80u,0x4Cu,0x0Cu}, 212, 228},
@@ -301,22 +306,41 @@ int midi_mtrk_split_testing() {
 	}
 	auto mtrkb_init = mtrkb;
 	//----------------------------------------------------------
+	auto isntnum73 = [](const mtrk_event_t& ev)->bool {
+		auto md = get_channel_event(ev);
+		return (is_channel_voice(ev) && (md.p1==73));  // 73 == 0x50u
+	};
 	auto isntnum43 = [](const mtrk_event_t& ev)->bool {
 		auto md = get_channel_event(ev);
 		return (is_channel_voice(ev) && (md.p1==67));  // 67 == 0x43u
 	};
+	auto ismeta = [](const mtrk_event_t& ev)->bool {
+		return is_meta(ev);
+	};
 
 	std::cout << "mtrkb:\n" << print_event_arrays(mtrkb) << std::endl << std::endl;
-	auto it = split_if(mtrkb.begin(),mtrkb.end(),isntnum43);
+	std::cout << "auto it = split_if(mtrkb.begin(),mtrkb.end(),isntnum73);\n"
+		<< std::endl;
+	auto it = split_if(mtrkb.begin(),mtrkb.end(),isntnum73);
+	//std::cout << "auto it = split_if(mtrkb.begin(),mtrkb.end(),ismeta);\n"
+	//	<< std::endl;
+	//auto it = split_if(mtrkb.begin(),mtrkb.end(),ismeta);
 	auto a = mtrk_t(mtrkb.begin(),it);
 	auto b = mtrk_t(it,mtrkb.end());
 	std::cout << "a:\n" << print_event_arrays(a) << std::endl << std::endl;
 	std::cout << "b:\n" << print_event_arrays(b) << std::endl << std::endl;
 
+	//auto c = mtrk_t();
+	//merge(b.begin(),b.end(),a.begin(),a.end(),std::back_inserter(c));
+	//merge(a.begin(),a.end(),b.begin(),b.end(),std::back_inserter(c));
+	//std::cout << "c==merge(a.begin(),a.end(),b.begin(),b.end(),...):\n" 
+	//	<< print_event_arrays(c) << std::endl << std::endl;
+
 	auto c = mtrk_t();
 	merge(b.begin(),b.end(),a.begin(),a.end(),std::back_inserter(c));
-	std::cout << "c:\n" << print_event_arrays(c) << std::endl << std::endl;
-
+	std::cout << "c==merge(b.begin(),b.end(),a.begin(),a.end(),...):\n"
+		<< print_event_arrays(c) << std::endl << std::endl;
+	
 	for (int i=0; i<mtrkb_init.size(); ++i) {
 		if (mtrkb_init[i]!=c[i]) {
 			std::cout << "oops:" << std::endl;

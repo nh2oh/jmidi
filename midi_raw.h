@@ -80,7 +80,6 @@ bool is_note_off(const midi_ch_event_t&);
 bool is_key_pressure(const midi_ch_event_t&);  // 0xAnu
 bool is_control_change(const midi_ch_event_t&);
 bool is_program_change(const midi_ch_event_t&);
-// TODO:  Rename channel_pressure
 bool is_channel_pressure(const midi_ch_event_t&);  // 0xDnu
 bool is_pitch_bend(const midi_ch_event_t&); 
 bool is_channel_mode(const midi_ch_event_t&);

@@ -182,7 +182,7 @@ std::string print(const mtrk_t&);
 std::string print_event_arrays(mtrk_const_iterator_t,mtrk_const_iterator_t);
 std::string print_event_arrays(const mtrk_t&);
 
-// Returns true if the track qualifies as a tempo map; only a certain
+// Returns true if the track qualifies as a tempo map.  Only a certain
 // subset of meta events are permitted in a tempo_map.  Does not 
 // validate the mtrk.  
 bool is_tempo_map(const mtrk_t&);
@@ -352,15 +352,13 @@ mtrk_t split_if(mtrk_t& mtrk, UPred pred) {
 //
 // Merges the sequence of mtrk events on [beg1,end1) with the sequence on
 // [beg2,end2) into dest.  Delta times are adjusted so that the onset tk for 
-// each event in the merged sequence is the same as in the original 
-// sequence.  
-//
-// For events in the pair of ranges w/ the same onset tk, the events in range
-// [beg1,end1) are inserted first.  
-// TODO:  This is probably not good behavior; should insert events in 
-// "blocks" w/ the same onset tk from each range.  A set of events from
-// range 2 intended to occur @ the same onset tk should not be interrupted
-// by events from range 1.  
+// each event in the merged sequence is the same as in the input 
+// (un-merged) sequence.  Events are merged in "blocks" of events with the
+// same onset tk.  This ensures that sets of simultanious events from each 
+// range are kept adjacent, uninterrupted by events from the other range 
+// which nonetheless occur simultaniously (have the same onset tick) in the 
+// stream.  If an event block in range 1 has the same onset tk as an event 
+// range in range 2, the block in range 1 is merged first.  
 //
 template<typename InIt, typename OIt>
 OIt merge(InIt beg1, InIt end1, InIt beg2, InIt end2, OIt dest) {
@@ -374,33 +372,52 @@ OIt merge(InIt beg1, InIt end1, InIt beg2, InIt end2, OIt dest) {
 	}
 	uint64_t cumtk_dest = 0;
 	auto curr1 = beg1;  auto curr2 = beg2;
-	uint64_t ontk_curr = 0;  InIt curr = beg1;
+	uint64_t ontk_curr = 0;
+	InIt curr_beg = beg1;  InIt curr_end = beg1;
 	while (curr1!=end1 || curr2!=end2) {
-		// Set curr, ontk_curr
-		// curr points at the next event for dest; its desired onset tk is
-		// ontk_curr.  After this conditional block, curr1,2 and ontk_1,2 have
-		// been advanced/incremented to the next event in the respective
-		// stream.
+		// Set curr_beg, curr_end, ontk_curr to the appropriate values for
+		// the appropriate stream based on curr1/2 and ontk_1/2.  
+		// Prior to this conditional block,
+		// -> [curr_beg, curr_end) point to the range in either stream 1 or
+		//    2 that has just been written into dest.
+		// -> ontk_curr is the onset tk of the event block 
+		//    [curr_beg,curr_end).  
+		// -> curr1/2 and ontk_1/2 point at the _next_ (yet to be written 
+		//    into dest) event in the corresponding stream.  
+		// After this conditional block, 
+		// -> curr_beg points at the next event intended for dest; its 
+		//    desired onset tk is ontk_curr.  
+		// -> curr_end points one past the last event (in the same input
+		//    stream as curr_beg) w/ the same onset tk as curr_beg.  
+		// -> curr1/2 and ontk_1/2 have been advanced/incremented to indicate  
+		//    the _next_ event in the respective input stream (==curr_end),
+		//    ie, the event to follow the block [curr_beg,curr_end).  
 		if (curr1!=end1 && (ontk_1<=ontk_2 || curr2==end2)) {
-			ontk_curr = ontk_1;
-			curr = curr1++;
+			ontk_curr = ontk_1;  curr_beg = curr1;
+			curr_end = get_simultanious_events(curr1,end1);
+			curr1 = curr_end;
 			if (curr1 != end1) {
 				ontk_1 += curr1->delta_time();
 			}
 		} else if (curr2!=end2 && (ontk_1>ontk_2 || curr1==end1)) {
-			ontk_curr = ontk_2;
-			curr = curr2++;
+			ontk_curr = ontk_2;  curr_beg = curr2;
+			curr_end = get_simultanious_events(curr2,end2);
+			curr2 = curr_end;
 			if (curr2 != end2) {
 				ontk_2 += curr2->delta_time();
 			}
 		}
-		auto curr_ev_cpy = *curr;
-		curr_ev_cpy.set_delta_time(ontk_curr - cumtk_dest);
-		*dest = curr_ev_cpy;
-		cumtk_dest += (ontk_curr - cumtk_dest);
-		++dest;
+		while (curr_beg!=curr_end) {
+			auto curr_ev_cpy = *curr_beg;
+			curr_ev_cpy.set_delta_time(ontk_curr - cumtk_dest);
+			*dest = curr_ev_cpy;
+			cumtk_dest += (ontk_curr - cumtk_dest);
+			++dest;
+			++curr_beg;
+		}
 	}
 	return dest;
 };
+
 
 
