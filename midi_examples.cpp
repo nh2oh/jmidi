@@ -22,7 +22,7 @@
 int midi_example() {
 	//midi_clamped_value_testing();
 	//midi_setdt_testing();
-	midi_mtrk_split_testing();
+	//midi_mtrk_split_testing();
 	//std::cout << std::endl;
 	//std::cout << std::endl;
 

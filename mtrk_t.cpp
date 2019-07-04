@@ -412,6 +412,62 @@ bool is_tempo_map(const mtrk_t& trk) {
 	return std::find_if(trk.begin(),trk.end(),found_not_allowed)==trk.end();
 }
 
+bool is_equivalent_permutation_ignore_dt(mtrk_const_iterator_t beg1, 
+				mtrk_const_iterator_t end1, mtrk_const_iterator_t beg2, 
+				mtrk_const_iterator_t end2) {
+	if ((end1-beg1) != (end2-beg2)) {
+		return false;
+	}
+	// For each unique element on [beg1,end1), count the number n2 of equiv
+	// elements on [beg2,end2).  If there are 0, or if n2 != the number of
+	// equiv elements on [beg1,end1), return false.  
+	for (auto it=beg1; it!=end1; ++it) {
+		auto pred = [&it](const mtrk_const_iterator_t& rhs) -> bool {
+			return is_eq_ignore_dt(*it,*rhs);
+		};
+
+		if (it != std::find_if(beg1,it,pred)) {
+			// An event equiv to the current event it has already been
+			// encountered in the first sequence (occuring prior to it)
+			// and the correct count has been verified in sequence 2.  
+			continue;
+		}
+		auto n2 = std::count_if(beg2,end2,pred);
+		if ((n2==0) || (n2 != std::count_if(it,end1,pred))) {
+			return false;
+		}
+	}
+	return true;
+}
+bool is_equivalent_permutation(mtrk_const_iterator_t beg1, 
+				mtrk_const_iterator_t end1, mtrk_const_iterator_t beg2, 
+				mtrk_const_iterator_t end2) {
+	if ((end1-beg1) != (end2-beg2)) {
+		return false;
+	}
+	auto it1 = beg1;  uint64_t ontk1 = 0;
+	auto it2 = beg2;  uint64_t ontk2 = 0;
+	while ((it1!=end1) && (it2!=end2)) {
+		ontk1 += it1->delta_time();
+		ontk2 += it2->delta_time();
+		if (ontk1 != ontk2) {
+			return false;
+		}
+
+		auto curr_end1 = get_simultanious_events(it1,end1);
+		auto curr_end2 = get_simultanious_events(it2,end2);
+		if (!is_equivalent_permutation_ignore_dt(it1,curr_end1,it2,curr_end2)) {
+			return false;
+		}
+		it1 = curr_end1;
+		it2 = curr_end2;
+	}
+	if ((it1!=end1) || (it2!=end2)) {
+		return false;  // Prior loop exits if only one reaches the end
+	}
+	return true;
+}
+
 double duration(const mtrk_t& mtrk, const midi_time_t& t) {
 	auto beg = mtrk.begin();
 	auto end = mtrk.end();
@@ -571,11 +627,15 @@ maybe_mtrk_t make_mtrk(const unsigned char *p, uint32_t max_sz) {
 }  // make_mtrk()
 
 
-
-
 mtrk_iterator_t get_simultanious_events(mtrk_iterator_t beg, 
 					mtrk_iterator_t end) {
-	mtrk_iterator_t range_end = beg;
+	auto it = get_simultanious_events(mtrk_const_iterator_t(beg),
+				mtrk_const_iterator_t(end));
+	return beg+(it-beg);
+}
+mtrk_const_iterator_t get_simultanious_events(mtrk_const_iterator_t beg, 
+					mtrk_const_iterator_t end) {
+	mtrk_const_iterator_t range_end = beg;
 	if (range_end==end) {
 		return range_end;
 	}

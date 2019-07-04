@@ -186,6 +186,10 @@ std::string print_event_arrays(const mtrk_t&);
 // subset of meta events are permitted in a tempo_map.  Does not 
 // validate the mtrk.  
 bool is_tempo_map(const mtrk_t&);
+bool is_equivalent_permutation_ignore_dt(mtrk_const_iterator_t,mtrk_const_iterator_t,
+	mtrk_const_iterator_t,mtrk_const_iterator_t);
+bool is_equivalent_permutation(mtrk_const_iterator_t,mtrk_const_iterator_t,
+	mtrk_const_iterator_t,mtrk_const_iterator_t);
 
 // Get the duration in seconds.  A midi_time_t _must_ be provided, since
 // a naked MTrk object does not inherit the tpq field from the MThd chunk
@@ -207,12 +211,15 @@ struct maybe_mtrk_t {
 
 
 //
-// get_simultanious_events(mtrk_iterator_t beg, mtrk_iterator_t end)
+// get_simultanious_events(mtrk_const_iterator_t beg, mtrk_const_iterator_tend);
 //
 // Returns an iterator to one past the last event with onset tick == that
 // of beg.  
 // TODO:  Another possible meaning of "simultanious" is all events w/
 // tk onset < the tk onset of the off-event matching beg.  
+mtrk_const_iterator_t get_simultanious_events(mtrk_const_iterator_t, mtrk_const_iterator_t);
+// TODO:  Implement the mtrk iterator in terms of my generic_ra_iterator
+// and remove this gross bandaid.  
 mtrk_iterator_t get_simultanious_events(mtrk_iterator_t, mtrk_iterator_t);
 
 //
@@ -272,10 +279,6 @@ std::string print_linked_onoff_pairs(const mtrk_t&);
 // each event is the same as in the original.  Note that the cumtk of the
 // events in the new track will in general differ from their values in the
 // original track.  
-//
-// TODO:  This and split_if() should not be templates; they should be regular
-// functions of mtrk_iterator_t since only this arg makes sense wrt adjusting
-// delta times.  
 //
 //
 template<typename InIt, typename OIt, typename UPred>
@@ -374,7 +377,7 @@ OIt merge(InIt beg1, InIt end1, InIt beg2, InIt end2, OIt dest) {
 	auto curr1 = beg1;  auto curr2 = beg2;
 	uint64_t ontk_curr = 0;
 	InIt curr_beg = beg1;  InIt curr_end = beg1;
-	while (curr1!=end1 || curr2!=end2) {
+	while ((curr1!=end1) || (curr2!=end2)) {
 		// Set curr_beg, curr_end, ontk_curr to the appropriate values for
 		// the appropriate stream based on curr1/2 and ontk_1/2.  
 		// Prior to this conditional block,

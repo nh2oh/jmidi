@@ -8,6 +8,9 @@
 std::string print(const mtrk_event_t&,
 			mtrk_sbo_print_opts=mtrk_sbo_print_opts::normal);
 
+// Returns true if both events have the same byte-pattern on
+// [event_begin(),end()); false otherwise.  
+bool is_eq_ignore_dt(const mtrk_event_t&, const mtrk_event_t&);
 
 //
 // Meta event classification & data access.  Functions to classify and extract 

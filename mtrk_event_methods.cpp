@@ -59,7 +59,16 @@ std::string print(const mtrk_event_t& evnt, mtrk_sbo_print_opts opts) {
 	return s;
 }
 
-
+bool is_eq_ignore_dt(const mtrk_event_t& lhs, const mtrk_event_t& rhs) {
+	auto lhs_beg = lhs.event_begin();  auto lhs_end = lhs.end();
+	auto rhs_beg = rhs.event_begin();  auto rhs_end = rhs.end();
+	while (lhs_beg!=lhs_end && rhs_beg!=rhs_end) {
+		if (*lhs_beg++ != *rhs_beg++) {
+			return false;
+		}
+	}
+	return true;
+}
 
 meta_event_t classify_meta_event_impl(const uint16_t& d16) {
 	if (d16==static_cast<uint16_t>(meta_event_t::seqn)) {
