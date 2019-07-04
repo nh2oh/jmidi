@@ -526,13 +526,14 @@ mtrk_event_t make_sysex_generic_impl(const uint32_t& dt, unsigned char type,
 	if ((pyld.size()>0) && (pyld.back()!=0xF7u) && f7_terminate) {
 		++payload_eff_size;
 	}
-	auto sz_reserve = midi_vl_field_size(dt) + 1 + midi_vl_field_size(payload_eff_size)
+	auto sz_reserve = delta_time_field_size(dt) + 1  // dt + 0xF0u/0xF7u
+		+ midi_vl_field_size(payload_eff_size)  // payload-length-vlq
 		+ payload_eff_size;
 	
 	auto result = mtrk_event_t();
 	result.reserve(sz_reserve);
 	auto it = result.begin();
-	it = midi_write_vl_field(it,dt);
+	it = write_delta_time(dt,it);
 	*it++ = type;
 	it = midi_write_vl_field(it,payload_eff_size);
 	it = std::copy(pyld.begin(),pyld.end(),it);

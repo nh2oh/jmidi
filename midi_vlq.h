@@ -347,43 +347,15 @@ OutIt midi_write_vl_field(OutIt it, T val) {
 	}
 
 	return it;
-}
+};
 
 // Clamps the input value to [0,0x0FFFFFFF] == [0,268,435,455]
 template<typename T, typename OIt>
 OIt write_delta_time(T val, OIt it) {
-	static_assert(CHAR_BIT == 8);
-	static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value);
+	static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value,
+		"MIDI delta-time fields only encode unsigned integral values");
 
 	val &= 0x0FFFFFFFu;
 	return midi_write_vl_field(it,val);
-	/*
-	uint32_t be_rep {0};
-	for (int i=0; val>0; ++i) {
-		if (i > 0) {
-			be_rep |= (0x80u<<(i*8));
-		}
-		be_rep += ((val&0x7Fu)<<(i*8));
-		val>>=7;
-	}
-	
-	uint8_t bytepos = 3;
-	uint32_t mask = 0xFF000000u;
-	while (((be_rep&mask)==0) && (mask>0)) {
-		mask>>=8;  --bytepos;
-	}
-
-	if (mask==0) {  // =>be_rep==0; still necessary to write out an 0x00u
-		*it=0x00u;
-		++it;
-	} else {
-		while (mask>0) {
-			*it = (be_rep&mask)>>(8*bytepos);
-			mask>>=8;  --bytepos;
-			++it;
-		}
-	}
-
-	return it;*/
 };
 
