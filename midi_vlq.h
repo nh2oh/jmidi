@@ -159,7 +159,7 @@ OIt write_16bit_be(uint16_t val, OIt dest) {
 
 // 
 // The max size of a vl field is 4 bytes, and the largest value it may encode is
-// 0x0FFFFFFF (BE-encoded as: FF FF FF 7F) => 268,435,455, which fits safely in
+// 0x0FFFFFFFu (BE-encoded as: FF FF FF 7F) => 268,435,455, which fits safely in
 // an int32_t:  std::numeric_limits<int32_t>::max() == 2,147,483,647;
 //
 //
