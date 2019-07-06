@@ -67,8 +67,8 @@ public:
 	using const_reference = mtrk_event_container_types_t::const_reference;
 	using pointer = mtrk_event_container_types_t::pointer;
 	using const_pointer = mtrk_event_container_types_t::const_pointer;
-	using iterator = generic_ra_iterator<mtrk_event_container_types_t,false>;
-	using const_iterator = generic_ra_iterator<mtrk_event_container_types_t,true>;
+	using iterator = generic_ra_iterator<mtrk_event_container_types_t>;
+	using const_iterator = generic_ra_const_iterator<mtrk_event_container_types_t>;
 	// TODO:  reverse_iterator, const_reverse_iterator
 
 	// Default ctor creates an small-capacity "empty" (zero-filled) event 
