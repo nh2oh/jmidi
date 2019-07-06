@@ -48,17 +48,18 @@ enum class mtrk_sbo_print_opts {
 // TODO:  Safe resize()/reserve()
 // TODO:  push_back()
 //
+
+struct mtrk_event_container_types_t {
+	using value_type = unsigned char;
+	using size_type = uint32_t;
+	using difference_type = std::ptrdiff_t;  // TODO:  Inconsistent w/ size_type
+	using reference = value_type&;
+	using const_reference = const value_type&;
+	using pointer = value_type*;
+	using const_pointer = const value_type*;
+};
+
 class mtrk_event_t {
-private:
-	struct mtrk_event_container_types_t {
-		using value_type = unsigned char;
-		using size_type = uint32_t;
-		using difference_type = std::ptrdiff_t;  // TODO:  Inconsistent w/ size_type
-		using reference = value_type&;
-		using const_reference = const value_type&;
-		using pointer = value_type*;
-		using const_pointer = const value_type*;
-	};
 public:
 	using value_type = mtrk_event_container_types_t::value_type;
 	using size_type = mtrk_event_container_types_t::size_type;

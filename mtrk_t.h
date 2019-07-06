@@ -1,7 +1,7 @@
 #pragma once
 #include "midi_raw.h"  // midi_time_t
 #include "mtrk_event_t.h"
-#include "mtrk_iterator_t.h"
+#include "..\..\generic_iterator.h"
 #include <string>
 #include <cstdint>
 #include <vector>
@@ -17,8 +17,8 @@ struct maybe_mtrk_t;
 // tk of the event(s) prior to .it is tk.  
 template <typename It>
 struct event_tk_t {
-	static_assert(std::is_same<It,mtrk_iterator_t>::value
-		|| std::is_same<It,mtrk_const_iterator_t>::value);
+	static_assert(std::is_same<It,typename mtrk_t::iterator>::value
+		|| std::is_same<It,typename mtrk_t::const_iterator>::value);
 	It it;
 	uint64_t tk;
 };
@@ -52,16 +52,28 @@ struct event_tk_t {
 // TODO:  Check for max_size() type of overflow?  Maximum data_size
 // == 0xFFFFFFFFu (?)
 //
+
+struct mtrk_container_types_t {
+	using value_type = mtrk_event_t;
+	using size_type = uint32_t;
+	using difference_type = std::ptrdiff_t;  // TODO:  Inconsistent w/ size_type
+	using reference = value_type&;
+	using const_reference = const value_type&;
+	using pointer = value_type*;
+	using const_pointer = const value_type*;
+};
+
 class mtrk_t {
 public:
-	using value_type = mtrk_event_t;
-	using reference = mtrk_event_t&;
-	using const_reference = const mtrk_event_t&;
-	using pointer = mtrk_event_t*;
-	using const_pointer = const mtrk_event_t*;
-	using iterator = mtrk_iterator_t;
-	using const_iterator = mtrk_const_iterator_t;
-	using difference_type = std::ptrdiff_t;
+	using value_type = mtrk_container_types_t::value_type;
+	using size_type = mtrk_container_types_t::size_type;
+	using difference_type = mtrk_container_types_t::difference_type;  // TODO:  Inconsistent
+	using reference = mtrk_container_types_t::reference;
+	using const_reference = mtrk_container_types_t::const_reference;
+	using pointer = mtrk_container_types_t::pointer;
+	using const_pointer = mtrk_container_types_t::const_pointer;
+	using iterator = generic_ra_iterator<mtrk_container_types_t>;
+	using const_iterator = generic_ra_const_iterator<mtrk_container_types_t>;
 
 	// Creates an empty MTrk event sequence:
 	// nbytes() == 8, data_nbytes() == 0;
@@ -82,7 +94,7 @@ public:
 	// read-in if an error is encountered before the number of bytes 
 	// indicated by the chunk header have been read.  
 	mtrk_t(const unsigned char*, uint32_t);
-	mtrk_t(mtrk_const_iterator_t,mtrk_const_iterator_t);
+	mtrk_t(const_iterator,const_iterator);
 
 	// The number of events in the track
 	uint32_t size() const;
@@ -100,10 +112,10 @@ public:
 	// {'M','T','r','k',_,_,_,_}
 	std::array<unsigned char,8> get_header() const;
 
-	mtrk_iterator_t begin();
-	mtrk_iterator_t end();
-	mtrk_const_iterator_t begin() const;
-	mtrk_const_iterator_t end() const;
+	iterator begin();
+	iterator end();
+	const_iterator begin() const;
+	const_iterator end() const;
 	mtrk_event_t& operator[](uint32_t);
 	const mtrk_event_t& operator[](uint32_t) const;
 	mtrk_event_t& back();
@@ -114,14 +126,14 @@ public:
 	// cumtk >= the number provided, and the exact cumtk for that event.  
 	// The onset tk for the event pointed to by .it is:
 	// .tk + .it->delta_time();
-	event_tk_t<mtrk_iterator_t> at_cumtk(uint64_t);
-	event_tk_t<mtrk_const_iterator_t> at_cumtk(uint64_t) const;
+	event_tk_t<iterator> at_cumtk(uint64_t);
+	event_tk_t<const_iterator> at_cumtk(uint64_t) const;
 	// at_tkonset() returns an iterator to the first event with onset
 	// tk >= the number provided, and the exact onset tk for that event.  
 	// The cumtk for the event pointed to by .it is:
 	// .tk - .it->delta_time();
-	event_tk_t<mtrk_iterator_t> at_tkonset(uint64_t);
-	event_tk_t<mtrk_const_iterator_t> at_tkonset(uint64_t) const;
+	event_tk_t<iterator> at_tkonset(uint64_t);
+	event_tk_t<const_iterator> at_tkonset(uint64_t) const;
 
 	// Returns a ref to the event just added
 	mtrk_event_t& push_back(const mtrk_event_t&);
@@ -130,7 +142,7 @@ public:
 	// inserted event.  Note that if the new event has a nonzero delta_time
 	// insertion will timeshift all downstream events by that number of 
 	// ticks.  
-	mtrk_iterator_t insert(mtrk_iterator_t, const mtrk_event_t&);
+	iterator insert(iterator, const mtrk_event_t&);
 	// Insert the provided event into the sequence such that its onset tick
 	// is == the cumtk at arg1 + arg2.delta_time() and such that the onset 
 	// tick of all downstream events is unchanged.  The delta time of the
@@ -139,20 +151,20 @@ public:
 	// If the onset tick intended for the new event (cumtk at arg1 + 
 	// arg2.delta_time()) is <= nticks() prior to insertion, nticks() is 
 	// unchanged following insertion.  
-	mtrk_iterator_t insert_no_tkshift(mtrk_iterator_t, mtrk_event_t);
+	iterator insert_no_tkshift(iterator, mtrk_event_t);
 	// Insert the provided event into the sequence such that its onset tick
 	// is == arg1 + arg2.delta_time()
 	// TODO:  Unit tests
-	mtrk_iterator_t insert(uint64_t, mtrk_event_t);	
+	iterator insert(uint64_t, mtrk_event_t);	
 	
 	// Erase the event pointed to by the iterator.  Returns an iterator to 
 	// the event immediately following the erased event.  
-	mtrk_iterator_t erase(mtrk_iterator_t);
-	mtrk_const_iterator_t erase(mtrk_const_iterator_t);
+	iterator erase(iterator);
+	const_iterator erase(const_iterator);
 	// Erase the event indicated by the iterator.  If the event has a delta
 	// time > 0, it is added to the event immediately following the deleted
 	// event.  
-	mtrk_iterator_t erase_no_tkshift(mtrk_iterator_t);
+	iterator erase_no_tkshift(iterator);
 
 
 	// Note that calling clear will cause !this.validate(), since there is
@@ -179,17 +191,17 @@ std::string print(const mtrk_t&);
 // Prints each mtrk event as hexascii (using dbk::print_hexascii()) along
 // with its cumtk and onset tick.  The output is valid syntax to brace-init 
 // a c++ array.  
-std::string print_event_arrays(mtrk_const_iterator_t,mtrk_const_iterator_t);
+std::string print_event_arrays(mtrk_t::const_iterator,mtrk_t::const_iterator);
 std::string print_event_arrays(const mtrk_t&);
 
 // Returns true if the track qualifies as a tempo map.  Only a certain
 // subset of meta events are permitted in a tempo_map.  Does not 
 // validate the mtrk.  
 bool is_tempo_map(const mtrk_t&);
-bool is_equivalent_permutation_ignore_dt(mtrk_const_iterator_t,mtrk_const_iterator_t,
-	mtrk_const_iterator_t,mtrk_const_iterator_t);
-bool is_equivalent_permutation(mtrk_const_iterator_t,mtrk_const_iterator_t,
-	mtrk_const_iterator_t,mtrk_const_iterator_t);
+bool is_equivalent_permutation_ignore_dt(mtrk_t::const_iterator,mtrk_t::const_iterator,
+	mtrk_t::const_iterator,mtrk_t::const_iterator);
+bool is_equivalent_permutation(mtrk_t::const_iterator,mtrk_t::const_iterator,
+	mtrk_t::const_iterator,mtrk_t::const_iterator);
 
 // Get the duration in seconds.  A midi_time_t _must_ be provided, since
 // a naked MTrk object does not inherit the tpq field from the MThd chunk
@@ -197,7 +209,7 @@ bool is_equivalent_permutation(mtrk_const_iterator_t,mtrk_const_iterator_t,
 // quantity.  The value midi_time_t.uspq is updated as meta tempo events 
 // are encountered in the mtrk_t.  
 double duration(const mtrk_t&, const midi_time_t&);
-double duration(mtrk_const_iterator_t&, mtrk_const_iterator_t&, const midi_time_t&);
+double duration(mtrk_t::const_iterator&, mtrk_t::const_iterator&, const midi_time_t&);
 
 // Declaration matches the in-class friend declaration to make the 
 // name visible for lookup outside the class.  
@@ -217,10 +229,8 @@ struct maybe_mtrk_t {
 // of beg.  
 // TODO:  Another possible meaning of "simultanious" is all events w/
 // tk onset < the tk onset of the off-event matching beg.  
-mtrk_const_iterator_t get_simultanious_events(mtrk_const_iterator_t, mtrk_const_iterator_t);
-// TODO:  Implement the mtrk iterator in terms of my generic_ra_iterator
-// and remove this gross bandaid.  
-mtrk_iterator_t get_simultanious_events(mtrk_iterator_t, mtrk_iterator_t);
+mtrk_t::const_iterator get_simultanious_events(mtrk_t::const_iterator, mtrk_t::const_iterator);
+mtrk_t::iterator get_simultanious_events(mtrk_t::iterator, mtrk_t::iterator);
 
 //
 // find_linked_off(mtrk_const_iterator_t beg, mtrk_const_iterator_t end,
@@ -238,8 +248,8 @@ mtrk_iterator_t get_simultanious_events(mtrk_iterator_t, mtrk_iterator_t);
 // If no corresponding off event can be found, .it==end and .tk has the
 // same interpretation as before.  
 //
-event_tk_t<mtrk_const_iterator_t> find_linked_off(mtrk_const_iterator_t, 
-					mtrk_const_iterator_t, const mtrk_event_t&);
+event_tk_t<mtrk_t::const_iterator> find_linked_off(mtrk_t::const_iterator, 
+					mtrk_t::const_iterator, const mtrk_event_t&);
 
 //
 // get_linked_onoff_pairs()
@@ -258,11 +268,11 @@ event_tk_t<mtrk_const_iterator_t> find_linked_off(mtrk_const_iterator_t,
 // Orphan note-on events are not included in the results.  
 //
 struct linked_onoff_pair_t {
-	event_tk_t<mtrk_const_iterator_t> on;
-	event_tk_t<mtrk_const_iterator_t> off;
+	event_tk_t<mtrk_t::const_iterator> on;
+	event_tk_t<mtrk_t::const_iterator> off;
 };
 std::vector<linked_onoff_pair_t>
-	get_linked_onoff_pairs(mtrk_const_iterator_t,mtrk_const_iterator_t);
+	get_linked_onoff_pairs(mtrk_t::const_iterator,mtrk_t::const_iterator);
 
 //
 // Print a table of linked note-on/off event pairs in the input mtrk_t.  

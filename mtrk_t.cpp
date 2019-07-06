@@ -1,7 +1,6 @@
 #include "mtrk_t.h"
 #include "mtrk_event_t.h"
 #include "mtrk_event_methods.h"
-#include "mtrk_iterator_t.h"
 #include "dbklib\byte_manipulation.h"
 #include <string>
 #include <cstdint>
@@ -49,7 +48,7 @@ mtrk_t::mtrk_t(const unsigned char *p, uint32_t max_sz) {
 		o += curr_event.size;
 	}
 }
-mtrk_t::mtrk_t(mtrk_const_iterator_t beg, mtrk_const_iterator_t end) {
+mtrk_t::mtrk_t(mtrk_t::const_iterator beg, mtrk_t::const_iterator end) {
 	for (auto it=beg; it!=end; ++it) {
 		this->push_back(*it);
 	}
@@ -89,29 +88,29 @@ std::array<unsigned char,8> mtrk_t::get_header() const {
 	}
 	return r;
 }
-mtrk_iterator_t mtrk_t::begin() {
+mtrk_t::iterator mtrk_t::begin() {
 	if (this->evnts_.size()==0) {
-		return mtrk_iterator_t(nullptr);
+		return mtrk_t::iterator(nullptr);
 	}
-	return mtrk_iterator_t(&(this->evnts_[0]));
+	return mtrk_t::iterator(&(this->evnts_[0]));
 }
-mtrk_iterator_t mtrk_t::end() {
+mtrk_t::iterator mtrk_t::end() {
 	if (this->evnts_.size()==0) {
-		return mtrk_iterator_t(nullptr);
+		return mtrk_t::iterator(nullptr);
 	}
-	return mtrk_iterator_t(&(this->evnts_[0]) + this->evnts_.size());
+	return mtrk_t::iterator(&(this->evnts_[0]) + this->evnts_.size());
 }
-mtrk_const_iterator_t mtrk_t::begin() const {
+mtrk_t::const_iterator mtrk_t::begin() const {
 	if (this->evnts_.size()==0) {
-		return mtrk_iterator_t(nullptr);
+		return mtrk_t::iterator(nullptr);
 	}
-	return mtrk_const_iterator_t(&(this->evnts_[0]));
+	return mtrk_t::const_iterator(&(this->evnts_[0]));
 }
-mtrk_const_iterator_t mtrk_t::end() const {
+mtrk_t::const_iterator mtrk_t::end() const {
 	if (this->evnts_.size()==0) {
-		return mtrk_iterator_t(nullptr);
+		return mtrk_t::iterator(nullptr);
 	}
-	return mtrk_const_iterator_t(&(this->evnts_[0]) + this->evnts_.size());
+	return mtrk_t::const_iterator(&(this->evnts_[0]) + this->evnts_.size());
 }
 mtrk_event_t& mtrk_t::operator[](uint32_t idx) {
 	return this->evnts_[idx];
@@ -131,25 +130,25 @@ mtrk_event_t& mtrk_t::front() {
 const mtrk_event_t& mtrk_t::front() const {
 	return this->evnts_.front();
 }
-event_tk_t<mtrk_iterator_t> mtrk_t::at_cumtk(uint64_t cumtk_on) {
-	event_tk_t<mtrk_iterator_t> res {this->begin(),0};
+event_tk_t<mtrk_t::iterator> mtrk_t::at_cumtk(uint64_t cumtk_on) {
+	event_tk_t<mtrk_t::iterator> res {this->begin(),0};
 	while (res.it!=this->end() && res.tk<cumtk_on) {
 		res.tk += res.it->delta_time();
 		++(res.it);
 	}
 	return res;
 }
-event_tk_t<mtrk_const_iterator_t>
+event_tk_t<mtrk_t::const_iterator>
 						mtrk_t::at_cumtk(uint64_t cumtk_on) const {
-	event_tk_t<mtrk_const_iterator_t> res {this->begin(),0};
+	event_tk_t<mtrk_t::const_iterator> res {this->begin(),0};
 	while (res.it!=this->end() && res.tk<cumtk_on) {
 		res.tk += res.it->delta_time();
 		++(res.it);
 	}
 	return res;
 }
-event_tk_t<mtrk_iterator_t> mtrk_t::at_tkonset(uint64_t tk_on) {
-	event_tk_t<mtrk_iterator_t> 
+event_tk_t<mtrk_t::iterator> mtrk_t::at_tkonset(uint64_t tk_on) {
+	event_tk_t<mtrk_t::iterator> 
 		res {this->begin(),0};
 	while (res.it!=this->end()) {
 		res.tk += res.it->delta_time();
@@ -160,8 +159,8 @@ event_tk_t<mtrk_iterator_t> mtrk_t::at_tkonset(uint64_t tk_on) {
 	}
 	return res;
 }
-event_tk_t<mtrk_const_iterator_t> mtrk_t::at_tkonset(uint64_t tk_on) const {
-	event_tk_t<mtrk_const_iterator_t> 
+event_tk_t<mtrk_t::const_iterator> mtrk_t::at_tkonset(uint64_t tk_on) const {
+	event_tk_t<mtrk_t::const_iterator> 
 		res {this->begin(),this->begin()->delta_time()};
 	while (res.it!=this->end()) {
 		res.tk += res.it->delta_time();
@@ -179,11 +178,11 @@ mtrk_event_t& mtrk_t::push_back(const mtrk_event_t& ev) {
 void mtrk_t::pop_back() {
 	this->evnts_.pop_back();
 }
-mtrk_iterator_t mtrk_t::insert(mtrk_iterator_t it, const mtrk_event_t& ev) {
+mtrk_t::iterator mtrk_t::insert(mtrk_t::iterator it, const mtrk_event_t& ev) {
 	auto vit = this->evnts_.insert(this->evnts_.begin()+(it-this->begin()),ev);
 	return this->begin() + (vit-this->evnts_.begin());
 }
-mtrk_iterator_t mtrk_t::insert_no_tkshift(mtrk_iterator_t it, mtrk_event_t ev) {
+mtrk_t::iterator mtrk_t::insert_no_tkshift(mtrk_t::iterator it, mtrk_event_t ev) {
 	uint64_t new_dt = ev.delta_time();
 	while ((it != this->end()) && (it->delta_time() < new_dt)) {
 		new_dt -= it->delta_time();
@@ -197,7 +196,7 @@ mtrk_iterator_t mtrk_t::insert_no_tkshift(mtrk_iterator_t it, mtrk_event_t ev) {
 }
 // Insert the provided event into the sequence such that its onset tick
 // is == arg1 + arg2.delta_time()
-mtrk_iterator_t mtrk_t::insert(uint64_t cumtk_pos, mtrk_event_t ev) {
+mtrk_t::iterator mtrk_t::insert(uint64_t cumtk_pos, mtrk_event_t ev) {
 	auto new_tk_onset = cumtk_pos+ev.delta_time();
 	auto where = this->at_tkonset(cumtk_pos);
 	// Insertion before where.it guarantees insertion at cumtk < cumtk_pos
@@ -210,17 +209,17 @@ mtrk_iterator_t mtrk_t::insert(uint64_t cumtk_pos, mtrk_event_t ev) {
 	ev.set_delta_time(new_tk_onset - where_cumtk);
 	return this->insert(where.it,ev);
 }
-mtrk_iterator_t mtrk_t::erase(mtrk_iterator_t it) {
+mtrk_t::iterator mtrk_t::erase(mtrk_t::iterator it) {
 	auto idx = it-this->begin();
 	auto vit = this->evnts_.erase(this->evnts_.begin()+idx);
 	return this->begin()+(vit-this->evnts_.begin());
 }
-mtrk_const_iterator_t mtrk_t::erase(mtrk_const_iterator_t it) {
+mtrk_t::const_iterator mtrk_t::erase(mtrk_t::const_iterator it) {
 	auto idx = it-this->begin();
 	auto vit = this->evnts_.erase(this->evnts_.begin()+idx);
 	return this->begin()+(vit-this->evnts_.begin());
 }
-mtrk_iterator_t mtrk_t::erase_no_tkshift(mtrk_iterator_t it) {
+mtrk_t::iterator mtrk_t::erase_no_tkshift(mtrk_t::iterator it) {
 	auto dt = it->delta_time();
 	it = this->erase(it);
 	if (it!=this->end()) {
@@ -358,7 +357,7 @@ std::string print(const mtrk_t& mtrk) {
 	}
 	return s;
 }
-std::string print_event_arrays(mtrk_const_iterator_t beg, mtrk_const_iterator_t end) {
+std::string print_event_arrays(mtrk_t::const_iterator beg, mtrk_t::const_iterator end) {
 	std::string s {};
 
 	dbk::sep_t sep {};
@@ -412,9 +411,9 @@ bool is_tempo_map(const mtrk_t& trk) {
 	return std::find_if(trk.begin(),trk.end(),found_not_allowed)==trk.end();
 }
 
-bool is_equivalent_permutation_ignore_dt(mtrk_const_iterator_t beg1, 
-				mtrk_const_iterator_t end1, mtrk_const_iterator_t beg2, 
-				mtrk_const_iterator_t end2) {
+bool is_equivalent_permutation_ignore_dt(mtrk_t::const_iterator beg1, 
+				mtrk_t::const_iterator end1, mtrk_t::const_iterator beg2, 
+				mtrk_t::const_iterator end2) {
 	if ((end1-beg1) != (end2-beg2)) {
 		return false;
 	}
@@ -422,8 +421,8 @@ bool is_equivalent_permutation_ignore_dt(mtrk_const_iterator_t beg1,
 	// elements on [beg2,end2).  If there are 0, or if n2 != the number of
 	// equiv elements on [beg1,end1), return false.  
 	for (auto it=beg1; it!=end1; ++it) {
-		auto pred = [&it](const mtrk_const_iterator_t& rhs) -> bool {
-			return is_eq_ignore_dt(*it,*rhs);
+		auto pred = [&it](const mtrk_event_t& rhs) -> bool {
+			return is_eq_ignore_dt(*it,rhs);
 		};
 
 		if (it != std::find_if(beg1,it,pred)) {
@@ -439,9 +438,9 @@ bool is_equivalent_permutation_ignore_dt(mtrk_const_iterator_t beg1,
 	}
 	return true;
 }
-bool is_equivalent_permutation(mtrk_const_iterator_t beg1, 
-				mtrk_const_iterator_t end1, mtrk_const_iterator_t beg2, 
-				mtrk_const_iterator_t end2) {
+bool is_equivalent_permutation(mtrk_t::const_iterator beg1, 
+				mtrk_t::const_iterator end1, mtrk_t::const_iterator beg2, 
+				mtrk_t::const_iterator end2) {
 	if ((end1-beg1) != (end2-beg2)) {
 		return false;
 	}
@@ -474,7 +473,7 @@ double duration(const mtrk_t& mtrk, const midi_time_t& t) {
 	return duration(beg,end,t);
 }
 
-double duration(mtrk_const_iterator_t& beg, mtrk_const_iterator_t& end,
+double duration(mtrk_t::const_iterator& beg, mtrk_t::const_iterator& end,
 				const midi_time_t& t) {
 	if (t.tpq == 0) {
 		return -1.0;
@@ -627,15 +626,15 @@ maybe_mtrk_t make_mtrk(const unsigned char *p, uint32_t max_sz) {
 }  // make_mtrk()
 
 
-mtrk_iterator_t get_simultanious_events(mtrk_iterator_t beg, 
-					mtrk_iterator_t end) {
-	auto it = get_simultanious_events(mtrk_const_iterator_t(beg),
-				mtrk_const_iterator_t(end));
+mtrk_t::iterator get_simultanious_events(mtrk_t::iterator beg, 
+					mtrk_t::iterator end) {
+	auto it = get_simultanious_events(mtrk_t::const_iterator(beg),
+				mtrk_t::const_iterator(end));
 	return beg+(it-beg);
 }
-mtrk_const_iterator_t get_simultanious_events(mtrk_const_iterator_t beg, 
-					mtrk_const_iterator_t end) {
-	mtrk_const_iterator_t range_end = beg;
+mtrk_t::const_iterator get_simultanious_events(mtrk_t::const_iterator beg, 
+					mtrk_t::const_iterator end) {
+	mtrk_t::const_iterator range_end = beg;
 	if (range_end==end) {
 		return range_end;
 	}
@@ -646,9 +645,9 @@ mtrk_const_iterator_t get_simultanious_events(mtrk_const_iterator_t beg,
 	return range_end;
 }
 
-event_tk_t<mtrk_const_iterator_t> find_linked_off(mtrk_const_iterator_t beg,
-					mtrk_const_iterator_t end, const mtrk_event_t& on) {
-	event_tk_t<mtrk_const_iterator_t> res {end,0};
+event_tk_t<mtrk_t::const_iterator> find_linked_off(mtrk_t::const_iterator beg,
+					mtrk_t::const_iterator end, const mtrk_event_t& on) {
+	event_tk_t<mtrk_t::const_iterator> res {end,0};
 	if (!is_note_on(on)) {
 		return res;
 	}
@@ -664,8 +663,8 @@ event_tk_t<mtrk_const_iterator_t> find_linked_off(mtrk_const_iterator_t beg,
 }
 
 std::vector<linked_onoff_pair_t>
-	get_linked_onoff_pairs(mtrk_const_iterator_t beg,
-							mtrk_const_iterator_t end) {
+	get_linked_onoff_pairs(mtrk_t::const_iterator beg,
+							mtrk_t::const_iterator end) {
 	std::vector<linked_onoff_pair_t> result;
 
 	uint32_t tkonset = 0;
