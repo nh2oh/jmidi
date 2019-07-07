@@ -3,10 +3,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
-#include <algorithm>
-#include <iterator>
-
-
+#include <algorithm>  // std::copy() in mthd_t::set()
 
 
 mthd_t::size_type mthd_t::size() const {
@@ -18,7 +15,6 @@ mthd_t::pointer mthd_t::data() {
 mthd_t::const_pointer mthd_t::data() const {
 	return this->d_.data();
 }
-
 int32_t mthd_t::format() const {
 	auto p = this->data();
 	return read_be<uint16_t>(p+8,p+this->size());
@@ -31,7 +27,6 @@ int32_t mthd_t::division() const {
 	auto p = this->data();
 	return read_be<uint16_t>(p+8+2+2,p+this->size());
 }
-
 bool mthd_t::set(const std::vector<unsigned char>& d) {
 	this->d_ = d;
 	return true;
