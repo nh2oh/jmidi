@@ -18,43 +18,110 @@
 
 
 
-uint32_t smf_t::size() const {
-	uint32_t n = 0;
-	n = this->mthd_.size();
+smf_t::size_type smf_t::size() const {
+	return this->ntrks();
+}
+smf_t::size_type smf_t::nchunks() const {
+	return this->mtrks_.size()+this->uchks_.size();
+}
+smf_t::size_type smf_t::ntrks() const {
+	return this->mtrks_.size();
+}
+smf_t::size_type smf_t::nuchks() const {
+	return this->uchks_.size();
+}
+smf_t::size_type smf_t::nbytes() const {
+	smf_t::size_type n = 0;
+	n = this->mthd_.size();  // TODO:  Implement + rename to nbytes
 	for (const auto& e : this->mtrks_) {
-		n += e.size();
+		n += e.nbytes();
 	}
 	for (const auto& e : this->uchks_) {
 		n += e.size();
 	}
 	return n;
 }
-uint16_t smf_t::ntrks() const {
-	return this->mtrks_.size();
+smf_t::iterator smf_t::begin() {
+	if (this->mtrks_.size()==0) {
+		return smf_t::iterator(nullptr);
+	}
+	return smf_t::iterator(&(this->mtrks_[0]));
 }
-uint16_t smf_t::nchunks() const {
-	return static_cast<uint16_t>(this->mtrks_.size()+this->uchks_.size()+1);
+smf_t::iterator smf_t::end() {
+	if (this->mtrks_.size()==0) {
+		return smf_t::iterator(nullptr);
+	}
+	return smf_t::iterator(&(this->mtrks_[0]) + this->mtrks_.size());
 }
-uint16_t smf_t::format() const {
+smf_t::const_iterator smf_t::cbegin() const {
+	if (this->mtrks_.size()==0) {
+		return smf_t::const_iterator(nullptr);
+	}
+	return smf_t::const_iterator(&(this->mtrks_[0]));
+}
+smf_t::const_iterator smf_t::cend() const {
+	if (this->mtrks_.size()==0) {
+		return smf_t::const_iterator(nullptr);
+	}
+	return smf_t::const_iterator(&(this->mtrks_[0]) + this->mtrks_.size());
+}
+smf_t::const_iterator smf_t::begin() const {
+	return this->cbegin();
+}
+smf_t::const_iterator smf_t::end() const {
+	return this->cend();
+}
+mtrk_t& smf_t::push_back(const mtrk_t& mtrk) {
+	this->mtrks_.push_back(mtrk);
+	this->chunkorder_.push_back(0);
+	return this->mtrks_.back();
+}
+smf_t::iterator smf_t::insert(smf_t::iterator it, const mtrk_t& mtrk) {
+	auto n = it-this->begin();
+	this->mtrks_.insert((this->mtrks_.begin()+n),mtrk);
+	this->chunkorder_.insert((this->chunkorder_.begin()+n),0);
+	return it;
+}
+smf_t::const_iterator smf_t::insert(smf_t::const_iterator it, const mtrk_t& mtrk) {
+	auto n = it-this->begin();
+	this->mtrks_.insert((this->mtrks_.begin()+n),mtrk);
+	this->chunkorder_.insert((this->chunkorder_.begin()+n),0);
+	return it;
+}
+smf_t::uchk_iterator smf_t::insert(smf_t::uchk_iterator it,
+				const smf_t::uchk_value_type& uchk) {
+	auto n = it-this->uchks_.begin();
+	this->uchks_.insert(it,uchk);
+	this->chunkorder_.insert((this->chunkorder_.begin()+n),1);
+	return it;
+}
+smf_t::uchk_const_iterator smf_t::insert(smf_t::uchk_const_iterator it,
+				const smf_t::uchk_value_type& uchk) {
+	auto n = it-this->uchks_.begin();
+	this->uchks_.insert(it,uchk);
+	this->chunkorder_.insert((this->chunkorder_.begin()+n),1);
+	return it;
+}
+mtrk_t& smf_t::operator[](smf_t::size_type n) {
+	return this->mtrks_[n];
+}
+const mtrk_t& smf_t::operator[](smf_t::size_type n) const {
+	return this->mtrks_[n];
+}
+int32_t smf_t::format() const {
 	return this->mthd_.format();
 }
-uint16_t smf_t::division() const {
+int32_t smf_t::division() const {
 	return this->mthd_.division();
 }
-uint32_t smf_t::mthd_size() const {
+int32_t smf_t::mthd_size() const {
 	return this->mthd_.size();
 }
-uint32_t smf_t::mthd_data_size() const {
+int32_t smf_t::mthd_data_size() const {
 	return this->mthd_.data_size();
 }
-std::string smf_t::fname() const {
-	return this->fname_;
-}
-uint32_t smf_t::track_size(int trackn) const {
-	return this->mtrks_[trackn].size();
-}
-uint32_t smf_t::track_data_size(int trackn) const {
-	return this->mtrks_[trackn].data_nbytes();
+const std::string& smf_t::fname() const {
+	return (*this).fname_;
 }
 mthd_view_t smf_t::get_header_view() const {
 	return this->mthd_.get_view();
@@ -69,10 +136,10 @@ mtrk_t& smf_t::get_track(int trackn) {
 	return this->mtrks_[trackn];
 }
 
-void smf_t::set_fname(const std::string& fname) {
+const std::string& smf_t::set_fname(const std::string& fname) {
 	this->fname_ = fname;
+	return (*this).fname_;
 }
-
 void smf_t::set_mthd(const validate_mthd_chunk_result_t& val_mthd) {
 	this->mthd_.set(val_mthd);
 }

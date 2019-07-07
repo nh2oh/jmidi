@@ -2,6 +2,7 @@
 #include "mthd_t.h"
 #include "mtrk_event_t.h"
 #include "mtrk_t.h"
+#include "..\..\generic_iterator.h"
 #include <string>
 #include <cstdint>
 #include <vector>
@@ -33,37 +34,72 @@
 // TODO:  compute_mthd()
 // TODO:  Ctors
 //
+
+struct smf_container_types_t {
+	using value_type = mtrk_t;
+	using size_type = int64_t;
+	using difference_type = std::ptrdiff_t;
+	using reference = value_type&;
+	using const_reference = const value_type&;
+	using pointer = value_type*;
+	using const_pointer = const value_type*;
+};
+
 class smf_t {
 public:
-	uint32_t size() const;
-	uint16_t nchunks() const;
-	uint16_t format() const;  // mthd alias
-	uint16_t division() const;  // mthd alias
-	uint32_t mthd_size() const;  // mthd alias
-	uint32_t mthd_data_size() const;  // mthd alias
-	uint32_t track_size(int) const;
-	uint32_t track_data_size(int) const;
-	uint16_t ntrks() const;
-	std::string fname() const;
+	using value_type = smf_container_types_t::value_type;
+	using size_type = smf_container_types_t::size_type;
+	using difference_type = smf_container_types_t::difference_type;
+	using reference = smf_container_types_t::reference;
+	using const_reference = smf_container_types_t::const_reference;
+	using pointer = smf_container_types_t::pointer;
+	using const_pointer = smf_container_types_t::const_pointer;
+	using iterator = generic_ra_iterator<smf_container_types_t>;
+	using const_iterator = generic_ra_const_iterator<smf_container_types_t>;
+
+	using uchk_iterator = std::vector<std::vector<unsigned char>>::iterator;
+	using uchk_const_iterator = std::vector<std::vector<unsigned char>>::const_iterator;
+	using uchk_value_type = std::vector<unsigned char>;
+
+	size_type size() const;  // Number of mtrk chunks
+	size_type nchunks() const;  // Number of MTrk + Unkn chunks
+	size_type ntrks() const;  // Number of MTrk chunks
+	size_type nuchks() const;  // Number of MTrk chunks
+	size_type nbytes() const;  // Number of bytes serialized
+
+	iterator begin();
+	iterator end();
+	const_iterator cbegin() const;
+	const_iterator cend() const;
+	const_iterator begin() const;
+	const_iterator end() const;
+	
+	mtrk_t& push_back(const mtrk_t&);
+	iterator insert(iterator, const mtrk_t&);
+	const_iterator insert(const_iterator, const mtrk_t&);
+
+	uchk_iterator insert(uchk_iterator, const uchk_value_type&);
+	uchk_const_iterator insert(uchk_const_iterator,	const uchk_value_type&);
+
+	mtrk_t& operator[](size_type);
+	const mtrk_t& operator[](size_type) const;
+
+	int32_t format() const;  // mthd alias
+	int32_t division() const;  // mthd alias
+	int32_t mthd_size() const;  // mthd alias
+	int32_t mthd_data_size() const;  // mthd alias
+	const std::string& fname() const;
 
 	mthd_view_t get_header_view() const;
 	const mthd_t& get_header() const;
 	const mtrk_t& get_track(int) const;
 	mtrk_t& get_track(int);
 	
-	// TODO:  These functions need to update the mthd chunk (ntrks,
-	// etc).  
-	void set_fname(const std::string&);
+	const std::string& set_fname(const std::string&);
 	void set_mthd(const validate_mthd_chunk_result_t&);
-	void set_format(int);
-	void set_division(uint16_t);
 
 	void append_mtrk(const mtrk_t&);
 	void append_uchk(const std::vector<unsigned char>&);
-
-	// TODO:  
-	bool compute_mthd();
-	bool validate() const;
 private:
 	std::string fname_ {};
 	mthd_t mthd_ {};
@@ -84,6 +120,37 @@ struct maybe_smf_t {
 };
 maybe_smf_t read_smf(const std::string&);
 
+struct mtrk_event_range_t {
+	mtrk_event_t::const_iterator beg;
+	mtrk_event_t::const_iterator end;
+};
+
+class sequential_range_iterator {
+public:
+private:
+	struct range_pos {
+		mtrk_event_t::const_iterator beg;
+		mtrk_event_t::const_iterator end;
+		mtrk_event_t::const_iterator curr;
+		uint32_t tkonset;
+	};
+	std::vector<range_pos> r_;
+	std::vector<range_pos>::iterator curr_;
+	uint32_t tkonset_;
+};
+class simultaneous_range_iterator {
+public:
+private:
+	struct range_pos {
+		mtrk_event_t::const_iterator beg;
+		mtrk_event_t::const_iterator end;
+		mtrk_event_t::const_iterator curr;
+		uint32_t tkonset;
+	};
+	std::vector<range_pos> r_;
+	std::vector<range_pos>::iterator curr_;
+	uint32_t tkonset_;
+};
 
 /*class smf2_chrono_iterator {
 public:
@@ -126,11 +193,11 @@ std::string print(const linked_and_orphans_with_trackn_t&);
 
 
 /*
-struct smf_simultanious_event_range_t {
-	std::vector<simultanious_event_range_t> trks;
+struct smf_simultaneous_event_range_t {
+	std::vector<simultaneous_event_range_t> trks;
 };
-smf_simultanious_event_range_t 
-make_smf_simultanious_event_range(mtrk_iterator_t beg, mtrk_iterator_t end);
+smf_simultaneous_event_range_t 
+make_smf_simultaneous_event_range(mtrk_iterator_t beg, mtrk_iterator_t end);
 */
 
 

@@ -52,7 +52,9 @@ struct event_tk_t {
 // TODO:  Check for max_size() type of overflow?  Maximum data_size
 // == 0xFFFFFFFFu (?)
 //
-
+// TODO:  Use the internal type aliases for member function arg, return
+// types
+//
 struct mtrk_container_types_t {
 	using value_type = mtrk_event_t;
 	using size_type = uint32_t;
@@ -198,8 +200,13 @@ std::string print_event_arrays(const mtrk_t&);
 // subset of meta events are permitted in a tempo_map.  Does not 
 // validate the mtrk.  
 bool is_tempo_map(const mtrk_t&);
-bool is_equivalent_permutation_ignore_dt(mtrk_t::const_iterator,mtrk_t::const_iterator,
-	mtrk_t::const_iterator,mtrk_t::const_iterator);
+// bool is_equivalent_permutation_ignore_dt(...)
+// bool is_equivalent_permutation(...)
+// Returns true if events in the range [beg1,end1) are a permutation
+// of the events in range [beg2,end2) (for every event in range 1 there
+// is exactly one event in range 2 for which operator == returns true).  
+bool is_equivalent_permutation_ignore_dt(mtrk_t::const_iterator,
+	mtrk_t::const_iterator,mtrk_t::const_iterator,mtrk_t::const_iterator);
 bool is_equivalent_permutation(mtrk_t::const_iterator,mtrk_t::const_iterator,
 	mtrk_t::const_iterator,mtrk_t::const_iterator);
 
@@ -223,14 +230,15 @@ struct maybe_mtrk_t {
 
 
 //
-// get_simultanious_events(mtrk_const_iterator_t beg, mtrk_const_iterator_tend);
+// get_simultaneous_events(mtrk_const_iterator_t beg,
+//							mtrk_const_iterator_tend);
 //
 // Returns an iterator to one past the last event with onset tick == that
 // of beg.  
-// TODO:  Another possible meaning of "simultanious" is all events w/
+// TODO:  Another possible meaning of "simultaneous" is all events w/
 // tk onset < the tk onset of the off-event matching beg.  
-mtrk_t::const_iterator get_simultanious_events(mtrk_t::const_iterator, mtrk_t::const_iterator);
-mtrk_t::iterator get_simultanious_events(mtrk_t::iterator, mtrk_t::iterator);
+mtrk_t::const_iterator get_simultaneous_events(mtrk_t::const_iterator, mtrk_t::const_iterator);
+mtrk_t::iterator get_simultaneous_events(mtrk_t::iterator, mtrk_t::iterator);
 
 //
 // find_linked_off(mtrk_const_iterator_t beg, mtrk_const_iterator_t end,
@@ -367,9 +375,9 @@ mtrk_t split_if(mtrk_t& mtrk, UPred pred) {
 // [beg2,end2) into dest.  Delta times are adjusted so that the onset tk for 
 // each event in the merged sequence is the same as in the input 
 // (un-merged) sequence.  Events are merged in "blocks" of events with the
-// same onset tk.  This ensures that sets of simultanious events from each 
+// same onset tk.  This ensures that sets of simultaneous events from each 
 // range are kept adjacent, uninterrupted by events from the other range 
-// which nonetheless occur simultaniously (have the same onset tick) in the 
+// which nonetheless occur simultaneously (have the same onset tick) in the 
 // stream.  If an event block in range 1 has the same onset tk as an event 
 // range in range 2, the block in range 1 is merged first.  
 //
@@ -407,14 +415,14 @@ OIt merge(InIt beg1, InIt end1, InIt beg2, InIt end2, OIt dest) {
 		//    ie, the event to follow the block [curr_beg,curr_end).  
 		if (curr1!=end1 && (ontk_1<=ontk_2 || curr2==end2)) {
 			ontk_curr = ontk_1;  curr_beg = curr1;
-			curr_end = get_simultanious_events(curr1,end1);
+			curr_end = get_simultaneous_events(curr1,end1);
 			curr1 = curr_end;
 			if (curr1 != end1) {
 				ontk_1 += curr1->delta_time();
 			}
 		} else if (curr2!=end2 && (ontk_1>ontk_2 || curr1==end1)) {
 			ontk_curr = ontk_2;  curr_beg = curr2;
-			curr_end = get_simultanious_events(curr2,end2);
+			curr_end = get_simultaneous_events(curr2,end2);
 			curr2 = curr_end;
 			if (curr2 != end2) {
 				ontk_2 += curr2->delta_time();

@@ -252,7 +252,7 @@ mtrk_t::validate_t mtrk_t::validate() const {
 		int note {0};  // note number
 	};
 	std::vector<sounding_notes_t> sounding;
-	sounding.reserve(10);  // Expect <= 10 simultaniously sounding notes???
+	sounding.reserve(10);  // Expect <= 10 simultaneously sounding notes???
 	midi_ch_event_t curr_chev_data;  //mtrk_event_t::channel_event_data_t curr_chev_data;
 	auto is_matching_onoff 
 		= [&curr_chev_data](const sounding_notes_t& sev) -> bool {
@@ -453,8 +453,8 @@ bool is_equivalent_permutation(mtrk_t::const_iterator beg1,
 			return false;
 		}
 
-		auto curr_end1 = get_simultanious_events(it1,end1);
-		auto curr_end2 = get_simultanious_events(it2,end2);
+		auto curr_end1 = get_simultaneous_events(it1,end1);
+		auto curr_end2 = get_simultaneous_events(it2,end2);
 		if (!is_equivalent_permutation_ignore_dt(it1,curr_end1,it2,curr_end2)) {
 			return false;
 		}
@@ -525,7 +525,7 @@ maybe_mtrk_t make_mtrk(const unsigned char *p, uint32_t max_sz) {
 		int note {0};  // note number
 	};
 	std::vector<sounding_notes_t> sounding;
-	sounding.reserve(10);  // Expect <= 10 simultaniously-sounding notes ???
+	sounding.reserve(10);  // Expect <= 10 simultaneously-sounding notes ???
 	midi_ch_event_t curr_chev_data;  //mtrk_event_t::channel_event_data_t curr_chev_data;
 	auto is_matching_off = [&curr_chev_data](const sounding_notes_t& sev)->bool {
 		return (curr_chev_data.ch==sev.ch
@@ -626,13 +626,13 @@ maybe_mtrk_t make_mtrk(const unsigned char *p, uint32_t max_sz) {
 }  // make_mtrk()
 
 
-mtrk_t::iterator get_simultanious_events(mtrk_t::iterator beg, 
+mtrk_t::iterator get_simultaneous_events(mtrk_t::iterator beg, 
 					mtrk_t::iterator end) {
-	auto it = get_simultanious_events(mtrk_t::const_iterator(beg),
+	auto it = get_simultaneous_events(mtrk_t::const_iterator(beg),
 				mtrk_t::const_iterator(end));
 	return beg+(it-beg);
 }
-mtrk_t::const_iterator get_simultanious_events(mtrk_t::const_iterator beg, 
+mtrk_t::const_iterator get_simultaneous_events(mtrk_t::const_iterator beg, 
 					mtrk_t::const_iterator end) {
 	mtrk_t::const_iterator range_end = beg;
 	if (range_end==end) {
