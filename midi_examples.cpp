@@ -42,10 +42,10 @@ int midi_example() {
 
 	//std::string fn = "D:\\cpp\\nh2oh\\au\\gt_aulib\\test_data\\clementi_no_rs.mid";
 	//std::string fn = "D:\\cpp\\nh2oh\\au\\gt_aulib\\test_data\\tc_a_rs.mid";
-	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\CLEMENTI.MID";
+	std::string fn = "C:\\Users\\ben\\Desktop\\scr\\CLEMENTI.MID";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\A7.mid";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\test.mid";
-	std::string fn = "C:\\Users\\ben\\Desktop\\scr\\hallelujah_joy_to_the_world.mid";
+	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\hallelujah_joy_to_the_world.mid";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\twinkle.mid";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\test.mid";
 
@@ -57,7 +57,7 @@ int midi_example() {
 	std::cout << "print(maybesmf.smf):" << std::endl;
 	std::cout << print(maybesmf.smf) << std::endl;
 
-	auto trk1 = maybesmf.smf.get_track(1);
+	auto trk1 = maybesmf.smf[1];
 	//std::cout << print_event_arrays(trk1) << std::endl;
 	//std::cout << print(trk1) << std::endl;
 	std::cout << "print_linked_onoff_pairs(trk1):" << std::endl; 
@@ -73,10 +73,10 @@ int midi_example() {
 	for (int trkn=0; trkn<maybesmf.smf.ntrks(); ++trkn) {
 		midi_time_t curr_time {};
 		curr_time.tpq = interpret_tpq_field(maybesmf.smf.division());
-		auto trk = maybesmf.smf.get_track(trkn);
+		auto trk = maybesmf.smf[trkn];
 		std::cout << "duration(maybesmf.smf.get_track("
 			<< std::to_string(trkn) << ")) == "
-			<< std::to_string(duration(maybesmf.smf.get_track(trkn),curr_time))
+			<< std::to_string(duration(maybesmf.smf[trkn],curr_time))
 			<< std::endl;
 		std::cout << "print_linked_onoff_pairs(maybesmf.smf.get_track("
 			<< std::to_string(trkn) << ")):" << std::endl;

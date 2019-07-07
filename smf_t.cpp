@@ -151,19 +151,16 @@ int32_t smf_t::division() const {
 int32_t smf_t::mthd_size() const {
 	return this->mthd_.size();
 }
-int32_t smf_t::mthd_data_size() const {
-	return this->mthd_.data_size();
-}
 const std::string& smf_t::fname() const {
 	return (*this).fname_;
 }
-mthd_view_t smf_t::get_header_view() const {
-	return this->mthd_.get_view();
-}
-const mthd_t& smf_t::get_header() const {
+
+const mthd_t& smf_t::mthd() const {
 	return this->mthd_;
 }
-
+mthd_t& smf_t::mthd() {
+	return this->mthd_;
+}
 
 const std::string& smf_t::set_fname(const std::string& fname) {
 	this->fname_ = fname;
@@ -183,7 +180,7 @@ std::string print(const smf_t& smf) {
 		"num tracks = " + std::to_string(smf.ntrks());
 	s += "\n\n";
 
-	s += print(smf.get_header_view());
+	s += print(smf.mthd());
 	s += "\n\n";
 
 	for (int i=0; i<smf.ntrks(); ++i) {
@@ -283,7 +280,7 @@ maybe_smf_t read_smf(const std::string& fn) {
 		return result;
 	}
 
-	if (n_mtrks_read != result.smf.get_header_view().ntrks()) {
+	if (n_mtrks_read != result.smf.mthd().ntrks()) {
 		result.error = "The number-of-tracks reported by the header chunk is "
 			"inconsistent with the number of MTrk chunks in the file.  ";
 		return result;

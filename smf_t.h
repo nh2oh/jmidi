@@ -97,17 +97,19 @@ public:
 	const uchk_value_type& get_uchk(size_type) const;
 	uchk_value_type& get_uchk(size_type);
 
+	//
+	// MThd accessors
+	//
+	const mthd_t& mthd() const;
+	mthd_t& mthd();
 	int32_t format() const;  // mthd alias
 	int32_t division() const;  // mthd alias
 	int32_t mthd_size() const;  // mthd alias
-	int32_t mthd_data_size() const;  // mthd alias
-	const std::string& fname() const;
-
-	mthd_view_t get_header_view() const;
-	const mthd_t& get_header() const;
-	
-	const std::string& set_fname(const std::string&);
 	void set_mthd(const validate_mthd_chunk_result_t&);
+
+
+	const std::string& fname() const;
+	const std::string& set_fname(const std::string&);
 private:
 	std::string fname_ {};
 	mthd_t mthd_ {};

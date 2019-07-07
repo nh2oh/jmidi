@@ -1,5 +1,6 @@
 #pragma once
 #include "midi_raw.h"
+#include "..\..\generic_iterator.h"
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -8,83 +9,53 @@
 //
 // Why not a generic midi_chunk_container_t<T> template?  
 // Because MThd and MTrk chunks are radically different and it does not make
-// sense to write generic containers to store either type; their 
-// functionality is completely orthogonal.  
+// sense to write generic containers to store either type.  
 //
 
-
-class smf_t;
-class mthd_t;
-
 //
-// mthd_view_t
+// Class mthd_t
 //
-// An mthd_view_t is a non-owning view into a sequence of bytes representing
-// a valid MThd chunk.  There is no "invalid" state; posession of an 
-// mthd_view_t is a guarantee that the underlying byte sequence is a valid
-// MThd chunk.  
+// Container adapter around std::vector<unsigned char>
 //
-// Unlike mtrk_view_t, mthd_view_t is not very useful; it is hard to imagine
-// a situation where users working with an smf_t would want to pass around
-// lightweight views of the MThd rather than just copies of the underlying
-// data fields.  Consider that sizeof(mthd_view_t)==16, but most (all?) 
-// MThd chunks are only 14 bytes long.  It is included for completness, and
-// because it is used internally by the smf_t member functions .format() 
-// and .division(), which alias the corresponding mthd_view_t member funtions
-// (see the documentation for smf_t for discussion).  
-//
-class mthd_view_t {
-public:
-	mthd_view_t(const validate_mthd_chunk_result_t&);
-
-	uint16_t format() const;
-	uint16_t ntrks() const;
-	uint16_t division() const;
-
-	// Does not include the 4 byte "MThd" and 4 byte data-length fields
-	uint32_t data_size() const;
-	// Includes the "MThd" and 4-byte data-length fields
-	uint32_t size() const;
-
-	const unsigned char *raw_data() const;
-private:
-	// Second arg is the _exact_ size, not a max size
-	mthd_view_t(const unsigned char *, uint32_t);
-
-	const unsigned char *p_ {};  // points at the 'M' of "MThd..."
-	uint32_t size_ {0};
-
-	friend class smf_t;
-	friend class mthd_t;
+struct mthd_container_types_t {
+	using value_type = unsigned char;
+	using size_type = int64_t;
+	using difference_type = std::ptrdiff_t;
+	using reference = value_type&;
+	using const_reference = const value_type&;
+	using pointer = value_type*;
+	using const_pointer = const value_type*;
 };
-std::string print(const mthd_view_t&);
-
-
-//
-// Owns the underlying data
-// Methods create a temporary mthd_view_t & call the appropriate member
-// function.  
-//
 class mthd_t {
 public:
-	uint16_t format() const;
-	uint16_t ntrks() const;
-	uint16_t division() const;
+	using value_type = mthd_container_types_t::value_type;
+	using size_type = mthd_container_types_t::size_type;
+	using difference_type = mthd_container_types_t::difference_type;
+	using reference = mthd_container_types_t::reference;
+	using const_reference = mthd_container_types_t::const_reference;
+	using pointer = mthd_container_types_t::pointer;
+	using const_pointer = mthd_container_types_t::const_pointer;
+	using iterator = generic_ra_iterator<mthd_container_types_t>;
+	using const_iterator = generic_ra_const_iterator<mthd_container_types_t>;
 
-	// Does not include the 4 byte "MThd" and 4 byte data-length fields
-	uint32_t data_size() const;
-	// Includes the "MThd" and 4-byte data-length fields; not d_.size(),
-	// since d_ could easily be over-allocated
-	uint32_t size() const;
+	size_type size() const;
 
-	mthd_view_t get_view() const;
+	pointer data();
+	const_pointer data() const;
 
+	int32_t format() const;
+	int32_t ntrks() const;  // TODO:  Is this really, nchks (not _trks_)?
+	int32_t division() const;
+	
 	bool set(const std::vector<unsigned char>&);
 	bool set(const validate_mthd_chunk_result_t&);
 private:
 	std::vector<unsigned char> d_ {};
 };
 std::string print(const mthd_t&);
+
+
+
 
 
 
