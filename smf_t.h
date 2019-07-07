@@ -1,6 +1,5 @@
 #pragma once
 #include "mthd_t.h"
-#include "mtrk_event_t.h"
 #include "mtrk_t.h"
 #include "..\..\generic_iterator.h"
 #include <string>
@@ -11,28 +10,35 @@
 //
 // smf_t
 //
-// Holds an smf; owns the underlying data.  MTrk chunks are stored as a 
-// std::vector<mtrk_t>, unknown chunks as a 
-// std::vector<std::vector<unsigned char>>.  Also stores the MThd chunk as
-// an mthd_t, the filename, and the order in which the MTrk and Unknown
-// chunks occured in the file.  
+// Holds an smf with an interface similar to a std::vector<mtrk_t>.  Also
+// stores the filename and MThd chunk.  
 //
-// Provided that the MTrk and unknown chunks validate, the only invariants
-// an smf_t needs to maintain in order to be serializable are consistency
-// between values of the MThd chunk parameters and the number, size etc of
-// the MTrk chunks (ex mthd_.format()==0 => .ntrks()==1).  This is difficult
-// to continuously, since smf_t exposes functions returning references &
-// iterators directly into the member mtrks and mthd data.  Hence, any given 
-// smf_t object may not be serializable to a valid smf.  The member function
-// validate() returns detailed information about any problems.  The member
-// function compute_mthd() sets the MThd data to be consistent with the 
-// mtrk and unknown chunks.  
+// Also holds non-MTrk smf chunks ("unknown" chunks) as a 
+// std::vector<std::vector<unsigned char>>.  The relative order of the Mtrk
+// and uchks as they appeared in the file is preserved.  
+//
+// Although both MTrk and  "unknown" are stored in an smf_t, the STL 
+// container-inspired methods size(), operator[], begin(), end(), etc, 
+// only report on and return accessors to the MTrk chunks.  Thus, a 
+// range-for loop over an smf_t, ex:
+// for (const auto& chunk : my_smf_t) { //...
+// only loops over the MTrk chunks; the size() method returns the number
+// of MTrks and ignores the unknown chunks.  A seperate set of methods
+// (nuchks(), get_uchk(int32_t idx), etc) access the unknown chunks.  
+// Methods such as insert(), erase() etc are overloaded on 
+// std::vector<std::vector<unsigned char>>::[const_]iterator and provide
+// access to the uchks.  
+//
+//
+//
+// Invariants:
+// Values of the MThd chunk parameters and the number of MTrk and Uchk 
+// chunks (ex mthd_.format()==0 => .ntrks()==1) is maintained.  
 // 
-// TODO:  Rename size() => nbytes; track_size(), track_data_size(), 
-//        mthd_size(), etc.  
 // TODO:  validate()
 // TODO:  compute_mthd()
 // TODO:  Ctors
+// TODO:  insert(), erase() etc should edit the MThd
 //
 
 struct smf_container_types_t {
@@ -74,15 +80,22 @@ public:
 	const_iterator begin() const;
 	const_iterator end() const;
 	
-	mtrk_t& push_back(const mtrk_t&);
-	iterator insert(iterator, const mtrk_t&);
-	const_iterator insert(const_iterator, const mtrk_t&);
+	reference push_back(const_reference);
+	iterator insert(iterator, const_reference);
+	const_iterator insert(const_iterator, const_reference);
+	iterator erase(iterator);
+	const_iterator erase(const_iterator);
 
+	const uchk_value_type& push_back(const uchk_value_type&);
 	uchk_iterator insert(uchk_iterator, const uchk_value_type&);
-	uchk_const_iterator insert(uchk_const_iterator,	const uchk_value_type&);
+	uchk_const_iterator insert(uchk_const_iterator, const uchk_value_type&);
+	uchk_iterator erase(uchk_iterator);
+	uchk_const_iterator erase(uchk_const_iterator);
 
-	mtrk_t& operator[](size_type);
-	const mtrk_t& operator[](size_type) const;
+	reference operator[](size_type);
+	const_reference operator[](size_type) const;
+	const uchk_value_type& get_uchk(size_type) const;
+	uchk_value_type& get_uchk(size_type);
 
 	int32_t format() const;  // mthd alias
 	int32_t division() const;  // mthd alias
@@ -92,18 +105,13 @@ public:
 
 	mthd_view_t get_header_view() const;
 	const mthd_t& get_header() const;
-	const mtrk_t& get_track(int) const;
-	mtrk_t& get_track(int);
 	
 	const std::string& set_fname(const std::string&);
 	void set_mthd(const validate_mthd_chunk_result_t&);
-
-	void append_mtrk(const mtrk_t&);
-	void append_uchk(const std::vector<unsigned char>&);
 private:
 	std::string fname_ {};
 	mthd_t mthd_ {};
-	std::vector<mtrk_t> mtrks_ {};
+	std::vector<value_type> mtrks_ {};
 	std::vector<std::vector<unsigned char>> uchks_ {};
 	// Since MTrk and unknown chunks are split into mtrks_ and uchks_,
 	// respectively, the order in which these chunks occured in the file

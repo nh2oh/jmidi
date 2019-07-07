@@ -8,7 +8,6 @@
 #include <vector>
 #include <algorithm>  // std::copy() in smf_t::smf_t(const validate_smf_result_t& maybe_smf)
 #include <iostream>
-#include <exception>
 #include <iomanip>  // std::setw()
 #include <ios>  // std::left
 #include <sstream>
@@ -71,22 +70,39 @@ smf_t::const_iterator smf_t::begin() const {
 smf_t::const_iterator smf_t::end() const {
 	return this->cend();
 }
-mtrk_t& smf_t::push_back(const mtrk_t& mtrk) {
+smf_t::reference smf_t::push_back(smf_t::const_reference mtrk) {
 	this->mtrks_.push_back(mtrk);
 	this->chunkorder_.push_back(0);
 	return this->mtrks_.back();
 }
-smf_t::iterator smf_t::insert(smf_t::iterator it, const mtrk_t& mtrk) {
+smf_t::iterator smf_t::insert(smf_t::iterator it, smf_t::const_reference mtrk) {
 	auto n = it-this->begin();
 	this->mtrks_.insert((this->mtrks_.begin()+n),mtrk);
 	this->chunkorder_.insert((this->chunkorder_.begin()+n),0);
 	return it;
 }
-smf_t::const_iterator smf_t::insert(smf_t::const_iterator it, const mtrk_t& mtrk) {
+smf_t::const_iterator smf_t::insert(smf_t::const_iterator it, smf_t::const_reference mtrk) {
 	auto n = it-this->begin();
 	this->mtrks_.insert((this->mtrks_.begin()+n),mtrk);
 	this->chunkorder_.insert((this->chunkorder_.begin()+n),0);
 	return it;
+}
+smf_t::iterator smf_t::erase(smf_t::iterator it) {
+	auto n = it-this->begin();
+	this->mtrks_.erase((this->mtrks_.begin()+n));
+	this->chunkorder_.erase((this->chunkorder_.begin()+n));
+	return this->begin()+n;
+}
+smf_t::const_iterator smf_t::erase(smf_t::const_iterator it) {
+	auto n = it-this->begin();
+	this->mtrks_.erase((this->mtrks_.begin()+n));
+	this->chunkorder_.erase((this->chunkorder_.begin()+n));
+	return this->begin()+n;
+}
+const smf_t::uchk_value_type& smf_t::push_back(const smf_t::uchk_value_type& uchk) {
+	this->uchks_.push_back(uchk);
+	this->chunkorder_.push_back(1);
+	return this->uchks_.back();
 }
 smf_t::uchk_iterator smf_t::insert(smf_t::uchk_iterator it,
 				const smf_t::uchk_value_type& uchk) {
@@ -102,11 +118,29 @@ smf_t::uchk_const_iterator smf_t::insert(smf_t::uchk_const_iterator it,
 	this->chunkorder_.insert((this->chunkorder_.begin()+n),1);
 	return it;
 }
-mtrk_t& smf_t::operator[](smf_t::size_type n) {
+smf_t::uchk_iterator smf_t::erase(smf_t::uchk_iterator it) {
+	auto n = it-this->uchks_.begin();
+	this->uchks_.erase((this->uchks_.begin()+n));
+	this->chunkorder_.erase((this->chunkorder_.begin()+n));
+	return this->uchks_.begin()+n;
+}
+smf_t::uchk_const_iterator smf_t::erase(smf_t::uchk_const_iterator it) {
+	auto n = it-this->uchks_.begin();
+	this->uchks_.erase((this->uchks_.begin()+n));
+	this->chunkorder_.erase((this->chunkorder_.begin()+n));
+	return this->uchks_.begin()+n;
+}
+smf_t::reference smf_t::operator[](smf_t::size_type n) {
 	return this->mtrks_[n];
 }
-const mtrk_t& smf_t::operator[](smf_t::size_type n) const {
+smf_t::const_reference smf_t::operator[](smf_t::size_type n) const {
 	return this->mtrks_[n];
+}
+const smf_t::uchk_value_type& smf_t::get_uchk(smf_t::size_type n) const {
+	return this->uchks_[n];
+}
+smf_t::uchk_value_type& smf_t::get_uchk(smf_t::size_type n) {
+	return this->uchks_[n];
 }
 int32_t smf_t::format() const {
 	return this->mthd_.format();
@@ -129,12 +163,7 @@ mthd_view_t smf_t::get_header_view() const {
 const mthd_t& smf_t::get_header() const {
 	return this->mthd_;
 }
-const mtrk_t& smf_t::get_track(int trackn) const {
-	return this->mtrks_[trackn];
-}
-mtrk_t& smf_t::get_track(int trackn) {
-	return this->mtrks_[trackn];
-}
+
 
 const std::string& smf_t::set_fname(const std::string& fname) {
 	this->fname_ = fname;
@@ -142,14 +171,6 @@ const std::string& smf_t::set_fname(const std::string& fname) {
 }
 void smf_t::set_mthd(const validate_mthd_chunk_result_t& val_mthd) {
 	this->mthd_.set(val_mthd);
-}
-void smf_t::append_mtrk(const mtrk_t& mtrk) {
-	this->mtrks_.push_back(mtrk);
-	this->chunkorder_.push_back(0);
-}
-void smf_t::append_uchk(const std::vector<unsigned char>& uchk) {
-	this->uchks_.push_back(uchk);
-	this->chunkorder_.push_back(1);
 }
 
 std::string print(const smf_t& smf) {
@@ -166,7 +187,7 @@ std::string print(const smf_t& smf) {
 	s += "\n\n";
 
 	for (int i=0; i<smf.ntrks(); ++i) {
-		const mtrk_t& curr_trk = smf.get_track(i);
+		const mtrk_t& curr_trk = smf[i];
 		s += ("Track (MTrk) " + std::to_string(i) 
 				+ "\t(data_size = " + std::to_string(curr_trk.data_nbytes())
 				+ ", size = " + std::to_string(curr_trk.size()) + "):\n");
@@ -240,13 +261,13 @@ maybe_smf_t read_smf(const std::string& fn) {
 				return result;
 			}
 			++n_mtrks_read;
-			result.smf.append_mtrk(curr_mtrk.mtrk);
+			result.smf.push_back(curr_mtrk.mtrk);
 		} else if (curr_chunk.type == chunk_type::unknown) {
 			std::vector<unsigned char> curr_uchk {};
 			curr_uchk.reserve(curr_chunk.size);
 			std::copy(curr_p,curr_p+curr_chunk.size,
 				std::back_inserter(curr_uchk));
-			result.smf.append_uchk(curr_uchk);
+			result.smf.push_back(curr_uchk);
 			++n_uchks_read;
 		} else {
 			result.error = "curr_chunk.type != track || unknown";
@@ -277,7 +298,7 @@ std::vector<all_smf_events_dt_ordered_t> get_events_dt_ordered(const smf_t& smf)
 	//result.reserve(smf.nchunks...
 	
 	for (int i=0; i<smf.ntrks(); ++i) {
-		const auto& curr_trk = smf.get_track(i);
+		const auto& curr_trk = smf[i];
 		uint32_t cumtk = 0;
 		for (const auto& e : curr_trk) {
 			cumtk += e.delta_time();
