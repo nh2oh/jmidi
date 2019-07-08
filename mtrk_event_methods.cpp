@@ -2,7 +2,6 @@
 #include "mtrk_event_t.h"
 #include "midi_raw.h"
 #include "midi_vlq.h"
-#include "dbklib\byte_manipulation.h"
 #include <string>
 #include <vector>
 #include <array>
@@ -20,9 +19,9 @@ std::string print(const mtrk_event_t& evnt, mtrk_sbo_print_opts opts) {
 	s += ("data_size = " + std::to_string(evnt.data_size()) + "\n");
 	
 	s += "\t[";
-	dbk::print_hexascii(evnt.dt_begin(),evnt.dt_end(),std::back_inserter(s),'\0',' ');
+	print_hexascii(evnt.dt_begin(),evnt.dt_end(),std::back_inserter(s),'\0',' ');
 	s += "] ";
-	dbk::print_hexascii(evnt.event_begin(),evnt.end(),std::back_inserter(s),'\0',' ');
+	print_hexascii(evnt.event_begin(),evnt.end(),std::back_inserter(s),'\0',' ');
 	
 	if (opts == mtrk_sbo_print_opts::detail || opts == mtrk_sbo_print_opts::debug) {
 		if (evnt.type()==smf_event_type::meta) {
@@ -49,12 +48,12 @@ std::string print(const mtrk_event_t& evnt, mtrk_sbo_print_opts opts) {
 			s += "sbo=>big   = ";
 		}
 		s += "{";
-		dbk::print_hexascii(evnt.raw_begin(),evnt.raw_end(),
+		print_hexascii(evnt.raw_begin(),evnt.raw_end(),
 			std::back_inserter(s),'\0',' ');
 		s += "}; \n";
 		s += "\tbigsmall_flag = ";
 		auto f = evnt.flags();
-		s += dbk::print_hexascii(&f, 1, ' ');
+		print_hexascii(&f, &f+1, std::back_inserter(s), ' ');
 	}
 	return s;
 }
@@ -164,8 +163,7 @@ meta_event_t classify_meta_event(const mtrk_event_t& ev) {
 	if (ev.type()!=smf_event_type::meta) {
 		return meta_event_t::invalid;
 	}
-	auto it = ev.event_begin();
-	uint16_t d16 = dbk::be_2_native<uint16_t>(&*it); // (p);
+	uint16_t d16 = read_be<uint16_t>(ev.event_begin(),ev.end()); //read_be<uint16_t>(&*it); // (p);
 	return classify_meta_event_impl(d16);
 }
 bool is_meta(const mtrk_event_t& ev) {
@@ -173,8 +171,8 @@ bool is_meta(const mtrk_event_t& ev) {
 }
 bool is_meta(const mtrk_event_t& ev, const meta_event_t& mtype) {
 	if (ev.type()==smf_event_type::meta) {
-		auto it = ev.event_begin();
-		return classify_meta_event_impl(dbk::be_2_native<uint16_t>(&*it))==mtype;
+		return classify_meta_event_impl(read_be<uint16_t>(ev.event_begin(),ev.end()))==mtype;
+		//return classify_meta_event_impl(dbk::be_2_native<uint16_t>(&*it))==mtype;
 	}
 	return false;
 }

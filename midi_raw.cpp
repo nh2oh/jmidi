@@ -1,6 +1,5 @@
 #include "midi_raw.h"
 #include "midi_vlq.h"
-#include "dbklib\byte_manipulation.h"
 #include <string>
 #include <cstdint>
 #include <cmath>  // std::round()
@@ -120,7 +119,7 @@ validate_chunk_header_result_t validate_chunk_header(const unsigned char *p, uin
 	}
 
 	p += 4;  // Skip past 'MThd'
-	result.data_size = dbk::be_2_native<uint32_t>(p);
+	result.data_size = read_be<uint32_t>(p,p+max_size);
 	result.size = 8 + result.data_size;
 
 	if (result.size>max_size) {
@@ -133,7 +132,7 @@ validate_chunk_header_result_t validate_chunk_header(const unsigned char *p, uin
 	return result;
 }
 chunk_type chunk_type_from_id(const unsigned char *p) {
-	uint32_t id = dbk::be_2_native<uint32_t>(p);
+	uint32_t id = read_be<uint32_t>(p,p+sizeof(uint32_t));
 	if (id == 0x4D546864u) {  // Mthd
 		return chunk_type::header;
 	} else if (id == 0x4D54726Bu) {  // MTrk
@@ -187,8 +186,8 @@ validate_mthd_chunk_result_t validate_mthd_chunk(const unsigned char *p, uint32_
 	
 	// <Header Chunk> = <chunk type> <length> <format> <ntrks> <division> 
 	//                   MThd uint32_t uint16_t uint16_t uint16_t
-	uint16_t format = dbk::be_2_native<uint16_t>(p+8);
-	uint16_t ntrks = dbk::be_2_native<uint16_t>(p+10);
+	uint16_t format = read_be<uint16_t>(p+8,p+max_size);
+	uint16_t ntrks = read_be<uint16_t>(p+10,p+max_size);
 
 	if (ntrks==0) {
 		result.error = mthd_validation_error::zero_tracks;

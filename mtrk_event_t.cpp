@@ -2,7 +2,6 @@
 #include "mtrk_event_methods.h"
 #include "midi_raw.h"
 #include "midi_vlq.h"
-#include "dbklib\byte_manipulation.h"
 #include <string>
 #include <cstdint>
 #include <algorithm>

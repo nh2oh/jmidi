@@ -1,5 +1,4 @@
 #include "mthd_t.h"
-#include "dbklib\byte_manipulation.h"
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -129,7 +128,7 @@ std::string print(const mthd_t& mthd) {
 		s += std::to_string(get_tpq(mthd.division()));
 	}
 	s += "\n\t";
-	s += dbk::print_hexascii(mthd.data(), mthd.size(), ' ');
+	print_hexascii(mthd.cbegin(), mthd.cend(), std::back_inserter(s), ' ');
 
 	return s;
 }

@@ -1,7 +1,6 @@
 #include "mtrk_t.h"
 #include "mtrk_event_t.h"
 #include "mtrk_event_methods.h"
-#include "dbklib\byte_manipulation.h"
 #include <string>
 #include <cstdint>
 #include <vector>
@@ -360,7 +359,7 @@ std::string print(const mtrk_t& mtrk) {
 std::string print_event_arrays(mtrk_t::const_iterator beg, mtrk_t::const_iterator end) {
 	std::string s {};
 
-	dbk::sep_t sep {};
+	sep_t sep {};
 	sep.byte_pfx = "0x";
 	sep.byte_sfx = "u";
 	sep.elem_sep = ",";
@@ -368,7 +367,7 @@ std::string print_event_arrays(mtrk_t::const_iterator beg, mtrk_t::const_iterato
 	uint64_t cumtk = 0;
 	for (auto it=beg; it!=end; ++it) { //(const auto& e : mtrk) {
 		s += "{{";
-		dbk::print_hexascii(it->begin(),it->end(),std::back_inserter(s),sep);
+		print_hexascii(it->begin(),it->end(),std::back_inserter(s),sep);
 		s += ("}, " + std::to_string(cumtk) + ", "
 			+ std::to_string(cumtk+it->delta_time()) + "},\n");
 		cumtk += it->delta_time();
@@ -378,7 +377,7 @@ std::string print_event_arrays(mtrk_t::const_iterator beg, mtrk_t::const_iterato
 std::string print_event_arrays(const mtrk_t& mtrk) {
 	std::string s {};
 
-	dbk::sep_t sep {};
+	sep_t sep {};
 	sep.byte_pfx = "0x";
 	sep.byte_sfx = "u";
 	sep.elem_sep = ",";
@@ -386,7 +385,7 @@ std::string print_event_arrays(const mtrk_t& mtrk) {
 	uint64_t cumtk = 0;
 	for (const auto& e : mtrk) {
 		s += "{{";
-		dbk::print_hexascii(e.begin(),e.end(),std::back_inserter(s),sep);
+		print_hexascii(e.begin(),e.end(),std::back_inserter(s),sep);
 		s += ("}, " + std::to_string(cumtk) + ", "
 			+ std::to_string(cumtk+e.delta_time()) + "},\n");
 		cumtk += e.delta_time();

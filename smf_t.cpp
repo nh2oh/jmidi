@@ -2,7 +2,6 @@
 #include "midi_raw.h"
 #include "mthd_t.h"
 #include "mtrk_t.h"
-#include "dbklib\byte_manipulation.h"
 #include <string>
 #include <cstdint>
 #include <vector>
@@ -341,10 +340,13 @@ std::string print(const std::vector<all_smf_events_dt_ordered_t>& evs) {
 		ss << std::setw(w.type) << print(e.ev.type());
 		ss << std::setw(w.dat_sz) << std::to_string(e.ev.data_size());
 		ss << std::setw(w.trk) << std::to_string(e.trackn);
-		ss << dbk::print_hexascii(e.ev.data(), e.ev.size(), ' ');
+		//ss << dbk::print_hexascii(e.ev.data(), e.ev.size(), ' ');
+		std::string temp_s;
+		print_hexascii(e.ev.data(), e.ev.data()+e.ev.size(), std::back_inserter(temp_s), ' ');
+		ss << temp_s;
 		ss << "\n";
 	}
-
+	
 	return ss.str();
 }
 

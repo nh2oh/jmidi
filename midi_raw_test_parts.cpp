@@ -1,6 +1,5 @@
 #include "midi_raw_test_parts.h"
 #include "midi_raw.h"
-#include "dbklib\byte_manipulation.h"
 #include <vector>
 #include <cstdint>
 #include <limits>
@@ -229,14 +228,24 @@ void print_midi_test_cases() {
 	for (const auto& tc : yay) {
 		std::cout << "{{";
 		for (int i=0; i<tc.data.size(); ++i) {
-			std::cout << "0x" << dbk::print_hexascii(&(tc.data[i]),1);
+			std::string temp_s;
+			std::cout << "0x";
+			print_hexascii(&(tc.data[i]),&(tc.data[i])+1,std::back_inserter(temp_s));
+			std::cout << temp_s;
 			if (i!=(tc.data.size()-1)) {
 				std::cout << ",";
 			}
 		}
 		std::cout << "},";
-		std::cout << "0x" << dbk::print_hexascii(&(tc.midisb_prev_event),1) << ",";
-		std::cout << "0x" << dbk::print_hexascii(&(tc.applic_midi_status),1) << ",";
+		std::cout << "0x";
+		std::string temp_s;
+		print_hexascii(&(tc.midisb_prev_event),&(tc.midisb_prev_event)+1,
+			std::back_inserter(temp_s));
+		temp_s += ",0x";
+		print_hexascii(&(tc.applic_midi_status),&(tc.applic_midi_status)+1,
+			std::back_inserter(temp_s));
+		temp_s += ",";
+		std::cout << temp_s;
 		std::cout << std::to_string(tc.in_running_status) << ",";
 		std::cout << std::to_string(tc.n_data_bytes) << ",";
 		std::cout << std::to_string(tc.data_length) << ",";
@@ -439,7 +448,10 @@ void print_meta_tests(const std::vector<meta_test_t>& tests) {
 	for (const auto& tc : tests) {
 		std::cout << "{{";
 		for (int i=0; i<tc.data.size(); ++i) {
-			std::cout << "0x" << dbk::print_hexascii(&(tc.data[i]),1);
+			std::string temp_s;
+			std::cout << "0x";
+			print_hexascii(&(tc.data[i]),&(tc.data[i])+1,std::back_inserter(temp_s));
+			std::cout << temp_s;
 			if (i!=(tc.data.size()-1)) {
 				std::cout << ",";
 			}
@@ -449,7 +461,11 @@ void print_meta_tests(const std::vector<meta_test_t>& tests) {
 		}
 		std::cout << "},\n";
 		std::cout << std::to_string(tc.dt_value) << ",";
-		std::cout << "0x" << dbk::print_hexascii(&(tc.type_byte),1) << "u,";
+		std::cout << "0x";
+		std::string temp_s;
+		print_hexascii(&(tc.type_byte),&(tc.type_byte)+1,std::back_inserter(temp_s));
+		std::cout << temp_s;
+		std::cout << "u,";
 		std::cout << std::to_string(tc.payload_length) << ",";
 		std::cout << std::to_string(tc.data_size) << "},";
 		std::cout << std::endl;
