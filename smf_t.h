@@ -10,8 +10,8 @@
 //
 // smf_t
 //
-// Holds an smf with an interface similar to a std::vector<mtrk_t>.  Also
-// stores the filename and MThd chunk.  
+// Holds an smf; presents an interface similar to a std::vector<mtrk_t>.  
+// Also stores the filename and MThd chunk.  
 //
 // Also holds non-MTrk smf chunks ("unknown" chunks) as a 
 // std::vector<std::vector<unsigned char>>.  The relative order of the Mtrk
@@ -35,10 +35,13 @@
 // Values of the MThd chunk parameters and the number of MTrk and Uchk 
 // chunks (ex mthd_.format()==0 => .ntrks()==1) is maintained.  
 // 
-// TODO:  validate()
-// TODO:  compute_mthd()
+// TODO:  verify()
 // TODO:  Ctors
 // TODO:  insert(), erase() etc should edit the MThd
+// TODO:  Does not really need to hold an mthd_t; can just hold 3 
+// uint16_t's representing the data fields.  Saves 24-3*2 == 18
+// bytes...
+//
 //
 
 struct smf_container_types_t {
@@ -103,10 +106,9 @@ public:
 	const mthd_t& mthd() const;
 	mthd_t& mthd();
 	int32_t format() const;  // mthd alias
-	int32_t division() const;  // mthd alias
+	time_division_t division() const;  // mthd alias
 	int32_t mthd_size() const;  // mthd alias
 	void set_mthd(const validate_mthd_chunk_result_t&);
-
 
 	const std::string& fname() const;
 	const std::string& set_fname(const std::string&);

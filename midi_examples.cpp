@@ -72,7 +72,7 @@ int midi_example() {
 
 	for (int trkn=0; trkn<maybesmf.smf.ntrks(); ++trkn) {
 		midi_time_t curr_time {};
-		curr_time.tpq = interpret_tpq_field(maybesmf.smf.division());
+		curr_time.tpq = get_tpq(maybesmf.smf.division());
 		auto trk = maybesmf.smf[trkn];
 		std::cout << "duration(maybesmf.smf.get_track("
 			<< std::to_string(trkn) << ")) == "
