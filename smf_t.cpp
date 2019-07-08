@@ -20,7 +20,8 @@ smf_t::size_type smf_t::size() const {
 	return this->ntrks();
 }
 smf_t::size_type smf_t::nchunks() const {
-	return this->mtrks_.size()+this->uchks_.size();
+	return this->mtrks_.size()+this->uchks_.size()+1;
+	// + 1 to account for the MThd 
 }
 smf_t::size_type smf_t::ntrks() const {
 	return this->mtrks_.size();
@@ -30,7 +31,7 @@ smf_t::size_type smf_t::nuchks() const {
 }
 smf_t::size_type smf_t::nbytes() const {
 	smf_t::size_type n = 0;
-	n = this->mthd_.size();  // TODO:  Implement + rename to nbytes
+	n = this->mthd_.nbytes();  // TODO:  Implement + rename to nbytes
 	for (const auto& e : this->mtrks_) {
 		n += e.nbytes();
 	}
@@ -166,15 +167,16 @@ const std::string& smf_t::set_fname(const std::string& fname) {
 	return (*this).fname_;
 }
 void smf_t::set_mthd(const validate_mthd_chunk_result_t& val_mthd) {
-	//this->mthd_.set(val_mthd);
+	this->mthd_ = mthd_t(val_mthd);
 }
 
+// TODO:  The call to nbytes() is v. expensive
 std::string print(const smf_t& smf) {
 	std::string s {};
 	s.reserve(20*smf.size());  // TODO: Magic constant 20
 
 	s += smf.fname();
-	s += "\nsize = " + std::to_string(smf.size()) + ", "
+	s += "\nnum bytes = " + std::to_string(smf.nbytes()) + ", "
 		"num chunks = " + std::to_string(smf.nchunks()) + ", "
 		"num tracks = " + std::to_string(smf.ntrks());
 	s += "\n\n";
@@ -185,8 +187,10 @@ std::string print(const smf_t& smf) {
 	for (int i=0; i<smf.ntrks(); ++i) {
 		const mtrk_t& curr_trk = smf[i];
 		s += ("Track (MTrk) " + std::to_string(i) 
-				+ "\t(data_size = " + std::to_string(curr_trk.data_nbytes())
-				+ ", size = " + std::to_string(curr_trk.size()) + "):\n");
+				+ ":\tsize = " + std::to_string(curr_trk.size()) + " events, "
+				+ "nbytes = " + std::to_string(curr_trk.nbytes()) + " "
+					+ "(including header)\n");
+				//+ ", size = " + std::to_string(curr_trk.size()) + "):\n");
 		s += print(curr_trk);
 		s += "\n";
 	}

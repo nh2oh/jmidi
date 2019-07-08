@@ -53,6 +53,8 @@ public:
 	// mthd_t(int32_t fmt, int32_t ntrks, time_division_t tdf);
 	explicit mthd_t(int32_t, int32_t, time_division_t);
 
+	explicit mthd_t(const validate_mthd_chunk_result_t&);
+
 	// mthd_t(const unsigned char *p, size_type n);
 	// Copies exactly n bytes into the mthd_t.  No validation is performed
 	// on the input data.  
@@ -75,6 +77,14 @@ public:
 	const_iterator cbegin() const;
 	const_iterator cend() const;
 
+	// Getters format(), & division() never return values that would be
+	// invalid for those quantities, regardless of what values are 
+	// presently written into the underlying array d_ (these 
+	// always-valid values are equal to the values serialized out by the
+	// object).  The reason for this behavior is that some getters return
+	// types incapable of holding invalid values (time_division_t) and
+	// i do not want users to use the return values of these getters to
+	// manually validate their MThd arrays.  
 	// Reads the value of the length field
 	uint32_t length() const;
 	// format();  Returns 0, 1, 2
@@ -102,6 +112,7 @@ private:
 	};
 };
 std::string print(const mthd_t&);
+std::string& print(const mthd_t&, std::string&);
 
 
 bool verify(time_division_t);

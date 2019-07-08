@@ -348,7 +348,7 @@ mtrk_t::validate_t::operator bool() const {
 
 std::string print(const mtrk_t& mtrk) {
 	std::string s {};
-	s.reserve(mtrk.size()*100);  // TODO:  Magic constant 100
+	s.reserve(mtrk.nbytes()*100);  // TODO:  Magic constant 100
 	for (auto it=mtrk.begin(); it!=mtrk.end(); ++it) {
 		//s += print(*it);
 		s += print(*it,mtrk_sbo_print_opts::detail);

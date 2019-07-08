@@ -13,7 +13,7 @@
 
 std::string print(const mtrk_event_t& evnt, mtrk_sbo_print_opts opts) {
 	std::string s {};
-	s += ("delta_time = " + std::to_string(evnt.delta_time()) + ", ");
+	s += ("delta-time = " + std::to_string(evnt.delta_time()) + ", ");
 	s += ("type = " + print(evnt.type()) + ", ");
 	s += ("size = " + std::to_string(evnt.size()) + ", ");
 	s += ("data_size = " + std::to_string(evnt.data_size()) + "\n");

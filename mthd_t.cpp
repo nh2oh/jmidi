@@ -10,6 +10,11 @@ mthd_t::mthd_t(int32_t fmt, int32_t ntrks, time_division_t tdf) {
 	this->set_ntrks(ntrks);
 	this->set_division(tdf);
 }
+mthd_t::mthd_t(const validate_mthd_chunk_result_t& mthd_v) {
+	if (mthd_v.error == mthd_validation_error::no_error) {
+		*this = mthd_t(mthd_v.p,mthd_v.size);
+	}
+}
 mthd_t::mthd_t(const unsigned char *p, mthd_t::size_type n) {
 	this->d_.clear();
 	this->d_.reserve(n);
@@ -103,20 +108,22 @@ uint32_t mthd_t::set_length(uint32_t len) {
 	write_32bit_be(len,this->d_.begin()+4);
 	return this->length();
 }
-
+bool mthd_t::verify() const {
+	auto v = validate_mthd_chunk(this->d_.data(),this->d_.size());
+	return (v.error == mthd_validation_error::no_error);
+}
 void mthd_t::set_to_default_value() {
 	auto def = mthd_t();
 	this->d_ = def.d_;
 }
 
 
-
-
-
 std::string print(const mthd_t& mthd) {
-	std::string s {};
-
-	s += ("Header (MThd);  size() = " + std::to_string(mthd.size()) + ":\n");
+	std::string s;  s.reserve(200);
+	return print(mthd,s);
+}
+std::string& print(const mthd_t& mthd, std::string& s) {
+	s += ("Header (MThd):  size() = " + std::to_string(mthd.size()) + ":\n");
 	s += ("\tFormat type = " + std::to_string(mthd.format()) + ", ");
 	s += ("Num Tracks = " + std::to_string(mthd.ntrks()) + ", ");
 	s += "Time Division = ";
@@ -128,7 +135,7 @@ std::string print(const mthd_t& mthd) {
 		s += std::to_string(get_tpq(mthd.division()));
 	}
 	s += "\n\t";
-	print_hexascii(mthd.cbegin(), mthd.cend(), std::back_inserter(s), ' ');
+	print_hexascii(mthd.cbegin(), mthd.cend(), std::back_inserter(s), '\0',' ');
 
 	return s;
 }
