@@ -7,6 +7,11 @@
 
 
 struct time_division_t {
+	// SMPTE => Society of Motion Picture and Television Engineers 
+	// 16-bit:  [[1] frames-per-second] [resolution-within-frame]
+	// Number of subframes per frame ("units per frame," "ticks per frame")
+	// Legal values (std p.133): "4 (MIDI time code resolution),
+	// 8, 10, 80 (bit resolution), or 100"
 	enum type : uint8_t {
 		ticks_per_quarter,
 		smpte
@@ -42,6 +47,16 @@ public:
 	using const_pointer = mthd_container_types_t::const_pointer;
 	using iterator = generic_ra_iterator<mthd_container_types_t>;
 	using const_iterator = generic_ra_const_iterator<mthd_container_types_t>;
+	
+	// Format 1, 0 tracks, 120 tpq
+	mthd_t()=default;
+	// mthd_t(int32_t fmt, int32_t ntrks, time_division_t tdf);
+	explicit mthd_t(int32_t, int32_t, time_division_t);
+
+	// mthd_t(const unsigned char *p, size_type n);
+	// Copies exactly n bytes into the mthd_t.  No validation is performed
+	// on the input data.  
+	explicit mthd_t(const unsigned char*, size_type);
 
 	// Synonyms
 	size_type size() const;
@@ -60,7 +75,8 @@ public:
 	const_iterator cbegin() const;
 	const_iterator cend() const;
 
-	size_type length() const;
+	// Reads the value of the length field
+	uint32_t length() const;
 	// format();  Returns 0, 1, 2
 	// -> 0 => One track (always => ntrks() == 1)
 	// -> 1 => One or more simultaneous tracks
@@ -73,15 +89,17 @@ public:
 	// Note:  Number of MTrks, not the number of "chunks"
 	int32_t set_ntrks(int32_t);
 	time_division_t set_division(time_division_t);
-	size_type set_length(size_type);
+	uint32_t set_length(uint32_t);
 	
 	bool verify() const;
-
-	// TODO:  Gross
-	bool set(const std::vector<unsigned char>&);
-	bool set(const validate_mthd_chunk_result_t&);
 private:
-	std::vector<unsigned char> d_ {};
+	void set_to_default_value();
+	std::vector<unsigned char> d_ {
+		// MThd                   chunk length == 6
+		0x4Du,0x54u,0x68u,0x64u,  0x00u,0x00u,0x00u,0x06u,
+		// Fmt 1      ntrks         time-div == 120 tpq
+		0x00u,0x01u,  0x00u,0x00u,  0x00u,0x78u
+	};
 };
 std::string print(const mthd_t&);
 
@@ -117,28 +135,6 @@ uint16_t get_tpq(time_division_t, uint16_t=0);
 
 
 
-
-//
-// SMPTE => Society of Motion Picture and Television Engineers 
-// 16-bit:  [[1] frames-per-second] [resolution-within-frame]
-//
-enum class midi_time_division_field_type_t {
-	ticks_per_quarter,
-	SMPTE
-};
-midi_time_division_field_type_t detect_midi_time_division_type(uint16_t);
-uint16_t interpret_tpq_field(uint16_t);  // assumes midi_time_division_field_type_t::ticks_per_quarter
-struct midi_smpte_field {
-	
-	int8_t time_code_fmt {0};  
-
-	// Number of subframes per frame (=> ticks per frame)
-	// Common values (std p.133): "4 (MIDI time code resolution),
-	// 8, 10, 80 (bit resolution), or 100"
-	uint8_t units_per_frame {0};  // ~ticks-per-frame
-};
-// assumes midi_time_division_field_type_t::SMPTE
-midi_smpte_field interpret_smpte_field(uint16_t);  
 double ticks_per_second();
 double seconds_per_tick();
 

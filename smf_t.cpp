@@ -167,7 +167,7 @@ const std::string& smf_t::set_fname(const std::string& fname) {
 	return (*this).fname_;
 }
 void smf_t::set_mthd(const validate_mthd_chunk_result_t& val_mthd) {
-	this->mthd_.set(val_mthd);
+	//this->mthd_.set(val_mthd);
 }
 
 std::string print(const smf_t& smf) {
