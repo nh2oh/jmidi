@@ -5,6 +5,133 @@
 #include <algorithm>  // std::copy() in mthd_t::set(), std::clamp()
 #include <cmath>  // std::abs()
 
+tpq_t operator ""_tpq(unsigned long long val) {
+	return tpq_t {static_cast<uint16_t>(val)};
+}
+time_code_t operator ""_time_code(unsigned long long val) {
+	long long sval = static_cast<long long>(val);
+	return time_code_t {static_cast<int8_t>(sval)};
+}
+time_code_t& time_code_t::operator-() {
+	return *this;
+}
+subframes_t operator ""_subframes(unsigned long long val) {
+	return subframes_t {static_cast<uint8_t>(val)};
+}
+
+
+//
+// time-division field stuff
+//
+time_division_t::time_division_t(uint16_t val) {
+	// val is the value of the d_ array deserialized as a BE-encoded quantity
+	if ((val>>15) == 1) {  // smpte
+		// TODO:  By my reading of the std, it seems to me i should be
+		// masking w/ 0x7Fu below...
+		unsigned char high = (val>>8);//&0x7Fu;
+		// Interpret the bit-pattern of high as a signed int8
+		int8_t tcf = 0;
+		auto p_tcf = static_cast<unsigned char*>(static_cast<void*>(&tcf));
+		*p_tcf = high;
+		if ((tcf != -24) && (tcf != -25) 
+				&& (tcf != -29) && (tcf != -30)) {
+			tcf = -24;
+		}
+		this->d_[0] = *p_tcf;
+		this->d_[0] |= 0x80u;
+		this->d_[1] = (val&0x00FFu);
+	} else {  // tpq; high bit of val is clear
+		this->d_[0] = (val>>8);
+		this->d_[1] = (val&0x00FFu);
+	}
+}
+time_division_t::time_division_t(tpq_t tpq) {
+	this->d_[0] = ((tpq.value)>>8);
+	this->d_[1] = ((tpq.value)&0x00FFu);
+}
+time_division_t::time_division_t(time_code_t tcf, subframes_t upf) {
+	if ((tcf.value != -24) && (tcf.value != -25) 
+			&& (tcf.value != -29) && (tcf.value != -30)) {
+		tcf.value = -24;
+	}
+	// The high-byte of val has the bit 8 set, and bits [7,0] have the 
+	// bit-pattern of tcf.  The low-byte has the bit-pattern of upf.  
+	auto p_tcf = static_cast<unsigned char*>(static_cast<void*>(&(tcf.value)));
+	this->d_[0] = *p_tcf;
+	this->d_[0] |= 0x80u;
+	this->d_[1] = upf.value;
+}
+// Since the time_division_t ctors enforce the always-valid-data invariant,
+// this always returns a valid raw value, and no checks made in the other
+// getters are needed here.  
+uint16_t time_division_t::raw_value() const {
+	uint16_t result = 0;
+	result += this->d_[0];
+	result <<= 8;
+	result += this->d_[1];
+	return result;
+}
+smpte_t time_division_t::get_smpte() const {
+	smpte_t result;
+	result.time_code = static_cast<int8_t>(this->d_[0]);
+	result.subframes = static_cast<int8_t>(this->d_[1]);
+	if ((result.time_code != -24) && (result.time_code != -25) 
+			&& (result.time_code != -29) && (result.time_code != -30)) {
+		result.time_code = -24;
+	}
+	return result;
+}
+uint16_t time_division_t::get_tpq() const {
+	uint16_t result = ((this->raw_value()) & 0x7FFFu);
+	return result;
+}
+time_division_t make_time_division_tpq(uint16_t tpq) {
+	time_division_t result(tpq_t{tpq});
+	return result;
+}
+time_division_t make_time_division_smpte(int8_t tcf, uint8_t upf) {
+	// "time-code-format," and "units-per-frame"
+	time_division_t result(time_code_t{tcf}, subframes_t{upf});
+	return result;
+}
+time_division_t::type type(time_division_t tdf) {
+	if ((tdf.raw_value()>>15) == 1) {
+		return time_division_t::type::smpte;
+	} else {
+		return time_division_t::type::ticks_per_quarter;
+	}
+}
+bool is_smpte(time_division_t tdf) {
+	return (tdf.raw_value()>>15==1);
+}
+bool is_tpq(time_division_t tdf) {
+	return (tdf.raw_value()>>15==0);
+}
+int8_t get_time_code_fmt(time_division_t tdf, int8_t def) {
+	if (is_smpte(tdf)) {
+		return static_cast<int8_t>(tdf.raw_value()>>8);
+	} else {
+		return def;
+	}
+}
+uint8_t get_units_per_frame(time_division_t tdf, uint8_t def) {
+	if (is_smpte(tdf)) {
+		return static_cast<uint8_t>(tdf.raw_value() & 0x00FFu);
+	} else {
+		return def;
+	}
+}
+uint16_t get_tpq(time_division_t tdf, uint16_t def) {
+	if (is_tpq(tdf)) {
+		return (tdf.raw_value() & 0x7FFFu);
+	} else {
+		return def;
+	}
+}
+
+
+
+
 mthd_t::mthd_t(int32_t fmt, int32_t ntrks, time_division_t tdf) {
 	this->set_format(fmt);
 	this->set_ntrks(ntrks);
@@ -72,9 +199,7 @@ int32_t mthd_t::ntrks() const {
 	return read_be<uint16_t>(this->d_.cbegin()+8+2,this->d_.cend());
 }
 time_division_t mthd_t::division() const {
-	time_division_t result;
-	result.val_ = read_be<uint16_t>(this->d_.cbegin()+8+2+2,this->d_.cend());
-	return get(result);
+	return time_division_t(read_be<uint16_t>(this->d_.cbegin()+12,this->d_.cend()));
 }
 int32_t mthd_t::set_format(int32_t f) {
 	if (this->d_.size() < 14) {
@@ -97,8 +222,7 @@ time_division_t mthd_t::set_division(time_division_t tdf) {
 	if (this->d_.size() < 14) {
 		this->d_.resize(14,0x00u);
 	}
-	tdf = get(tdf);
-	write_16bit_be(tdf.val_,this->d_.begin()+12);
+	write_16bit_be(tdf.raw_value(),this->d_.begin()+12);
 	return this->division();
 }
 uint32_t mthd_t::set_length(uint32_t len) {
@@ -140,79 +264,5 @@ std::string& print(const mthd_t& mthd, std::string& s) {
 	return s;
 }
 
-
-//
-// time-division field stuff
-//
-bool verify(time_division_t tdf) {
-	if (is_smpte(tdf)) {
-		auto tcf = get_time_code_fmt(tdf);
-		if ((tcf != -24) && (tcf != -25) 
-				&& (tcf != -29) && (tcf != -30)) {
-			return false;
-		}
-	}
-	return true;
-}
-time_division_t get(time_division_t tdf, time_division_t def) {
-	if (!verify(tdf)) {
-		return def;
-	} else {
-		return tdf;
-	}
-}
-time_division_t make_time_division_tpq(uint16_t tpq) {
-	time_division_t result;
-	result.val_ = (tpq & 0x7FFFu);
-	return result;
-}
-time_division_t make_time_division_smpte(int8_t tcf, uint8_t upf) {
-	// "time-code-format," and "units-per-frame"
-	time_division_t result;
-	if ((tcf != -24) && (tcf != -25) 
-				&& (tcf != -29) && (tcf != -30)) {
-		tcf = -24;
-	}
-	auto p_src = static_cast<unsigned char*>(static_cast<void*>(&tcf));
-	auto p_dest = static_cast<unsigned char*>(static_cast<void*>(&(result.val_)));
-	*p_dest++ = *p_src;
-	result.val_ |= 0x8000u;
-	result.val_ += (0x00FFu & upf);
-	return result;
-}
-time_division_t::type type(time_division_t tdf) {
-	if ((tdf.val_>>15) == 1) {
-		return time_division_t::type::smpte;
-	} else {
-		return time_division_t::type::ticks_per_quarter;
-	}
-}
-bool is_smpte(time_division_t tdf) {
-	return (tdf.val_>>15==1);
-}
-bool is_tpq(time_division_t tdf) {
-	return (tdf.val_>>15==0);
-}
-int8_t get_time_code_fmt(time_division_t tdf, int8_t def) {
-	if (is_smpte(tdf)) {
-		return static_cast<int8_t>(tdf.val_>>8);
-	} else {
-		return def;
-	}
-}
-uint8_t get_units_per_frame(time_division_t tdf, uint8_t def) {
-	if (is_smpte(tdf)) {
-		return static_cast<uint8_t>(tdf.val_ & 0x00FFu);
-	} else {
-		return def;
-	}
-}
-uint16_t get_tpq(time_division_t tdf, uint16_t def) {
-	if (is_tpq(tdf)) {
-		return (tdf.val_ & 0x7FFFu);
-	} else {
-		return def;
-	}
-}
 
 
