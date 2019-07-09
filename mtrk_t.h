@@ -173,6 +173,7 @@ public:
 	// no longer an EOT meta event at the end of the sequence.  
 	void clear();
 	void resize(uint32_t);
+	void reserve(size_type);
 
 	// TODO:  This substantially duplicates the functionality of 
 	// make_mtrk(const unsigned char*, uint32_t);
@@ -184,8 +185,6 @@ public:
 		operator bool() const;
 	};
 	validate_t validate() const;
-
-	friend maybe_mtrk_t make_mtrk(const unsigned char*, uint32_t);
 private:
 	std::vector<mtrk_event_t> evnts_ {};
 };
@@ -218,8 +217,10 @@ bool is_equivalent_permutation(mtrk_t::const_iterator,mtrk_t::const_iterator,
 double duration(const mtrk_t&, const midi_time_t&);
 double duration(mtrk_t::const_iterator&, mtrk_t::const_iterator&, const midi_time_t&);
 
-// Declaration matches the in-class friend declaration to make the 
-// name visible for lookup outside the class.  
+// maybe_mtrk_t make_mtrk(const unsigned char*, uint32_t);
+// If the maybe_mtrk_t object returned is invalid, the .mtrk field may
+// contain a partial MTrk, probably lacking an end-of-track meta event,
+// containing orphan note-on events, etc.  
 maybe_mtrk_t make_mtrk(const unsigned char*, uint32_t);
 struct maybe_mtrk_t {
 	std::string error {"No error"};

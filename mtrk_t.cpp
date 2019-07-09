@@ -232,6 +232,9 @@ void mtrk_t::clear() {
 void mtrk_t::resize(uint32_t n) {
 	this->evnts_.resize(n);
 }
+void mtrk_t::reserve(mtrk_t::size_type n) {
+	this->evnts_.reserve(n);
+}
 mtrk_t::validate_t mtrk_t::validate() const {
 	mtrk_t::validate_t r {};
 
@@ -507,9 +510,8 @@ maybe_mtrk_t make_mtrk(const unsigned char *p, uint32_t max_sz) {
 	
 	// From experience with thousands of midi files encountered in the wild,
 	// the average number of bytes per MTrk event is about 3.  
-	std::vector<mtrk_event_t> evec;  // "event vector"
 	auto approx_nevents = static_cast<double>(chunk_detect.data_size)/3.0;
-	evec.reserve(approx_nevents);
+	result.mtrk.reserve(static_cast<mtrk_t::size_type>(approx_nevents));
 	// vector sounding holds a list of note-on events for which a 
 	// corresponding note-off event has not yet been encountered.  When the
 	// corresponding note-off event is found, the on event is cleared from 
@@ -519,16 +521,15 @@ maybe_mtrk_t make_mtrk(const unsigned char *p, uint32_t max_sz) {
 	//    on event only.  
 	// -> Orphan note-off events are not considered errors
 	struct sounding_notes_t {
-		uint32_t offset {0};
+		uint32_t offset {0};  // Offset from start of the MTrk header
 		int ch {0};
-		int note {0};  // note number
+		int note {0};  // note number == p1
 	};
 	std::vector<sounding_notes_t> sounding;
 	sounding.reserve(10);  // Expect <= 10 simultaneously-sounding notes ???
-	midi_ch_event_t curr_chev_data;  //mtrk_event_t::channel_event_data_t curr_chev_data;
+	midi_ch_event_t curr_chev_data;
 	auto is_matching_off = [&curr_chev_data](const sounding_notes_t& sev)->bool {
-		return (curr_chev_data.ch==sev.ch
-			&& curr_chev_data.p1==sev.note);
+		return is_onoff_pair(sev.ch,sev.note,curr_chev_data.ch,curr_chev_data.p1);
 	};
 
 	// Process the data section of the mtrk chunk until the number of bytes
@@ -549,7 +550,8 @@ maybe_mtrk_t make_mtrk(const unsigned char *p, uint32_t max_sz) {
 		curr_event = validate_mtrk_event_dtstart(curr_p,rs,curr_max_sz);
 		if (curr_event.error!=mtrk_event_validation_error::no_error) {
 			result.error = ("Error validating the MTrk event at offset o = "
-				+ std::to_string(o) + "\n\t" + print(curr_event.error));
+				+ std::to_string(o) + " (from the MTrk header):  \n"
+				+ print(curr_event.error));
 			return result;
 		}
 		
@@ -560,15 +562,15 @@ maybe_mtrk_t make_mtrk(const unsigned char *p, uint32_t max_sz) {
 		
 		// Test for note-on/note-off event
 		if (is_note_on(curr_mtrk_event)) {
-			curr_chev_data = get_channel_event(curr_mtrk_event);  //curr_mtrk_event.midi_data();
+			curr_chev_data = get_channel_event(curr_mtrk_event);
 			sounding.push_back({o,curr_chev_data.ch,curr_chev_data.p1});
 		} else if (is_note_off(curr_mtrk_event)) {
-			curr_chev_data = get_channel_event(curr_mtrk_event);  //.midi_data();
+			curr_chev_data = get_channel_event(curr_mtrk_event);
 			auto it = std::find_if(sounding.begin(),sounding.end(),
 				is_matching_off);
 			if (it!=sounding.end()) {
 				sounding.erase(it);
-			}  //it==sounding.end() => orphan "off" event
+			}
 		}
 
 		// Test for end-of-track msg; finding the eot will cause the loop to
@@ -587,7 +589,7 @@ maybe_mtrk_t make_mtrk(const unsigned char *p, uint32_t max_sz) {
 			return result;
 		}
 
-		evec.push_back(curr_mtrk_event);
+		result.mtrk.push_back(curr_mtrk_event);
 		o += curr_event.size;
 	}
 
@@ -599,28 +601,27 @@ maybe_mtrk_t make_mtrk(const unsigned char *p, uint32_t max_sz) {
 	// > the number of bytes spanned by the actual events (which could 
 	// perhaps => that the track is 0-padded after the end-of-track msg).  
 	if (o!=chunk_detect.size || !found_eot) {
-		result.error = "o!=chunk_detect.size || !found_eot:  "
-			"o==" + std::to_string(o) + "; "
-			"chunk_detect.size==" + std::to_string(chunk_detect.size) + "; "
-			"found_eot===" + std::to_string(found_eot);
+		result.error = "Chunk-size error; either (1) encountered an end-of-track "
+			"event at an offset lower than expected from the value of length "
+			"field in the chunk header, or (2) processed the chunk header-specified "
+			"number of bytes but did not encounter an end-of-tack event.  \n"
+			"\toffset = " + std::to_string(o) + " (from start of the MTrk header)\n"
+			"\texpected chunk size = " + std::to_string(chunk_detect.size) + "\n"
+			"\tfound_eot? = " + std::to_string(found_eot);
 		return result;
 	}
 
-	// std::vector<sounding_notes_t> sounding must be empty
 	if (sounding.size() > 0) {
 		result.error = "Orphan note-on events found (sounding.size() > 0):  \n";
-		result.error += "\tch\tnote\n";
+		result.error += "\tch\tnote\toffset (from MTrk start)\n";
 			for (int i=0; i<sounding.size(); ++i) {
 				result.error += ("\t" + std::to_string(sounding[i].ch));
 				result.error += ("\t" + std::to_string(sounding[i].note));
-				result.error += ("\toffset== " + std::to_string(sounding[i].offset)+"\n");
+				result.error += ("\t " + std::to_string(sounding[i].offset)+"\n");
 			}
 		return result;
 	}
 
-	result.mtrk.evnts_ = evec;
-	//result.mtrk.data_size_ = chunk_detect.data_size;
-	//result.mtrk.cumtk_ = cumtk;
 	return result;
 }  // make_mtrk()
 

@@ -372,7 +372,7 @@ midi_ch_event_t get_channel_event(const mtrk_event_t& ev, midi_ch_event_t def) {
 	return result;
 }
 midi_ch_event_t get_channel_event_impl(const mtrk_event_t& ev) {
-// Note that get_channel_event(), which calls get_channel_event_impl(),
+	// Note that get_channel_event(), which calls get_channel_event_impl(),
 	// relies on the ability to detect invalid values of a midi_ch_event_t
 	// in deciding whether to return the result of get_channel_event_impl()
 	// or the default midi_ch_event_t.  Hence it is important that non- 

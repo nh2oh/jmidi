@@ -1,5 +1,6 @@
 #include "midi_raw.h"
 #include "midi_vlq.h"
+#include "mthd_t.h"  // is_valid_time_division_raw_value()
 #include <string>
 #include <cstdint>
 #include <cmath>  // std::round()
@@ -102,8 +103,21 @@ bool is_channel_mode(const midi_ch_event_t& md) {
 
 
 
-
-
+chunk_type chunk_type_from_id(const unsigned char *p) {
+	uint32_t id = read_be<uint32_t>(p,p+sizeof(uint32_t));
+	if (id == 0x4D546864u) {  // Mthd
+		return chunk_type::header;
+	} else if (id == 0x4D54726Bu) {  // MTrk
+		return chunk_type::track;
+	} else {  // Verify all 4 bytes are valid ASCII
+		for (int n=0; n<4; ++n) {
+			if (*p>=127 || *p<32) {
+				return chunk_type::invalid;
+			}
+		}
+		return chunk_type::unknown;
+	}
+}
 validate_chunk_header_result_t validate_chunk_header(const unsigned char *p, uint32_t max_size) {
 	validate_chunk_header_result_t result {};
 	if (max_size < 8) {
@@ -131,22 +145,6 @@ validate_chunk_header_result_t validate_chunk_header(const unsigned char *p, uin
 	result.error = chunk_validation_error::no_error;
 	return result;
 }
-chunk_type chunk_type_from_id(const unsigned char *p) {
-	uint32_t id = read_be<uint32_t>(p,p+sizeof(uint32_t));
-	if (id == 0x4D546864u) {  // Mthd
-		return chunk_type::header;
-	} else if (id == 0x4D54726Bu) {  // MTrk
-		return chunk_type::track;
-	} else {  // Verify all 4 bytes are valid ASCII
-		for (int n=0; n<4; ++n) {
-			if (*p>=127 || *p<32) {
-				return chunk_type::invalid;
-			}
-		}
-		return chunk_type::unknown;
-	}
-}
-
 std::string print_error(const validate_chunk_header_result_t& chunk) {
 	std::string result ="Invalid chunk header:  ";
 	switch (chunk.error) {
@@ -178,17 +176,18 @@ validate_mthd_chunk_result_t validate_mthd_chunk(const unsigned char *p, uint32_
 		}
 		return result;
 	}
-
 	if (chunk_detect.data_size < 6) {
 		result.error = mthd_validation_error::data_length_invalid;
 		return result;
 	}
-	
+	// Ensuring chunk_detect.data_size >= 6 means overall size is @ least
+	// 14 bytes (and that max_size >= 14)
+
 	// <Header Chunk> = <chunk type> <length> <format> <ntrks> <division> 
 	//                   MThd uint32_t uint16_t uint16_t uint16_t
 	uint16_t format = read_be<uint16_t>(p+8,p+max_size);
 	uint16_t ntrks = read_be<uint16_t>(p+10,p+max_size);
-
+	uint16_t division = read_be<uint16_t>(p+12,p+max_size);
 	if (ntrks==0) {
 		result.error = mthd_validation_error::zero_tracks;
 		return result;
@@ -197,7 +196,10 @@ validate_mthd_chunk_result_t validate_mthd_chunk(const unsigned char *p, uint32_
 		result.error = mthd_validation_error::inconsistent_ntrks_format_zero;
 		return result;
 	}
-
+	if (!is_valid_time_division_raw_value(division)) {
+		result.error = mthd_validation_error::invalid_time_division_field;
+		return result;
+	}
 	result.error = mthd_validation_error::no_error;
 	result.size = chunk_detect.size;
 	result.p = p;  // pointer to the 'M' of "MThd"..., ie the _start_ of the mthd chunk
@@ -226,11 +228,15 @@ std::string print_error(const validate_mthd_chunk_result_t& mthd) {
 			result += "The value of field 'format' == 0, but ntrks > 1; "
 				"format 0 SMF's must have exactly 1 track.";
 			break;
+		case mthd_validation_error::invalid_time_division_field:
+			result += "The value of field 'division' is invalid.  It is probably "
+				"a SMPTE-type field trying to encode a time-code of something other "
+				"than -24, -25, -29, or -30.  ";
+			break;
 		case mthd_validation_error::unknown_error:
 			result += "Unknown error.";
 			break;
 	}
-
 	return result;
 }
 

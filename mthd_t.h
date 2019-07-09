@@ -1,10 +1,10 @@
 #pragma once
-#include "midi_raw.h"
+#include "midi_raw.h"  // validate_mthd_result_t etc for mthd ctors
 #include "..\..\generic_iterator.h"
 #include <cstdint>
 #include <string>
 #include <vector>
-#include <type_traits>
+#include <array>
 
 //
 // class time_division_t
@@ -98,6 +98,7 @@ time_division_t make_time_division_smpte(int8_t,uint8_t);
 time_division_t::type type(time_division_t);
 bool is_smpte(time_division_t);
 bool is_tpq(time_division_t);
+bool is_valid_time_division_raw_value(uint16_t);
 // The "default" values of 0 specified in the get_() functions are invalid
 // for the respective quantity.  If the time_division_t passed in is not
 // the correct format for the given get_() function, the caller can detect 

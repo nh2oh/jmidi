@@ -69,7 +69,7 @@ struct midi_ch_event_t {
 	uint8_t p1 {0x00u};
 	uint8_t p2 {0x00u};
 };
-// TODO:  Rename to "verify" ?
+
 bool verify(const midi_ch_event_t&);
 // "Forcefully" sets bits in the fields of the input midi_ch_event_t such
 // that they are valid values.  
@@ -146,6 +146,14 @@ std::string print_error(const validate_chunk_header_result_t&);
 //    longer than 6.")
 // -> ntrks==1 if format==0
 //    ntrks==0 is not allowed.  
+// -> division specifies a timecode of -24 || -25 || -29 ||-30 if it is a
+//    SMPTE-type field.  
+// 
+// Although the std only defines format's 0,1,2, a format field w/ any other
+// value is not considerded an error.  From p.143:  "We may decide to define
+// other format IDs to support other structures. A program encountering an 
+// unknown format ID may still read other MTrk chunks it finds from the file,
+// as format 1 or 2, if its user can make sense..."
 //
 enum class mthd_validation_error : uint8_t {
 	invalid_chunk,
@@ -153,6 +161,7 @@ enum class mthd_validation_error : uint8_t {
 	data_length_invalid,
 	zero_tracks,
 	inconsistent_ntrks_format_zero,
+	invalid_time_division_field,
 	unknown_error,
 	no_error
 };

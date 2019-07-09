@@ -125,6 +125,16 @@ private:
 };
 std::string print(const smf_t&);
 
+// maybe_smf_t read_smf(const std::string& filename);
+// Reads in the smf indicated by filename.  The maybe_smf_t returned can
+// be tested for validity through an implicit conversion to bool.  Note 
+// that if the maybe_smf_t tests false (the smf is invalid for some reason),
+// no guarantees about the value of .smf are made.  In general, .smf will
+// contain a partial smf, ie, one without all the MTrks as in the file
+// and/or with truncated MTrks (probably lacking an end-of-track meta 
+// event), and with MThd data inconsistent with the track data.  This is
+// done because users may find the partial file data useful for 
+// troubleshooting the error.  
 struct maybe_smf_t {
 	smf_t smf;
 	std::string error {"No error"};

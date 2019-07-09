@@ -1,10 +1,12 @@
 #include "mthd_t.h"
 #include <cstdint>
 #include <string>
-#include <vector>
-#include <algorithm>  // std::copy() in mthd_t::set(), std::clamp()
-#include <cmath>  // std::abs()
+#include <algorithm>  // std::copy() in mthd_t ctor(s), std::clamp()
+#include <limits>  // in format, ntrks, ... setters
 
+//
+// time-division field stuff
+//
 tpq_t operator ""_tpq(unsigned long long val) {
 	return tpq_t {static_cast<uint16_t>(val)};
 }
@@ -19,10 +21,6 @@ subframes_t operator ""_subframes(unsigned long long val) {
 	return subframes_t {static_cast<uint8_t>(val)};
 }
 
-
-//
-// time-division field stuff
-//
 time_division_t::time_division_t(uint16_t val) {
 	// val is the value of the d_ array deserialized as a BE-encoded quantity
 	if ((val>>15) == 1) {  // smpte
@@ -107,6 +105,24 @@ bool is_smpte(time_division_t tdf) {
 bool is_tpq(time_division_t tdf) {
 	return (tdf.raw_value()>>15==0);
 }
+bool is_valid_time_division_raw_value(uint16_t val) {
+	if ((val>>15) == 1) {  // smpte
+		// TODO:  By my reading of the std, it seems to me i should be
+		// masking w/ 0x7Fu below...
+		unsigned char high = (val>>8);//&0x7Fu;
+		// Interpret the bit-pattern of high as a signed int8
+		int8_t tcf = 0;
+		auto p_tcf = static_cast<unsigned char*>(static_cast<void*>(&tcf));
+		*p_tcf = high;
+		if ((tcf != -24) && (tcf != -25) 
+				&& (tcf != -29) && (tcf != -30)) {
+			return false;
+		}
+	} else {  // tpq; high bit of val is clear
+		//...
+	}
+	return true;
+}
 int8_t get_time_code_fmt(time_division_t tdf, int8_t def) {
 	if (is_smpte(tdf)) {
 		return static_cast<int8_t>(tdf.raw_value()>>8);
@@ -130,8 +146,9 @@ uint16_t get_tpq(time_division_t tdf, uint16_t def) {
 }
 
 
-
-
+//
+// mthd_t class & related methods
+//
 mthd_t::mthd_t(int32_t fmt, int32_t ntrks, time_division_t tdf) {
 	this->set_format(fmt);
 	this->set_ntrks(ntrks);
@@ -147,7 +164,6 @@ mthd_t::mthd_t(const unsigned char *p, mthd_t::size_type n) {
 	this->d_.reserve(n);
 	std::copy(p,p+n,std::back_inserter(this->d_));
 }
-
 
 mthd_t::size_type mthd_t::size() const {
 	return this->d_.size();
@@ -185,7 +201,6 @@ mthd_t::const_iterator mthd_t::cbegin() const {
 mthd_t::const_iterator mthd_t::cend() const {
 	return mthd_t::const_iterator(this->d_.data()) + this->d_.size();
 }
-
 
 uint32_t mthd_t::length() const {
 	int32_t l = read_be<uint32_t>(this->d_.cbegin()+4,this->d_.cend());
