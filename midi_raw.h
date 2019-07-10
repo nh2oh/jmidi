@@ -132,6 +132,8 @@ struct validate_chunk_header_result_t {
 };
 validate_chunk_header_result_t validate_chunk_header(const unsigned char*, uint32_t=0);
 std::string print_error(const validate_chunk_header_result_t&);
+int32_t mthd_get_ntrks(const unsigned char*, uint32_t, int32_t=-1);
+
 
 //
 // Validation & processing of MThd chunks

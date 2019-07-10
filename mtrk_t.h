@@ -222,6 +222,7 @@ double duration(mtrk_t::const_iterator&, mtrk_t::const_iterator&, const midi_tim
 // contain a partial MTrk, probably lacking an end-of-track meta event,
 // containing orphan note-on events, etc.  
 maybe_mtrk_t make_mtrk(const unsigned char*, uint32_t);
+maybe_mtrk_t make_mtrk_permissive(const unsigned char *p, uint32_t max_sz);
 struct maybe_mtrk_t {
 	std::string error {"No error"};
 	mtrk_t mtrk;

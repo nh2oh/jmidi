@@ -471,7 +471,6 @@ OIt print_hexascii(InIt beg, InIt end, OIt out, const sep_t& sep) {
 };
 
 
-
 /*
 //
 // A slightly less STL-ish overload...

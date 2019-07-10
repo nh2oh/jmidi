@@ -207,15 +207,15 @@ std::string print(const smf_t& smf) {
 maybe_smf_t::operator bool() const {
 	return this->error == "No error";
 }
-maybe_smf_t read_smf(const std::string& fn) {
+maybe_smf_t read_smf(const std::filesystem::path& fp) {
 	maybe_smf_t result {};
 	
 	// Read the file into fdata, close the file
 	std::vector<unsigned char> fdata {};
-	std::filesystem::path fp(fn);
+	//std::filesystem::path fp(fn);
 	std::basic_ifstream<unsigned char> f(fp,std::ios_base::in|std::ios_base::binary);
 	if (!f.is_open() || !f.good()) {
-		result.error = "Unable to open file:  " + fn + "\n"
+		result.error = "Unable to open file:  " + fp.string() + "\n"
 			"(!f.is_open() || !f.good()) for file object "
 			"std::basic_ifstream<unsigned char> f";
 		return result;
@@ -227,7 +227,7 @@ maybe_smf_t read_smf(const std::string& fn) {
 	f.read(fdata.data(),fsize);
 	f.close();
 
-	result.smf.set_fname(fn);
+	result.smf.set_fname(fp.string());
 
 	uint32_t o {0};  // Global offset into the fdata vector
 	const unsigned char *p = fdata.data();
@@ -243,6 +243,7 @@ maybe_smf_t read_smf(const std::string& fn) {
 		result.error += print_error(val_mthd);
 		return result;
 	}
+	auto expect_ntrks = mthd_get_ntrks(p,curr_chunk.size-o,-1);
 	result.smf.set_mthd(val_mthd);
 	o += curr_chunk.size;
 
@@ -250,7 +251,7 @@ maybe_smf_t read_smf(const std::string& fn) {
 	// Note: Thid loop terminates based on fdata.size(), not on the number of 
 	// chunks read; mthd_.ntrks() reports the number of track chunks, but not
 	// the number of other chunk types.  
-	while (o<fdata.size()) {
+	while ((o<fdata.size()) && (n_mtrks_read<expect_ntrks)) {
 		const unsigned char *curr_p = p+o;
 		uint32_t curr_max_sz = fdata.size()-o;
 		curr_chunk = validate_chunk_header(curr_p,curr_max_sz);
@@ -264,7 +265,7 @@ maybe_smf_t read_smf(const std::string& fn) {
 			return result;
 		}
 		if (curr_chunk.type == chunk_type::track) {
-			auto curr_mtrk = make_mtrk(curr_p,curr_max_sz);
+			auto curr_mtrk = make_mtrk_permissive(curr_p,curr_max_sz);
 			// push_back the mtrk even if invalid; make_mtrk will return a
 			// partial mtrk terminating at the event right before the error,
 			// and this partial mtrk may be useful to the user.  
@@ -287,19 +288,29 @@ maybe_smf_t read_smf(const std::string& fn) {
 			return result;
 		}
 
+		// Note that depending on how make_mtrk(curr_p,curr_max_sz) reacts 
+		// when an end-of-track message is encountered prior to reading the
+		// expected number of bytes curr_chunk.size bytes (which comes 
+		// directly from the MTrk header), or depending on how it reacts if
+		// no EOT is encountered at curr_chunk.size bytes but where 
+		// curr_chunk.size < curr_max_sz, incrementing o in this way may
+		// not advance curr_p to the start of the next chunk.  
 		o += curr_chunk.size;
 	}
 	// If o<fdata.size(), might indicate the file is zero-padded after 
-	// the final mtrk chunk.  o>fdata.size() is clearly an error.  
+	// the final mtrk chunk.  o>fdata.size() is clearly an error, but
+	// should be impossible:  if validate_chunk_header(...,max_size) returns a
+	// curr_chunk.size > max_size, the loop should return early on the
+	// chunk_validation_error::...
 	if (o != fdata.size()) {
 		result.error = "offset (" + std::to_string(o) + ") "
 			"!= fdata.size() (" + std::to_string(fdata.size()) + ").";
 		return result;
 	}
 
-	if (n_mtrks_read != result.smf.mthd().ntrks()) {
+	if (n_mtrks_read != expect_ntrks) {
 		result.error = "The number-of-tracks reported by the header chunk "
-			"(" + std::to_string(result.smf.mthd().ntrks()) + ") is "
+			"(" + std::to_string(expect_ntrks) + ") is "
 			"inconsistent with the number of MTrk chunks found while reading "
 			"in the file (" + std::to_string(n_mtrks_read) + ").  ";
 		return result;

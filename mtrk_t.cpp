@@ -497,7 +497,6 @@ double duration(mtrk_t::const_iterator& beg, mtrk_t::const_iterator& end,
 maybe_mtrk_t::operator bool() const {
 	return this->error=="No error";
 }
-
 maybe_mtrk_t make_mtrk(const unsigned char *p, uint32_t max_sz) {
 	maybe_mtrk_t result {};
 	auto chunk_detect = validate_chunk_header(p,max_sz);
@@ -624,6 +623,69 @@ maybe_mtrk_t make_mtrk(const unsigned char *p, uint32_t max_sz) {
 
 	return result;
 }  // make_mtrk()
+
+maybe_mtrk_t make_mtrk_permissive(const unsigned char *p, uint32_t max_sz) {
+	maybe_mtrk_t result {};
+	auto chunk_detect = validate_chunk_header(p,max_sz);
+	if (chunk_detect.type != chunk_type::track) {
+		result.error = "Error validating MTrk chunk:  "
+			"validate_chunk_header() reported:\n\t"
+			+ print_error(chunk_detect);
+		return result;
+	}
+	
+	// From experience with thousands of midi files encountered in the wild,
+	// the average number of bytes per MTrk event is about 3.  
+	auto approx_nevents = static_cast<double>(chunk_detect.data_size)/3.0;
+	result.mtrk.reserve(static_cast<mtrk_t::size_type>(approx_nevents));
+
+	// Process the data section of the mtrk chunk until the number of bytes
+	// processed is as indicated by chunk_detect.size, or an end-of-track 
+	// meta event is encountered.  
+	bool found_eot = false;
+	uint32_t o = 8;  // offset; skip "MTrk" & the 4-byte length
+	unsigned char rs {0};  // value of the running-status
+	validate_mtrk_event_result_t curr_event;
+	while ((o<chunk_detect.size) && !found_eot) {
+		const unsigned char *curr_p = p+o;  // ptr to start of present event
+		uint32_t curr_max_sz = chunk_detect.size-o;
+		
+		curr_event = validate_mtrk_event_dtstart(curr_p,rs,curr_max_sz);
+		if (curr_event.error!=mtrk_event_validation_error::no_error) {
+			result.error = "Error validating the MTrk event at offset o = "
+				+ std::to_string(o) + " (from the MTrk header):  \n"
+				+ print(curr_event.error);
+			return result;
+		}
+		
+		rs = curr_event.running_status;
+		auto curr_mtrk_event = mtrk_event_t(curr_p,curr_event);
+
+		// Test for end-of-track msg; finding the eot will cause the loop to
+		// exit, so, if there is an "illegal" eot in the middle of the track,
+		// it will be caught below the loop when o is compared to 
+		// chunk_detect.size.  
+		if (!found_eot) {
+			found_eot = is_eot(curr_mtrk_event);
+		}
+
+		result.mtrk.push_back(curr_mtrk_event);
+		o += curr_event.size;
+	}
+
+	// The final event must be a meta-end-of-track msg.  The loop above
+	// exits when the eot event is encountered _or_ when 
+	// o>=chunk_detect.size, hence, it is possible at this point that 
+	// found_eot==false.  
+	if (!found_eot) {
+		result.error = "Error reading MTrk: processed "
+			+ std::to_string(chunk_detect.size) + " bytes (as specified in the "
+			"chunk header), but did not encounter an end-of-track event.  \n";
+		return result;
+	}
+
+	return result;
+}
 
 
 mtrk_t::iterator get_simultaneous_events(mtrk_t::iterator beg, 

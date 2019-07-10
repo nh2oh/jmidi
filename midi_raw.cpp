@@ -154,7 +154,7 @@ std::string print_error(const validate_chunk_header_result_t& chunk) {
 	result += "\n";
 	switch (chunk.error) {
 		case chunk_validation_error::chunk_header_size_exceeds_underlying:
-			result += "The underlying array is not large enough to accomodate "
+			result += "The underlying array is not large enough to accommodate "
 				"an 8-byte chunk header.";
 			break;
 		case chunk_validation_error::chunk_data_size_exceeds_underlying:
@@ -171,7 +171,12 @@ std::string print_error(const validate_chunk_header_result_t& chunk) {
 	}
 	return result;
 }
-
+int32_t mthd_get_ntrks(const unsigned char *p, uint32_t max_size, int32_t def) {
+	if ((max_size < 12) || (chunk_type_from_id(p) != chunk_type::header)) {
+		return def;
+	}
+	return read_be<uint16_t>(p+10,p+12);
+}
 
 validate_mthd_chunk_result_t validate_mthd_chunk(const unsigned char *p, uint32_t max_size) {
 	validate_mthd_chunk_result_t result {};

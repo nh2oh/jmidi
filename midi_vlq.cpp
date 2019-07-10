@@ -2,6 +2,7 @@
 #include <cstdint>
 
 
+
 midi_vl_field_interpreted midi_interpret_vl_field(const unsigned char* p) {
 	midi_vl_field_interpreted result {};
 	result.val = 0;
@@ -43,4 +44,7 @@ midi_vl_field_interpreted midi_interpret_vl_field(const unsigned char* p, uint32
 	result.is_valid = found_field_end;
 	return result;
 }
+
+
+
 

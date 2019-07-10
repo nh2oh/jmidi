@@ -5,7 +5,7 @@
 #include <string>
 #include <cstdint>
 #include <vector>
-
+#include <filesystem>
 
 //
 // smf_t
@@ -140,7 +140,7 @@ struct maybe_smf_t {
 	std::string error {"No error"};
 	operator bool() const;
 };
-maybe_smf_t read_smf(const std::string&);
+maybe_smf_t read_smf(const std::filesystem::path&);
 
 struct mtrk_event_range_t {
 	mtrk_event_t::const_iterator beg;
