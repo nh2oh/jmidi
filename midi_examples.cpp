@@ -15,9 +15,10 @@
 #include <optional>
 #include <vector>
 #include <iterator>
-
+#include <chrono>
 
 int midi_example() {
+	read_midi_directory();
 	//midi_clamped_value_testing();
 	//midi_setdt_testing();
 	//midi_mtrk_split_testing();
@@ -38,7 +39,8 @@ int midi_example() {
 	//testdata::print_meta_tests(mt_tests);
 	//testdata::print_midi_test_cases();
 
-	std::string fn = "D:\\cpp\\nh2oh\\au\\au\\gt_aulib\\test_data\\clementi_no_rs.mid";
+	std::string fn;
+	//fn = "D:\\cpp\\nh2oh\\au\\au\\gt_aulib\\test_data\\clementi_no_rs.mid";
 	//std::string fn = "D:\\cpp\\nh2oh\\au\\au\\gt_aulib\\test_data\\tc_a_rs.mid";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\CLEMENTI.MID";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\A7.mid";
@@ -47,6 +49,9 @@ int midi_example() {
 	//std::string fn = "C:\\Users\\ben\\Desktop\\twinkle.mid";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\test.mid";
 
+	// Invalid:
+	fn = "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\1\\10.mid";
+	/*
 	auto maybesmf = read_smf(fn);
 	if (!maybesmf) {
 		std::cout << "nope :(" << std::endl;
@@ -83,32 +88,47 @@ int midi_example() {
 	}
 	//std::cout << "print_linked_onoff_pairs(maybesmf.smf.get_track(2)):" << std::endl;
 	//std::cout << print_linked_onoff_pairs(maybesmf.smf.get_track(2)) << std::endl;
-
-	/*tk_integrator_t tki;
-	lyric_integrator_t lyri;
-	time_integrator_t timei;
-	std::vector<integrator_t*> vi;
-	vi.push_back(&tki);
-	vi.push_back(&lyri);
-	vi.push_back(&timei);
-	auto trk = maybesmf.smf.get_track(4);
-	int i=0;
-	for (const auto& e : trk) {
-		for (const auto& ie : vi) {
-			*ie += e;
-		}
-	
-		if (i%5==0) {
-			std::cout << print(e) << std::endl;
-			for (const auto& ie : vi) {
-				std::cout << "\t" << ie->print() << "\n";
-			}
-		}
-		std::cout << std::endl;
-	}*/
-
+	*/
 	return 0;
 }
+
+int read_midi_directory() {
+	std::filesystem::path bp("C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\");
+	auto rdi = std::filesystem::recursive_directory_iterator(bp.parent_path());
+	int n_midi_files = 0;
+	int n_err_files = 0;
+	for (const auto& dir_ent : rdi) {
+		if (!std::filesystem::is_regular_file(dir_ent)) {
+			continue;
+		}
+		auto curr_path = dir_ent.path();
+		auto ext = curr_path.extension().string();
+		if ((ext!=".mid") && (ext!=".midi")) {
+			continue;
+		}
+		
+		++n_midi_files;
+
+		auto ps = curr_path.string();
+		auto maybesmf = read_smf(ps);
+		std::cout << "File number " << n_midi_files << "\n" << ps << "\n";
+		if (!maybesmf) {
+			++n_err_files;
+			std::cout << "Error!  (" << n_err_files << ")\n" 
+				<< maybesmf.error << "\n";			
+		} else {
+			std::cout << "File Ok!\n" 
+				<< "Format = " << maybesmf.smf.format() << ", "
+				<< "N MTrks = " << maybesmf.smf.ntrks() << "\n";
+		}
+		std::cout << "==============================================="
+				"=================================\n\n";
+	}
+	return 0;
+}
+
+
+
 
 int midi_clamped_value_testing() {
 	int64_t toobig = 0x2FFFFFFF;

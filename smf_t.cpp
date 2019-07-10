@@ -233,8 +233,8 @@ maybe_smf_t read_smf(const std::string& fn) {
 	const unsigned char *p = fdata.data();
 	auto curr_chunk = validate_chunk_header(p,fdata.size());
 	if (curr_chunk.type != chunk_type::header) {
-		result.error += "curr_chunk.type != chunk_type::header at offset 0.  ";
-		result.error += "A valid midi file must begin w/ an MThd chunk.  \n";
+		result.error = "curr_chunk.type != chunk_type::header at offset 0.  ";
+			"A valid midi file must begin w/ an MThd chunk.  \n";
 		return result;
 	}
 	auto val_mthd = validate_mthd_chunk(p,curr_chunk.size-o);
@@ -253,13 +253,13 @@ maybe_smf_t read_smf(const std::string& fn) {
 	while (o<fdata.size()) {
 		const unsigned char *curr_p = p+o;
 		uint32_t curr_max_sz = fdata.size()-o;
-		auto curr_chunk = validate_chunk_header(curr_p,curr_max_sz);
+		curr_chunk = validate_chunk_header(curr_p,curr_max_sz);
 
 		if (curr_chunk.error != chunk_validation_error::no_error) {
 			result.error = "Error processing chunk " 
 				+ std::to_string(n_mtrks_read+n_uchks_read) + ":  " 
 				"(curr_chunk.error != chunk_validation_error::no_error)\n"
-				"\nat byte offset o==" + std::to_string(o) + "(from MThd start)\n";
+				"\tat byte offset o = " + std::to_string(o) + " (from MThd start)\n";
 			result.error += print_error(curr_chunk);
 			return result;
 		}
@@ -307,7 +307,6 @@ maybe_smf_t read_smf(const std::string& fn) {
 
 	return result;
 }
-
 
 std::vector<all_smf_events_dt_ordered_t> get_events_dt_ordered(const smf_t& smf) {
 	std::vector<all_smf_events_dt_ordered_t> result;

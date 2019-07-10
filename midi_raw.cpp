@@ -120,9 +120,10 @@ chunk_type chunk_type_from_id(const unsigned char *p) {
 }
 validate_chunk_header_result_t validate_chunk_header(const unsigned char *p, uint32_t max_size) {
 	validate_chunk_header_result_t result {};
+	result.p = p;
 	if (max_size < 8) {
 		result.type = chunk_type::invalid;
-		result.error = chunk_validation_error::size_exceeds_underlying;
+		result.error = chunk_validation_error::chunk_header_size_exceeds_underlying;
 		return result;
 	}
 
@@ -138,7 +139,7 @@ validate_chunk_header_result_t validate_chunk_header(const unsigned char *p, uin
 
 	if (result.size>max_size) {
 		result.type = chunk_type::invalid;
-		result.error = chunk_validation_error::size_exceeds_underlying;
+		result.error = chunk_validation_error::chunk_data_size_exceeds_underlying;
 		return result;
 	}
 
@@ -146,11 +147,19 @@ validate_chunk_header_result_t validate_chunk_header(const unsigned char *p, uin
 	return result;
 }
 std::string print_error(const validate_chunk_header_result_t& chunk) {
-	std::string result ="Invalid chunk header:  ";
+	std::string result ="Invalid chunk header:  \n";
+	if (chunk.error != chunk_validation_error::chunk_header_size_exceeds_underlying) {
+		print_hexascii(chunk.p, chunk.p+8, std::back_inserter(result), '\0',' ');
+	}
+	result += "\n";
 	switch (chunk.error) {
-		case chunk_validation_error::size_exceeds_underlying:
-			result += "The calculated chunk size exceeds "
-				"the size of the underlying array.";
+		case chunk_validation_error::chunk_header_size_exceeds_underlying:
+			result += "The underlying array is not large enough to accomodate "
+				"an 8-byte chunk header.";
+			break;
+		case chunk_validation_error::chunk_data_size_exceeds_underlying:
+			result += "The length field in the chunk header implies that the " 
+				"data section would exceed the underlying array.";
 			break;
 		case chunk_validation_error::invalid_type_field:
 			result += "The first 4 bytes of an SMF chunk must be valid ASCII "
@@ -332,32 +341,32 @@ std::string print(const mtrk_event_validation_error& err) {
 			result = "Invalid delta-time field.  ";
 			break;
 		case mtrk_event_validation_error::invalid_or_unrecognized_status_byte:
-			result += "Invalid or unrecognized status_byte.  ";
+			result = "Invalid or unrecognized status_byte.  ";
 			break;
 		case mtrk_event_validation_error::unable_to_determine_size:
-			result += "Unable to determine event size.  ";
+			result = "Unable to determine event size.  ";
 			break;
 		case mtrk_event_validation_error::channel_event_missing_data_byte:
-			result += "Channel event has too few data bytes.  ";
+			result = "Channel event has too few data bytes.  ";
 			break;
 		case mtrk_event_validation_error::sysex_or_meta_overflow_in_header:
-			result += "Overflow.  ";
+			result = "Overflow.  ";
 			break;
 		case mtrk_event_validation_error::sysex_or_meta_invalid_length_field:
-			result += "Invalid length field for a sysex or meta event.  ";
+			result = "Invalid length field for a sysex or meta event.  ";
 			break;
 		case mtrk_event_validation_error::sysex_or_meta_length_implies_overflow:
-			result += "The length field for the sysex or meta event "
+			result = "The length field for the sysex or meta event "
 				"imples overflow.  ";
 			break;
 		case mtrk_event_validation_error::event_size_exceeds_max:
-			result += "Overflow.  ";
+			result = "Overflow.  ";
 			break;
 		case mtrk_event_validation_error::unknown_error:
-			result += "Unknown_error :(";
+			result = "Unknown_error :(";
 			break;
 		case mtrk_event_validation_error::no_error:
-			result += "No error";
+			result = "No error";
 			break;
 	}
 	return result;

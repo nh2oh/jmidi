@@ -113,13 +113,15 @@ chunk_type chunk_type_from_id(const unsigned char*);
 // end of the length field.  
 //
 enum class chunk_validation_error : uint8_t {
-	size_exceeds_underlying,
+	chunk_header_size_exceeds_underlying,
+	chunk_data_size_exceeds_underlying,
 	// The first 4 bytes of the chunk must be ASCII chars
 	invalid_type_field,  
 	unknown_error,
 	no_error
 };
 struct validate_chunk_header_result_t {
+	const unsigned char *p {}; 
 	// 4-byte ASCII header + 4-byte length field + reported length
 	uint32_t size {0};
 	// The length field following the 4-ASCII char chunk "name;" the 
