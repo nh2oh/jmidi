@@ -108,7 +108,8 @@ public:
 	int32_t format() const;  // mthd alias
 	time_division_t division() const;  // mthd alias
 	int32_t mthd_size() const;  // mthd alias
-	void set_mthd(const validate_mthd_chunk_result_t&);
+	//void set_mthd(const validate_mthd_chunk_result_t&);
+	void set_mthd(const maybe_mthd_t&);
 
 	const std::string& fname() const;
 	const std::string& set_fname(const std::string&);
@@ -137,7 +138,8 @@ std::string print(const smf_t&);
 // troubleshooting the error.  
 struct maybe_smf_t {
 	smf_t smf;
-	std::string error {"No error"};
+	std::string error {};
+	bool is_valid {false};
 	operator bool() const;
 };
 maybe_smf_t read_smf(const std::filesystem::path&);

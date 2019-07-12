@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <array>
+#include <limits> 
 
 //
 // class time_division_t
@@ -108,19 +109,42 @@ int8_t get_time_code_fmt(time_division_t, int8_t=0);
 uint8_t get_units_per_frame(time_division_t, uint8_t=0);
 uint16_t get_tpq(time_division_t, uint16_t=0);
 
-
-
 //
 // Class mthd_t
 //
-// Container adapter around std::vector<unsigned char> representing an 
-// MThd chunk.  Although every MThd chunk in existence is 14 bytes,
-// the MIDI std stipulates that in the future it may be enlarged to 
-// contain addnl fields.  
+// Represents an MThd chunk, which is an array of bytes with the following
+// format:
+//    <chunk id> <length>  <format>  <ntrks>   <division> 
+//    MThd       uint32_t  uint16_t  uint16_t  uint16_t
+//
+// The minimum size of an MThd is 14 bytes (with length field == 6), 
+// and the smallest value allowed in the lengh field is therefore 6.  
+//
+// Invariants:
+// It is impossible for this container to represent an MThd data that 
+// would be invalid according to the MIDI std; hence, all accessors that
+// return reference types are const qualified.  
+//
+// -> bytes 0-3 == {'M','T','h','d'}
+// -> 6 >= length() <= std::numeric_limits<int32_t>::max()
+//    length() == (size() - 8)
+//    size() >= 14
+// -> is_valid_time_division_raw_value(division())
+//    Meaning, for SMPTE-format <division>'s, time-code == one of:
+//    -24,-25,-29,-30
+// -> 0 >= format() <= std::numeric_limits<uint16_t>::max()
+// -> 0 >= ntrks() <= std::numeric_limits<uint16_t>::max()
+//
+// For a default-constructed mthd_t: format==1, ntrks==0, division==120 tpq.  
+//
+// mthd_t is a container adapter around std::vector<unsigned char>.  
+// Although every MThd chunk in existence is 14 bytes, the MIDI std 
+// stipulates that in the future it may be enlarged to contain addnl 
+// fields, hence i can not simply use a std::array<,14>.  
 //
 struct mthd_container_types_t {
 	using value_type = unsigned char;
-	using size_type = int64_t;
+	using size_type = int32_t;
 	using difference_type = std::ptrdiff_t;
 	using reference = value_type&;
 	using const_reference = const value_type&;
@@ -139,45 +163,31 @@ public:
 	using iterator = generic_ra_iterator<mthd_container_types_t>;
 	using const_iterator = generic_ra_const_iterator<mthd_container_types_t>;
 	
+	static constexpr size_type length_min = 6;
+	static constexpr size_type length_max = std::numeric_limits<size_type>::max()-8;
+	static constexpr size_type size_min = 14;
+	static constexpr size_type size_max = std::numeric_limits<size_type>::max();
+
 	// Format 1, 0 tracks, 120 tpq
 	mthd_t()=default;
 	// mthd_t(int32_t fmt, int32_t ntrks, time_division_t tdf);
 	explicit mthd_t(int32_t, int32_t, time_division_t);
 
-	explicit mthd_t(const validate_mthd_chunk_result_t&);
-
-	// mthd_t(const unsigned char *p, size_type n);
-	// Copies exactly n bytes into the mthd_t.  No validation is performed
-	// on the input data.  
-	explicit mthd_t(const unsigned char*, size_type);
-
-	// Synonyms
+	// size() and nbytes() are synonyms
 	size_type size() const;
 	size_type nbytes() const;
-
-	pointer data();
 	const_pointer data() const;
-
-	reference operator[](size_type);
 	const_reference operator[](size_type) const;
-
-	iterator begin();
-	iterator end();
 	const_iterator begin() const;
 	const_iterator end() const;
 	const_iterator cbegin() const;
 	const_iterator cend() const;
 
-	// Getters format(), & division() never return values that would be
-	// invalid for those quantities, regardless of what values are 
-	// presently written into the underlying array d_ (these 
-	// always-valid values are equal to the values serialized out by the
-	// object).  The reason for this behavior is that some getters return
-	// types incapable of holding invalid values (time_division_t) and
-	// i do not want users to use the return values of these getters to
-	// manually validate their MThd arrays.  
+	//
+	// Getters
+	//
 	// Reads the value of the length field
-	uint32_t length() const;
+	int32_t length() const;
 	// format();  Returns 0, 1, 2
 	// -> 0 => One track (always => ntrks() == 1)
 	// -> 1 => One or more simultaneous tracks
@@ -186,102 +196,67 @@ public:
 	// Note:  Number of MTrks, not the number of "chunks"
 	int32_t ntrks() const;
 	time_division_t division() const;
+
+	// Setters
+	// If illegal values are passed in, for example, a value for set_ntrks()
+	// > std::numeric_limits<uint16_t>::max(), or < 0, the value passed in
+	// is _silently_ clamped to [0, std::numeric_limits<uint16_t>::max()].  
 	int32_t set_format(int32_t);
 	// Note:  Number of MTrks, not the number of "chunks"
 	int32_t set_ntrks(int32_t);
 	time_division_t set_division(time_division_t);
-	uint32_t set_length(uint32_t);
+	// The input length is first clamped to [6, <int32_t>::max()].
+	// If the new length is < the present length, the array will be 
+	// truncated and data may be lost.  
+	int32_t set_length(int32_t);
 	
 	bool verify() const;
 private:
-	void set_to_default_value();
+	iterator begin();
+	iterator end();
+	reference operator[](size_type);
+	pointer data();
+
 	std::vector<unsigned char> d_ {
 		// MThd                   chunk length == 6
 		0x4Du,0x54u,0x68u,0x64u,  0x00u,0x00u,0x00u,0x06u,
 		// Fmt 1      ntrks         time-div == 120 tpq
 		0x00u,0x01u,  0x00u,0x00u,  0x00u,0x78u
 	};
+
+	friend void set_from_bytes_unsafe(const unsigned char*,
+										const unsigned char*, mthd_t*);
 };
+void set_from_bytes_unsafe(const unsigned char*, const unsigned char*, mthd_t*);
+
 std::string print(const mthd_t&);
 std::string& print(const mthd_t&, std::string&);
 
-
-using mthd_err_t = std::string;
-
-
+// maybe_mthd_t make_mthd(It beg, It end, lib_err_t err=lib_err_t())
+// Make an mthd_t from an array of bytes.  
+// This template simply wraps make_mthd_impl.  It only exists as a template
+// to allow users to use pointers or STL iterators as input.  
 struct maybe_mthd_t {
 	mthd_t mthd;
-	mthd_err_t *error {nullptr};
+	lib_err_t error;
 	bool is_valid {false};
 	operator bool() const;
 };
+template<typename It>
+maybe_mthd_t make_mthd(It beg, It end, lib_err_t err=lib_err_t()) {
+	static_assert(std::is_same<
+		std::remove_cv<decltype(*beg)>::type,unsigned char&>::value,
+		"It::operator*() must return an unsigned char&");
+	static_assert(std::is_same<
+			std::iterator_traits<It>::iterator_category,
+			std::random_access_iterator_tag
+		>::value,
+		"It must be a random access iterator.");
 
-template <typename T>
-maybe_mthd_t make_mthd(T beg, T end, mthd_err_t *err) {
-	// <Header Chunk> = <chunk type> <length> <format> <ntrks> <division> 
-	//                   MThd uint32_t uint16_t uint16_t uint16_t
-	maybe_mthd_t result;
-	result.error = err;
-	result.is_valid = false;
-
-	if ((end-beg) < 14) {
-		if (err) {
-			*err += "The input range is not large enough to accommodate "
-				"a >= 14-byte MThd chunk.  ";
-		}
-		return result;
-	}
-
-	auto ascii_id = read_be<uint32_t>(beg,end);
-	beg += 4;
-	if (ascii_id != 0x4D546864u) {
-		if (err) {
-			*err += "Expected the first 4 bytes to be 'MThd' (0x4D,54,68,64)";
-		}
-		return result;
-	}
-
-	auto length = read_be<uint32_t>(beg,end);
-	if (length < 6u) {
-		if (err) {
-			*err += "An MThd chunk must have a length field >= 6.";
-		}
-		return result;
-	} else if (length > (end-beg-4)) {
-		if (err) {
-			*err += "The input range is not large enough to accommodate "
-				"the number of bytes specified by the 'length' field.  ";
-		}
-		return result;
-	}
-	beg += 4;
-	
-	auto format = read_be<uint16_t>(beg,end);
-	beg += 2;
-	auto ntrks = read_be<uint16_t>(beg,end);
-	beg += 2;
-
-	auto division = read_be<uint16_t>(beg,end);
-	if (!is_valid_time_division_raw_value(division)) {
-		if (err) {
-			*err += "The value of field 'division' is invalid.  It is "
-				"probably an SMPTE-type field attemting to specify a "
-				"time-code of something other than -24, -25, -29, or "
-				"-30.  ";
-		}
-		return result;
-	}
-
-	result.mthd.set_division(time_division_t{division});
-	result.mthd.set_format(format);
-	result.mthd.set_ntrks(ntrks);
-	result.mthd.set_length(length);
-	result.is_valid = true;
-
-	return result;
+	const unsigned char *pbeg = &(*beg);
+	const unsigned char *pend = pbeg + (end-beg);
+	return make_mthd_impl(pbeg,pend,err);
 };
 
-
-
-
-
+maybe_mthd_t make_mthd_impl(const unsigned char*, const unsigned char*,
+							lib_err_t err=lib_err_t());

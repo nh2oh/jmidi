@@ -154,39 +154,29 @@ mthd_t::mthd_t(int32_t fmt, int32_t ntrks, time_division_t tdf) {
 	this->set_ntrks(ntrks);
 	this->set_division(tdf);
 }
-mthd_t::mthd_t(const validate_mthd_chunk_result_t& mthd_v) {
-	if (mthd_v.error == mthd_validation_error::no_error) {
-		*this = mthd_t(mthd_v.p,mthd_v.size);
-	}
-}
-mthd_t::mthd_t(const unsigned char *p, mthd_t::size_type n) {
-	this->d_.clear();
-	this->d_.reserve(n);
-	std::copy(p,p+n,std::back_inserter(this->d_));
-}
 
 mthd_t::size_type mthd_t::size() const {
-	return this->d_.size();
+	return static_cast<mthd_t::size_type>(this->d_.size());
 }
 mthd_t::size_type mthd_t::nbytes() const {
-	return this->d_.size();
+	return static_cast<mthd_t::size_type>(this->d_.size());
 }
-mthd_t::pointer mthd_t::data() {
+mthd_t::pointer mthd_t::data() {  // private
 	return this->d_.data();
 }
 mthd_t::const_pointer mthd_t::data() const {
 	return this->d_.data();
 }
-mthd_t::reference mthd_t::operator[](mthd_t::size_type idx) {
+mthd_t::reference mthd_t::operator[](mthd_t::size_type idx) {  // private
 	return this->d_[idx];
 }
 mthd_t::const_reference mthd_t::operator[](mthd_t::size_type idx) const {
 	return this->d_[idx];
 }
-mthd_t::iterator mthd_t::begin() {
+mthd_t::iterator mthd_t::begin() {  // private
 	return mthd_t::iterator(this->d_.data());
 }
-mthd_t::iterator mthd_t::end() {
+mthd_t::iterator mthd_t::end() {  // private
 	return mthd_t::iterator(this->d_.data()) + this->d_.size();
 }
 mthd_t::const_iterator mthd_t::begin() const {
@@ -202,9 +192,9 @@ mthd_t::const_iterator mthd_t::cend() const {
 	return mthd_t::const_iterator(this->d_.data()) + this->d_.size();
 }
 
-uint32_t mthd_t::length() const {
-	int32_t l = read_be<uint32_t>(this->d_.cbegin()+4,this->d_.cend());
-	return l;
+int32_t mthd_t::length() const {
+	auto l = read_be<uint32_t>(this->d_.cbegin()+4,this->d_.cend());
+	return static_cast<int32_t>(l);
 }
 int32_t mthd_t::format() const {
 	int32_t f = read_be<uint16_t>(this->d_.cbegin()+8,this->d_.cend());
@@ -217,45 +207,107 @@ time_division_t mthd_t::division() const {
 	return time_division_t(read_be<uint16_t>(this->d_.cbegin()+12,this->d_.cend()));
 }
 int32_t mthd_t::set_format(int32_t f) {
-	if (this->d_.size() < 14) {
-		this->d_.resize(14,0x00u);
-	}
-	f = std::clamp(f,0,2);
+	f = std::clamp(f,0,0xFFFF);
 	write_16bit_be(static_cast<uint16_t>(f),this->d_.begin()+8);
 	return this->format();
 }
 int32_t mthd_t::set_ntrks(int32_t ntrks) {
-	if (this->d_.size() < 14) {
-		this->d_.resize(14,0x00u);
-	}
-	ntrks = std::clamp(ntrks,0,
-		static_cast<int32_t>(std::numeric_limits<uint16_t>::max()));
+	ntrks = std::clamp(ntrks,0,0xFFFF);
 	write_16bit_be(static_cast<uint16_t>(ntrks),this->d_.begin()+10);
 	return this->ntrks();
 }
 time_division_t mthd_t::set_division(time_division_t tdf) {
-	if (this->d_.size() < 14) {
-		this->d_.resize(14,0x00u);
-	}
 	write_16bit_be(tdf.raw_value(),this->d_.begin()+12);
 	return this->division();
 }
-uint32_t mthd_t::set_length(uint32_t len) {
-	if (this->d_.size() < 14) {
-		this->d_.resize(14,0x00u);
+int32_t mthd_t::set_length(int32_t len) {
+	len = std::clamp(len,mthd_t::length_min,mthd_t::length_max);
+	if (len != this->length()) {
+		auto ulen = static_cast<std::vector<unsigned char>::size_type>(len);
+		this->d_.resize(ulen+8,0x00u);
 	}
-	write_32bit_be(len,this->d_.begin()+4);
+	write_32bit_be(static_cast<uint32_t>(len),this->d_.begin()+4);
 	return this->length();
 }
 bool mthd_t::verify() const {
-	auto v = validate_mthd_chunk(this->d_.data(),this->d_.size());
-	return (v.error == mthd_validation_error::no_error);
-}
-void mthd_t::set_to_default_value() {
-	auto def = mthd_t();
-	this->d_ = def.d_;
+	return true;
 }
 
+void set_from_bytes_unsafe(const unsigned char *beg, 
+							const unsigned char *end, mthd_t *dest) {
+	dest->d_.clear();
+	dest->d_.resize(end-beg);
+	std::copy(beg,end,dest->d_.begin()); //std::back_inserter(dest->d_));
+}
+maybe_mthd_t make_mthd_impl(const unsigned char *beg, const unsigned char *end,
+							lib_err_t err) {
+	// <Header Chunk> = <chunk type> <length> <format> <ntrks> <division> 
+	//                   MThd uint32_t uint16_t uint16_t uint16_t
+	maybe_mthd_t result;
+	result.error = err;
+	result.is_valid = false;
+	auto beg_init = beg;
+
+	if ((end-beg) < mthd_t::size_min) {
+		if (err) {
+			err += "The input range is not large enough to accommodate an "
+				"MThd chunk, \nwhich must be >= 14-bytes.";
+		}
+		return result;
+	}
+
+	auto ascii_id = read_be<uint32_t>(beg,end);
+	beg += 4;
+	if (ascii_id != 0x4D546864u) {
+		if (err) {
+			err += "Expected the first 4 bytes to be 'MThd' (0x4D,54,68,64)";
+		}
+		return result;
+	}
+
+	auto length = read_be<uint32_t>(beg,end);
+	if (length < 6u) {
+		if (err) {
+			err += "An MThd chunk must have a length field >= 6.";
+		}
+		return result;
+	} else if (length > (end-beg-8)) {
+		if (err) {
+			err += "The input range is not large enough to accommodate "
+				"the number of bytes \nspecified by the 'length' field.  ";
+		}
+		return result;
+	} else if (length > mthd_t::length_max) {
+		if (err) {
+			err += "This library enforces a maximum chunk length of 2,147,483,647 "
+				"the largesst \n value representable in a signed 32-bit int.  ";
+		}
+		return result;
+	}
+	beg += 4;
+	
+	auto format = read_be<uint16_t>(beg,end);
+	beg += 2;
+	auto ntrks = read_be<uint16_t>(beg,end);
+	beg += 2;
+
+	auto division = read_be<uint16_t>(beg,end);
+	if (!is_valid_time_division_raw_value(division)) {
+		if (err) {
+			err += "The value of field 'division' is invalid.  It is "
+				"probably an SMPTE-type \nfield attemting to specify a "
+				"time-code of something other than -24, -25, \n-29, or "
+				"-30.  ";
+		}
+		return result;
+	}
+
+	auto size = 8+length;
+	set_from_bytes_unsafe(beg_init,beg_init+size,&(result.mthd));
+	result.is_valid = true;
+
+	return result;
+}
 
 std::string print(const mthd_t& mthd) {
 	std::string s;  s.reserve(200);
@@ -280,9 +332,7 @@ std::string& print(const mthd_t& mthd, std::string& s) {
 }
 
 
-
-
-
 maybe_mthd_t::operator bool() const {
 	return this->is_valid;
 }
+

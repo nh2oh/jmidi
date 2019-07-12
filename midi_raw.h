@@ -86,6 +86,32 @@ bool is_channel_mode(const midi_ch_event_t&);
 
 
 
+
+
+// Construct w/ ptr to some externally-allocated std::string buffer & pass
+// into make_*() funtions.  If constructed w/ a ptr or refernece to a 
+// buffer, operator bool() returns true, and operator+=() can be used to
+// write messages.  If default-constructed, operator+=() is a no-op and 
+// explain() returns a reference to the static member def.  
+struct lib_err_t {
+	lib_err_t()=default;
+	explicit lib_err_t(std::string&);
+	explicit lib_err_t(std::string*);
+	const std::string& explain() const;
+	lib_err_t& operator+=(const char*);
+	lib_err_t& operator+=(const lib_err_t&);
+	operator bool() const;
+
+	static const std::string def;
+	std::string *msg {nullptr};
+};
+std::string& operator+=(std::string&, const lib_err_t&);
+
+
+
+
+
+
 //
 // Validation & processing of generic SMF chunk headers
 //
@@ -105,7 +131,7 @@ enum class chunk_type : uint8_t {
 // chunk_type::header, ::track, ::unknown or ::invalid as appropriate.  
 // The only way to get ::invalid is for one or more of the first 4 bytes
 // to be non-ASCII (<32 || >127).  
-chunk_type chunk_type_from_id(const unsigned char*);
+chunk_type chunk_type_from_id(const unsigned char*, const unsigned char*);
 //
 // Checks for the 4-char ASCII id and the 4-byte size.  Verifies that 
 // the id + size field + the reported size does not exceed the max_size 

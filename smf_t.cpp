@@ -166,8 +166,13 @@ const std::string& smf_t::set_fname(const std::string& fname) {
 	this->fname_ = fname;
 	return (*this).fname_;
 }
-void smf_t::set_mthd(const validate_mthd_chunk_result_t& val_mthd) {
+/*void smf_t::set_mthd(const validate_mthd_chunk_result_t& val_mthd) {
 	this->mthd_ = mthd_t(val_mthd);
+}*/
+void smf_t::set_mthd(const maybe_mthd_t& mthd) {
+	if (mthd) {
+		this->mthd_ = mthd.mthd;
+	}
 }
 
 // TODO:  The call to nbytes() is v. expensive
@@ -205,7 +210,7 @@ std::string print(const smf_t& smf) {
 
 
 maybe_smf_t::operator bool() const {
-	return this->error == "No error";
+	return this->is_valid;
 }
 maybe_smf_t read_smf(const std::filesystem::path& fp) {
 	maybe_smf_t result {};
@@ -228,17 +233,19 @@ maybe_smf_t read_smf(const std::filesystem::path& fp) {
 	f.close();
 
 	result.smf.set_fname(fp.string());
-
-	auto maybe_mthd = make_mthd(fdata.data(),fdata.data()+fdata.size(),
-		&(result.error));
-	if (!maybe_mthd) {
-		result.error = *(maybe_mthd.error);
-		return result;
-	}
+	
 
 	uint32_t o {0};  // Global offset into the fdata vector
 	const unsigned char *p = fdata.data();
-	auto curr_chunk = validate_chunk_header(p,fdata.size());
+
+	lib_err_t mthd_error(result.error);
+	//auto maybe_mthd = make_mthd(p,p+fdata.size(),mthd_error);
+	auto maybe_mthd = make_mthd(fdata.begin(),fdata.end(),mthd_error);
+	if (!maybe_mthd) {
+		return result;
+	}
+
+	/*auto curr_chunk = validate_chunk_header(p,fdata.size());
 	if (curr_chunk.type != chunk_type::header) {
 		//result.error = "curr_chunk.type != chunk_type::header at offset 0.  ";
 		//	"A valid midi file must begin w/ an MThd chunk.  \n";
@@ -253,6 +260,12 @@ maybe_smf_t read_smf(const std::filesystem::path& fp) {
 	auto expect_ntrks = mthd_get_ntrks(p,curr_chunk.size-o,-1);
 	result.smf.set_mthd(val_mthd);
 	o += curr_chunk.size;
+	*/
+	
+	result.smf.set_mthd(maybe_mthd);
+	auto expect_ntrks = result.smf.mthd().ntrks();
+	validate_chunk_header_result_t curr_chunk;
+	o += result.smf.mthd().nbytes();
 
 	int n_mtrks_read = 0;  int n_uchks_read = 0;
 	// Note: Thid loop terminates based on fdata.size(), not on the number of 
@@ -323,6 +336,7 @@ maybe_smf_t read_smf(const std::filesystem::path& fp) {
 		return result;
 	}
 
+	result.is_valid = true;
 	return result;
 }
 

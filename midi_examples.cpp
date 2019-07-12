@@ -118,7 +118,7 @@ int broken_mthd() {
 			<< curr_path.string() << "\n";
 		if (!maybesmf) {
 			++n_err_files;
-			std::cout << "Error!  (" << n_err_files << ")\n" 
+			std::cout << "Error! (" << n_err_files << ")\n" 
 				<< maybesmf.error << "\n";			
 		} else {
 			std::cout << "File Ok!\n" 
@@ -126,7 +126,7 @@ int broken_mthd() {
 				<< "N MTrks = " << maybesmf.smf.ntrks() << "\n";
 		}
 		std::cout << "==============================================="
-				"=================================\n\n";
+				"=======================\n\n";
 	}
 	return 0;
 }
