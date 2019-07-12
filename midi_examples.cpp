@@ -18,6 +18,7 @@
 #include <chrono>
 
 int midi_example() {
+	broken_mthd();
 	read_midi_directory("C:\\Users\\ben\\Desktop\\midi_archive\\crash\\");
 	//read_midi_directory("C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\");
 	//midi_clamped_value_testing();
@@ -93,6 +94,42 @@ int midi_example() {
 	return 0;
 }
 
+
+int broken_mthd() {
+	std::filesystem::path bp("C:\\Users\\ben\\Desktop\\midi_broken_mthd\\");
+	auto rdi = std::filesystem::recursive_directory_iterator(bp.parent_path());
+	int n_midi_files = 0;  // The total number of midi files
+	int n_err_files = 0;  // The number of midi files w/ errors
+	for (const auto& dir_ent : rdi) {
+		if (!std::filesystem::is_regular_file(dir_ent)) {
+			continue;
+		}
+		auto curr_path = dir_ent.path();
+		// This throws a std::system_error if native pathnames are wchar_t 
+		// and there is no conversion to char.  
+		auto ext = curr_path.extension().string();  
+		if ((ext!=".mid") && (ext!=".midi")) {
+			continue;
+		}
+		
+		++n_midi_files;
+		auto maybesmf = read_smf(curr_path);
+		std::cout << "File number " << n_midi_files << "\n" 
+			<< curr_path.string() << "\n";
+		if (!maybesmf) {
+			++n_err_files;
+			std::cout << "Error!  (" << n_err_files << ")\n" 
+				<< maybesmf.error << "\n";			
+		} else {
+			std::cout << "File Ok!\n" 
+				<< "Format = " << maybesmf.smf.format() << ", "
+				<< "N MTrks = " << maybesmf.smf.ntrks() << "\n";
+		}
+		std::cout << "==============================================="
+				"=================================\n\n";
+	}
+	return 0;
+}
 
 
 

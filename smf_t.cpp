@@ -229,18 +229,25 @@ maybe_smf_t read_smf(const std::filesystem::path& fp) {
 
 	result.smf.set_fname(fp.string());
 
+	auto maybe_mthd = make_mthd(fdata.data(),fdata.data()+fdata.size(),
+		&(result.error));
+	if (!maybe_mthd) {
+		result.error = *(maybe_mthd.error);
+		return result;
+	}
+
 	uint32_t o {0};  // Global offset into the fdata vector
 	const unsigned char *p = fdata.data();
 	auto curr_chunk = validate_chunk_header(p,fdata.size());
 	if (curr_chunk.type != chunk_type::header) {
-		result.error = "curr_chunk.type != chunk_type::header at offset 0.  ";
-			"A valid midi file must begin w/ an MThd chunk.  \n";
+		//result.error = "curr_chunk.type != chunk_type::header at offset 0.  ";
+		//	"A valid midi file must begin w/ an MThd chunk.  \n";
 		return result;
 	}
 	auto val_mthd = validate_mthd_chunk(p,curr_chunk.size-o);
 	if (val_mthd.error!=mthd_validation_error::no_error) {
-		result.error += "The MThd chunk is invalid:\n";
-		result.error += print_error(val_mthd);
+		//result.error += "The MThd chunk is invalid:\n";
+		//result.error += print_error(val_mthd);
 		return result;
 	}
 	auto expect_ntrks = mthd_get_ntrks(p,curr_chunk.size-o,-1);

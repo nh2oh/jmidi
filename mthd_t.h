@@ -1,4 +1,5 @@
 #pragma once
+#include "midi_vlq.h"  // validate_mthd_result_t etc for mthd ctors
 #include "midi_raw.h"  // validate_mthd_result_t etc for mthd ctors
 #include "..\..\generic_iterator.h"
 #include <cstdint>
@@ -203,4 +204,84 @@ private:
 };
 std::string print(const mthd_t&);
 std::string& print(const mthd_t&, std::string&);
+
+
+using mthd_err_t = std::string;
+
+
+struct maybe_mthd_t {
+	mthd_t mthd;
+	mthd_err_t *error {nullptr};
+	bool is_valid {false};
+	operator bool() const;
+};
+
+template <typename T>
+maybe_mthd_t make_mthd(T beg, T end, mthd_err_t *err) {
+	// <Header Chunk> = <chunk type> <length> <format> <ntrks> <division> 
+	//                   MThd uint32_t uint16_t uint16_t uint16_t
+	maybe_mthd_t result;
+	result.error = err;
+	result.is_valid = false;
+
+	if ((end-beg) < 14) {
+		if (err) {
+			*err += "The input range is not large enough to accommodate "
+				"a >= 14-byte MThd chunk.  ";
+		}
+		return result;
+	}
+
+	auto ascii_id = read_be<uint32_t>(beg,end);
+	beg += 4;
+	if (ascii_id != 0x4D546864u) {
+		if (err) {
+			*err += "Expected the first 4 bytes to be 'MThd' (0x4D,54,68,64)";
+		}
+		return result;
+	}
+
+	auto length = read_be<uint32_t>(beg,end);
+	if (length < 6u) {
+		if (err) {
+			*err += "An MThd chunk must have a length field >= 6.";
+		}
+		return result;
+	} else if (length > (end-beg-4)) {
+		if (err) {
+			*err += "The input range is not large enough to accommodate "
+				"the number of bytes specified by the 'length' field.  ";
+		}
+		return result;
+	}
+	beg += 4;
+	
+	auto format = read_be<uint16_t>(beg,end);
+	beg += 2;
+	auto ntrks = read_be<uint16_t>(beg,end);
+	beg += 2;
+
+	auto division = read_be<uint16_t>(beg,end);
+	if (!is_valid_time_division_raw_value(division)) {
+		if (err) {
+			*err += "The value of field 'division' is invalid.  It is "
+				"probably an SMPTE-type field attemting to specify a "
+				"time-code of something other than -24, -25, -29, or "
+				"-30.  ";
+		}
+		return result;
+	}
+
+	result.mthd.set_division(time_division_t{division});
+	result.mthd.set_format(format);
+	result.mthd.set_ntrks(ntrks);
+	result.mthd.set_length(length);
+	result.is_valid = true;
+
+	return result;
+};
+
+
+
+
 

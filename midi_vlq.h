@@ -153,7 +153,7 @@ OIt write_16bit_be(uint16_t val, OIt dest) {
 	
 	auto be_val = to_be_byte_order(val);
 	unsigned char *p = static_cast<unsigned char*>(static_cast<void*>(&be_val));
-	for (int i=0; i<3; ++i) {
+	for (int i=0; i<2; ++i) {
 		*dest++ = *p++;
 	}
 	return dest;
