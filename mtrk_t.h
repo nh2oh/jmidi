@@ -25,29 +25,11 @@ struct event_tk_t {
 
 //
 // mtrk_t
+// Container adapter around std::vector<mtrk_event_t>
 //
 // Holds a sequence of mtrk_event_t's as a std::vector<mtrk_event_t>; owns 
 // the underlying data.  Provides certain convienience functions for 
 // obtaining iterators into the sequence (at a specific tick number, etc).  
-//
-// Because the conditions on a valid MTrk event sequence are complex and 
-// expensive to maintain for operations such as push_back(), insert() etc,
-// an mtrk_t object may not be serializable to a valid SMF MTrk chunk.  For 
-// example, the sequence may contain multiple EOT events (or a terminating
-// EOT event may be missing), there may be orphan note-on events, etc.  
-// The method validate() returns a summary of the problems w/ the object.  
-// Disallowing "invalid" states would make it prohibitively cumbersome to
-// provide straightforward, low-overhead editing functionality to users.
-// A user _has_ to be able to, for example, call push_back() to add note-on
-// and note_off events one at a time.  If I were to require the object to
-// always be serializable to a valid MTrk, this would be impossible since 
-// adding a note-on event before the corresponding note-off creates an
-// orphan on-event situation (as well as a "missing EOT" error).  
-//
-// Note that a default-constructed mtrk_t is empty (nevents()==0, 
-// data_size()==0) and .validate() will return false (no EOT event);
-// empty mtrk_t's are not serializable to valid MTrk chunks.  
-//
 //
 // TODO:  Check for max_size() type of overflow?  Maximum data_size
 // == 0xFFFFFFFFu (?)
@@ -222,14 +204,14 @@ double duration(mtrk_t::const_iterator&, mtrk_t::const_iterator&, const midi_tim
 // contain a partial MTrk, probably lacking an end-of-track meta event,
 // containing orphan note-on events, etc.  
 struct maybe_mtrk_t {
-	std::string error {"No error"};
 	mtrk_t mtrk;
+	bool is_valid {false};
 	operator bool() const;
 };
-maybe_mtrk_t make_mtrk(const unsigned char*, uint32_t);
+//maybe_mtrk_t make_mtrk(const unsigned char*, uint32_t);
 maybe_mtrk_t make_mtrk_permissive(const unsigned char*, const unsigned char*,
 									std::string*);
-
+//
 // make_mtrk_impl_result_t make_mtrk_impl(const unsigned char *beg, 
 //						const unsigned char *end, mtrk_t *dest);
 // beg points at the first byte of an mtrk event (_not_ at the first byte
@@ -240,18 +222,15 @@ maybe_mtrk_t make_mtrk_permissive(const unsigned char*, const unsigned char*,
 // If no error is indicated, calls 
 // dest->push_back(mtrk_event_t(p,curr_event));
 // If validate_mtrk_event_dtstart() indicates an error, terminates and 
-// returns p pointing to the first byte of the erronious event.  Also
+// returns p pointing to the first byte of the problem event.  Also
 // terminates after an EOT event has been pushed_back().  
 //
 struct make_mtrk_impl_result_t {
-	// Points one byte past the end of the last mtrk event read into dest
-	const unsigned char *p;  
+	const unsigned char *p {nullptr};
+	unsigned char rs {0x00u};
 };
 make_mtrk_impl_result_t make_mtrk_impl(const unsigned char*, 
 						const unsigned char*,mtrk_t*);
-
-
-
 //
 // get_simultaneous_events(mtrk_const_iterator_t beg,
 //							mtrk_const_iterator_tend);

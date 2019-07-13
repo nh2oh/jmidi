@@ -123,6 +123,72 @@ chunk_type chunk_type_from_id(const unsigned char *beg, const unsigned char *end
 	}
 	return chunk_type::unknown;
 }
+bool is_mthd_header_id(const unsigned char *beg, const unsigned char *end) {
+	return read_be<uint32_t>(beg,end) == 0x4D546864u;
+}
+bool is_mtrk_header_id(const unsigned char *beg, const unsigned char *end) {
+	return read_be<uint32_t>(beg,end) == 0x4D54726Bu;
+}
+bool is_valid_header_id(const unsigned char *beg, const unsigned char *end) {
+	if ((end-beg)<4) {
+		return true;
+	}
+	for (int n=0; n<4; ++n) {  // Verify the first 4 bytes are valid ASCII
+		if (*beg>=127 || *beg<32) {
+			return false;
+		}
+		++beg;
+	}
+	return true;
+}
+int32_t get_chunk_length(const unsigned char *beg, const unsigned char *end,
+						int32_t def) {
+	if ((end-beg)<8) {
+		return def;
+	}
+	uint32_t len = read_be<uint32_t>(beg,end);
+	uint32_t max = static_cast<uint32_t>(std::numeric_limits<int32_t>::max());
+	if (len>max) {
+		return def;
+	}
+	return len;
+}
+maybe_header_t read_chunk_header(const unsigned char *beg, const unsigned char *end,
+					chunk_header_error_t *err) {
+	maybe_header_t result;
+	if ((end-beg)<8) {
+		if (err) {
+			err->code = chunk_header_error_t::errc::overflow;
+			err->offset = 0;
+		}
+		return result;
+	}
+	
+	result.id = chunk_type_from_id(beg,end);
+	if ((result.id==chunk_id::unknown) && !is_valid_header_id(beg,end)) {
+		if (err) {
+			err->code = chunk_header_error_t::errc::invalid_id;
+			std::copy(beg,beg+4,err->id[0]);
+			err->offset = 0;
+		}
+		return result;
+	}
+
+	result.length = get_chunk_length(beg,end,-1);
+	if (result.length == -1) {
+		if (err) {
+			err->code = chunk_header_error_t::errc::length_exceeds_max;
+			std::copy(beg,beg+4,err->id[0]);
+			err->offset = 4;
+			err->len = read_be<uint32_t>(beg+4,end);
+		}
+		return result;
+	}
+
+	result.is_valid = true;
+	return result;
+}
+
 validate_chunk_header_result_t validate_chunk_header(const unsigned char *p, uint32_t max_size) {
 	validate_chunk_header_result_t result {};
 	result.p = p;

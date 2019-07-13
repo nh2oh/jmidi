@@ -496,9 +496,9 @@ double duration(mtrk_t::const_iterator& beg, mtrk_t::const_iterator& end,
 }
 
 maybe_mtrk_t::operator bool() const {
-	return this->error=="No error";
+	return this->is_valid;
 }
-maybe_mtrk_t make_mtrk(const unsigned char *p, uint32_t max_sz) {
+/*maybe_mtrk_t make_mtrk(const unsigned char *p, uint32_t max_sz) {
 	maybe_mtrk_t result {};
 	auto chunk_detect = validate_chunk_header(p,max_sz);
 	if (chunk_detect.type != chunk_type::track) {
@@ -623,7 +623,7 @@ maybe_mtrk_t make_mtrk(const unsigned char *p, uint32_t max_sz) {
 	}
 
 	return result;
-}  // make_mtrk()
+}  // make_mtrk()*/
 
 
 maybe_mtrk_t make_mtrk_permissive(const unsigned char *beg, 
@@ -663,52 +663,21 @@ maybe_mtrk_t make_mtrk_permissive(const unsigned char *beg,
 	auto approx_nevents = static_cast<double>(length/3.0);
 	result.mtrk.reserve(static_cast<mtrk_t::size_type>(approx_nevents));
 
-	// Process the data section of the mtrk chunk until the number of bytes
-	// processed is as indicated by length, or an end-of-track 
-	// meta event is encountered.  
-	bool found_eot = false;
-	unsigned char rs {0x00u};  // value of the running-status
-	while ((p<end) && !found_eot) {
-		auto curr_event = validate_mtrk_event_dtstart(p,rs,(end-p));
-		if (curr_event.error!=mtrk_event_validation_error::no_error) {
-			if (err) {
-				*err += "Error validating the MTrk event at offset ";
-				*err += std::to_string(end-p);
-				*err += " (from the MTrk header):  \n";
-				*err += print(curr_event.error);
-			}
-			return result;
-		}
-		
-		rs = curr_event.running_status;
-		auto curr_mtrk_event = mtrk_event_t(p,curr_event);
+	// Terminates on encountering an invalid event, an EOT, or when p==end
+	auto end_state = make_mtrk_impl(p,end,&(result.mtrk));
+	p = end_state.p;
 
-		// Test for end-of-track msg; finding the eot will cause the loop to
-		// exit, so, if there is an "illegal" eot in the middle of the track,
-		// it will be caught below the loop when o is compared to 
-		// chunk_detect.size.  
-		if (!found_eot) {
-			found_eot = is_eot(curr_mtrk_event);
-		}
-
-		result.mtrk.push_back(curr_mtrk_event);
-		p += curr_event.size;
-	}
-
-	// The final event must be a meta-end-of-track msg.  The loop above
-	// exits when the eot event is encountered _or_ when 
-	// o>=chunk_detect.size, hence, it is possible at this point that 
-	// found_eot==false.  
-	if (!found_eot) {
+	// Lack of an EOT is always an error
+	if ((result.mtrk.size()>0) && !is_eot(result.mtrk.back())) {
 		if (err) {
 			*err += "Error reading MTrk: processed ";
 			*err += std::to_string(p-beg);
-			*err += " bytes (as specified in the chunk header), \n"
-				"but did not encounter an end-of-track event.  ";
+			*err += " bytes, \nbut did not encounter an end-of-track event.";
 		}
 		return result;
 	}
 
+	result.is_valid = true;
 	return result;
 }
 
@@ -721,7 +690,7 @@ make_mtrk_impl_result_t make_mtrk_impl(const unsigned char *beg,
 	while ((p<end) && !found_eot) {
 		auto curr_event = validate_mtrk_event_dtstart(p,rs,(end-p));
 		if (curr_event.error!=mtrk_event_validation_error::no_error) {
-			return make_mtrk_impl_result_t {p};
+			return make_mtrk_impl_result_t {p,rs};
 		}
 		rs = curr_event.running_status;
 		dest->push_back(mtrk_event_t(p,curr_event));
@@ -733,7 +702,7 @@ make_mtrk_impl_result_t make_mtrk_impl(const unsigned char *beg,
 		p += curr_event.size;
 	}
 
-	return make_mtrk_impl_result_t {p};
+	return make_mtrk_impl_result_t {p,rs};
 }
 
 
