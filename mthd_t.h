@@ -238,12 +238,13 @@ std::string& print(const mthd_t&, std::string&);
 // to allow users to use pointers or STL iterators as input.  
 struct maybe_mthd_t {
 	mthd_t mthd;
-	lib_err_t error;
 	bool is_valid {false};
 	operator bool() const;
 };
+maybe_mthd_t make_mthd_impl(const unsigned char*, const unsigned char*,
+							std::string*);
 template<typename It>
-maybe_mthd_t make_mthd(It beg, It end, lib_err_t err=lib_err_t()) {
+maybe_mthd_t make_mthd(It beg, It end, std::string *err) {
 	static_assert(std::is_same<
 		std::remove_cv<decltype(*beg)>::type,unsigned char&>::value,
 		"It::operator*() must return an unsigned char&");
@@ -253,10 +254,14 @@ maybe_mthd_t make_mthd(It beg, It end, lib_err_t err=lib_err_t()) {
 		>::value,
 		"It must be a random access iterator.");
 
-	const unsigned char *pbeg = &(*beg);
-	const unsigned char *pend = pbeg + (end-beg);
+	const unsigned char *pbeg = nullptr;
+	const unsigned char *pend = nullptr;
+	if (beg != end) {
+		// Note that if beg==end i can not do *beg
+		pbeg = &(*beg);
+		pend = pbeg + (end-beg);
+	}
 	return make_mthd_impl(pbeg,pend,err);
 };
 
-maybe_mthd_t make_mthd_impl(const unsigned char*, const unsigned char*,
-							lib_err_t err=lib_err_t());
+

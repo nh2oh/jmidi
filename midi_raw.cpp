@@ -103,48 +103,6 @@ bool is_channel_mode(const midi_ch_event_t& md) {
 
 
 
-// If .msg == nullptr, a const reference to this is returned by
-// operator +=, explain(), etc.  
-const std::string lib_err_t::def = "";
-
-lib_err_t::lib_err_t(std::string& s) {
-	this->msg = &s;
-}
-lib_err_t::lib_err_t(std::string *s) {
-	this->msg = s;
-}
-const std::string& lib_err_t::explain() const {
-	if (*this) {
-		return *(this->msg);
-	} else {
-		return this->def;
-	}
-}
-lib_err_t& lib_err_t::operator+=(const char *p) {
-	if (*this) {
-		*(this->msg) += p;
-	}
-	return *this;
-}
-lib_err_t& lib_err_t::operator+=(const lib_err_t& rhs) {
-	if (*this && rhs) {
-		*(this->msg) += rhs.msg->c_str();
-	}
-	return *this;
-}
-std::string& operator+=(std::string& s, const lib_err_t& err) {
-	if (err) {
-		s += err.msg->c_str();
-	}
-	return s;
-}
-lib_err_t::operator bool() const {
-	return (this->msg != nullptr);
-}
-
-
-
-
 
 chunk_type chunk_type_from_id(const unsigned char *beg, const unsigned char *end) {
 	if ((end-beg)<4) {

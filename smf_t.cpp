@@ -212,17 +212,17 @@ std::string print(const smf_t& smf) {
 maybe_smf_t::operator bool() const {
 	return this->is_valid;
 }
-maybe_smf_t read_smf(const std::filesystem::path& fp) {
+maybe_smf_t read_smf(const std::filesystem::path& fp, std::string *err) {
 	maybe_smf_t result {};
-	
+
 	// Read the file into fdata, close the file
 	std::vector<unsigned char> fdata {};
-	//std::filesystem::path fp(fn);
 	std::basic_ifstream<unsigned char> f(fp,std::ios_base::in|std::ios_base::binary);
 	if (!f.is_open() || !f.good()) {
-		result.error = "Unable to open file:  " + fp.string() + "\n"
-			"(!f.is_open() || !f.good()) for file object "
-			"std::basic_ifstream<unsigned char> f";
+		if (err) {
+			*err += "Unable to open file:  (!f.is_open() || !f.good()).  "
+				"std::basic_ifstream<unsigned char> f";
+		}
 		return result;
 	}
 	f.seekg(0,std::ios::end);
@@ -233,34 +233,14 @@ maybe_smf_t read_smf(const std::filesystem::path& fp) {
 	f.close();
 
 	result.smf.set_fname(fp.string());
-	
 
 	uint32_t o {0};  // Global offset into the fdata vector
 	const unsigned char *p = fdata.data();
 
-	lib_err_t mthd_error(result.error);
-	//auto maybe_mthd = make_mthd(p,p+fdata.size(),mthd_error);
-	auto maybe_mthd = make_mthd(fdata.begin(),fdata.end(),mthd_error);
+	auto maybe_mthd = make_mthd(fdata.begin(),fdata.end(),err);
 	if (!maybe_mthd) {
 		return result;
 	}
-
-	/*auto curr_chunk = validate_chunk_header(p,fdata.size());
-	if (curr_chunk.type != chunk_type::header) {
-		//result.error = "curr_chunk.type != chunk_type::header at offset 0.  ";
-		//	"A valid midi file must begin w/ an MThd chunk.  \n";
-		return result;
-	}
-	auto val_mthd = validate_mthd_chunk(p,curr_chunk.size-o);
-	if (val_mthd.error!=mthd_validation_error::no_error) {
-		//result.error += "The MThd chunk is invalid:\n";
-		//result.error += print_error(val_mthd);
-		return result;
-	}
-	auto expect_ntrks = mthd_get_ntrks(p,curr_chunk.size-o,-1);
-	result.smf.set_mthd(val_mthd);
-	o += curr_chunk.size;
-	*/
 	
 	result.smf.set_mthd(maybe_mthd);
 	auto expect_ntrks = result.smf.mthd().ntrks();
@@ -274,14 +254,17 @@ maybe_smf_t read_smf(const std::filesystem::path& fp) {
 	while ((o<fdata.size()) && (n_mtrks_read<expect_ntrks)) {
 		const unsigned char *curr_p = p+o;
 		uint32_t curr_max_sz = fdata.size()-o;
-		curr_chunk = validate_chunk_header(curr_p,curr_max_sz);
+		curr_chunk = validate_chunk_header(curr_p,curr_max_sz);  // TODO:  Drop this?
 
 		if (curr_chunk.error != chunk_validation_error::no_error) {
-			result.error = "Error processing chunk " 
-				+ std::to_string(n_mtrks_read+n_uchks_read) + ":  " 
-				"(curr_chunk.error != chunk_validation_error::no_error)\n"
-				"\tat byte offset o = " + std::to_string(o) + " (from MThd start)\n";
-			result.error += print_error(curr_chunk);
+			if (err) {
+				*err += "Error processing chunk ";
+				*err += std::to_string(n_mtrks_read+n_uchks_read);
+				*err += ":  (curr_chunk.error != chunk_validation_error::no_error)\n";
+				*err += "\tat byte offset o = ";
+				*err += std::to_string(o);
+				*err += " (from MThd start)\n";
+			}
 			return result;
 		}
 		if (curr_chunk.type == chunk_type::track) {
@@ -291,10 +274,13 @@ maybe_smf_t read_smf(const std::filesystem::path& fp) {
 			// and this partial mtrk may be useful to the user.  
 			result.smf.push_back(curr_mtrk.mtrk);
 			if (!curr_mtrk) {
-				result.error = "Error processing MTrk " 
-					+ std::to_string(n_mtrks_read) + " (with header at byte offset "
-					+ std::to_string(o) + " from MThd start):  \n"
-					+ curr_mtrk.error;
+				if (err) {
+					*err += "Error processing MTrk ";
+					*err += std::to_string(n_mtrks_read);
+					*err += " (with header at byte offset ";
+					*err += std::to_string(o);
+					*err += " from MThd start):  \n";
+				}
 				return result;
 			}
 			++n_mtrks_read;
@@ -303,8 +289,12 @@ maybe_smf_t read_smf(const std::filesystem::path& fp) {
 				std::vector<unsigned char>(curr_p,curr_p+curr_chunk.size));
 			++n_uchks_read;
 		} else {
-			result.error = "curr_chunk.type != track || unknown "
-				"at byte offset o==" + std::to_string(o) + " (from MThd start) \n";
+			if (err) {
+				*err += "curr_chunk.type != track || unknown "
+					"at byte offset o== ";
+				*err += std::to_string(o);
+				*err += " (from MThd start) \n";
+			}
 			return result;
 		}
 
@@ -323,16 +313,25 @@ maybe_smf_t read_smf(const std::filesystem::path& fp) {
 	// curr_chunk.size > max_size, the loop should return early on the
 	// chunk_validation_error::...
 	if (o != fdata.size()) {
-		result.error = "offset (" + std::to_string(o) + ") "
-			"!= fdata.size() (" + std::to_string(fdata.size()) + ").";
+		if (err) {
+			*err += "offset (";
+			*err += std::to_string(o);
+			*err += ") != fdata.size() (";
+			*err += std::to_string(fdata.size());
+			*err += ").";
+		}
 		return result;
 	}
 
 	if (n_mtrks_read != expect_ntrks) {
-		result.error = "The number-of-tracks reported by the header chunk "
-			"(" + std::to_string(expect_ntrks) + ") is "
-			"inconsistent with the number of MTrk chunks found while reading "
-			"in the file (" + std::to_string(n_mtrks_read) + ").  ";
+		if (err) {
+			*err += "The number-of-tracks reported by the header chunk (";
+			*err += std::to_string(expect_ntrks);
+			*err += ") is inconsistent with the number of MTrk chunks found "
+				"while reading the file (";
+			*err += std::to_string(n_mtrks_read);
+			*err += ").  ";
+		}
 		return result;
 	}
 

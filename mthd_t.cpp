@@ -240,17 +240,17 @@ void set_from_bytes_unsafe(const unsigned char *beg,
 	std::copy(beg,end,dest->d_.begin()); //std::back_inserter(dest->d_));
 }
 maybe_mthd_t make_mthd_impl(const unsigned char *beg, const unsigned char *end,
-							lib_err_t err) {
+							std::string *err) {
 	// <Header Chunk> = <chunk type> <length> <format> <ntrks> <division> 
 	//                   MThd uint32_t uint16_t uint16_t uint16_t
 	maybe_mthd_t result;
-	result.error = err;
+	//result.error = err;
 	result.is_valid = false;
 	auto beg_init = beg;
 
 	if ((end-beg) < mthd_t::size_min) {
 		if (err) {
-			err += "The input range is not large enough to accommodate an "
+			*err += "The input range is not large enough to accommodate an "
 				"MThd chunk, \nwhich must be >= 14-bytes.";
 		}
 		return result;
@@ -260,7 +260,7 @@ maybe_mthd_t make_mthd_impl(const unsigned char *beg, const unsigned char *end,
 	beg += 4;
 	if (ascii_id != 0x4D546864u) {
 		if (err) {
-			err += "Expected the first 4 bytes to be 'MThd' (0x4D,54,68,64)";
+			*err += "Expected the first 4 bytes to be 'MThd' (0x4D,54,68,64)";
 		}
 		return result;
 	}
@@ -268,18 +268,18 @@ maybe_mthd_t make_mthd_impl(const unsigned char *beg, const unsigned char *end,
 	auto length = read_be<uint32_t>(beg,end);
 	if (length < 6u) {
 		if (err) {
-			err += "An MThd chunk must have a length field >= 6.";
+			*err += "An MThd chunk must have a length field >= 6.";
 		}
 		return result;
 	} else if (length > (end-beg-8)) {
 		if (err) {
-			err += "The input range is not large enough to accommodate "
+			*err += "The input range is not large enough to accommodate "
 				"the number of bytes \nspecified by the 'length' field.  ";
 		}
 		return result;
 	} else if (length > mthd_t::length_max) {
 		if (err) {
-			err += "This library enforces a maximum chunk length of 2,147,483,647 "
+			*err += "This library enforces a maximum chunk length of 2,147,483,647 "
 				"the largesst \n value representable in a signed 32-bit int.  ";
 		}
 		return result;
@@ -294,7 +294,7 @@ maybe_mthd_t make_mthd_impl(const unsigned char *beg, const unsigned char *end,
 	auto division = read_be<uint16_t>(beg,end);
 	if (!is_valid_time_division_raw_value(division)) {
 		if (err) {
-			err += "The value of field 'division' is invalid.  It is "
+			*err += "The value of field 'division' is invalid.  It is "
 				"probably an SMPTE-type \nfield attemting to specify a "
 				"time-code of something other than -24, -25, \n-29, or "
 				"-30.  ";

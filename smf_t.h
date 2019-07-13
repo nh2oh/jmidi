@@ -138,11 +138,10 @@ std::string print(const smf_t&);
 // troubleshooting the error.  
 struct maybe_smf_t {
 	smf_t smf;
-	std::string error {};
 	bool is_valid {false};
 	operator bool() const;
 };
-maybe_smf_t read_smf(const std::filesystem::path&);
+maybe_smf_t read_smf(const std::filesystem::path&, std::string*);
 
 struct mtrk_event_range_t {
 	mtrk_event_t::const_iterator beg;

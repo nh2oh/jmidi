@@ -98,9 +98,11 @@ int midi_example() {
 int broken_mthd() {
 	std::filesystem::path bp("C:\\Users\\ben\\Desktop\\midi_broken_mthd\\");
 	auto rdi = std::filesystem::recursive_directory_iterator(bp.parent_path());
+	std::string errmsg;  errmsg.reserve(500);
 	int n_midi_files = 0;  // The total number of midi files
 	int n_err_files = 0;  // The number of midi files w/ errors
 	for (const auto& dir_ent : rdi) {
+		errmsg.clear();
 		if (!std::filesystem::is_regular_file(dir_ent)) {
 			continue;
 		}
@@ -113,13 +115,13 @@ int broken_mthd() {
 		}
 		
 		++n_midi_files;
-		auto maybesmf = read_smf(curr_path);
+		auto maybesmf = read_smf(curr_path,&errmsg);
 		std::cout << "File number " << n_midi_files << "\n" 
 			<< curr_path.string() << "\n";
 		if (!maybesmf) {
 			++n_err_files;
 			std::cout << "Error! (" << n_err_files << ")\n" 
-				<< maybesmf.error << "\n";			
+				<< errmsg << '\n';  //<< maybesmf.error << "\n";			
 		} else {
 			std::cout << "File Ok!\n" 
 				<< "Format = " << maybesmf.smf.format() << ", "
@@ -135,6 +137,7 @@ int broken_mthd() {
 
 int read_midi_directory(const std::filesystem::path& bp) {
 	auto rdi = std::filesystem::recursive_directory_iterator(bp.parent_path());
+	std::string errmsg;  errmsg.reserve(500);
 	int n_midi_files = 0;  // The total number of midi files
 	int n_err_files = 0;  // The number of midi files w/ errors
 	for (const auto& dir_ent : rdi) {
@@ -150,13 +153,13 @@ int read_midi_directory(const std::filesystem::path& bp) {
 		}
 		
 		++n_midi_files;
-		auto maybesmf = read_smf(curr_path);
+		auto maybesmf = read_smf(curr_path,&errmsg);
 		std::cout << "File number " << n_midi_files << "\n" 
 			<< curr_path.string() << "\n";
 		if (!maybesmf) {
 			++n_err_files;
 			std::cout << "Error!  (" << n_err_files << ")\n" 
-				<< maybesmf.error << "\n";			
+				<< errmsg << "\n";	//<< maybesmf.error << "\n";			
 		} else {
 			std::cout << "File Ok!\n" 
 				<< "Format = " << maybesmf.smf.format() << ", "
