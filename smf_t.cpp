@@ -232,43 +232,50 @@ maybe_smf_t read_smf(const std::filesystem::path& fp, std::string *err) {
 	f.read(fdata.data(),fsize);
 	f.close();
 
+	const unsigned char *pbeg = fdata.data();
+	const unsigned char *pend = fdata.data()+fdata.size();
+
 	result.smf.set_fname(fp.string());
 
-	uint32_t o {0};  // Global offset into the fdata vector
-	const unsigned char *p = fdata.data();
-
-	auto maybe_mthd = make_mthd(fdata.begin(),fdata.end(),err);
+	auto maybe_mthd = make_mthd(pbeg,pend,err);
 	if (!maybe_mthd) {
 		return result;
 	}
-	
 	result.smf.set_mthd(maybe_mthd);
-	auto expect_ntrks = result.smf.mthd().ntrks();
-	validate_chunk_header_result_t curr_chunk;
-	o += result.smf.mthd().nbytes();
 
-	int n_mtrks_read = 0;  int n_uchks_read = 0;
-	// Note: Thid loop terminates based on fdata.size(), not on the number of 
+	const unsigned char *p = pbeg+result.smf.mthd().nbytes();
+	auto expect_ntrks = result.smf.mthd().ntrks();
+	int n_mtrks_read = 0;
+	int n_uchks_read = 0;
+	// Note: This loop terminates based on fdata.size(), not on the number of 
 	// chunks read; mthd_.ntrks() reports the number of track chunks, but not
 	// the number of other chunk types.  
-	while ((o<fdata.size()) && (n_mtrks_read<expect_ntrks)) {
-		const unsigned char *curr_p = p+o;
-		uint32_t curr_max_sz = fdata.size()-o;
-		curr_chunk = validate_chunk_header(curr_p,curr_max_sz);  // TODO:  Drop this?
-
-		if (curr_chunk.error != chunk_validation_error::no_error) {
+	while ((p<pend) && (n_mtrks_read<expect_ntrks)) {
+		if ((pend-p) < 8) {
 			if (err) {
 				*err += "Error processing chunk ";
 				*err += std::to_string(n_mtrks_read+n_uchks_read);
 				*err += ":  (curr_chunk.error != chunk_validation_error::no_error)\n";
 				*err += "\tat byte offset o = ";
-				*err += std::to_string(o);
+				*err += std::to_string(pend-p);
 				*err += " (from MThd start)\n";
 			}
 			return result;
 		}
-		if (curr_chunk.type == chunk_type::track) {
-			auto curr_mtrk = make_mtrk_permissive(curr_p,curr_max_sz);
+
+		auto id = chunk_type_from_id(p,pend);
+		auto ulength = read_be<uint32_t>(p+4,pend);
+		if (ulength > constants::max_chunk_length_ui32) {
+			if (err) {
+				*err += "This library enforces a maximum chunk length of "
+					"2,147,483,647, the largest \n value representable in a "
+					"signed 32-bit int.  ";
+			}
+			return result;
+		}
+		auto length = static_cast<int32_t>(ulength);
+		if (id == chunk_type::track) {
+			auto curr_mtrk = make_mtrk_permissive(p,pend,err);
 			// push_back the mtrk even if invalid; make_mtrk will return a
 			// partial mtrk terminating at the event right before the error,
 			// and this partial mtrk may be useful to the user.  
@@ -278,26 +285,29 @@ maybe_smf_t read_smf(const std::filesystem::path& fp, std::string *err) {
 					*err += "Error processing MTrk ";
 					*err += std::to_string(n_mtrks_read);
 					*err += " (with header at byte offset ";
-					*err += std::to_string(o);
+					*err += std::to_string(pend-p);
 					*err += " from MThd start):  \n";
 				}
 				return result;
 			}
 			++n_mtrks_read;
-		} else if (curr_chunk.type == chunk_type::unknown) {
+		} else if ((id == chunk_type::unknown) && (length<=(pend-p-8))) {
 			result.smf.push_back(
-				std::vector<unsigned char>(curr_p,curr_p+curr_chunk.size));
+				std::vector<unsigned char>(p,p+length));
 			++n_uchks_read;
 		} else {
 			if (err) {
-				*err += "curr_chunk.type != track || unknown "
-					"at byte offset o== ";
-				*err += std::to_string(o);
-				*err += " (from MThd start) \n";
+				*err += "Error processing chunk ";
+				*err += std::to_string(n_mtrks_read+n_uchks_read);
+				*err += ":\nEither the ID => != MTrk || 'Unknown', "
+					" or the length => overflow.\n";
+				*err += "\tat byte offset o = ";
+				*err += std::to_string(pend-p);
+				*err += " (from MThd start)\n";
 			}
 			return result;
 		}
-
+		
 		// Note that depending on how make_mtrk(curr_p,curr_max_sz) reacts 
 		// when an end-of-track message is encountered prior to reading the
 		// expected number of bytes curr_chunk.size bytes (which comes 
@@ -305,19 +315,21 @@ maybe_smf_t read_smf(const std::filesystem::path& fp, std::string *err) {
 		// no EOT is encountered at curr_chunk.size bytes but where 
 		// curr_chunk.size < curr_max_sz, incrementing o in this way may
 		// not advance curr_p to the start of the next chunk.  
-		o += curr_chunk.size;
+		auto x = (length+8);
+		p += x;
 	}
-	// If o<fdata.size(), might indicate the file is zero-padded after 
-	// the final mtrk chunk.  o>fdata.size() is clearly an error, but
+
+	// If p<pend, might indicate the file is zero-padded after 
+	// the final mtrk chunk.  p>pend is clearly an error, but
 	// should be impossible:  if validate_chunk_header(...,max_size) returns a
 	// curr_chunk.size > max_size, the loop should return early on the
 	// chunk_validation_error::...
-	if (o != fdata.size()) {
+	if (p != pend) {
 		if (err) {
 			*err += "offset (";
-			*err += std::to_string(o);
+			*err += std::to_string(pend-p);
 			*err += ") != fdata.size() (";
-			*err += std::to_string(fdata.size());
+			*err += std::to_string(pend-pbeg);
 			*err += ").";
 		}
 		return result;

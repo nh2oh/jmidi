@@ -2,7 +2,17 @@
 #include "midi_vlq.h"
 #include <string>
 #include <cstdint>
+#include <limits>
 
+
+class constants {
+public:
+	static constexpr int32_t max_chunk_length_i32 
+		= std::numeric_limits<int32_t>::max();
+	static constexpr uint32_t max_chunk_length_ui32 
+		= std::numeric_limits<uint32_t>::max();
+private:
+};
 
 
 template<typename It>

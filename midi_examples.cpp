@@ -19,6 +19,8 @@
 
 int midi_example() {
 	broken_mthd();
+	read_midi_directory("C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\0\\");
+	
 	read_midi_directory("C:\\Users\\ben\\Desktop\\midi_archive\\crash\\");
 	//read_midi_directory("C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\");
 	//midi_clamped_value_testing();

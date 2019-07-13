@@ -239,6 +239,12 @@ void set_from_bytes_unsafe(const unsigned char *beg,
 	dest->d_.resize(end-beg);
 	std::copy(beg,end,dest->d_.begin()); //std::back_inserter(dest->d_));
 }
+
+maybe_mthd_t make_mthd(const unsigned char *beg, const unsigned char *end,
+							std::string *err) {
+	return make_mthd_impl(beg,end,err);
+}
+
 maybe_mthd_t make_mthd_impl(const unsigned char *beg, const unsigned char *end,
 							std::string *err) {
 	// <Header Chunk> = <chunk type> <length> <format> <ntrks> <division> 

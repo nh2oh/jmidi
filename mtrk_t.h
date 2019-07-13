@@ -221,13 +221,34 @@ double duration(mtrk_t::const_iterator&, mtrk_t::const_iterator&, const midi_tim
 // If the maybe_mtrk_t object returned is invalid, the .mtrk field may
 // contain a partial MTrk, probably lacking an end-of-track meta event,
 // containing orphan note-on events, etc.  
-maybe_mtrk_t make_mtrk(const unsigned char*, uint32_t);
-maybe_mtrk_t make_mtrk_permissive(const unsigned char *p, uint32_t max_sz);
 struct maybe_mtrk_t {
 	std::string error {"No error"};
 	mtrk_t mtrk;
 	operator bool() const;
 };
+maybe_mtrk_t make_mtrk(const unsigned char*, uint32_t);
+maybe_mtrk_t make_mtrk_permissive(const unsigned char*, const unsigned char*,
+									std::string*);
+
+// make_mtrk_impl_result_t make_mtrk_impl(const unsigned char *beg, 
+//						const unsigned char *end, mtrk_t *dest);
+// beg points at the first byte of an mtrk event (_not_ at the first byte
+// of an MTrk chunk header) and end points one byte past the end of the last
+// event in the sequence.  Returns p pointing one byte past the end of the
+// last byte pushed_back() into dest.  
+// Calls curr_event = validate_mtrk_event_dtstart(p,...) on each event.  
+// If no error is indicated, calls 
+// dest->push_back(mtrk_event_t(p,curr_event));
+// If validate_mtrk_event_dtstart() indicates an error, terminates and 
+// returns p pointing to the first byte of the erronious event.  Also
+// terminates after an EOT event has been pushed_back().  
+//
+struct make_mtrk_impl_result_t {
+	// Points one byte past the end of the last mtrk event read into dest
+	const unsigned char *p;  
+};
+make_mtrk_impl_result_t make_mtrk_impl(const unsigned char*, 
+						const unsigned char*,mtrk_t*);
 
 
 

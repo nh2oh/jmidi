@@ -243,6 +243,9 @@ struct maybe_mthd_t {
 };
 maybe_mthd_t make_mthd_impl(const unsigned char*, const unsigned char*,
 							std::string*);
+maybe_mthd_t make_mthd(const unsigned char*, const unsigned char*,
+							std::string*);
+
 template<typename It>
 maybe_mthd_t make_mthd(It beg, It end, std::string *err) {
 	static_assert(std::is_same<
