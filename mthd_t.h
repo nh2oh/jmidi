@@ -236,18 +236,35 @@ std::string& print(const mthd_t&, std::string&);
 // Make an mthd_t from an array of bytes.  
 // This template simply wraps make_mthd_impl.  It only exists as a template
 // to allow users to use pointers or STL iterators as input.  
+struct mthd_error_t {
+	enum class errc : uint8_t {
+		header_error,
+		overflow,  // in the data section; (end-beg)<14 or (end-beg)<(4+length)
+		invalid_id,
+		length_lt_min,  // length < 6
+		length_gt_mthd_max,  // length > ...limits<int32_t>::max()
+		invalid_time_division,
+		no_error,
+		other
+	};
+	chunk_header_error_t hdr_error;
+	uint32_t length {0u};
+	uint16_t division {0u};
+	mthd_error_t::errc code {mthd_error_t::errc::no_error};
+};
 struct maybe_mthd_t {
 	mthd_t mthd;
 	bool is_valid {false};
 	operator bool() const;
 };
 maybe_mthd_t make_mthd_impl(const unsigned char*, const unsigned char*,
-							std::string*);
+							mthd_error_t*);
 maybe_mthd_t make_mthd(const unsigned char*, const unsigned char*,
-							std::string*);
-
+							mthd_error_t*);
+maybe_mthd_t make_mthd(const unsigned char*, const unsigned char*);
+std::string explain(const mthd_error_t&);
 template<typename It>
-maybe_mthd_t make_mthd(It beg, It end, std::string *err) {
+maybe_mthd_t make_mthd(It beg, It end, mthd_error_t *err) {
 	static_assert(std::is_same<
 		std::remove_cv<decltype(*beg)>::type,unsigned char&>::value,
 		"It::operator*() must return an unsigned char&");

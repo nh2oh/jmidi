@@ -18,9 +18,10 @@
 #include <chrono>
 
 int midi_example() {
-	broken_mthd();
-	read_midi_directory("C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\0\\");
-	
+	//broken_mthd();
+	read_midi_directory("C:\\Users\\ben\\Desktop\\midi_broken_mtrk\\");
+	//read_midi_directory("C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\0\\");
+	//read_midi_directory("C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\Arabic and Tribal Rhythms\\");
 	read_midi_directory("C:\\Users\\ben\\Desktop\\midi_archive\\crash\\");
 	//read_midi_directory("C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\");
 	//midi_clamped_value_testing();
@@ -117,11 +118,13 @@ int broken_mthd() {
 		}
 		
 		++n_midi_files;
-		auto maybesmf = read_smf(curr_path,&errmsg);
+		smf_error_t smf_error;
+		auto maybesmf = read_smf(curr_path,&smf_error);
 		std::cout << "File number " << n_midi_files << "\n" 
 			<< curr_path.string() << "\n";
 		if (!maybesmf) {
 			++n_err_files;
+			errmsg = explain(smf_error);
 			std::cout << "Error! (" << n_err_files << ")\n" 
 				<< errmsg << '\n';  //<< maybesmf.error << "\n";			
 		} else {
@@ -155,11 +158,13 @@ int read_midi_directory(const std::filesystem::path& bp) {
 		}
 		
 		++n_midi_files;
-		auto maybesmf = read_smf(curr_path,&errmsg);
+		smf_error_t smf_error;
+		auto maybesmf = read_smf(curr_path,&smf_error);
 		std::cout << "File number " << n_midi_files << "\n" 
 			<< curr_path.string() << "\n";
 		if (!maybesmf) {
 			++n_err_files;
+			errmsg = explain(smf_error);
 			std::cout << "Error!  (" << n_err_files << ")\n" 
 				<< errmsg << "\n";	//<< maybesmf.error << "\n";			
 		} else {

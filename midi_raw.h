@@ -3,7 +3,7 @@
 #include <string>
 #include <cstdint>
 #include <limits>
-
+#include <array>
 
 class constants {
 public:
@@ -121,17 +121,20 @@ enum class chunk_type : uint8_t {
 chunk_type chunk_type_from_id(const unsigned char*, const unsigned char*);
 
 
-bool is_mthd_header_id(const unsigned char*, const unsigned char*);
-bool is_mtrk_header_id(const unsigned char*, const unsigned char*);
-bool is_valid_header_id(const unsigned char*, const unsigned char*);
-bool is_valid_chunk_length(uint32_t);
-// Why a default of 0?  
-int32_t get_chunk_length(const unsigned char*, const unsigned char*,int32_t=0);
+
+
+//uint32_t read_header_length_field(const unsigned char*, const unsigned char*);
+//chunk_id read_header_id_field(const unsigned char*, const unsigned char*);
+
 enum class chunk_id : uint8_t {
 	mthd,  // MThd
 	mtrk,  // MTrk
 	unknown  // The std requires that unrecognized chunk types be permitted
 };
+bool is_mthd_header_id(const unsigned char*, const unsigned char*);
+bool is_mtrk_header_id(const unsigned char*, const unsigned char*);
+bool is_valid_header_id(const unsigned char*, const unsigned char*);
+bool is_valid_chunk_length(uint32_t);
 struct chunk_header_error_t {
 	enum errc : uint8_t {
 		overflow,
@@ -140,18 +143,21 @@ struct chunk_header_error_t {
 		no_error,
 		other
 	};
+	uint32_t length {0u};
+	//int32_t offset {0};
 	errc code {no_error};
-	std::array<unsigned char,4> id {0x00u,0x00u,0x00u,0x00u};
-	uint32_t len {0u};
-	int32_t offset {0};
 };
 struct maybe_header_t {
 	int32_t length {0};
 	chunk_id id {chunk_id::unknown};
 	bool is_valid {false};
+	operator bool() const;
 };
+maybe_header_t read_chunk_header(const unsigned char*, const unsigned char*);
 maybe_header_t read_chunk_header(const unsigned char*, const unsigned char*,
 							chunk_header_error_t*);
+std::string explain(const chunk_header_error_t&);
+
 
 //
 // Checks for the 4-char ASCII id and the 4-byte size.  Verifies that 

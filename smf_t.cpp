@@ -212,7 +212,10 @@ std::string print(const smf_t& smf) {
 maybe_smf_t::operator bool() const {
 	return this->is_valid;
 }
-maybe_smf_t read_smf(const std::filesystem::path& fp, std::string *err) {
+maybe_smf_t read_smf(const std::filesystem::path& fp) {
+	return read_smf(fp,nullptr);
+}
+maybe_smf_t read_smf(const std::filesystem::path& fp, smf_error_t *err) {
 	maybe_smf_t result {};
 
 	// Read the file into fdata, close the file
@@ -220,8 +223,9 @@ maybe_smf_t read_smf(const std::filesystem::path& fp, std::string *err) {
 	std::basic_ifstream<unsigned char> f(fp,std::ios_base::in|std::ios_base::binary);
 	if (!f.is_open() || !f.good()) {
 		if (err) {
-			*err += "Unable to open file:  (!f.is_open() || !f.good()).  "
-				"std::basic_ifstream<unsigned char> f";
+			err->code = smf_error_t::errc::file_read_error;
+			//*err += "Unable to open file:  (!f.is_open() || !f.good()).  "
+			//	"std::basic_ifstream<unsigned char> f";
 		}
 		return result;
 	}
@@ -232,117 +236,121 @@ maybe_smf_t read_smf(const std::filesystem::path& fp, std::string *err) {
 	f.read(fdata.data(),fsize);
 	f.close();
 
-	const unsigned char *pbeg = fdata.data();
-	const unsigned char *pend = fdata.data()+fdata.size();
+	const unsigned char *beg = fdata.data();
+	const unsigned char *end = fdata.data()+fdata.size();
 
 	result.smf.set_fname(fp.string());
 
-	auto maybe_mthd = make_mthd(pbeg,pend,err);
+	auto maybe_mthd = make_mthd(beg,end);
 	if (!maybe_mthd) {
+		if (err) {
+			mthd_error_t mthd_err {};
+			make_mthd(beg,end,&mthd_err);
+			err->code = smf_error_t::errc::mthd_error;
+			err->chunk_err.mthd_err_obj = mthd_err;
+		}
 		return result;
 	}
 	result.smf.set_mthd(maybe_mthd);
 
-	const unsigned char *p = pbeg+result.smf.mthd().nbytes();
+	const unsigned char *p = beg+result.smf.mthd().nbytes();
 	auto expect_ntrks = result.smf.mthd().ntrks();
 	int n_mtrks_read = 0;
 	int n_uchks_read = 0;
-	// Note: This loop terminates based on fdata.size(), not on the number of 
-	// chunks read; mthd_.ntrks() reports the number of track chunks, but not
-	// the number of other chunk types.  
-	while ((p<pend) && (n_mtrks_read<expect_ntrks)) {
-		if ((pend-p) < 8) {
+	while ((p<end) && (n_mtrks_read<expect_ntrks)) {
+		auto header = read_chunk_header(p,end);
+		if (!header) {
 			if (err) {
-				*err += "Error processing chunk ";
-				*err += std::to_string(n_mtrks_read+n_uchks_read);
-				*err += ":  (curr_chunk.error != chunk_validation_error::no_error)\n";
-				*err += "\tat byte offset o = ";
-				*err += std::to_string(pend-p);
-				*err += " (from MThd start)\n";
+				chunk_header_error_t header_error {};
+				read_chunk_header(p,end,&header_error);
+				err->code = smf_error_t::errc::generic_chunk_header_error;
+				err->chunk_err.generic_chunk_err_obj = header_error;
+				err->expect_num_mtrks = expect_ntrks;
+				err->num_mtrks_read = n_mtrks_read;
+				err->num_uchks_read = n_uchks_read;
+				err->termination_offset = p-beg;
 			}
 			return result;
 		}
 
-		auto id = chunk_type_from_id(p,pend);
-		auto ulength = read_be<uint32_t>(p+4,pend);
-		if (ulength > constants::max_chunk_length_ui32) {
-			if (err) {
-				*err += "This library enforces a maximum chunk length of "
-					"2,147,483,647, the largest \n value representable in a "
-					"signed 32-bit int.  ";
+		auto nbytes_read = header.length+8;
+
+		if (header.id == chunk_id::mtrk) {
+			mtrk_error_t mtrk_error {};
+			// It is significant that i am passing p+header.length rather 
+			// than end.  This causes make_mtrk_permissive() to never read
+			// more than header.length bytes.  This can be changed, but must
+			// be synchronyzed with the way p is incremented at the bottom
+			// of this loop.  See below.  
+			auto max_nbytes = end-p;
+			if (header.length > max_nbytes) {
+				max_nbytes = header.length;
 			}
-			return result;
-		}
-		auto length = static_cast<int32_t>(ulength);
-		if (id == chunk_type::track) {
-			auto curr_mtrk = make_mtrk_permissive(p,pend,err);
+			auto curr_mtrk = make_mtrk_permissive(p,p+max_nbytes,
+				&mtrk_error);
 			// push_back the mtrk even if invalid; make_mtrk will return a
 			// partial mtrk terminating at the event right before the error,
 			// and this partial mtrk may be useful to the user.  
 			result.smf.push_back(curr_mtrk.mtrk);
 			if (!curr_mtrk) {
 				if (err) {
-					*err += "Error processing MTrk ";
-					*err += std::to_string(n_mtrks_read);
-					*err += " (with header at byte offset ";
-					*err += std::to_string(pend-p);
-					*err += " from MThd start):  \n";
+					err->code = smf_error_t::errc::mtrk_error;
+					err->chunk_err.mtrk_err_obj = mtrk_error;
+					err->expect_num_mtrks = expect_ntrks;
+					err->num_mtrks_read = n_mtrks_read;
+					err->num_uchks_read = n_uchks_read;
+					err->termination_offset = p-beg;
 				}
 				return result;
 			}
 			++n_mtrks_read;
-		} else if ((id == chunk_type::unknown) && (length<=(pend-p-8))) {
+		} else if ((header.id==chunk_id::unknown) && ((header.length+p+8)>end)) {
 			result.smf.push_back(
-				std::vector<unsigned char>(p,p+length));
+				std::vector<unsigned char>(p,p+header.length));
 			++n_uchks_read;
 		} else {
+			// header.id could perhaps == chunk_id::mtrk, or == chunk_id::unknown
+			// with (header.length<=(pend-p-8)) (=> overflow)
 			if (err) {
-				*err += "Error processing chunk ";
-				*err += std::to_string(n_mtrks_read+n_uchks_read);
-				*err += ":\nEither the ID => != MTrk || 'Unknown', "
-					" or the length => overflow.\n";
-				*err += "\tat byte offset o = ";
-				*err += std::to_string(pend-p);
-				*err += " (from MThd start)\n";
+				err->code = smf_error_t::errc::unknown_chunk_implies_overflow;
+				err->expect_num_mtrks = expect_ntrks;
+				err->num_mtrks_read = n_mtrks_read;
+				err->num_uchks_read = n_uchks_read;
+				err->termination_offset = p-beg;
 			}
 			return result;
 		}
-		
-		// Note that depending on how make_mtrk(curr_p,curr_max_sz) reacts 
-		// when an end-of-track message is encountered prior to reading the
-		// expected number of bytes curr_chunk.size bytes (which comes 
-		// directly from the MTrk header), or depending on how it reacts if
-		// no EOT is encountered at curr_chunk.size bytes but where 
-		// curr_chunk.size < curr_max_sz, incrementing o in this way may
-		// not advance curr_p to the start of the next chunk.  
-		auto x = (length+8);
-		p += x;
+
+		// make_mtrk[_permissive]() may or may not read the number of bytes
+		// indicated by header.length, for example, if an invalid event or a
+		// premature EOT is hit (for chunk_id::unknown chunks, header.length
+		// bytes are always read).  p += (header.length+8) assumes the file 
+		// is not so fucked up that the chunk spacing can't be calculated 
+		// from the length field in the headers.  
+		p += nbytes_read;
 	}
 
 	// If p<pend, might indicate the file is zero-padded after 
 	// the final mtrk chunk.  p>pend is clearly an error, but
-	// should be impossible:  if validate_chunk_header(...,max_size) returns a
-	// curr_chunk.size > max_size, the loop should return early on the
-	// chunk_validation_error::...
-	if (p != pend) {
+	// should be impossible.  
+	if (p<end) {
 		if (err) {
-			*err += "offset (";
-			*err += std::to_string(pend-p);
-			*err += ") != fdata.size() (";
-			*err += std::to_string(pend-pbeg);
-			*err += ").";
+			err->code = smf_error_t::errc::terminated_before_end_of_file;
+			err->expect_num_mtrks = expect_ntrks;
+			err->num_mtrks_read = n_mtrks_read;
+			err->num_uchks_read = n_uchks_read;
+			err->termination_offset = p-beg;
 		}
 		return result;
 	}
 
 	if (n_mtrks_read != expect_ntrks) {
 		if (err) {
-			*err += "The number-of-tracks reported by the header chunk (";
-			*err += std::to_string(expect_ntrks);
-			*err += ") is inconsistent with the number of MTrk chunks found "
-				"while reading the file (";
-			*err += std::to_string(n_mtrks_read);
-			*err += ").  ";
+			err->code = smf_error_t::errc::unexpected_num_mtrks;
+			err->expect_num_mtrks = expect_ntrks;
+			err->num_mtrks_read = n_mtrks_read;
+			err->num_uchks_read = n_uchks_read;
+			err->termination_offset = p-beg;
 		}
 		return result;
 	}
@@ -350,6 +358,58 @@ maybe_smf_t read_smf(const std::filesystem::path& fp, std::string *err) {
 	result.is_valid = true;
 	return result;
 }
+std::string explain(const smf_error_t& err) {
+	std::string s {};
+	if (err.code==smf_error_t::errc::no_error) {
+		return s;
+	}
+
+	auto append_values = [&s,err]()->void {
+		s += "Expected number of MTrks == ";
+		s += std::to_string(err.expect_num_mtrks);
+		s += ", number of MTrks read-in == ";
+		s += std::to_string(err.num_mtrks_read);
+		s += ", number of 'unknown' chunks read-in == ";
+		s += std::to_string(err.num_uchks_read);
+		s += ", Terminated on chunk with offset == ";
+		s += std::to_string(err.termination_offset);
+		s += " from the beginning of the file.  ";
+	};
+
+	s += "Error reading SMF:  ";
+	if (err.code==smf_error_t::errc::file_read_error) {
+		s += "Error opening or reading file.  ";
+	} else if (err.code==smf_error_t::errc::mthd_error) {
+		s += explain(err.chunk_err.mthd_err_obj);
+	} else if (err.code==smf_error_t::errc::mtrk_error) {
+		s += explain(err.chunk_err.mtrk_err_obj);
+		append_values();
+	} else if (err.code==smf_error_t::errc::generic_chunk_header_error) {
+		s += explain(err.chunk_err.generic_chunk_err_obj);
+		append_values();
+	} else if (err.code==smf_error_t::errc::unknown_chunk_implies_overflow) {
+		s += "The file is not large enough to accommodate the number of bytes "
+			"specified by the 'length' field of the present 'unknown' chunk type "
+			"header.  ";
+		append_values();
+	} else if (err.code==smf_error_t::errc::terminated_before_end_of_file) {
+		s += "Terminated scanning before the reaching the end of the file.  "
+			"The file may have padding or other garbage past the end of the "
+			"last chunk.  ";
+		append_values();
+	} else if (err.code==smf_error_t::errc::unexpected_num_mtrks) {
+		s += "Terminated scanning before the reading the expected number of "
+			"MTrk chunks.  The ntrks field of the MThd chunk may be incorrect.  ";
+		append_values();
+	} else if (err.code==smf_error_t::errc::other) {
+		s += "Error code smf_error_t::errc::other.  ";
+	} else {
+		s += "Unknown error.  ";
+	}
+
+	return s;
+}
+
 
 std::vector<all_smf_events_dt_ordered_t> get_events_dt_ordered(const smf_t& smf) {
 	std::vector<all_smf_events_dt_ordered_t> result;

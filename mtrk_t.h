@@ -59,6 +59,8 @@ public:
 	using iterator = generic_ra_iterator<mtrk_container_types_t>;
 	using const_iterator = generic_ra_const_iterator<mtrk_container_types_t>;
 
+	static constexpr size_type length_max = std::numeric_limits<size_type>::max()-8;
+
 	// Creates an empty MTrk event sequence:
 	// nbytes() == 8, data_nbytes() == 0;
 	// This will classify as invalid (!.validate()), because an MTrk 
@@ -200,37 +202,63 @@ double duration(const mtrk_t&, const midi_time_t&);
 double duration(mtrk_t::const_iterator&, mtrk_t::const_iterator&, const midi_time_t&);
 
 // maybe_mtrk_t make_mtrk(const unsigned char*, uint32_t);
+// maybe_mtrk_t make_mtrk(const unsigned char*, const unsigned char*);
+// maybe_mtrk_t make_mtrk_permissive(const unsigned char*, const unsigned char*);
 // If the maybe_mtrk_t object returned is invalid, the .mtrk field may
 // contain a partial MTrk, probably lacking an end-of-track meta event,
 // containing orphan note-on events, etc.  
+struct mtrk_error_t {
+	enum class errc : uint8_t {
+		header_error,
+		overflow,  // in the data section; (end-beg)<(4+length)
+		invalid_id,
+		length_gt_mtrk_max,  // length > ...limits<int32_t>::max()-8
+		invalid_event,
+		no_eot_event,
+		no_error,
+		other
+	};
+	chunk_header_error_t hdr_error;
+	uint32_t length {0u};
+	std::ptrdiff_t termination_offset {0};
+	mtrk_error_t::errc code {mtrk_error_t::errc::no_error};
+};
+std::string explain(const mtrk_error_t&);
 struct maybe_mtrk_t {
 	mtrk_t mtrk;
+	std::ptrdiff_t nbytes_read;
 	bool is_valid {false};
 	operator bool() const;
 };
 //maybe_mtrk_t make_mtrk(const unsigned char*, uint32_t);
 maybe_mtrk_t make_mtrk_permissive(const unsigned char*, const unsigned char*,
-									std::string*);
+									mtrk_error_t*);
+maybe_mtrk_t make_mtrk_permissive(const unsigned char*, const unsigned char*);
+
 //
-// make_mtrk_impl_result_t make_mtrk_impl(const unsigned char *beg, 
+// mtrk_from_event_seq_result_t
+// make_mtrk_from_event_seq_array(const unsigned char *beg, 
 //						const unsigned char *end, mtrk_t *dest);
 // beg points at the first byte of an mtrk event (_not_ at the first byte
 // of an MTrk chunk header) and end points one byte past the end of the last
 // event in the sequence.  Returns p pointing one byte past the end of the
-// last byte pushed_back() into dest.  
+// last byte pushed_back() into dest, along w/ the value of the 
+// running-status byte.  
 // Calls curr_event = validate_mtrk_event_dtstart(p,...) on each event.  
 // If no error is indicated, calls 
 // dest->push_back(mtrk_event_t(p,curr_event));
-// If validate_mtrk_event_dtstart() indicates an error, terminates and 
-// returns p pointing to the first byte of the problem event.  Also
-// terminates after an EOT event has been pushed_back().  
+// Terminates when any one of the following occurs:
+// -> if validate_mtrk_event_dtstart() indicates an error
+// -> when the end of the input range has been reached
+// -> immediately after an EOT event is pushed_back()
 //
-struct make_mtrk_impl_result_t {
+struct mtrk_from_event_seq_result_t {
 	const unsigned char *p {nullptr};
 	unsigned char rs {0x00u};
 };
-make_mtrk_impl_result_t make_mtrk_impl(const unsigned char*, 
+mtrk_from_event_seq_result_t make_mtrk_from_event_seq_array(const unsigned char*, 
 						const unsigned char*,mtrk_t*);
+
 //
 // get_simultaneous_events(mtrk_const_iterator_t beg,
 //							mtrk_const_iterator_tend);

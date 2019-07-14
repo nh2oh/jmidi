@@ -136,13 +136,42 @@ std::string print(const smf_t&);
 // event), and with MThd data inconsistent with the track data.  This is
 // done because users may find the partial file data useful for 
 // troubleshooting the error.  
+struct smf_error_t {
+	smf_error_t() : chunk_err {mthd_error_t {}} {};
+	enum class errc : uint8_t {
+		file_read_error,
+		mthd_error,
+		mtrk_error,
+		generic_chunk_header_error,
+		unknown_chunk_implies_overflow,
+		terminated_before_end_of_file,
+		unexpected_num_mtrks,
+		no_error,
+		other
+	};
+	union u_t {
+		mthd_error_t mthd_err_obj;
+		mtrk_error_t mtrk_err_obj;
+		chunk_header_error_t generic_chunk_err_obj;
+	};
+	u_t chunk_err;
+	uint16_t expect_num_mtrks {0};
+	uint16_t num_mtrks_read {0};
+	uint16_t num_uchks_read {0};
+	std::ptrdiff_t termination_offset {0};
+	smf_error_t::errc code {smf_error_t::errc::no_error};
+};
+auto constexpr sdfwf = sizeof(smf_error_t);
+auto constexpr sdvs = sizeof(mthd_error_t);
+auto constexpr dfs = sizeof(mtrk_error_t);
 struct maybe_smf_t {
 	smf_t smf;
 	bool is_valid {false};
 	operator bool() const;
 };
-maybe_smf_t read_smf(const std::filesystem::path&, std::string*);
-
+maybe_smf_t read_smf(const std::filesystem::path&);
+maybe_smf_t read_smf(const std::filesystem::path&, smf_error_t*);
+std::string explain(const smf_error_t&);
 struct mtrk_event_range_t {
 	mtrk_event_t::const_iterator beg;
 	mtrk_event_t::const_iterator end;
