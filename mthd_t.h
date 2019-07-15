@@ -232,23 +232,46 @@ void set_from_bytes_unsafe(const unsigned char*, const unsigned char*, mthd_t*);
 std::string print(const mthd_t&);
 std::string& print(const mthd_t&, std::string&);
 
+
+//
+// Low-level validation & processing of MThd chunks
+// <Header Chunk> = <chunk type> <length> <format> <ntrks> <division>  
+// - If format == 0, ntrks must be <= 1
+// - If division specifies an SMPTE value, the only allowed values of
+//   time code are -24, -25, -29, or -30.  
+// - The smallest value allowed for the 'length' field is 6.  
+// Larger values for 'length' (up to mthd_t::length_max) are allowed.  
+// From the MIDI std p.134:
+//  "Also, more parameters may be added to the MThd chunk in the 
+//  future: it is important to read and honor the length, even if it is 
+//  longer than 6."
+// Values of format other than 0, 1, or 2 are also allowed.  From the 
+// MIDI std p.143:  
+//  "We may decide to define other format IDs to support other 
+//  structures. A program encountering an unknown format ID may 
+//  still read other MTrk chunks it finds from the file, as format
+//  1 or 2, if its user can make sense..."
+//
+//
 // maybe_mthd_t make_mthd(It beg, It end, lib_err_t err=lib_err_t())
-// Make an mthd_t from an array of bytes.  
-// This template simply wraps make_mthd_impl.  It only exists as a template
-// to allow users to use pointers or STL iterators as input.  
+// And friends...
+//
 struct mthd_error_t {
 	enum class errc : uint8_t {
 		header_error,
 		overflow,  // in the data section; (end-beg)<14 or (end-beg)<(4+length)
-		invalid_id,
+		invalid_id,  // Not == 'MThd'
 		length_lt_min,  // length < 6
 		length_gt_mthd_max,  // length > ...limits<int32_t>::max()
 		invalid_time_division,
+		inconsistent_format_ntrks,  // Format == 0 but ntrks > 1
 		no_error,
 		other
 	};
 	chunk_header_error_t hdr_error;
 	uint32_t length {0u};
+	uint16_t format {0u};
+	uint16_t ntrks {0u};
 	uint16_t division {0u};
 	mthd_error_t::errc code {mthd_error_t::errc::no_error};
 };

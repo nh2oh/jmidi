@@ -297,6 +297,15 @@ maybe_mthd_t make_mthd_impl(const unsigned char *beg, const unsigned char *end,
 	auto ntrks = read_be<uint16_t>(it,end);
 	it += 2;
 
+	if ((format==0) && (ntrks >1)) {
+		if (err) {
+			err->code = mthd_error_t::errc::inconsistent_format_ntrks;
+			err->format = format;
+			err->ntrks = ntrks;
+		}
+		return result;
+	}
+
 	auto division = read_be<uint16_t>(it,end);
 	if (!is_valid_time_division_raw_value(division)) {
 		if (err) {

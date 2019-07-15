@@ -219,7 +219,7 @@ struct mtrk_error_t {
 		other
 	};
 	chunk_header_error_t hdr_error;
-	uint32_t length {0u};
+	uint32_t length {0u};  // TODO:  Already in chunk_header_error_t???
 	std::ptrdiff_t termination_offset {0};
 	mtrk_error_t::errc code {mtrk_error_t::errc::no_error};
 };

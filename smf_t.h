@@ -162,8 +162,10 @@ struct smf_error_t {
 	smf_error_t::errc code {smf_error_t::errc::no_error};
 };
 auto constexpr sdfwf = sizeof(smf_error_t);
+auto constexpr szut = sizeof(smf_error_t::u_t);
 auto constexpr sdvs = sizeof(mthd_error_t);
 auto constexpr dfs = sizeof(mtrk_error_t);
+auto constexpr dfegegs = sizeof(chunk_header_error_t);
 struct maybe_smf_t {
 	smf_t smf;
 	bool is_valid {false};

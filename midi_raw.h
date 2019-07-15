@@ -5,6 +5,7 @@
 #include <limits>
 #include <array>
 
+/*
 class constants {
 public:
 	static constexpr int32_t max_chunk_length_i32 
@@ -13,7 +14,7 @@ public:
 		= std::numeric_limits<uint32_t>::max();
 private:
 };
-
+*/
 
 template<typename It>
 struct iterator_range_t {
@@ -114,17 +115,21 @@ enum class chunk_type : uint8_t {
 	unknown,  // The std requires that unrecognized chunk types be permitted
 	invalid
 };
-// Reads only the first 4 bytes, matches for 'MThd' or 'MTrk', and returns
-// chunk_type::header, ::track, ::unknown or ::invalid as appropriate.  
-// The only way to get ::invalid is for one or more of the first 4 bytes
-// to be non-ASCII (<32 || >127).  
-chunk_type chunk_type_from_id(const unsigned char*, const unsigned char*);
 
-
-
-
-//uint32_t read_header_length_field(const unsigned char*, const unsigned char*);
-//chunk_id read_header_id_field(const unsigned char*, const unsigned char*);
+//
+// Low-level validation & processing of chunk headers
+//
+// These functions parse, classify, and validate chunk _headers_
+//
+// maybe_header_t read_chunk_header(const unsigned char *beg,
+//									const unsigned char *end);
+//
+class chunk_view_t {
+public:
+	static constexpr int32_t length_max = std::numeric_limits<int32_t>::max()-8;
+private:
+	const unsigned char *p_;
+};
 
 enum class chunk_id : uint8_t {
 	mthd,  // MThd
@@ -144,7 +149,7 @@ struct chunk_header_error_t {
 		other
 	};
 	uint32_t length {0u};
-	//int32_t offset {0};
+	uint32_t id {0u};
 	errc code {no_error};
 };
 struct maybe_header_t {
@@ -159,76 +164,8 @@ maybe_header_t read_chunk_header(const unsigned char*, const unsigned char*,
 std::string explain(const chunk_header_error_t&);
 
 
-//
-// Checks for the 4-char ASCII id and the 4-byte size.  Verifies that 
-// the id + size field + the reported size does not exceed the max_size 
-// supplied as the second argument.  Does _not_ inspect anything past the
-// end of the length field.  
-//
-enum class chunk_validation_error : uint8_t {
-	chunk_header_size_exceeds_underlying,
-	chunk_data_size_exceeds_underlying,
-	// The first 4 bytes of the chunk must be ASCII chars
-	invalid_type_field,  
-	unknown_error,
-	no_error
-};
-struct validate_chunk_header_result_t {
-	const unsigned char *p {}; 
-	// 4-byte ASCII header + 4-byte length field + reported length
-	uint32_t size {0};
-	// The length field following the 4-ASCII char chunk "name;" the 
-	// reported size of the data section.  
-	uint32_t data_size {0};
-	chunk_type type {chunk_type::invalid};
-	chunk_validation_error error {chunk_validation_error::unknown_error};
-};
-validate_chunk_header_result_t validate_chunk_header(const unsigned char*, uint32_t=0);
-std::string print_error(const validate_chunk_header_result_t&);
-int32_t mthd_get_ntrks(const unsigned char*, uint32_t, int32_t=-1);
 
 
-//
-// Validation & processing of MThd chunks
-//
-// <Header Chunk> = <chunk type> <length> <format> <ntrks> <division>  
-//
-// Checks that:
-// -> p points at the start of a valid MThd chunk (ie, the 'M' of MThd...),
-// -> that the size of the chunk is >=6 (p 133:  "<length> is a 32-bit
-//    representation of the number 6 (high byte first)."  
-//    However,
-//    p 134:  "Also, more parameters may be added to the MThd chunk in the 
-//    future: it is important to read and honor the length, even if it is 
-//    longer than 6.")
-// -> ntrks==1 if format==0
-//    ntrks==0 is not allowed.  
-// -> division specifies a timecode of -24 || -25 || -29 ||-30 if it is a
-//    SMPTE-type field.  
-// 
-// Although the std only defines format's 0,1,2, a format field w/ any other
-// value is not considerded an error.  From p.143:  "We may decide to define
-// other format IDs to support other structures. A program encountering an 
-// unknown format ID may still read other MTrk chunks it finds from the file,
-// as format 1 or 2, if its user can make sense..."
-//
-enum class mthd_validation_error : uint8_t {
-	invalid_chunk,
-	non_header_chunk,
-	data_length_invalid,
-	zero_tracks,
-	inconsistent_ntrks_format_zero,
-	invalid_time_division_field,
-	unknown_error,
-	no_error
-};
-struct validate_mthd_chunk_result_t {
-	const unsigned char *p {};  // points at the 'M' of "MThd"...
-	uint32_t size {0};  // Always == reported size (data_length) + 8
-	mthd_validation_error error {mthd_validation_error::unknown_error};
-};
-validate_mthd_chunk_result_t validate_mthd_chunk(const unsigned char*, uint32_t=0);
-std::string print_error(const validate_mthd_chunk_result_t&);
 
 
 

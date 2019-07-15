@@ -18,7 +18,7 @@
 #include <chrono>
 
 int midi_example() {
-	//broken_mthd();
+	broken_mthd();
 	read_midi_directory("C:\\Users\\ben\\Desktop\\midi_broken_mtrk\\");
 	//read_midi_directory("C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\0\\");
 	//read_midi_directory("C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\Arabic and Tribal Rhythms\\");

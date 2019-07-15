@@ -13,18 +13,19 @@
 
 
 mtrk_t::mtrk_t(const unsigned char *p, uint32_t max_sz) {
-	auto chunk_detect = validate_chunk_header(p,max_sz);
-	if (chunk_detect.type != chunk_type::track) {
+	//auto chunk_detect = validate_chunk_header(p,max_sz);
+	auto chunk_detect = read_chunk_header(p,p+max_sz);
+	if (chunk_detect.id != chunk_id::mtrk) {
 		return;
 	}
-	if (chunk_detect.size > max_sz) {
+	if (chunk_detect.length > max_sz) {
 		return;
 	}
-	uint32_t sz = chunk_detect.size;
+	uint32_t sz = chunk_detect.length+8;
 
 	// From experience with thousands of midi files encountered in the wild,
 	// the average number of bytes per MTrk event is about 3.  
-	auto approx_nevents = static_cast<double>(chunk_detect.data_size)/3.0;
+	auto approx_nevents = static_cast<double>(chunk_detect.length)/3.0;
 	this->evnts_.reserve(approx_nevents);
 	
 	// Loop continues until o==sz (==chunk_detect.size) or a invalid 
@@ -38,7 +39,7 @@ mtrk_t::mtrk_t(const unsigned char *p, uint32_t max_sz) {
 	validate_mtrk_event_result_t curr_event;
 	while (o<sz) {
 		const unsigned char *curr_p = p+o;  // ptr to start of present event
-		uint32_t curr_max_sz = chunk_detect.size-o;
+		uint32_t curr_max_sz = sz-o;
 		curr_event = validate_mtrk_event_dtstart(curr_p,rs,curr_max_sz);
 		if (curr_event.error!=mtrk_event_validation_error::no_error) {
 			break;

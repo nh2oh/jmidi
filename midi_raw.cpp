@@ -124,28 +124,9 @@ chunk_type chunk_type_from_id(const unsigned char *beg, const unsigned char *end
 	return chunk_type::unknown;
 }
 
-/*
-chunk_id read_header_id_field(const unsigned char *beg, const unsigned char *end) {
-	if ((end-beg)<4) {
-		return chunk_id::unknown;
-	}
-	uint32_t id = read_be<uint32_t>(beg,end);
-	if (id == 0x4D546864u) {  // Mthd
-		return chunk_id::mthd;
-	} else if (id == 0x4D54726Bu) {  // MTrk
-		return chunk_id::mtrk;
-	} else {
-		return chunk_id::unknown;
-	}
-}
-uint32_t read_header_length_field(const unsigned char *beg,
-								const unsigned char *end) {
-	if ((end-beg)<8) {
-		return 0u;
-	}
-	return read_be<uint32_t>(beg,end);
-}
-*/
+
+
+
 
 bool is_mthd_header_id(const unsigned char *beg, const unsigned char *end) {
 	return read_be<uint32_t>(beg,end) == 0x4D546864u;
@@ -165,8 +146,7 @@ bool is_valid_header_id(const unsigned char *beg, const unsigned char *end) {
 	return true;
 }
 bool is_valid_header_length(uint32_t len) {
-	uint32_t max = static_cast<uint32_t>(std::numeric_limits<int32_t>::max());
-	return len<=max;
+	return len<=chunk_view_t::length_max;
 }
 maybe_header_t::operator bool() const {
 	return this->is_valid;
@@ -181,7 +161,6 @@ maybe_header_t read_chunk_header(const unsigned char *beg,
 	if ((end-beg)<8) {
 		if (err) {
 			err->code = chunk_header_error_t::errc::overflow;
-			//err->offset = 0;
 		}
 		return result;
 	}
@@ -196,7 +175,7 @@ maybe_header_t read_chunk_header(const unsigned char *beg,
 		if (!is_valid_header_id(beg,end)) {
 			if (err) {
 				err->code = chunk_header_error_t::errc::invalid_id;
-				//err->offset = 0;
+				err->id = id;
 			}
 			return result;
 		}
@@ -206,7 +185,7 @@ maybe_header_t read_chunk_header(const unsigned char *beg,
 	if (!is_valid_header_length(len)) {
 		if (err) {
 			err->code = chunk_header_error_t::errc::length_exceeds_max;
-			//err->offset = 4;
+			err->id = id;
 			err->length = len;
 		}
 		return result;
@@ -230,8 +209,9 @@ std::string explain(const chunk_header_error_t& err) {
 		s += "Invalid chunk ID.  ";
 	} else if (err.code==chunk_header_error_t::errc::length_exceeds_max) {
 		s += "The length field encodes a value that is too large.  "
-			"This library enforces a maximum chunk length of 2,147,483,647 "
-			"bytes, the largest value representable in a signed 32-bit "
+			"This library enforces a maximum chunk length of ";
+		s += std::to_string(chunk_view_t::length_max);
+			" bytes, the largest value representable in a signed 32-bit "
 			"int.  length == ";
 		s += std::to_string(err.length);
 		s += ".  ";
@@ -241,143 +221,6 @@ std::string explain(const chunk_header_error_t& err) {
 		s += "Unknown error.  ";
 	}
 	return s;
-}
-
-
-validate_chunk_header_result_t validate_chunk_header(const unsigned char *p, uint32_t max_size) {
-	validate_chunk_header_result_t result {};
-	result.p = p;
-	if (max_size < 8) {
-		result.type = chunk_type::invalid;
-		result.error = chunk_validation_error::chunk_header_size_exceeds_underlying;
-		return result;
-	}
-
-	result.type = chunk_type_from_id(p,p+max_size);
-	if (result.type == chunk_type::invalid) {
-		result.error = chunk_validation_error::invalid_type_field;
-		return result;
-	}
-
-	p += 4;  // Skip past 'MThd'
-	result.data_size = read_be<uint32_t>(p,p+max_size);
-	result.size = 8 + result.data_size;
-
-	if (result.size>max_size) {
-		result.type = chunk_type::invalid;
-		result.error = chunk_validation_error::chunk_data_size_exceeds_underlying;
-		return result;
-	}
-
-	result.error = chunk_validation_error::no_error;
-	return result;
-}
-std::string print_error(const validate_chunk_header_result_t& chunk) {
-	std::string result ="Invalid chunk header:  \n";
-	if (chunk.error != chunk_validation_error::chunk_header_size_exceeds_underlying) {
-		print_hexascii(chunk.p, chunk.p+8, std::back_inserter(result), '\0',' ');
-	}
-	result += "\n";
-	switch (chunk.error) {
-		case chunk_validation_error::chunk_header_size_exceeds_underlying:
-			result += "The underlying array is not large enough to accommodate "
-				"an 8-byte chunk header.";
-			break;
-		case chunk_validation_error::chunk_data_size_exceeds_underlying:
-			result += "The length field in the chunk header implies that the " 
-				"data section would exceed the underlying array.";
-			break;
-		case chunk_validation_error::invalid_type_field:
-			result += "The first 4 bytes of an SMF chunk must be valid ASCII "
-				"(>=32 && <= 127).  ";
-			break;
-		case chunk_validation_error::unknown_error:
-			result += "Unknown error.";
-			break;
-	}
-	return result;
-}
-int32_t mthd_get_ntrks(const unsigned char *p, uint32_t max_size, int32_t def) {
-	if ((max_size < 12) || (chunk_type_from_id(p,p+max_size) != chunk_type::header)) {
-		return def;
-	}
-	return read_be<uint16_t>(p+10,p+12);
-}
-
-validate_mthd_chunk_result_t validate_mthd_chunk(const unsigned char *p, uint32_t max_size) {
-	validate_mthd_chunk_result_t result {};
-
-	auto chunk_detect = validate_chunk_header(p,max_size);
-	if (chunk_detect.type != chunk_type::header) {
-		if (chunk_detect.type==chunk_type::invalid) {
-			result.error = mthd_validation_error::invalid_chunk;
-		} else {
-			result.error = mthd_validation_error::non_header_chunk;
-		}
-		return result;
-	}
-	if (chunk_detect.data_size < 6) {
-		result.error = mthd_validation_error::data_length_invalid;
-		return result;
-	}
-	// Ensuring chunk_detect.data_size >= 6 means overall size is @ least
-	// 14 bytes (and that max_size >= 14)
-
-	// <Header Chunk> = <chunk type> <length> <format> <ntrks> <division> 
-	//                   MThd uint32_t uint16_t uint16_t uint16_t
-	uint16_t format = read_be<uint16_t>(p+8,p+max_size);
-	uint16_t ntrks = read_be<uint16_t>(p+10,p+max_size);
-	uint16_t division = read_be<uint16_t>(p+12,p+max_size);
-	if (ntrks==0) {
-		result.error = mthd_validation_error::zero_tracks;
-		return result;
-	}
-	if (format==0 && ntrks!=1) {
-		result.error = mthd_validation_error::inconsistent_ntrks_format_zero;
-		return result;
-	}
-	if (!is_valid_time_division_raw_value(division)) {
-		result.error = mthd_validation_error::invalid_time_division_field;
-		return result;
-	}
-	result.error = mthd_validation_error::no_error;
-	result.size = chunk_detect.size;
-	result.p = p;  // pointer to the 'M' of "MThd"..., ie the _start_ of the mthd chunk
-	return result;
-}
-
-std::string print_error(const validate_mthd_chunk_result_t& mthd) {
-	std::string result ="Invalid MThd chunk:  ";
-
-	switch (mthd.error) {
-		case mthd_validation_error::invalid_chunk:
-			result += "Not a valid SMF chunk.  The 4-char ASCII 'type' field "
-				"may be missing, or the calculated chunk size may exceed the "
-				" size of the underlying array.";
-			break;
-		case mthd_validation_error::non_header_chunk:
-			result += "chunk_detect.type != chunk_type::header.";
-			break;
-		case mthd_validation_error::data_length_invalid:
-			result += "MThd chunks must have a data length >= 6.";
-			break;
-		case mthd_validation_error::zero_tracks:
-			result += "MThd chunks must report at least 1 track.";
-			break;
-		case mthd_validation_error::inconsistent_ntrks_format_zero:
-			result += "The value of field 'format' == 0, but ntrks > 1; "
-				"format 0 SMF's must have exactly 1 track.";
-			break;
-		case mthd_validation_error::invalid_time_division_field:
-			result += "The value of field 'division' is invalid.  It is probably "
-				"a SMPTE-type field trying to encode a time-code of something other "
-				"than -24, -25, -29, or -30.  ";
-			break;
-		case mthd_validation_error::unknown_error:
-			result += "Unknown error.";
-			break;
-	}
-	return result;
 }
 
 validate_mtrk_event_result_t validate_mtrk_event_dtstart(
