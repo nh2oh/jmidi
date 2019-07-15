@@ -1,4 +1,6 @@
 #include "mthd_t.h"
+#include "generic_chunk_low_level.h"
+#include "midi_vlq.h"
 #include <cstdint>
 #include <string>
 #include <algorithm>  // std::copy() in mthd_t ctor(s), std::clamp()

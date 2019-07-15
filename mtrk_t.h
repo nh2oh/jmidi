@@ -1,5 +1,6 @@
 #pragma once
 #include "midi_raw.h"  // midi_time_t
+#include "generic_chunk_low_level.h"  // chunk_header_error_t in mtrk_error_t
 #include "mtrk_event_t.h"
 #include "..\..\generic_iterator.h"
 #include <string>

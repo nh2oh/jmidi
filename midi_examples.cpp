@@ -5,6 +5,7 @@
 #include "mtrk_event_t.h"
 #include "mtrk_event_methods.h"
 #include "smf_t.h"
+#include "midi_vlq.h"
 #include <iostream>
 #include <filesystem>
 #include <string>

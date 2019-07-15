@@ -1,5 +1,6 @@
 #include "midi_raw_test_parts.h"
 #include "midi_raw.h"
+#include "midi_vlq.h"
 #include <vector>
 #include <cstdint>
 #include <limits>

@@ -1,6 +1,6 @@
 #pragma once
-#include "midi_vlq.h"  // validate_mthd_result_t etc for mthd ctors
-#include "midi_raw.h"  // validate_mthd_result_t etc for mthd ctors
+//#include "midi_raw.h"  // validate_mthd_result_t etc for mthd ctors
+#include "generic_chunk_low_level.h"
 #include "..\..\generic_iterator.h"
 #include <cstdint>
 #include <string>

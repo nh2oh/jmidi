@@ -1,20 +1,8 @@
 #pragma once
-#include "midi_vlq.h"
 #include <string>
 #include <cstdint>
 #include <limits>
 #include <array>
-
-/*
-class constants {
-public:
-	static constexpr int32_t max_chunk_length_i32 
-		= std::numeric_limits<int32_t>::max();
-	static constexpr uint32_t max_chunk_length_ui32 
-		= std::numeric_limits<uint32_t>::max();
-private:
-};
-*/
 
 template<typename It>
 struct iterator_range_t {
@@ -94,78 +82,6 @@ bool is_program_change(const midi_ch_event_t&);
 bool is_channel_pressure(const midi_ch_event_t&);  // 0xDnu
 bool is_pitch_bend(const midi_ch_event_t&); 
 bool is_channel_mode(const midi_ch_event_t&);
-
-
-
-
-
-
-//
-// Validation & processing of generic SMF chunk headers
-//
-// There are two types of chunks: the Header chunk, containing data
-// pertaining to the entire file (only one per file), and the Track chunk
-// (possibly >1 per file).  Both have a length field that is is always 4
-// bytes (is not a vl-type quantity).  From p. 132: "Your programs should 
-// expect alien chunks and treat them as if they weren't there."  
-//
-enum class chunk_type : uint8_t {
-	header,  // MThd
-	track,  // MTrk
-	unknown,  // The std requires that unrecognized chunk types be permitted
-	invalid
-};
-
-//
-// Low-level validation & processing of chunk headers
-//
-// These functions parse, classify, and validate chunk _headers_
-//
-// maybe_header_t read_chunk_header(const unsigned char *beg,
-//									const unsigned char *end);
-//
-class chunk_view_t {
-public:
-	static constexpr int32_t length_max = std::numeric_limits<int32_t>::max()-8;
-private:
-	const unsigned char *p_;
-};
-
-enum class chunk_id : uint8_t {
-	mthd,  // MThd
-	mtrk,  // MTrk
-	unknown  // The std requires that unrecognized chunk types be permitted
-};
-bool is_mthd_header_id(const unsigned char*, const unsigned char*);
-bool is_mtrk_header_id(const unsigned char*, const unsigned char*);
-bool is_valid_header_id(const unsigned char*, const unsigned char*);
-bool is_valid_chunk_length(uint32_t);
-struct chunk_header_error_t {
-	enum errc : uint8_t {
-		overflow,
-		invalid_id,
-		length_exceeds_max,
-		no_error,
-		other
-	};
-	uint32_t length {0u};
-	uint32_t id {0u};
-	errc code {no_error};
-};
-struct maybe_header_t {
-	int32_t length {0};
-	chunk_id id {chunk_id::unknown};
-	bool is_valid {false};
-	operator bool() const;
-};
-maybe_header_t read_chunk_header(const unsigned char*, const unsigned char*);
-maybe_header_t read_chunk_header(const unsigned char*, const unsigned char*,
-							chunk_header_error_t*);
-std::string explain(const chunk_header_error_t&);
-
-
-
-
 
 
 
@@ -321,8 +237,10 @@ unsigned char mtrk_event_get_midi_p2_dtstart_unsafe(const unsigned char*, unsign
 
 
 unsigned char mtrk_event_get_meta_type_byte_dtstart_unsafe(const unsigned char*);
-midi_vl_field_interpreted mtrk_event_get_meta_length_field_dtstart_unsafe(const unsigned char*);
+//midi_vl_field_interpreted mtrk_event_get_meta_length_field_dtstart_unsafe(const unsigned char*);
 uint32_t mtrk_event_get_meta_payload_offset_dtstart_undafe(const unsigned char*);
+
+
 struct parse_meta_event_unsafe_result_t {
 	uint32_t dt;
 	uint32_t length;  // reported size of the payload field
@@ -333,7 +251,7 @@ struct parse_meta_event_unsafe_result_t {
 };
 parse_meta_event_unsafe_result_t mtrk_event_parse_meta_dtstart_unsafe(const unsigned char*);
 
-
+/*
 struct parse_meta_event_result_t {
 	bool is_valid {false};
 	midi_vl_field_interpreted delta_t {};
@@ -353,7 +271,7 @@ struct parse_sysex_event_result_t {
 	bool has_terminating_f7 {false};
 };
 parse_sysex_event_result_t parse_sysex_event(const unsigned char*,int32_t=0);
-
+*/
 
 // It is assumed that the buffer is large enough to accomodate the new dt
 // value.  Returns a ptr to one past the end of the new dt value (ie, the

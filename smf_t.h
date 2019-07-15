@@ -1,4 +1,5 @@
 #pragma once
+#include "generic_chunk_low_level.h"  // chunk_header_error_t in smf_error_t
 #include "mthd_t.h"
 #include "mtrk_t.h"
 #include "..\..\generic_iterator.h"
