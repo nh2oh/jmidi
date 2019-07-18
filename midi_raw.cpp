@@ -4,7 +4,7 @@
 #include <string>
 #include <cstdint>
 #include <cmath>  // std::round()
-#include <algorithm>  // std::max()
+#include <algorithm>  // std::clamp() in time_division_t
 
 
 double ticks2sec(const uint32_t& tks, const midi_time_t& t) {
@@ -162,6 +162,12 @@ uint16_t time_division_t::get_raw_value() const {
 	result += this->d_[1];
 	return result;
 }
+bool time_division_t::operator==(const time_division_t& rhs) const {
+	return ((this->d_[0]==rhs.d_[0])&&(this->d_[1]==rhs.d_[1]));
+}
+bool time_division_t::operator!=(const time_division_t& rhs) const {
+	return !(*this==rhs);
+}
 //
 // time_division_t non-member methods
 //
@@ -236,6 +242,32 @@ int32_t get_tpq(time_division_t tdiv, int32_t def) {
 }
 
 
+double ticks2sec(const uint32_t& tks, const time_division_t& tdiv,
+					int32_t tempo) {
+	if (is_tpq(tdiv)) {
+		auto tpq = static_cast<double>(tdiv.get_tpq());
+		auto secpq = static_cast<double>(tempo)*(1.0/1000000.0);
+		return static_cast<double>(tks)*(secpq/tpq);
+	} else {
+		auto smpte = tdiv.get_smpte();
+		auto frames_sec = static_cast<double>(-1*smpte.time_code);
+		auto tks_frame = static_cast<double>(smpte.subframes);
+		return static_cast<double>(tks)/(frames_sec*tks_frame);
+	}
+}
+int32_t sec2ticks(const double& sec, const time_division_t& tdiv,
+					int32_t tempo) {
+	if (is_tpq(tdiv)) {
+		auto tpq = static_cast<double>(tdiv.get_tpq());
+		auto secpq = static_cast<double>(tempo)*(1.0/1000000.0);
+		return static_cast<int32_t>(sec*(tpq/secpq));
+	} else {
+		auto smpte = tdiv.get_smpte();
+		auto frames_sec = static_cast<double>(-1*smpte.time_code);
+		auto tks_frame = static_cast<double>(smpte.subframes);
+		return static_cast<int32_t>(sec/(frames_sec*tks_frame));
+	}
+}
 
 
 

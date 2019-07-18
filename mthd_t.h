@@ -1,12 +1,10 @@
 #pragma once
-//#include "midi_raw.h"  // validate_mthd_result_t etc for mthd ctors
 #include "generic_chunk_low_level.h"
 #include "..\..\generic_iterator.h"
-#include "midi_raw.h"
+#include "midi_raw.h"  // time_division_t
 #include <cstdint>
 #include <string>
 #include <vector>
-#include <array>
 #include <limits> 
 
 //
@@ -47,7 +45,7 @@
 struct mthd_container_types_t {
 	using value_type = unsigned char;
 	using size_type = int32_t;
-	using difference_type = std::ptrdiff_t;
+	using difference_type = int32_t;
 	using reference = value_type&;
 	using const_reference = const value_type&;
 	using pointer = value_type*;
@@ -90,22 +88,15 @@ public:
 	const_iterator cbegin() const;
 	const_iterator cend() const;
 
-	//
 	// Getters
-	//
-	// Reads the value of the length field
 	int32_t length() const;
-	// format();  Returns 0, 1, 2
-	// -> 0 => One track (always => ntrks() == 1)
-	// -> 1 => One or more simultaneous tracks
-	// -> 3 => One or more sequential tracks
 	int32_t format() const;
 	// Note:  Number of MTrks, not the number of "chunks"
 	int32_t ntrks() const;
 	time_division_t division() const;
 
 	// Setters
-	// Illegal values are _silently_ clamped to the allowed range.  
+	// Illegal values are _silently_ set to legal values.  
 	// If ntrks > 1, the allowed range is [1,0xFFFF]
 	// If ntrks <= 1, the allowed range is [0,0xFFFF]
 	int32_t set_format(int32_t);
@@ -118,13 +109,16 @@ public:
 	int32_t set_division_tpq(int32_t);
 	// smpte_t set_division_smpte(int32_t tcf, int32_t subdivs);
 	smpte_t set_division_smpte(int32_t,int32_t);
+	smpte_t set_division_smpte(smpte_t);
+	// Sets the length field and resizes the array if necessary
 	// The input length is first clamped to 
 	// [mthd::length_min,mthd_t::length_max].  If the new length is < the 
 	// present length, the array will be truncated and data may be lost.  
 	int32_t set_length(int32_t);
-	
-	bool verify() const;
 private:
+	using vec_szt = std::vector<unsigned char>::size_type;
+	//static_assert(std::numeric_limits<vec_szt>::min()<=std::numeric_limits<size_type>::min());
+	//static_assert(std::numeric_limits<vec_szt>::max()>=std::numeric_limits<size_type>::max());
 	static constexpr int32_t format_min = 0;
 	static constexpr int32_t format_max = 0xFFFF;
 	static_assert(format_min >= std::numeric_limits<uint16_t>::min());

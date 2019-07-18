@@ -28,13 +28,14 @@ mthd_t::mthd_t(int32_t fmt, int32_t ntrks, int32_t tcf, int32_t subdivs) {
 	this->set_ntrks(ntrks);
 	this->set_division_smpte(tcf,subdivs);
 }
-
-
 mthd_t::size_type mthd_t::size() const {
+	if (this->d_.size()>static_cast<mthd_t::vec_szt>(mthd_t::size_max)) {
+		return mthd_t::size_max;
+	}
 	return static_cast<mthd_t::size_type>(this->d_.size());
 }
 mthd_t::size_type mthd_t::nbytes() const {
-	return static_cast<mthd_t::size_type>(this->d_.size());
+	return static_cast<mthd_t::size_type>(this->size());
 }
 mthd_t::pointer mthd_t::data() {  // private
 	return this->d_.data();
@@ -52,19 +53,19 @@ mthd_t::iterator mthd_t::begin() {  // private
 	return mthd_t::iterator(this->d_.data());
 }
 mthd_t::iterator mthd_t::end() {  // private
-	return mthd_t::iterator(this->d_.data()) + this->d_.size();
+	return mthd_t::iterator(this->d_.data()) + this->size();
 }
 mthd_t::const_iterator mthd_t::begin() const {
 	return mthd_t::const_iterator(this->d_.data());
 }
 mthd_t::const_iterator mthd_t::end() const {
-	return mthd_t::const_iterator(this->d_.data()) + this->d_.size();
+	return mthd_t::const_iterator(this->d_.data()) + this->size();
 }
 mthd_t::const_iterator mthd_t::cbegin() const {
 	return mthd_t::const_iterator(this->d_.data());
 }
 mthd_t::const_iterator mthd_t::cend() const {
-	return mthd_t::const_iterator(this->d_.data()) + this->d_.size();
+	return mthd_t::const_iterator(this->d_.data()) + this->size();
 }
 
 int32_t mthd_t::length() const {
@@ -127,6 +128,9 @@ smpte_t mthd_t::set_division_smpte(int32_t tcf, int32_t subdivs) {
 	this->d_[13] = *psrc;
 	return smpte_t {tcf_i8,subdivs_ui8};
 }
+smpte_t mthd_t::set_division_smpte(smpte_t smpte) {
+	return this->set_division_smpte(smpte.time_code,smpte.subframes);
+}
 int32_t mthd_t::set_length(int32_t len) {
 	len = std::clamp(len,mthd_t::length_min,mthd_t::length_max);
 	if (len != this->length()) {
@@ -136,15 +140,11 @@ int32_t mthd_t::set_length(int32_t len) {
 	}
 	return this->length();
 }
-bool mthd_t::verify() const {
-	return true;
-}
-
 void set_from_bytes_unsafe(const unsigned char *beg, 
 							const unsigned char *end, mthd_t *dest) {
 	auto sz = end-beg;
-	if (sz < 14) {
-		sz = 14;
+	if (sz < mthd_t::size_min) {
+		sz = mthd_t::size_min;
 		// Certain setters (ex, set_division_smpte()) assume a min size
 		// of 14.  
 	}

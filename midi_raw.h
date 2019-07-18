@@ -17,7 +17,8 @@ struct iterator_range_t {
 // standardized default value for this quantity.  The value for usec/qnt
 // is obtained from a meta set-tempo event; the default is 120 "bpm" 
 // (see below).  
-// TODO:  Rename midi_tempo_t ?
+// TODO:  Replace w/ time_division_t
+//
 struct midi_time_t {
 	// From MThd; no default specified in the std, arbitrarily choosing 48.  
 	uint16_t tpq {48};
@@ -29,6 +30,7 @@ struct midi_time_t {
 // Do not check for division by 0 for the case where midi_time_t.tpq==0
 double ticks2sec(const uint32_t&, const midi_time_t&);
 uint32_t sec2ticks(const double&, const midi_time_t&);
+
 // P.134:  
 // All MIDI Files should specify tempo and time signature.  If they don't,
 // the time signature is assumed to be 4/4, and the tempo 120 beats per 
@@ -114,6 +116,10 @@ public:
 	// Construct a ticks-per-quarter-valued time-division object
 	// The input is clamped to [1,32767] (32767==0x7FFF).  
 	explicit time_division_t(int32_t);
+	// This is declared deleted b/c is is ambiguous; does the user mean for
+	// the uint16_t argument to be interpreted as a number of tpq, or as a
+	// "raw value," as by make_time_division_from_raw(uint16_t)?
+	explicit time_division_t(uint16_t)=delete;
 	// Construct a SMPTE-valued time-division object
 	// Allowed values for arg 1 (SMPTE-time-code) are -24, -25, -29, -30.  
 	// If an invalid value is passed in, -24 is substituted.  The value for
@@ -131,6 +137,9 @@ public:
 	uint16_t get_raw_value() const;
 	smpte_t get_smpte() const;
 	int32_t get_tpq() const;
+
+	bool operator==(const time_division_t&) const;
+	bool operator!=(const time_division_t&) const;
 private:
 	// SMPTE => Society of Motion Picture and Television Engineers 
 	// 16-bit:  [[1] frames-per-second] [resolution-within-frame]
@@ -181,9 +190,30 @@ bool is_valid_time_division_raw_value(uint16_t);
 // 
 smpte_t get_smpte(time_division_t, smpte_t={0,0});
 int32_t get_tpq(time_division_t, int32_t=0);
-uint16_t get_raw_value(time_division_t, uint16_t=0);
 
+struct midi_time_t2 {
+	// From MThd; no default specified in the std, arbitrarily choosing 48.  
+	uint16_t tpq {48};
+	// From a set-tempo meta msg; default => 120 usec/qnt ("bpm"):
+	// 500,000 us => 500 ms => 0.5 s / qnt
+	// => 2 qnt/s => 120 qnt/min => "120 bpm"
+	int32_t tempo {500000};  // usec/q-nt
+};
 
+// double ticks2sec(const uint32_t& ticks, const time_division_t& tdiv, 
+//					int32_t tempo=500000);
+// For a smpte tdiv, the tempo argument is ignored, and 
+// seconds = ticks/(smpte.time_code*smpte_subframes)
+// For a tpq tdiv, 
+// seconds = ticks*(tempo/tpq)
+double ticks2sec(const uint32_t&, const time_division_t&, int32_t=500000);
+// int32_t sec2ticks(const double& sec, const time_division_t& tdiv,
+//						int32_t tempo=500000);
+// For a smpte tdiv, the tempo argument is ignored, and 
+// ticks = sec/(smpte.time_code*smpte_subframes)
+// For a tpq tdiv, 
+// ticks = sec*(tpq/tempo)
+int32_t sec2ticks(const double&, const time_division_t&, int32_t=500000);
 
 
 
