@@ -102,6 +102,144 @@ bool is_channel_mode(const midi_ch_event_t& md) {
 
 
 
+//
+// time-division_t class methods
+//
+time_division_t::time_division_t(int32_t tpq) {
+	auto tpq_u16 = static_cast<uint16_t>(std::clamp(tpq,1,0x7FFF));
+	this->d_[0] = (tpq_u16>>8);
+	this->d_[1] = (tpq_u16&0x00FFu);
+}
+time_division_t::time_division_t(int32_t tcf, int32_t subdivs) {
+	if ((tcf != -24) && (tcf != -25) && (tcf != -29) && (tcf != -30)) {
+		tcf = -24;
+	}
+	auto tcf_i8 = static_cast<int8_t>(tcf);
+	auto subdivs_ui8 = static_cast<uint8_t>(std::clamp(subdivs,1,0xFF));
+	// The high-byte of val has the bit 8 set, and bits [7,0] have the 
+	// bit-pattern of tcf.  The low-byte has the bit-pattern of upf.  
+	auto psrc = static_cast<unsigned char*>(static_cast<void*>(&tcf));
+	this->d_[0] = *psrc;
+	psrc = static_cast<unsigned char*>(static_cast<void*>(&subdivs_ui8));
+	this->d_[1] = *psrc;
+}
+time_division_t::time_division_t(smpte_t smpte) {
+	*this = time_division_t(smpte.time_code, smpte.subframes);
+}
+time_division_t::type time_division_t::get_type() const {
+	if (((this->d_[0])&0x80u)==0x80u) {
+		return time_division_t::type::smpte;
+	}
+	return time_division_t::type::ticks_per_quarter;
+}
+smpte_t time_division_t::get_smpte() const {
+	smpte_t result;
+	int8_t tcf_i8 = 0;
+	auto pdest = static_cast<unsigned char*>(static_cast<void*>(&tcf_i8));
+	*pdest = this->d_[0];
+	if ((tcf_i8 != -24) && (tcf_i8 != -25) && (tcf_i8 != -29) 
+			&& (tcf_i8 != -30)) {
+		tcf_i8 = -24;
+	}
+	result.time_code = static_cast<int32_t>(tcf_i8);
+	result.subframes = static_cast<int32_t>(this->d_[1]);
+	result.subframes = std::clamp(result.subframes,1,0xFF);
+	return result;
+}
+int32_t time_division_t::get_tpq() const {
+	auto p = &(this->d_[0]);
+	auto tpq_u16 = read_be<uint16_t>(p,p+this->d_.size());
+	auto result = static_cast<int32_t>(tpq_u16);
+	result = std::clamp(result,1,0x7FFF);
+	return result;
+}
+// Since the time_division_t ctors enforce the always-valid-data invariant,
+// this always returns a valid raw value; no validity-checks are needed.  
+uint16_t time_division_t::get_raw_value() const {
+	uint16_t result = 0;
+	result += this->d_[0];
+	result <<= 8;
+	result += this->d_[1];
+	return result;
+}
+//
+// time_division_t non-member methods
+//
+maybe_time_division_t make_time_division_tpq(int32_t tpq) {
+	maybe_time_division_t result {time_division_t(tpq),false};
+	if (tpq == std::clamp(tpq,1,0x7FFF)) {
+		result.is_valid = true;
+	}
+	return result;
+}
+maybe_time_division_t make_time_division_smpte(smpte_t smpte) {
+	return make_time_division_smpte(smpte.time_code,smpte.subframes);
+}
+maybe_time_division_t make_time_division_smpte(int32_t tcf, int32_t upf) {
+	maybe_time_division_t result {time_division_t(tcf,upf),false};
+	bool valid_tcf = ((tcf==-24) || (tcf==-25) || (tcf==-29) || (tcf==-30));
+	bool valid_upf = ((upf>0)&&(upf<=0xFF));
+	result.is_valid = (valid_tcf&&valid_upf);
+	return result;
+}
+maybe_time_division_t make_time_division_from_raw(uint16_t raw) {
+	if ((raw>>15)==1) {  // SMPTE
+		uint8_t tcf_value = static_cast<uint8_t>(raw>>8);
+		int8_t tcf = 0;
+		auto pdest = static_cast<unsigned char*>(static_cast<void*>(&tcf));
+		auto psrc = static_cast<unsigned char*>(static_cast<void*>(&tcf_value));
+		*pdest = *psrc;
+		return make_time_division_smpte(tcf,(raw&0x00FFu));
+	}
+	return make_time_division_tpq(raw&0x7FFFu);
+}
+bool is_smpte(time_division_t tdiv) {
+	return (tdiv.get_type()==time_division_t::type::smpte);
+}
+bool is_tpq(time_division_t tdiv) {
+	return (tdiv.get_type()==time_division_t::type::ticks_per_quarter);
+}
+bool is_valid_time_division_raw_value(uint16_t val) {
+	if ((val>>15) == 1) {  // smpte
+		unsigned char high = (val>>8);
+		// Interpret the bit-pattern of high as a signed int8
+		int8_t tcf = 0;  // "time code format"
+		auto p_tcf = static_cast<unsigned char*>(static_cast<void*>(&tcf));
+		*p_tcf = high;
+		if ((tcf != -24) && (tcf != -25) 
+				&& (tcf != -29) && (tcf != -30)) {
+			return false;
+		}
+		if ((val&0x00FFu) == 0) {
+			return false;
+		}
+	} else {  // tpq; high bit of val is clear
+		if ((val&0x7FFFu) == 0) {
+			return false;
+		}
+	}
+	return true;
+}
+smpte_t get_smpte(time_division_t tdiv, smpte_t def) {
+	smpte_t result;
+	if (is_smpte(tdiv)) {
+		return tdiv.get_smpte();
+	}
+	return def;
+}
+int32_t get_tpq(time_division_t tdiv, int32_t def) {
+	int32_t result;
+	if (is_tpq(tdiv)) {
+		return tdiv.get_tpq();
+	}
+	return def;
+}
+
+
+
+
+
+
 validate_mtrk_event_result_t validate_mtrk_event_dtstart(
 			const unsigned char *p, unsigned char rs, uint32_t max_size) {
 	validate_mtrk_event_result_t result {};
