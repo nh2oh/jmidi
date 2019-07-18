@@ -121,7 +121,7 @@ uint16_t get_tpq(time_division_t, uint16_t=0);
 // and the smallest value allowed in the lengh field is therefore 6.  
 //
 // Invariants:
-// It is impossible for this container to represent an MThd data that 
+// It is impossible for this container to represent MThd data that 
 // would be invalid according to the MIDI std; hence, all accessors that
 // return reference types are const qualified.  
 //
@@ -133,7 +133,9 @@ uint16_t get_tpq(time_division_t, uint16_t=0);
 //    Meaning, for SMPTE-format <division>'s, time-code == one of:
 //    -24,-25,-29,-30
 // -> 0 >= format() <= std::numeric_limits<uint16_t>::max()
+//    If ntrks > 1, format > 0
 // -> 0 >= ntrks() <= std::numeric_limits<uint16_t>::max()
+//    If format == 0, ntrks <= 1
 //
 // For a default-constructed mthd_t: format==1, ntrks==0, division==120 tpq.  
 //
@@ -168,10 +170,15 @@ public:
 	static constexpr size_type size_min = 14;
 	static constexpr size_type size_max = std::numeric_limits<size_type>::max();
 
-	// Format 1, 0 tracks, 120 tpq
+	// size()==14, length()==4; Format 1, 0 tracks, 120 tpq
 	mthd_t()=default;
 	// mthd_t(int32_t fmt, int32_t ntrks, time_division_t tdf);
 	explicit mthd_t(int32_t, int32_t, time_division_t);
+	// mthd_t(int32_t fmt, int32_t ntrks, int32_t division (tpq));
+	// the value for division is silently clamped to [1,32767].  
+	explicit mthd_t(int32_t, int32_t, int32_t);
+	// mthd_t(int32_t fmt, int32_t ntrks, int32_t SMPTE-tcf, SMPTE-subdivs);
+	explicit mthd_t(int32_t, int32_t, int32_t, int32_t);
 
 	// size() and nbytes() are synonyms
 	size_type size() const;
@@ -198,20 +205,36 @@ public:
 	time_division_t division() const;
 
 	// Setters
-	// If illegal values are passed in, for example, a value for set_ntrks()
-	// > std::numeric_limits<uint16_t>::max(), or < 0, the value passed in
-	// is _silently_ clamped to [0, std::numeric_limits<uint16_t>::max()].  
+	// Illegal values are _silently_ clamped to the allowed range.  
+	// If ntrks > 1, the allowed range is [1,0xFFFF]
+	// If ntrks <= 1, the allowed range is [0,0xFFFF]
 	int32_t set_format(int32_t);
 	// Note:  Number of MTrks, not the number of "chunks"
+	// If format() == 0, the allowed range is [0,1].  
+	// If format() > 0, the allowed range is [0,0xFFFF].  
 	int32_t set_ntrks(int32_t);
 	time_division_t set_division(time_division_t);
-	// The input length is first clamped to [6, <int32_t>::max()].
-	// If the new length is < the present length, the array will be 
-	// truncated and data may be lost.  
+	// Silently clamps the input to [1,0x7FFF] (==32767)
+	int32_t set_division_tpq(int32_t);
+	// smpte_t set_division_smpte(int32_t tcf, int32_t subdivs);
+	smpte_t set_division_smpte(int32_t,int32_t);
+	// The input length is first clamped to 
+	// [mthd::length_min,mthd_t::length_max].  If the new length is < the 
+	// present length, the array will be truncated and data may be lost.  
 	int32_t set_length(int32_t);
 	
 	bool verify() const;
 private:
+	static constexpr int32_t format_min = 0;
+	static constexpr int32_t format_max = 0xFFFF;
+	static_assert(format_min >= std::numeric_limits<uint16_t>::min());
+	static_assert(format_min <= std::numeric_limits<uint16_t>::max());
+	static constexpr int32_t ntrks_min = 0;
+	static constexpr int32_t ntrks_max_fmt_0 = 1;
+	static constexpr int32_t ntrks_max_fmt_gt0 = 0xFFFF;
+	static_assert(ntrks_min >= std::numeric_limits<uint16_t>::min());
+	static_assert(ntrks_max_fmt_gt0 <= std::numeric_limits<uint16_t>::max());
+
 	iterator begin();
 	iterator end();
 	reference operator[](size_type);

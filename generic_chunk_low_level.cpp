@@ -83,7 +83,7 @@ std::string explain(const chunk_header_error_t& err) {
 	if (err.code==chunk_header_error_t::errc::overflow) {
 		s += "The input range is smaller than 8 bytes.  ";
 	} else if (err.code==chunk_header_error_t::errc::invalid_id) {
-		s += "Invalid chunk ID.  ";
+		s += "ID field contains non-ASCII characters.  ";
 	} else if (err.code==chunk_header_error_t::errc::length_exceeds_max) {
 		s += "The length field encodes a value that is too large.  "
 			"This library enforces a maximum chunk length of ";

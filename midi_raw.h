@@ -240,7 +240,7 @@ unsigned char mtrk_event_get_meta_type_byte_dtstart_unsafe(const unsigned char*)
 //midi_vl_field_interpreted mtrk_event_get_meta_length_field_dtstart_unsafe(const unsigned char*);
 uint32_t mtrk_event_get_meta_payload_offset_dtstart_undafe(const unsigned char*);
 
-
+/*
 struct parse_meta_event_unsafe_result_t {
 	uint32_t dt;
 	uint32_t length;  // reported size of the payload field
@@ -251,7 +251,7 @@ struct parse_meta_event_unsafe_result_t {
 };
 parse_meta_event_unsafe_result_t mtrk_event_parse_meta_dtstart_unsafe(const unsigned char*);
 
-/*
+
 struct parse_meta_event_result_t {
 	bool is_valid {false};
 	midi_vl_field_interpreted delta_t {};

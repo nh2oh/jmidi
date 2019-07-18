@@ -19,11 +19,14 @@
 #include <chrono>
 
 int midi_example() {
-	broken_mthd();
-	read_midi_directory("C:\\Users\\ben\\Desktop\\midi_broken_mtrk\\");
+	//read_midi_directory_mthd_inspection("C:\\Users\\ben\\Desktop\\midi_broken_mtrk\\");
+	//read_midi_directory_mthd_inspection("C:\\Users\\ben\\Desktop\\midi_broken_mthd\\");
+	read_midi_directory_mthd_inspection("C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\");
+	//read_midi_directory("C:\\Users\\ben\\Desktop\\midi_broken_mthd\\");
+	//read_midi_directory("C:\\Users\\ben\\Desktop\\midi_broken_mtrk\\");
 	//read_midi_directory("C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\0\\");
 	//read_midi_directory("C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\Arabic and Tribal Rhythms\\");
-	read_midi_directory("C:\\Users\\ben\\Desktop\\midi_archive\\crash\\");
+	//read_midi_directory("C:\\Users\\ben\\Desktop\\midi_archive\\crash\\");
 	//read_midi_directory("C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\");
 	//midi_clamped_value_testing();
 	//midi_setdt_testing();
@@ -99,47 +102,6 @@ int midi_example() {
 }
 
 
-int broken_mthd() {
-	std::filesystem::path bp("C:\\Users\\ben\\Desktop\\midi_broken_mthd\\");
-	auto rdi = std::filesystem::recursive_directory_iterator(bp.parent_path());
-	std::string errmsg;  errmsg.reserve(500);
-	int n_midi_files = 0;  // The total number of midi files
-	int n_err_files = 0;  // The number of midi files w/ errors
-	for (const auto& dir_ent : rdi) {
-		errmsg.clear();
-		if (!std::filesystem::is_regular_file(dir_ent)) {
-			continue;
-		}
-		auto curr_path = dir_ent.path();
-		// This throws a std::system_error if native pathnames are wchar_t 
-		// and there is no conversion to char.  
-		auto ext = curr_path.extension().string();  
-		if ((ext!=".mid") && (ext!=".midi")) {
-			continue;
-		}
-		
-		++n_midi_files;
-		smf_error_t smf_error;
-		auto maybesmf = read_smf(curr_path,&smf_error);
-		std::cout << "File number " << n_midi_files << "\n" 
-			<< curr_path.string() << "\n";
-		if (!maybesmf) {
-			++n_err_files;
-			errmsg = explain(smf_error);
-			std::cout << "Error! (" << n_err_files << ")\n" 
-				<< errmsg << '\n';  //<< maybesmf.error << "\n";			
-		} else {
-			std::cout << "File Ok!\n" 
-				<< "Format = " << maybesmf.smf.format() << ", "
-				<< "N MTrks = " << maybesmf.smf.ntrks() << "\n";
-		}
-		std::cout << "==============================================="
-				"=======================\n\n";
-	}
-	return 0;
-}
-
-
 
 int read_midi_directory(const std::filesystem::path& bp) {
 	auto rdi = std::filesystem::recursive_directory_iterator(bp.parent_path());
@@ -161,17 +123,17 @@ int read_midi_directory(const std::filesystem::path& bp) {
 		++n_midi_files;
 		smf_error_t smf_error;
 		auto maybesmf = read_smf(curr_path,&smf_error);
-		std::cout << "File number " << n_midi_files << "\n" 
-			<< curr_path.string() << "\n";
+		std::cout << "File number " << n_midi_files << '\n' 
+			<< curr_path.string() << '\n';
 		if (!maybesmf) {
 			++n_err_files;
 			errmsg = explain(smf_error);
-			std::cout << "Error!  (" << n_err_files << ")\n" 
-				<< errmsg << "\n";	//<< maybesmf.error << "\n";			
+			std::cout << "Error! (" << n_err_files << ")\n" 
+				<< errmsg << '\n';
 		} else {
 			std::cout << "File Ok!\n" 
 				<< "Format = " << maybesmf.smf.format() << ", "
-				<< "N MTrks = " << maybesmf.smf.ntrks() << "\n";
+				<< "N MTrks = " << maybesmf.smf.ntrks() << '\n';
 		}
 		std::cout << "==============================================="
 				"=================================\n\n";
@@ -179,6 +141,58 @@ int read_midi_directory(const std::filesystem::path& bp) {
 	return 0;
 }
 
+int read_midi_directory_mthd_inspection(const std::filesystem::path& bp) {
+	auto rdi = std::filesystem::recursive_directory_iterator(bp.parent_path());
+	int nbytes_read = 14;
+	int n_midi_files = 0;
+	for (const auto& dir_ent : rdi) {
+		if (!std::filesystem::is_regular_file(dir_ent)) {
+			continue;
+		}
+		auto curr_path = dir_ent.path();
+		// This throws a std::system_error if native pathnames are wchar_t 
+		// and there is no conversion to char.  
+		auto ext = curr_path.extension().string();  
+		if ((ext!=".mid") && (ext!=".midi")) {
+			continue;
+		}
+		++n_midi_files;
+
+		// Read the file into fdata, close the file
+		std::vector<unsigned char> fdata {};
+		std::basic_ifstream<unsigned char> f(curr_path,std::ios_base::in|std::ios_base::binary);
+		if (!f.is_open() || !f.good()) {
+			std::cout << "Could not open file.  Wat.  " << std::endl;
+			std::cout << std::endl;
+			continue;
+		}
+		f.seekg(0,std::ios::end);
+		auto fsize = f.tellg();
+		f.seekg(0,std::ios::beg);
+		if (fsize < nbytes_read) {
+			continue;
+		}
+		fdata.resize(nbytes_read);
+		f.read(fdata.data(),nbytes_read);
+		f.close();
+
+		mthd_error_t mthd_error {};
+		auto mthd = make_mthd(fdata.data(),fdata.data()+fdata.size(),&mthd_error);
+		if ((fsize > 400000) && mthd) {// || ((mthd) && (mthd.mthd.ntrks()>130))) {
+			std::cout << curr_path.string() << '\n';
+			std::string s; s.reserve(1000);
+			print(mthd.mthd,s);
+			std::cout << s << "\n";
+			std::cout << "==============================================="
+				"=================================\n";
+		}
+
+	}
+	std::cout << n_midi_files << " Midi files\n";
+	//	<< n_smpte_files << " with SMPTE 'division' fields\n"
+	//	<< n_smpte_err << " with Errors in their SMPTE value\n";
+	return 0;
+}
 
 
 

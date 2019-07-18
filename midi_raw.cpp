@@ -500,7 +500,7 @@ midi_vl_field_interpreted mtrk_event_get_meta_length_field_dtstart_unsafe(const 
 	p += midi_interpret_vl_field(p).N;
 	p += 2;  // Skip the 0xFF and type byte;
 	return  midi_interpret_vl_field(p);
-}*/
+}
 uint32_t mtrk_event_get_meta_payload_offset_dtstart_undafe(const unsigned char *p) {
 	uint32_t o = midi_interpret_vl_field(p).N;
 	p += o;  // inc past the delta-time
@@ -527,11 +527,11 @@ parse_meta_event_unsafe_result_t mtrk_event_parse_meta_dtstart_unsafe(const unsi
 
 	return result;
 }
+*/
 
 
 
 /*
-
 parse_meta_event_result_t parse_meta_event(const unsigned char *p, int32_t max_size) {
 	parse_meta_event_result_t result {};
 	result.delta_t = midi_interpret_vl_field(p);
@@ -606,8 +606,8 @@ parse_sysex_event_result_t parse_sysex_event(const unsigned char *p, int32_t max
 	result.is_valid = true;
 	return result;
 }
-
 */
+
 
 
 
