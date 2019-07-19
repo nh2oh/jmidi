@@ -19,9 +19,12 @@
 #include <chrono>
 
 int midi_example() {
+
+	avg_and_max_event_sizes("C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\");
+
 	//read_midi_directory_mthd_inspection("C:\\Users\\ben\\Desktop\\midi_broken_mtrk\\");
 	//read_midi_directory_mthd_inspection("C:\\Users\\ben\\Desktop\\midi_broken_mthd\\");
-	read_midi_directory_mthd_inspection("C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\");
+	//read_midi_directory_mthd_inspection("C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\");
 	//read_midi_directory("C:\\Users\\ben\\Desktop\\midi_broken_mthd\\");
 	//read_midi_directory("C:\\Users\\ben\\Desktop\\midi_broken_mtrk\\");
 	//read_midi_directory("C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\0\\");
@@ -194,7 +197,75 @@ int read_midi_directory_mthd_inspection(const std::filesystem::path& bp) {
 	return 0;
 }
 
+int avg_and_max_event_sizes(const std::filesystem::path& bp) {
+	auto rdi = std::filesystem::recursive_directory_iterator(bp.parent_path());
+	int n_midi_files = 0;
+	for (const auto& dir_ent : rdi) {
+		if (!std::filesystem::is_regular_file(dir_ent)) {
+			continue;
+		}
+		auto curr_path = dir_ent.path();
+		// This throws a std::system_error if native pathnames are wchar_t 
+		// and there is no conversion to char.  
+		auto ext = curr_path.extension().string();  
+		if ((ext!=".mid") && (ext!=".MID") && (ext!=".midi")) {
+			continue;
+		}
+		++n_midi_files;
+		if (n_midi_files < 72635) {
+			continue;
+		}
+		// Read the file into fdata, close the file
+		auto maybe_smf = read_smf(curr_path);
+		std::cout << "File " << std::to_string(n_midi_files) << ")  " 
+			<< curr_path.string() << '\n';
+		if (!maybe_smf) {
+			std::cout << "\t!maybe_smf;  skipping...\n"; 
+			continue;
+		}
+		
+		int32_t cum_nbytes = 0;
+		int32_t n_events = 0;
+		int32_t n_events_gt31bytes = 0;
+		int32_t n_events_2431bytes = 0;
+		int32_t n_events_leq23bytes = 0;
+		int32_t max_sz = 0;
+		auto biggest_event = mtrk_event_t();
+		for (const auto& trk : maybe_smf.smf) {
+			for (const auto& ev : trk) {
+				auto sz = ev.size();
+				if (sz > 31) {
+					++n_events_gt31bytes;
+				} else if ((sz>=24)&&(sz<=31)) {
+					++n_events_2431bytes;
+				} else if (sz<=23) {
+					++n_events_leq23bytes;
+				}
+				if (sz > max_sz) {
+					max_sz = ev.size();
+					biggest_event = ev;
+				}
+				cum_nbytes += ev.size();
+				++n_events;
+			}  // To next event in track
+		}  // To next track in smf
+		std::cout << "n_events == " << std::to_string(n_events) 
+			<< "; avg event size == " 
+			<< std::to_string((1.0*cum_nbytes)/(1.0*n_events))
+			<< '\n'
+			<< "n <= 23 bytes == " << std::to_string(n_events_leq23bytes)
+			<< "; n >= 24 && <= 31 bytes == " << std::to_string(n_events_2431bytes)
+			<< "; n > 31 bytes == " << std::to_string(n_events_gt31bytes)
+			<< ";\n";
+		std::cout << print(biggest_event,mtrk_sbo_print_opts::detail) << '\n';
+		std::cout << "==============================================="
+				"=================================\n\n";
 
+	}
+	std::cout << n_midi_files << " Midi files\n";
+
+	return 0;
+}
 
 int midi_clamped_value_testing() {
 	int64_t toobig = 0x2FFFFFFF;

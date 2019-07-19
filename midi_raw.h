@@ -191,14 +191,6 @@ bool is_valid_time_division_raw_value(uint16_t);
 smpte_t get_smpte(time_division_t, smpte_t={0,0});
 int32_t get_tpq(time_division_t, int32_t=0);
 
-struct midi_time_t2 {
-	// From MThd; no default specified in the std, arbitrarily choosing 48.  
-	uint16_t tpq {48};
-	// From a set-tempo meta msg; default => 120 usec/qnt ("bpm"):
-	// 500,000 us => 500 ms => 0.5 s / qnt
-	// => 2 qnt/s => 120 qnt/min => "120 bpm"
-	int32_t tempo {500000};  // usec/q-nt
-};
 
 // double ticks2sec(const uint32_t& ticks, const time_division_t& tdiv, 
 //					int32_t tempo=500000);
