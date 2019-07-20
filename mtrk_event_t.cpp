@@ -10,10 +10,13 @@
 
 
 mtrk_event_t::mtrk_event_t() {  
-	zero_init();
+	/*this->d_.init_small_unsafe();*/
+	//zero_init();
 }
 mtrk_event_t::mtrk_event_t(uint32_t dt) {  
-	zero_init();
+	/*this->d_.init_small_unsafe();*/
+	this->d_.resize(delta_time_field_size(dt));
+	//zero_init();
 	write_delta_time(dt,this->d_.begin());
 }
 //
@@ -30,14 +33,16 @@ mtrk_event_t::mtrk_event_t(const unsigned char *p, uint32_t sz, unsigned char rs
 	if (!has_local_status) {
 		cap += 1;
 	}
+	
+	this->d_.resize(cap);
 
-	if (cap<=this->d_.small_capacity()) {  // small
+	/*if (cap<=this->d_.small_capacity()) {  // small
 		this->d_.set_flag_small();
 	} else {  // big
 		this->d_.set_flag_big();
 		unsigned char* new_p = new unsigned char[cap];  
 		this->d_.big_adopt(new_p,sz,cap);
-	}
+	}*/
 	unsigned char *dest = this->d_.begin();
 	auto dest_end = std::copy(p,p+dt.N,dest);
 	p+=dt.N;
@@ -48,7 +53,7 @@ mtrk_event_t::mtrk_event_t(const unsigned char *p, uint32_t sz, unsigned char rs
 	}
 
 	dest_end = std::copy(p,p_end,dest_end);
-	std::fill(dest_end,this->d_.end(),0x00u);
+	//std::fill(dest_end,this->d_.end(),0x00u);
 }
 // TODO:  Clamp dt to the max allowable value
 mtrk_event_t::mtrk_event_t(const uint32_t& dt, const unsigned char *p, 
@@ -67,13 +72,15 @@ mtrk_event_t::mtrk_event_t(const uint32_t& dt, const unsigned char *p,
 		cap += 1;
 	}
 
-	if (cap<=this->d_.small_capacity()) {  // small
+	this->d_.resize(cap);
+
+	/*if (cap<=this->d_.small_capacity()) {  // small
 		this->d_.set_flag_small();
 	} else {  // big
 		this->d_.set_flag_big();
 		unsigned char* new_p = new unsigned char[cap];  
 		this->d_.big_adopt(new_p,sz,cap);
-	}
+	}*/
 	unsigned char *dest = this->d_.begin();
 	auto dest_end = write_delta_time(dt,dest);
 	
@@ -82,21 +89,33 @@ mtrk_event_t::mtrk_event_t(const uint32_t& dt, const unsigned char *p,
 		++p;
 	}
 	dest_end = std::copy(p,p_end,dest_end);
-	std::fill(dest_end,this->d_.end(),0x00u);
+	//std::fill(dest_end,this->d_.end(),0x00u);
 }
 mtrk_event_t::mtrk_event_t(uint32_t dt, midi_ch_event_t md) {
-	this->d_.set_flag_small();
+	// TODO:  Is this correct?  What about ch event's w/o a p2?
+	
+	unsigned char s = (md.status_nybble)|(md.ch);
+	this->d_.resize(delta_time_field_size(dt)+3);
+	auto dest_end = write_delta_time(dt,this->d_.begin());
+	*dest_end++ = s;
+	*dest_end++ = (md.p1);
+	*dest_end++ = (md.p2);
+
+	/*this->d_.set_flag_small();
 	auto dest_end = write_delta_time(dt,this->d_.begin());
 	unsigned char s = (md.status_nybble)|(md.ch);
 	*dest_end++ = s;
 	*dest_end++ = (md.p1);
 	*dest_end++ = (md.p2);
-	std::fill(dest_end,this->d_.end(),0x00u);
+	std::fill(dest_end,this->d_.end(),0x00u);*/
 }
 //
 // Copy ctor
 //
 mtrk_event_t::mtrk_event_t(const mtrk_event_t& rhs) {
+	this->d_.resize(rhs.d_.size());
+	std::copy(rhs.d_.begin(),rhs.d_.end(),this->d_.begin());
+	/*
 	if (rhs.size()>this->d_.small_capacity()) {
 		this->d_.set_flag_big();
 		unsigned char *new_p = new unsigned char[rhs.size()];
@@ -108,12 +127,16 @@ mtrk_event_t::mtrk_event_t(const mtrk_event_t& rhs) {
 		auto data_end = std::copy(rhs.begin(),rhs.end(),this->begin());
 		std::fill(data_end,this->end(),0x00u);
 	}
+	*/
 }
 //
 // Copy assignment; overwrites a pre-existing lhs 'this' w/ rhs
 //
 mtrk_event_t& mtrk_event_t::operator=(const mtrk_event_t& rhs) {
-	auto src_beg = rhs.data();  // Saves abt 6 calls to rhs.data()
+	this->d_.resize(rhs.d_.size());
+	std::copy(rhs.d_.begin(),rhs.d_.end(),this->d_.begin());
+
+	/*auto src_beg = rhs.data();  // Saves abt 6 calls to rhs.data()
 	auto src_sz = rhs.size();  // Saves abt 10 calls to rhs.size()
 	if (src_sz>this->d_.small_capacity()) {  // rhs requires a 'big' container
 		if (this->capacity() < src_sz) {
@@ -136,34 +159,45 @@ mtrk_event_t& mtrk_event_t::operator=(const mtrk_event_t& rhs) {
 		this->d_.set_flag_small();
 		auto data_end = std::copy(src_beg,src_beg+src_sz,this->begin());
 		std::fill(data_end,this->end(),0x00u);
-	}
+	}*/
 	return *this;
 }
 //
 // Move ctor
 //
 mtrk_event_t::mtrk_event_t(mtrk_event_t&& rhs) noexcept {
+	/*this->d_.set_unsafe(rhs.d_);
+	rhs.d_.init_small_unsafe();*/
+	/*
 	this->d_ = rhs.d_;
 	rhs.zero_init();
 	// Prevents ~rhs() from freeing its memory.  Sets the 'small' flag and
 	// zeros all elements of the data array.  
+	*/
 }
 //
 // Move assign
 //
 mtrk_event_t& mtrk_event_t::operator=(mtrk_event_t&& rhs) noexcept {
+	/*this->d_.free_and_reinit_small();
+	this->d_.set_unsafe(rhs.d_);
+	rhs.d_.init_small_unsafe();*/
+	
+	/*
 	this->d_.free_if_big();
 	this->d_ = rhs.d_;
 	rhs.zero_init();
 	// Prevents ~rhs() from freeing its memory.  Sets the 'small' flag and
 	// zeros all elements of the data array.  
+	*/
 	return *this;
 }
 //
 // dtor
 //
 mtrk_event_t::~mtrk_event_t() {
-	this->d_.free_if_big();
+	/*this->d_.free_and_reinit_small();*/
+	//this->d_.free_if_big();
 }
 
 uint64_t mtrk_event_t::size() const {
@@ -361,11 +395,12 @@ bool mtrk_event_t::operator==(const mtrk_event_t& rhs) const {
 bool mtrk_event_t::operator!=(const mtrk_event_t& rhs) const {
 	return !(*this==rhs);
 }
-
+/*
 void mtrk_event_t::zero_init() {
 	this->d_.set_flag_small();
 	std::fill(this->d_.begin(),this->d_.end(),0x00u);
 }
+*/
 const unsigned char *mtrk_event_t::raw_begin() const {
 	return this->d_.raw_begin();
 }

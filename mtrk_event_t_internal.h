@@ -2,12 +2,12 @@
 #include <cstdint>
 #include <array>
 
+
 namespace mtrk_event_t_internal {
 
 // 
-// Very simple small-buffer class for managing an array of unsigned char.  
-// The smallest value of capacity() allowed is the size of the data 
-// region (data member d_) of the 'small' object (23 bytes).  
+// Very simple "'small' std::vector"-like class for managing an array 
+// of unsigned char.  
 //
 struct small_t {
 	static constexpr int32_t size_max = 23;
@@ -15,46 +15,80 @@ struct small_t {
 	unsigned char flags_;  // small => flags_&0x80u==0x80u
 	std::array<unsigned char,23> d_;
 	
+	void init();
 	int32_t size() const;
 	constexpr int32_t capacity() const;  // Returns small_t::size_max
 	// Can only resize to a value on [0,small_t::size_max]
 	int32_t resize(int32_t);
-	
+	void abort_if_not_active() const;
+
 	unsigned char *begin();  // Returns &d[0]
 	const unsigned char *begin() const;
 	unsigned char *end();  // Returns &d[0]+this->size()
 	const unsigned char *end() const;
 };
+//
+// Class big_t
+// Invariants:  
+// -> If !(flags_&0x80u), p_ is a valid ptr or nullptr; it can always
+//    be tested as if (this->p_) { ... .  
+// -> If p_==nullptr, sz_==cap_==0
+//
+//
 struct big_t {
 	static constexpr int32_t size_max = 0x0FFFFFFF;
+	using pad_t = std::array<unsigned char,7>;
 
 	unsigned char flags_;  // big => flags_&0x80u==0x00u
-	std::array<unsigned char,7> pad_;
+	pad_t pad_;
 	unsigned char *p_;  // 16
 	uint32_t sz_;  // 20
 	uint32_t cap_;  // 24
 
-	// Keeps the object 'big', even if the new size would allow it to
-	// fit in a small_t.  big_t/small_t switching logic lives in sbo_t,
-	// not here.  
+	// resize() keeps the object 'big', even if the new size would allow 
+	// it to fit in a small_t.  big_t/small_t switching logic lives in 
+	// sbo_t, not here.  
+	// init() is meant to be called from an _uninitialized_ state; it does
+	// not and can not test and conditionally delete [] p_.  
+	void init();
+	// free_and_reinit() checks p_ and calls delete []; it should only 
+	// be called from an _initialized_ state.  
+	void free_and_reinit();
 	int32_t size() const;
 	int32_t resize(int32_t);
 	int32_t reserve(int32_t);
 	int32_t capacity() const;
-	// void free_and_adpot_new(unsigned char *p, int32_t sz, int32_t cap);
-	// Calls delete [] on this->p_, replaces this->sz_ and this->cap_ 
-	// w/ sz and cap.  Does not touch flags; it is assumed the parent 
-	// sbo_t::is_big().  
-	void free_and_adpot_new(unsigned char*, int32_t, int32_t);
+	void abort_if_not_active() const;
+	// Deletes p_; object must be initialized before calling
+	void adopt(const pad_t&, unsigned char*, int32_t, int32_t);
 
 	unsigned char *begin();  // Returns p
-	const unsigned char *begin() const;  // Returns p
-	unsigned char *end();  // Returns begin() + cap_
-	const unsigned char *end() const;  // Returns begin() + cap_
+	const unsigned char *begin() const;
+	unsigned char *end();  // Returns begin() + sz_
+	const unsigned char *end() const;
 };
 class sbo_t {
 public:
 	static constexpr int32_t size_max = big_t::size_max;
+	static constexpr int32_t capacity_small = small_t::size_max;
+
+	// Constructs a 'small' object w/ size()==0
+	sbo_t();
+	// Copy ctor
+	sbo_t(const sbo_t&);
+	// Copy assignment; overwrites a pre-existing lhs 'this' w/ rhs
+	sbo_t& operator=(const sbo_t&);
+	// Move ctor
+	sbo_t(sbo_t&&) noexcept;
+	// Move assignment
+	sbo_t& operator=(sbo_t&&) noexcept;
+	// Dtor
+	~sbo_t();
+
+	// Call only on an unitialized object; init() method of the  
+	// corresponding type.  These do _not_ free memory.  
+	void init_small();
+	void init_big();
 
 	int32_t size() const;
 	int32_t capacity() const;
@@ -66,6 +100,7 @@ public:
 	// remains 'small'.  
 	int32_t resize(int32_t);
 	int32_t reserve(int32_t);
+	bool debug_is_big() const;
 
 	unsigned char* begin();
 	const unsigned char* begin() const;
@@ -85,24 +120,6 @@ private:
 
 	bool is_big() const;
 	bool is_small() const;
-
-	void clear_flags_and_set_big();
-	void clear_flags_and_set_small();
-	// void init_big_unsafe();
-	// Accesses the union through raw_; sets all array elements (including
-	// b_./s_.flags_) to 0x00u, then calls clear_flags_and_set_big().  
-	// Sets b_.p_=nullptr, b_.sz_=0, b_.cap_=0.  
-	// This has the effect of "initializing" the 'big' object member.  
-	// If u_.is_big() at the time of the call, memory is not freed.  
-	void init_big_unsafe();
-	// void init_small_unsafe();
-	// Accesses the union through raw_; sets all array elements (including
-	// b_./s_.flags_) to 0x00u, then calls clear_flags_and_set_small().  
-	// This has the effect of "initializing" the 'small' object member w/a 
-	// size()==0 and all data == 0x00u.  
-	// If u_.is_big() at the time of the call, memory is not freed.  
-	void init_small_unsafe();
-	
 };
 
 static_assert(sizeof(small_t)==sizeof(big_t));

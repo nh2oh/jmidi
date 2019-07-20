@@ -174,7 +174,7 @@ private:
 	// Overwrites *this w/ the default ctor'd value of a 'small' event
 	// consisting of all zeros.  Ignores the big/small flag of the union;
 	// does not free memory if big.  
-	void zero_init();
+	//void zero_init();
 	const unsigned char *raw_begin() const;
 	const unsigned char *raw_end() const;
 	unsigned char flags() const;
