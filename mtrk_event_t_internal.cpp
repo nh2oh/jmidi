@@ -166,7 +166,8 @@ sbo_t::sbo_t(sbo_t&& rhs) noexcept {  // Move ctor
 		this->init_big();
 		this->u_.b_.adopt(rhs.u_.b_.pad_,rhs.begin(),rhs.size(),
 							rhs.capacity());
-		rhs.init_big();  // Does not delete [] rhs.u_.b_.p_
+		rhs.init_small();
+		//rhs.init_big();  // Does not delete [] rhs.u_.b_.p_
 	} else {  // rhs is 'small'
 		this->init_small();
 		this->resize(rhs.size());
@@ -184,7 +185,8 @@ sbo_t& sbo_t::operator=(sbo_t&& rhs) noexcept {  // Move assign
 		this->init_big();
 		this->u_.b_.adopt(rhs.u_.b_.pad_,rhs.begin(),rhs.size(),
 							rhs.capacity());
-		rhs.init_big();  // Does not delete [] rhs.u_.b_.p_
+		//rhs.init_big();  // Does not delete [] rhs.u_.b_.p_
+		rhs.init_small();
 	} else {  // rhs is 'small'
 		this->init_small();
 		this->resize(rhs.size());
@@ -270,6 +272,24 @@ int32_t sbo_t::reserve(int32_t new_cap) {
 	}
 	return this->capacity();
 }
+unsigned char *sbo_t::push_back(unsigned char c) {
+	auto sz = this->size();
+	if (sz==this->capacity()) {
+		// Note that a consequence of this test is that if this->is_small(),
+		// reserve() will not be called until the 'small' object is 
+		// completely full, so the object remains small for as long as 
+		// possible.  
+
+		// if this->size()==0, don't want to reserve 2*sz==0; in theory
+		// one could have a capacity 0 'big' object.  
+		auto new_sz = std::max(2*sz,sbo_t::capacity_small);
+		this->reserve(new_sz);
+	}
+	this->resize(sz+1);
+	*(this->end()-1) = c;
+	return this->end()-1;
+}
+
 bool sbo_t::debug_is_big() const {
 	return this->is_big();
 }

@@ -22,9 +22,9 @@ struct small_t {
 	int32_t resize(int32_t);
 	void abort_if_not_active() const;
 
-	unsigned char *begin();  // Returns &d[0]
+	unsigned char *begin();
 	const unsigned char *begin() const;
-	unsigned char *end();  // Returns &d[0]+this->size()
+	unsigned char *end();
 	const unsigned char *end() const;
 };
 //
@@ -45,9 +45,6 @@ struct big_t {
 	uint32_t sz_;  // 20
 	uint32_t cap_;  // 24
 
-	// resize() keeps the object 'big', even if the new size would allow 
-	// it to fit in a small_t.  big_t/small_t switching logic lives in 
-	// sbo_t, not here.  
 	// init() is meant to be called from an _uninitialized_ state; it does
 	// not and can not test and conditionally delete [] p_.  
 	void init();
@@ -62,9 +59,9 @@ struct big_t {
 	// Deletes p_; object must be initialized before calling
 	void adopt(const pad_t&, unsigned char*, int32_t, int32_t);
 
-	unsigned char *begin();  // Returns p
+	unsigned char *begin();
 	const unsigned char *begin() const;
-	unsigned char *end();  // Returns begin() + sz_
+	unsigned char *end();
 	const unsigned char *end() const;
 };
 class sbo_t {
@@ -74,32 +71,22 @@ public:
 
 	// Constructs a 'small' object w/ size()==0
 	sbo_t();
-	// Copy ctor
-	sbo_t(const sbo_t&);
-	// Copy assignment; overwrites a pre-existing lhs 'this' w/ rhs
-	sbo_t& operator=(const sbo_t&);
-	// Move ctor
-	sbo_t(sbo_t&&) noexcept;
-	// Move assignment
-	sbo_t& operator=(sbo_t&&) noexcept;
-	// Dtor
+	sbo_t(const sbo_t&);  // Copy ctor
+	sbo_t& operator=(const sbo_t&);  // Copy assign
+	sbo_t(sbo_t&&) noexcept;  // Move ctor
+	sbo_t& operator=(sbo_t&&) noexcept;  // Move assign
 	~sbo_t();
-
-	// Call only on an unitialized object; init() method of the  
-	// corresponding type.  These do _not_ free memory.  
-	void init_small();
-	void init_big();
 
 	int32_t size() const;
 	int32_t capacity() const;
 	// int32_t resize(int32_t new_sz);
-	// If 'big' and the new size is <= small_t::size_max, will change the
-	// object type to 'small'.  Memory is freed correctly.  If presently 
-	// 'small', but the new_size is still <= small_t::size_max, leaves the 
-	// object small and calls the small_t::resize() method; the object 
-	// remains 'small'.  
+	// If 'big' and the new size is <= sbo_t::capacity_small, will cause
+	// a big->small transition.  
 	int32_t resize(int32_t);
 	int32_t reserve(int32_t);
+
+	unsigned char *push_back(unsigned char);
+
 	bool debug_is_big() const;
 
 	unsigned char* begin();
@@ -120,6 +107,10 @@ private:
 
 	bool is_big() const;
 	bool is_small() const;
+	// Call only on an unitialized object; callas the init() method of the 
+	// corresponding type.  big_t::init() does _not_ free memory.  
+	void init_small();
+	void init_big();
 };
 
 static_assert(sizeof(small_t)==sizeof(big_t));
