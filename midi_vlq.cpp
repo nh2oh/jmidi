@@ -1,5 +1,22 @@
 #include "midi_vlq.h"
 #include <cstdint>
+#include <algorithm>
+
+
+constexpr int delta_time_field_size(int32_t val) {
+	val = std::clamp(val,0,0x0FFFFFFF);
+	return delta_time_field_size(static_cast<uint32_t>(val));
+}
+constexpr int delta_time_field_size(uint32_t val) {
+	val = std::clamp(val,0u,0x0FFFFFFFu);
+	int n {0};
+	do {
+		val >>= 7;
+		++n;
+	} while ((val!=0) && (n<4));
+
+	return n;
+}
 
 
 
@@ -8,9 +25,9 @@ midi_vl_field_interpreted midi_interpret_vl_field(const unsigned char* p) {
 	result.val = 0;
 
 	while (true) {
-		result.val += (*p & 0x7F);
+		result.val += (*p & 0x7Fu);
 		++(result.N);
-		if (!(*p & 0x80) || result.N==4) {  // the high-bit is not set
+		if (!(*p & 0x80u) || result.N==4) {  // the high-bit is not set
 			break;
 		} else {
 			result.val <<= 7;  // result.val << 7;
@@ -18,7 +35,7 @@ midi_vl_field_interpreted midi_interpret_vl_field(const unsigned char* p) {
 		}
 	}
 
-	result.is_valid = !(*p & 0x80);
+	result.is_valid = !(*p & 0x80u);
 
 	return result;
 }

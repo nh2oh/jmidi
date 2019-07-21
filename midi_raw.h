@@ -211,8 +211,6 @@ int32_t sec2ticks(const double&, const time_division_t&, int32_t=500000);
 
 
 
-
-
 //
 // Why do i include "invalid," which is clearly not a member of the "class
 // of things-that-are-smf-events"?  Because users switch behavior on 
@@ -340,7 +338,11 @@ uint32_t channel_event_get_data_size(const unsigned char *, unsigned char);
 uint32_t meta_event_get_data_size(const unsigned char *, uint32_t);
 uint32_t sysex_event_get_data_size(const unsigned char *, uint32_t);
 //
-// The non-_dtstart functions returns 0 if p points at smf_event_type::invalid
+// ...get_size() returns a size that includes the delta-time field;
+// ...get_data_size() returns a size that does _not_ include the 
+// delta-time.  
+//
+// The non-_dtstart functions return 0 if p points at smf_event_type::invalid
 // || smf_event_type::unrecognized, or
 // if the size of the event would exceed max_size.  Note that 0 is always
 // an invalid size for an smf event.  

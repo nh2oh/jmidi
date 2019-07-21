@@ -534,7 +534,8 @@ bool is_sysex_f7(const mtrk_event_t& ev) {
 }
 mtrk_event_t make_sysex_generic_impl(const uint32_t& dt, unsigned char type, 
 					bool f7_terminate, const std::vector<unsigned char>& pyld) {
-	auto payload_eff_size = pyld.size();
+	return mtrk_event_t();
+	/*auto payload_eff_size = pyld.size();
 	if ((pyld.size()>0) && (pyld.back()!=0xF7u) && f7_terminate) {
 		++payload_eff_size;
 	}
@@ -552,7 +553,7 @@ mtrk_event_t make_sysex_generic_impl(const uint32_t& dt, unsigned char type,
 	if (pyld.size()!=payload_eff_size) {  // pyld is not F7-capped && f7_terminate
 		*it++ = 0xF7u;
 	}
-	return result;
+	return result;*/
 }
 mtrk_event_t make_sysex_f0(const uint32_t& dt, const std::vector<unsigned char>& pyld) {
 	return make_sysex_generic_impl(dt,0xF0u,true,pyld);

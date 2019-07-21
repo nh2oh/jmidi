@@ -195,16 +195,16 @@ midi_vl_field_interpreted midi_interpret_vl_field(InIt it) {
 	midi_vl_field_interpreted result {};
 	result.val = 0;
 	while (true) {
-		result.val += (*it & 0x7F);
+		result.val += (*it & 0x7Fu);
 		++(result.N);
-		if (!(*it & 0x80) || result.N==4) { // the high-bit is not set
+		if (!(*it & 0x80u) || result.N==4) { // the high-bit is not set
 			break;
 		} else {
 			result.val <<= 7;  // result.val << 7;
 			++it;
 		}
 	}
-	result.is_valid = !(*it & 0x80);
+	result.is_valid = !(*it & 0x80u);
 	return result;
 };
 // Advance the iterator to the end of the vlq; do not parse the field
@@ -215,9 +215,15 @@ InIt advance_to_vlq_end(InIt it) {
 	}
 	return it;
 };
-// Advance the iterator to the end of the delta-time vlq or by 4 bytes,
-// whichever comes first; do not parse the field.  A delta-time vlq may
-// occupy a maximum of 4 bytes.  
+// Advance the iterator to the end of the vlq, by 4 bytes, or to the end
+// of the range, whichever comes first.  
+template<typename InIt>
+InIt advance_to_dt_end(InIt beg, InIt end) {
+	for (int i=0; ((beg!=end)&&((*beg)&0x80u)); ++i) {
+		++beg;
+	}
+	return beg;
+};
 template<typename InIt>
 InIt advance_to_dt_end(InIt it) {
 	int n=0;
@@ -226,7 +232,6 @@ InIt advance_to_dt_end(InIt it) {
 	}
 	return it;
 };
-
 
 
 //
@@ -282,7 +287,9 @@ constexpr int midi_vl_field_size(T val) {
 // clamp the max allowable value to 0x0FFFFFFFu => 4 bytes, hence this never
 // returns > 4.  
 //
-template<typename T>
+constexpr int delta_time_field_size(int32_t);
+constexpr int delta_time_field_size(uint32_t);
+/*template<typename T>
 constexpr int delta_time_field_size(T val) {
 	static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value,
 		"MIDI VL fields only encode unsigned integral values");
@@ -293,7 +300,7 @@ constexpr int delta_time_field_size(T val) {
 	} while ((val!=0) && (n<4));
 
 	return n;
-}
+}*/
 
 
 // 
@@ -363,6 +370,20 @@ OutIt midi_write_vl_field(OutIt it, T val) {
 	return it;
 };
 
+// These clamp the input value to [0,0x0FFFFFFF] == [0,268,435,455]
+template<typename OIt>
+OIt write_delta_time(int32_t val, OIt it) {
+	val = std::max(0,val);
+	uint32_t uval = static_cast<uint32_t>(val)&0x0FFFFFFFu;
+	return midi_write_vl_field(it,uval);
+};
+template<typename OIt>
+OIt write_delta_time(uint32_t val, OIt it) {
+	val &= 0x0FFFFFFFu;
+	return midi_write_vl_field(it,val);
+};
+
+/*
 // Clamps the input value to [0,0x0FFFFFFF] == [0,268,435,455]
 template<typename T, typename OIt>
 OIt write_delta_time(T val, OIt it) {
@@ -372,7 +393,7 @@ OIt write_delta_time(T val, OIt it) {
 	val &= 0x0FFFFFFFu;
 	return midi_write_vl_field(it,val);
 };
-
+*/
 
 //
 // For some array (of any type) on [beg,end), writes the underlying byte
