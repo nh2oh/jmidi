@@ -100,7 +100,12 @@ bool is_channel_mode(const midi_ch_event_t& md) {
 	// 120  == 0b01111000u
 }
 
-
+bool is_valid_delta_time(int32_t dt) {
+	return !((dt>0x0FFFFFFF) || (dt<0));
+}
+int32_t to_nearest_valid_delta_time(int32_t val) {
+	return std::clamp(val,0,0x0FFFFFFF);
+}
 
 //
 // time-division_t class methods
@@ -548,6 +553,7 @@ uint32_t sysex_event_get_data_size(const unsigned char *p, uint32_t max_size) {
 	n += (len.N + len.val);
 	return n;
 }
+
 
 uint32_t mtrk_event_get_data_size(const unsigned char *p, unsigned char rs,
 								uint32_t max_size) {

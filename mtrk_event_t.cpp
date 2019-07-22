@@ -125,17 +125,10 @@ mtrk_event_t::size_type mtrk_event_t::capacity() const {
 mtrk_event_t::size_type mtrk_event_t::resize(mtrk_event_t::size_type new_cap) {
 	new_cap = std::clamp(new_cap,0,mtrk_event_t::size_max);
 	return this->d_.resize(new_cap);
-	/*if (new_cap > std::numeric_limits<uint32_t>::max()) {
-		new_cap = std::numeric_limits<uint32_t>::max();
-	}
-	uint32_t new_cap32 = static_cast<uint32_t>(new_cap);
-	return this->d_.resize(new_cap32);*/
 }
 mtrk_event_t::size_type mtrk_event_t::reserve(mtrk_event_t::size_type new_cap) {
 	new_cap = std::clamp(new_cap,0,mtrk_event_t::size_max);
-	return this->reserve(new_cap);
-	//auto new_cap = std::max(cap_in,this->capacity());
-	//return this->resize(new_cap);
+	return this->d_.reserve(new_cap);
 }
 unsigned char *mtrk_event_t::data() {
 	return this->d_.begin();
@@ -155,11 +148,6 @@ mtrk_event_t::iterator mtrk_event_t::end() {
 mtrk_event_t::const_iterator mtrk_event_t::end() const {
 	return this->begin()+this->size();
 }
-
-
-
-
-
 mtrk_event_t::const_iterator mtrk_event_t::dt_begin() const {
 	return this->begin();
 }
@@ -234,7 +222,9 @@ const unsigned char mtrk_event_t::operator[](mtrk_event_t::size_type i) const {
 unsigned char mtrk_event_t::operator[](mtrk_event_t::size_type i) {
 	return *(this->data()+i);
 };
-
+unsigned char *mtrk_event_t::push_back(unsigned char c) {
+	return this->d_.push_back(c);
+}
 
 smf_event_type mtrk_event_t::type() const {
 	auto p = advance_to_dt_end(this->begin(),this->end());
@@ -254,8 +244,8 @@ unsigned char mtrk_event_t::running_status() const {
 	return get_running_status_byte(*p,0x00u);
 }
 mtrk_event_t::size_type mtrk_event_t::data_size() const {  // Not including delta-t
-	auto end = this->d_.end();
-	auto p = advance_to_dt_end(this->d_.begin(),end);
+	auto end = this->end();
+	auto p = advance_to_dt_end(this->begin(),end);
 	return end-p;
 }
 
@@ -319,7 +309,6 @@ const unsigned char *mtrk_event_t::raw_begin() const {
 const unsigned char *mtrk_event_t::raw_end() const {
 	return this->d_.raw_end();
 }
-
 unsigned char mtrk_event_t::flags() const {
 	return *(this->d_.raw_begin());
 }
@@ -330,4 +319,208 @@ bool mtrk_event_t::is_small() const {
 	return !(this->is_big());
 }
 
+
+maybe_mtrk_event_t::operator bool() const {
+	return this->error==maybe_mtrk_event_t::errc::no_error;
+}
+validate_channel_event_result_t::operator bool() const {
+	return this->error==maybe_mtrk_event_t::errc::no_error;
+}
+validate_meta_event_result_t::operator bool() const {
+	return this->error==maybe_mtrk_event_t::errc::no_error;
+}
+validate_sysex_event_result_t::operator bool() const {
+	return this->error==maybe_mtrk_event_t::errc::no_error;
+}
+
+maybe_mtrk_event_t make_mtrk_event(int32_t dt, const unsigned char *beg,
+					const unsigned char *end, unsigned char rs,
+					mtrk_event_error_t *err) {
+	maybe_mtrk_event_t result;
+	result.error = maybe_mtrk_event_t::errc::other;
+
+	auto set_err = [&err](int32_t dt, unsigned char s, 
+			const unsigned char *beg, const unsigned char *end) -> void {
+		if (!err) {
+			return;
+		}
+		err->delta_time = dt;
+		err->header.fill(0x00u);
+		err->status = s;
+		if (!beg || !end) {
+			return;
+		}
+		auto n = end-beg;
+		if (n > err->header.size()) {
+			n = err->header.size();
+		}
+		std::copy(beg,beg+n,err->header.begin());
+	};
+
+	if (!is_valid_delta_time(dt)) {
+		set_err(dt,0x00u,nullptr,nullptr);
+		result.error = maybe_mtrk_event_t::errc::invalid_delta_time;
+		return result;
+	}
+	auto dt_n = delta_time_field_size(dt);
+
+	if (beg==end) {
+		set_err(dt,0x00u,nullptr,nullptr);
+		result.error = maybe_mtrk_event_t::errc::zero_sized_input;
+		return result;
+	}
+
+	auto s = get_status_byte(*beg,rs);
+	if (is_channel_status_byte(s)) {
+		auto chdata = validate_channel_event(beg,end,rs);
+		if (!chdata) {
+			set_err(dt,s,beg,end);
+			result.error = chdata.error;
+			return result;
+		}
+		result.event.resize(dt_n);
+		write_delta_time(dt,result.event.begin());
+		result.event.push_back(chdata.data.status_nybble|chdata.data.ch);
+		result.event.push_back(chdata.data.p1);
+		if (channel_status_byte_n_data_bytes(s)==2) {
+			result.event.push_back(chdata.data.p2);
+		}
+	} else if (is_meta_status_byte(s)) {
+		auto mtdata = validate_meta_event(beg,end);
+		if (!mtdata) {
+			set_err(dt,s,mtdata.begin,mtdata.end);
+			result.error = mtdata.error;
+			return result;
+		}
+		result.event.resize(dt_n+(mtdata.end-mtdata.begin));
+		auto it = write_delta_time(dt,result.event.begin());
+		std::copy(mtdata.begin,mtdata.end,it);
+	} else if (is_sysex_status_byte(s)) {
+		auto sxdata = validate_meta_event(beg,end);
+		if (!sxdata) {
+			set_err(dt,s,sxdata.begin,sxdata.end);
+			result.error = sxdata.error;
+			return result;
+		}
+		result.event.resize(dt_n+(sxdata.end-sxdata.begin));
+		auto it = write_delta_time(dt,result.event.begin());
+		std::copy(sxdata.begin,sxdata.end,it);
+	} else {
+		set_err(dt,0x00u,beg,end);
+		result.error = maybe_mtrk_event_t::errc::invalid_status_byte;
+		return result;
+	}
+	return result;
+}
+
+validate_channel_event_result_t
+validate_channel_event(const unsigned char *beg, const unsigned char *end,
+						unsigned char rs) {
+	validate_channel_event_result_t result;
+	result.error = maybe_mtrk_event_t::errc::other;
+	if (beg==end) {
+		result.error = maybe_mtrk_event_t::errc::channel_overflow;
+		return result;
+	}
+	auto s = get_status_byte(*beg,rs);
+	if (!is_channel_status_byte(s)) {
+		result.error = maybe_mtrk_event_t::errc::channel_invalid_status_byte;
+		return result;
+	}
+	result.data.status_nybble = s&0xF0u;
+	result.data.ch = s&0x0Fu;
+	bool has_local_status_byte = (s==*beg);
+	int expect_n_data_bytes = 2;
+	if ((s&0xF0u)==0xC0u || (s&0xF0u)==0xD0u) {
+		expect_n_data_bytes = 1;
+	}
+	if (has_local_status_byte) {
+		++beg;
+	}
+
+	if (beg==end) {
+		result.error = maybe_mtrk_event_t::errc::channel_calcd_length_exceeds_input;
+		return result;
+	}
+	result.data.p1 = *beg++;
+	if (!is_data_byte(result.data.p1)) {
+		result.error = maybe_mtrk_event_t::errc::channel_invalid_data_byte;
+		return result;
+	}
+	if (expect_n_data_bytes==2) {
+		if (beg==end) {
+			result.error = maybe_mtrk_event_t::errc::channel_calcd_length_exceeds_input;
+			return result;
+		}
+		result.data.p2 = *beg++;
+		if (!is_data_byte(result.data.p2)) {
+			result.error = maybe_mtrk_event_t::errc::channel_invalid_data_byte;
+			return result;
+		}
+	}
+
+	result.error=maybe_mtrk_event_t::errc::no_error;
+	return result;
+}
+
+validate_meta_event_result_t
+validate_meta_event(const unsigned char *beg, const unsigned char *end) {
+	validate_meta_event_result_t result;
+	result.error = maybe_mtrk_event_t::errc::other;
+	if ((end-beg)<3) {
+		result.error = maybe_mtrk_event_t::errc::sysex_or_meta_overflow_in_header;
+		return result;
+	}
+	auto p = beg;
+	if (!is_meta_status_byte(*p)) {
+		result.error = maybe_mtrk_event_t::errc::invalid_status_byte;
+		return result;
+	}
+	p+=2;
+	auto len = midi_interpret_vl_field(p,end);
+	if (!len.is_valid) {
+		result.error = maybe_mtrk_event_t::errc::sysex_or_meta_invalid_vlq_length;
+		return result;
+	}
+	if ((end-p)<(len.N+len.val)) {
+		result.error = maybe_mtrk_event_t::errc::sysex_or_meta_calcd_length_exceeds_input;
+		return result;
+	}
+	// TODO:  Should return len.val and re-compute its normalized vlq rep
+	result.error = maybe_mtrk_event_t::errc::no_error;
+	result.begin = beg;
+	result.end = beg + 2 + len.N + len.val;
+	return result;
+}
+
+
+validate_sysex_event_result_t
+validate_sysex_event(const unsigned char *beg, const unsigned char *end) {
+	validate_sysex_event_result_t result;
+	result.error = maybe_mtrk_event_t::errc::other;
+	if ((end-beg)<2) {
+		result.error = maybe_mtrk_event_t::errc::sysex_or_meta_overflow_in_header;
+		return result;
+	}
+	auto p = beg;
+	if (!is_sysex_status_byte(*p)) {
+		result.error = maybe_mtrk_event_t::errc::invalid_status_byte;
+		return result;
+	}
+	p+=1;
+	auto len = midi_interpret_vl_field(p,end);
+	if (!len.is_valid) {
+		result.error = maybe_mtrk_event_t::errc::sysex_or_meta_invalid_vlq_length;
+		return result;
+	}
+	if ((end-p)<(len.N+len.val)) {
+		result.error = maybe_mtrk_event_t::errc::sysex_or_meta_calcd_length_exceeds_input;
+		return result;
+	}
+	// TODO:  Should return len.val and re-compute its normalized vlq rep
+	result.error = maybe_mtrk_event_t::errc::no_error;
+	result.begin = beg;
+	result.end = beg + 1 + len.N + len.val;
+	return result;
+}
 

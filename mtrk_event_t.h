@@ -58,6 +58,9 @@ enum class mtrk_sbo_print_opts {
 // TODO:  push_back()
 //
 
+struct mtrk_event_error_t;
+struct maybe_mtrk_event_t;
+
 struct mtrk_event_container_types_t {
 	using value_type = unsigned char;
 	using size_type = int32_t;
@@ -67,7 +70,6 @@ struct mtrk_event_container_types_t {
 	using pointer = value_type*;
 	using const_pointer = const value_type*;
 };
-
 class mtrk_event_t {
 public:
 	using value_type = mtrk_event_container_types_t::value_type;
@@ -160,6 +162,7 @@ private:
 	iterator event_begin();
 	iterator payload_begin();
 	iterator_range_t<iterator> payload_range();
+	unsigned char *push_back(unsigned char);
 	
 
 	// TODO:  Do somethign about this trash
@@ -172,7 +175,83 @@ private:
 	friend mtrk_event_t make_sysex_generic_impl(const uint32_t&, unsigned char, 
 					bool, const std::vector<unsigned char>&);
 
+	friend maybe_mtrk_event_t make_mtrk_event(int32_t, const unsigned char*,
+							const unsigned char*, unsigned char, 
+							mtrk_event_error_t*);
+
 	friend std::string print(const mtrk_event_t&,
 			mtrk_sbo_print_opts);
 };
+
+
+struct mtrk_event_error_t {
+	std::array<unsigned char,12> header;
+	int32_t delta_time;
+	unsigned char status {0u};
+};
+struct maybe_mtrk_event_t {
+	enum class errc : uint8_t {
+		invalid_delta_time,
+		zero_sized_input,  // beg==end
+		invalid_status_byte,  // Can't determine, or ex, 0xF8, 0xFC,...
+		channel_invalid_status_byte,
+		channel_overflow,
+		channel_calcd_length_exceeds_input,  // anticipated size() > (end-beg)
+		channel_invalid_data_byte,  // non-data-byte in data section of channel event
+		sysex_or_meta_overflow_in_header,
+		sysex_or_meta_invalid_vlq_length,  // For meta,sysex type's w/ payload-length fields
+		sysex_or_meta_calcd_length_exceeds_input,
+		no_error,
+		other
+	};
+	mtrk_event_t event;
+	maybe_mtrk_event_t::errc error {maybe_mtrk_event_t::errc::other};
+	operator bool() const;
+};
+maybe_mtrk_event_t make_mtrk_event(const unsigned char*, const unsigned char*,
+					unsigned char, mtrk_event_error_t*);
+maybe_mtrk_event_t make_mtrk_event(int32_t, const unsigned char*,
+					const unsigned char*, unsigned char,mtrk_event_error_t*);
+
+
+
+//
+// Should go:
+// template<typename It> make_mtrk_event(It beg, It end, ...)
+// in mtrk_methods
+//
+//
+//
+
+
+
+struct validate_channel_event_result_t {
+	midi_ch_event_t data;
+	maybe_mtrk_event_t::errc error {maybe_mtrk_event_t::errc::other};
+	operator bool() const;
+};
+validate_channel_event_result_t
+validate_channel_event(const unsigned char*, const unsigned char*,
+						unsigned char);
+
+struct validate_meta_event_result_t {
+	const unsigned char *begin {nullptr};
+	const unsigned char *end {nullptr};
+	maybe_mtrk_event_t::errc error {maybe_mtrk_event_t::errc::other};
+	operator bool() const;
+};
+validate_meta_event_result_t
+validate_meta_event(const unsigned char*, const unsigned char*);
+
+struct validate_sysex_event_result_t {
+	const unsigned char *begin {nullptr};
+	const unsigned char *end {nullptr};
+	maybe_mtrk_event_t::errc error {maybe_mtrk_event_t::errc::other};
+	operator bool() const;
+};
+validate_sysex_event_result_t
+validate_sysex_event(const unsigned char*, const unsigned char*);
+
+
+
 

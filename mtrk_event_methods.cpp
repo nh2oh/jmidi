@@ -534,6 +534,10 @@ bool is_sysex_f7(const mtrk_event_t& ev) {
 }
 mtrk_event_t make_sysex_generic_impl(const uint32_t& dt, unsigned char type, 
 					bool f7_terminate, const std::vector<unsigned char>& pyld) {
+	// 'pyld' is missing the leading F0 and vlq length field.  
+	// If f7_terminate == true, the caller wants the event to end in an 0xF7.  
+	// If pyld does not end in an F7, an F7 appended.  f7_terminate == false,
+	// no terminating F7 is added.  
 	auto payload_eff_size = pyld.size();
 	if ((pyld.size()>0) && (pyld.back()!=0xF7u) && f7_terminate) {
 		++payload_eff_size;
@@ -541,8 +545,6 @@ mtrk_event_t make_sysex_generic_impl(const uint32_t& dt, unsigned char type,
 	auto sz_reserve = delta_time_field_size(dt) + 1  // dt + 0xF0u/0xF7u
 		+ midi_vl_field_size(payload_eff_size)  // payload-length-vlq
 		+ payload_eff_size;
-	// TODO:  sz_"reserve"  ... is this a calc of the _exact_ size???  It needs
-	// to be.  
 	auto result = mtrk_event_t();
 	result.resize(sz_reserve);
 	auto it = result.begin();

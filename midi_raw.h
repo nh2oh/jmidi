@@ -85,6 +85,8 @@ bool is_channel_pressure(const midi_ch_event_t&);  // 0xDnu
 bool is_pitch_bend(const midi_ch_event_t&); 
 bool is_channel_mode(const midi_ch_event_t&);
 
+bool is_valid_delta_time(int32_t);
+int32_t to_nearest_valid_delta_time(int32_t);
 
 
 //
