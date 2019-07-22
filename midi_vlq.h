@@ -182,11 +182,12 @@ struct midi_vl_field_interpreted {
 	int8_t N {0};
 	bool is_valid {false};
 };
-midi_vl_field_interpreted midi_interpret_vl_field(const unsigned char*);
+/*midi_vl_field_interpreted midi_interpret_vl_field(const unsigned char*);
 // Specify the max number of bytes allowed to be read.  If the terminating
 // byte is not encountered after reading max_size bytes, returns w/ 
 // !is_valid
-midi_vl_field_interpreted midi_interpret_vl_field(const unsigned char*, uint32_t);
+midi_vl_field_interpreted midi_interpret_vl_field(const unsigned char*, int32_t);
+midi_vl_field_interpreted midi_interpret_vl_field(const unsigned char*, uint32_t);*/
 // Overload for iterators
 template<typename InIt>
 midi_vl_field_interpreted midi_interpret_vl_field(InIt it) {
@@ -198,6 +199,31 @@ midi_vl_field_interpreted midi_interpret_vl_field(InIt it) {
 		result.val += (*it & 0x7Fu);
 		++(result.N);
 		if (!(*it & 0x80u) || result.N==4) { // the high-bit is not set
+			break;
+		} else {
+			result.val <<= 7;  // result.val << 7;
+			++it;
+		}
+	}
+	result.is_valid = !(*it & 0x80u);
+	return result;
+};
+template<typename InIt, typename T>
+midi_vl_field_interpreted midi_interpret_vl_field(InIt it, T max_sz) {
+	//static_assert(std::is_same<std::remove_reference<decltype(*it)>::type,
+	//	const unsigned char>::value);
+
+	int8_t yay = 4;
+	if ((max_sz < 4) && (max_sz > 0)) {
+		yay = static_cast<int8_t>(max_sz);
+	}
+
+	midi_vl_field_interpreted result {};
+	result.val = 0;
+	while (true) {
+		result.val += (*it & 0x7Fu);
+		++(result.N);
+		if (!(*it & 0x80u) || result.N==yay) { // the high-bit is not set
 			break;
 		} else {
 			result.val <<= 7;  // result.val << 7;
@@ -219,8 +245,9 @@ InIt advance_to_vlq_end(InIt it) {
 // of the range, whichever comes first.  
 template<typename InIt>
 InIt advance_to_dt_end(InIt beg, InIt end) {
-	for (int i=0; ((beg!=end)&&((*beg)&0x80u)); ++i) {
-		++beg;
+	int n=0;
+	while ((beg!=end) && (n++<4) && ((*beg++)&0x80u)) {
+		true;
 	}
 	return beg;
 };
@@ -287,20 +314,27 @@ constexpr int midi_vl_field_size(T val) {
 // clamp the max allowable value to 0x0FFFFFFFu => 4 bytes, hence this never
 // returns > 4.  
 //
+/*
 constexpr int delta_time_field_size(int32_t);
 constexpr int delta_time_field_size(uint32_t);
-/*template<typename T>
+constexpr int yaaaaaay(uint32_t);
+*/
+template<typename T>
 constexpr int delta_time_field_size(T val) {
-	static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value,
-		"MIDI VL fields only encode unsigned integral values");
+	//static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value,
+	//	"MIDI VL fields only encode unsigned integral values");
+	auto uval = static_cast<typename std::make_unsigned<T>::type>(val);
+	if (val < (T {0})) {
+		uval = static_cast<typename std::make_unsigned<T>::type>(0);
+	}
 	int n {0};
 	do {
-		val >>= 7;
+		uval >>= 7;
 		++n;
-	} while ((val!=0) && (n<4));
+	} while ((uval!=0) && (n<4));
 
 	return n;
-}*/
+}
 
 
 // 

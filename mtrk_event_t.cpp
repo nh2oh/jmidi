@@ -43,7 +43,7 @@ mtrk_event_t::mtrk_event_t(const unsigned char *p,
 		return;
 	}
 	mtrk_event_t::size_type sz = delta_time_field_size(dt.val)
-		+ data_size + has_local_status;
+		+ data_size + !has_local_status;
 	sz = std::clamp(sz,0,mtrk_event_t::size_max);
 
 	this->d_.resize(sz);
@@ -67,7 +67,7 @@ mtrk_event_t::mtrk_event_t(const uint32_t& dt, const unsigned char *p,
 	bool has_local_status = (s==*p);
 	
 	mtrk_event_t::size_type sz = delta_time_field_size(dt)
-		+ data_size + has_local_status;
+		+ data_size + !has_local_status;
 	sz = std::clamp(sz,0,mtrk_event_t::size_max);
 
 	this->d_.resize(sz);
@@ -90,7 +90,7 @@ mtrk_event_t::mtrk_event_t(uint32_t dt, midi_ch_event_t md) {
 	*dest++ = s;
 	*dest++ = (md.p1)&0x7Fu;
 	if (n==2) {
-		*dest++ = (md.p1)&0x7Fu;
+		*dest++ = (md.p2)&0x7Fu;
 	}
 }
 mtrk_event_t::mtrk_event_t(const mtrk_event_t& rhs) {
@@ -102,9 +102,11 @@ mtrk_event_t& mtrk_event_t::operator=(const mtrk_event_t& rhs) {
 }
 mtrk_event_t::mtrk_event_t(mtrk_event_t&& rhs) noexcept {
 	this->d_ = std::move(rhs.d_);
+	rhs.default_init();
 }
 mtrk_event_t& mtrk_event_t::operator=(mtrk_event_t&& rhs) noexcept {
 	this->d_ = std::move(rhs.d_);
+	rhs.default_init();
 	return *this;
 }
 mtrk_event_t::~mtrk_event_t() noexcept {  // dtor
@@ -165,16 +167,16 @@ mtrk_event_t::iterator mtrk_event_t::dt_begin() {
 	return this->begin();
 }
 mtrk_event_t::const_iterator mtrk_event_t::dt_end() const {
-	return advance_to_dt_end(this->begin());
+	return advance_to_dt_end(this->begin(),this->end());
 }
 mtrk_event_t::iterator mtrk_event_t::dt_end() {
-	return advance_to_dt_end(this->begin());
+	return advance_to_dt_end(this->begin(),this->end());
 }
 mtrk_event_t::const_iterator mtrk_event_t::event_begin() const {
-	return advance_to_dt_end(this->begin());
+	return advance_to_dt_end(this->begin(),this->end());
 }
 mtrk_event_t::iterator mtrk_event_t::event_begin() {
-	return advance_to_dt_end(this->begin());
+	return advance_to_dt_end(this->begin(),this->end());
 }
 mtrk_event_t::const_iterator mtrk_event_t::payload_begin() const {
 	auto it = this->event_begin();
@@ -226,16 +228,16 @@ iterator_range_t<mtrk_event_t::iterator> mtrk_event_t::payload_range() {
 	} // else { smf_event_type::channel_voice, _mode, unknown, invalid...
 	return {it,this->end()};
 }
-const unsigned char& mtrk_event_t::operator[](mtrk_event_t::size_type i) const {
+const unsigned char mtrk_event_t::operator[](mtrk_event_t::size_type i) const {
 	return *(this->data()+i);
 };
-unsigned char& mtrk_event_t::operator[](mtrk_event_t::size_type i) {
+unsigned char mtrk_event_t::operator[](mtrk_event_t::size_type i) {
 	return *(this->data()+i);
 };
 
 
 smf_event_type mtrk_event_t::type() const {
-	auto p = advance_to_dt_end(this->data());
+	auto p = advance_to_dt_end(this->begin(),this->end());
 	return classify_status_byte(*p);
 	// Faster than classify_mtrk_event_dtstart_unsafe(s,rs), b/c the latter
 	// calls classify_status_byte(get_status_byte(s,rs)); here, i do not 
@@ -245,63 +247,39 @@ uint32_t mtrk_event_t::delta_time() const {
 	return midi_interpret_vl_field(this->data()).val;
 }
 unsigned char mtrk_event_t::status_byte() const {
-	auto p = advance_to_dt_end(this->data());
-	return *p;
+	return *advance_to_dt_end(this->d_.begin(),this->d_.end());
 }
 unsigned char mtrk_event_t::running_status() const {
-	auto p = advance_to_dt_end(this->data());
+	auto p = advance_to_dt_end(this->d_.begin(),this->d_.end());
 	return get_running_status_byte(*p,0x00u);
 }
-mtrk_event_t::size_type mtrk_event_t::nbytes() const {  // Includes the delta-t
-	mtrk_event_t::size_type sz 
-		= mtrk_event_get_size_dtstart(this->data(),this->size(),0x00u);
-	return sz;
-}
 mtrk_event_t::size_type mtrk_event_t::data_size() const {  // Not including delta-t
-	auto p = advance_to_dt_end(this->d_.begin(),this->d_.end());
-	mtrk_event_t::size_type sz 
-		= mtrk_event_get_data_size(p,this->d_.end()-p,0x00u);
-	return sz;
-}
-bool mtrk_event_t::verify() const {
-	// TODO:  This is a bit ad-hoc; validate_mtrk_event_dtstart() does not 
-	// validate the event size, nor does it flag an error for 
-	// smf_event_type::invalid.  
-	// TODO:  This does not investigate "deeper" errors, ex, a timesig
-	// event w/ a too-small length field, or invalid data fields.  
-	auto cap = this->capacity();
-	auto vfy = validate_mtrk_event_dtstart(this->data(),0x00u,cap);
-	return (vfy.error==mtrk_event_validation_error::no_error
-		&& vfy.type!=smf_event_type::invalid
-		&& vfy.size<=cap);
-}
-std::string mtrk_event_t::verify_explain() const {
-	auto cap = this->capacity();
-	auto vfy = validate_mtrk_event_dtstart(this->data(),0x00u,cap);
-	return print(vfy.error);
+	auto end = this->d_.end();
+	auto p = advance_to_dt_end(this->d_.begin(),end);
+	return end-p;
 }
 
 uint32_t mtrk_event_t::set_delta_time(uint32_t dt) {
+	dt &= 0x0FFFFFFFu;
 	auto new_dt_size = delta_time_field_size(dt);
-	auto beg = this->begin();
-	auto curr_dt_size = advance_to_dt_end(beg)-beg;
+	auto beg = this->begin();  auto end = this->end();
+	auto curr_dt_size = advance_to_dt_end(beg,end)-beg;
 	if (curr_dt_size == new_dt_size) {
 		write_delta_time(dt,beg);
-	} else if (curr_dt_size > new_dt_size) {  // shrink present event
-		auto new_event_beg = this->begin()+new_dt_size;
+	} else if (new_dt_size < curr_dt_size) {  // shrink present event
+		auto new_event_beg = beg+new_dt_size;
 		std::copy(this->event_begin(),this->end(),new_event_beg);
 		write_delta_time(dt,this->begin());
 		// TODO:  resize() this->d_ ?
 		//midi_rewrite_dt_field_unsafe(dt,this->data(),0x00u);
 		auto new_size = this->size()-(curr_dt_size-new_dt_size);
 		this->d_.resize(new_size);
-	} else if (curr_dt_size < new_dt_size) {  // grow present event
-		auto new_size = this->size()+(new_dt_size-curr_dt_size);
-		this->d_.resize(new_size);
-		auto new_event_end = this->begin()+new_size;
-		std::copy_backward(this->event_begin(),this->end(),new_event_end);
+	} else if (new_dt_size > curr_dt_size) {  // grow present event
+		auto old_size = this->size();
+		auto new_size = old_size + (new_dt_size-curr_dt_size);
+		this->d_.resize(new_size);  // NB:  Invalidates iterators!
+		std::copy_backward(this->begin(),this->begin()+old_size,this->end());
 		write_delta_time(dt,this->begin());
-		//midi_rewrite_dt_field_unsafe(dt,this->data(),0x00u);
 	}
 	return this->delta_time();
 }
@@ -352,19 +330,4 @@ bool mtrk_event_t::is_small() const {
 	return !(this->is_big());
 }
 
-bool mtrk_event_unit_test_helper_t::is_big() {
-	return this->p_->is_big();
-}
-bool mtrk_event_unit_test_helper_t::is_small() {
-	return this->p_->is_small();
-}
-const unsigned char *mtrk_event_unit_test_helper_t::raw_begin() {
-	return this->p_->raw_begin();
-}
-const unsigned char *mtrk_event_unit_test_helper_t::raw_end() {
-	return this->p_->raw_begin();
-}
-unsigned char mtrk_event_unit_test_helper_t::flags() {
-	return this->p_->flags();
-}
 

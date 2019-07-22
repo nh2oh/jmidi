@@ -4,7 +4,7 @@
 #include "midi_raw.h"  // declares smf_event_type
 #include <string>  // For declaration of print()
 #include <cstdint>
-
+#include <vector>
 
 // Needed for the friend dcln of 
 // print(const mtrk_event_t&, mtrk_sbo_print_opts).  
@@ -20,14 +20,15 @@ enum class mtrk_sbo_print_opts {
 
 
 //
-// mtrk_event_t:  An container for MTrk events
+// class mtrk_event_t
+// A container for MTrk events.  
 //
 // An mtrk_event_t is a "container" for storing and working with byte
 // sequences that represent MTrk events (for the purpose of this library,
 // an MTrk event is defined to include the the leading delta-time vlq).  
 // An mtrk_event_t stores and provides "direct" read-only access to the
 // underlying sequence of bytes, and read/write access to event parameters
-// (ex, the event's delta-time) through appropriate getter/setter methods.  
+// (ex, the event's delta-time) through getter/setter methods.  
 //
 // All mtrk_event_t objects are valid MTrk events as stipulated by the
 // MIDI std.  It is impossible to create an mtrk_event_t with an invalid
@@ -59,8 +60,8 @@ enum class mtrk_sbo_print_opts {
 
 struct mtrk_event_container_types_t {
 	using value_type = unsigned char;
-	using size_type = int32_t;  //uint32_t;
-	using difference_type = int32_t;  //std::ptrdiff_t;  // TODO:  Inconsistent w/ size_type
+	using size_type = int32_t;
+	using difference_type = int32_t;
 	using reference = value_type&;
 	using const_reference = const value_type&;
 	using pointer = value_type*;
@@ -115,7 +116,7 @@ public:
 
 	size_type size() const;
 	size_type capacity() const;
-	size_type resize(size_type);
+	
 	size_type reserve(size_type);
 	const unsigned char *data() const;
 	const_iterator begin() const;
@@ -129,7 +130,8 @@ public:
 	// delta_t... redundant...
 	const_iterator payload_begin() const;
 	iterator_range_t<const_iterator> payload_range() const;
-	const unsigned char& operator[](size_type) const;
+	const unsigned char operator[](size_type) const;
+	unsigned char operator[](size_type);
 
 	// Getters
 	smf_event_type type() const;
@@ -137,10 +139,7 @@ public:
 	unsigned char status_byte() const;
 	// The value of the running-status _after_ this event has passed
 	unsigned char running_status() const;
-	size_type nbytes() const;
 	size_type data_size() const;  // Not including the delta-t
-	bool verify() const;
-	std::string verify_explain() const;
 
 	// Setters
 	uint32_t set_delta_time(uint32_t);
@@ -152,6 +151,7 @@ private:
 
 	void default_init(uint32_t=0);
 
+	size_type resize(size_type);
 	unsigned char *data();
 	iterator begin();
 	iterator end();
@@ -160,7 +160,7 @@ private:
 	iterator event_begin();
 	iterator payload_begin();
 	iterator_range_t<iterator> payload_range();
-	unsigned char& operator[](size_type);
+	
 
 	// TODO:  Do somethign about this trash
 	const unsigned char *raw_begin() const;
@@ -169,21 +169,10 @@ private:
 	bool is_big() const;
 	bool is_small() const;
 
-	friend class mtrk_event_unit_test_helper_t;
+	friend mtrk_event_t make_sysex_generic_impl(const uint32_t&, unsigned char, 
+					bool, const std::vector<unsigned char>&);
+
 	friend std::string print(const mtrk_event_t&,
 			mtrk_sbo_print_opts);
 };
 
-
-// TODO:  Let's not unit test the private details of the class
-// implementation...
-class mtrk_event_unit_test_helper_t {
-public:
-	mtrk_event_unit_test_helper_t(mtrk_event_t& ev) : p_(&ev) {};
-	bool is_big();
-	bool is_small();
-	const unsigned char *raw_begin();
-	const unsigned char *raw_end();
-	unsigned char flags();
-	mtrk_event_t *p_;
-};

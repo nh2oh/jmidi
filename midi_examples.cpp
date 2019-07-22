@@ -293,7 +293,7 @@ int midi_setdt_testing() {
 	for (const auto& dt_init : dts) {
 		auto curr_ev = mtrk_event_t();
 		curr_ev.set_delta_time(dt_init);
-		mtrk_event_unit_test_helper_t h(curr_ev);
+		//mtrk_event_unit_test_helper_t h(curr_ev);
 		for (const auto& new_dt : dts) {
 			std::cout << "dt_init==" <<  dt_init << "; " 
 				<< "new_dt==" << new_dt << std::endl;

@@ -13,6 +13,43 @@
 #include <cmath>  // std::log for delta-time generation
 
 namespace testdata {
+
+
+vlq_testcase_t make_vlq_testcase() {
+	std::random_device rdev;
+	std::mt19937 re(rdev());
+	std::uniform_int_distribution rd(0x00u,0xFFu);
+
+	vlq_testcase_t tc;
+
+	auto it = tc.input_encoded.begin();
+	while (it!=tc.input_encoded.end()) {
+		*it = rd(re);
+		*it |= 0x80u;
+		if ((rd(re)/2 < 255/2) || (it==(tc.input_encoded.end()-1))) {
+			*it &= 0x7Fu;
+			break;  // Another digit w/ ~50% probability
+		}
+		++it;
+	}
+	tc.input_field_size = (it - tc.input_encoded.begin());
+	auto vlq = read_vlq_max64(tc.input_encoded.begin());
+	if (tc.input_field_size != vlq.N) {
+		std::abort();
+	}
+	tc.input_value =  vlq.val;
+	tc.ans_value = ((vlq.val)&0x0FFFFFFFu);
+	write_delta_time(tc.ans_value,tc.normalized_encoded.begin());
+	if (read_vlq_max64(tc.normalized_encoded.begin()).val != tc.ans_value) {
+		std::abort();
+	}
+
+	return tc;
+};
+
+
+
+
 // Assorted dt fields; can be prepended to the meta, sysex, and midi events
 // below.  
 // dt_fields_t ~ {data,value,field_size}

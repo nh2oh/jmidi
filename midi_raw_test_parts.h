@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <cstdint>
+#include <array>
 
 //
 // Q&D functions and raw data for making randomized tests of the midi lib.
@@ -8,6 +9,41 @@
 // Absolutely zero effort has been made to make these routines effecient.
 //
 namespace testdata {
+struct vlq_max64_interpreted {
+	uint64_t val {0};
+	int8_t N {0};
+	bool is_valid {false};
+};
+template<typename InIt>
+vlq_max64_interpreted read_vlq_max64(InIt it) {
+	vlq_max64_interpreted result {};
+	result.val = 0;
+	while (true) {
+		result.val += (*it & 0x7Fu);
+		++(result.N);
+		if (!(*it & 0x80u) || result.N==8) { // the high-bit is not set
+			break;
+		} else {
+			result.val <<= 7;  // result.val << 7;
+			++it;
+		}
+	}
+	result.is_valid = !(*it & 0x80u);
+	return result;
+};
+
+struct vlq_testcase_t {
+	uint64_t input_value {0};  // [0,uint_max]
+	uint32_t ans_value {0};  // [0,0x0FFFFFFFu]
+	int8_t input_field_size {0};
+	int8_t norm_field_size {0};
+	std::array<unsigned char,8> input_encoded {};
+	std::array<unsigned char,8> normalized_encoded {};
+};
+
+vlq_testcase_t make_vlq_testcase();
+
+
 struct dt_fields_t {
 	std::vector<unsigned char> data {};
 	uint32_t value {0};

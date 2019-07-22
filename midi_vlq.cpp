@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <algorithm>
 
-
+/*
 constexpr int delta_time_field_size(int32_t val) {
 	val = std::clamp(val,0,0x0FFFFFFF);
 	return delta_time_field_size(static_cast<uint32_t>(val));
@@ -17,9 +17,14 @@ constexpr int delta_time_field_size(uint32_t val) {
 
 	return n;
 }
+constexpr int yaaaaaay(uint32_t x) {
+	return delta_time_field_size(x);
+}
+
+*/
 
 
-
+/*
 midi_vl_field_interpreted midi_interpret_vl_field(const unsigned char* p) {
 	midi_vl_field_interpreted result {};
 	result.val = 0;
@@ -40,7 +45,10 @@ midi_vl_field_interpreted midi_interpret_vl_field(const unsigned char* p) {
 	return result;
 }
 
-
+midi_vl_field_interpreted midi_interpret_vl_field(const unsigned char* p, int32_t max_size) {
+	auto usz = static_cast<uint32_t>(std::clamp(max_size,0,0x0FFFFFFF));
+	return midi_interpret_vl_field(p,usz);
+}
 midi_vl_field_interpreted midi_interpret_vl_field(const unsigned char* p, uint32_t max_size) {
 	midi_vl_field_interpreted result {};
 	result.val = 0;  result.N = 0;
@@ -61,7 +69,7 @@ midi_vl_field_interpreted midi_interpret_vl_field(const unsigned char* p, uint32
 	result.is_valid = found_field_end;
 	return result;
 }
-
+*/
 
 
 
