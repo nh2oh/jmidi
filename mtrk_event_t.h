@@ -146,7 +146,7 @@ private:
 	unsigned char *push_back(unsigned char);
 	
 
-	// TODO:  Do somethign about this trash
+	// TODO:  Do something about this trash
 	const unsigned char *raw_begin() const;
 	const unsigned char *raw_end() const;
 	unsigned char flags() const;

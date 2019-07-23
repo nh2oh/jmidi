@@ -247,7 +247,7 @@ maybe_mtrk_t make_mtrk_permissive(const unsigned char*, const unsigned char*);
 // event in the sequence.  Returns p pointing one byte past the end of the
 // last byte pushed_back() into dest, along w/ the value of the 
 // running-status byte.  
-// Calls curr_event = validate_mtrk_event_dtstart(p,...) on each event.  
+// Calls curr_event = make_mtrk_event(p,...) on each event.  
 // If no error is indicated, calls 
 // dest->push_back(mtrk_event_t(p,curr_event));
 // Terminates when any one of the following occurs:

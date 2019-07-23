@@ -19,7 +19,6 @@
 #include <chrono>
 
 int midi_example() {
-
 	avg_and_max_event_sizes("C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\");
 
 	//read_midi_directory_mthd_inspection("C:\\Users\\ben\\Desktop\\midi_broken_mtrk\\");
@@ -212,9 +211,9 @@ int avg_and_max_event_sizes(const std::filesystem::path& bp) {
 			continue;
 		}
 		++n_midi_files;
-		if (n_midi_files < 72635) {
+		/*if (n_midi_files < 72635) {
 			continue;
-		}
+		}*/
 		// Read the file into fdata, close the file
 		auto maybe_smf = read_smf(curr_path);
 		std::cout << "File " << std::to_string(n_midi_files) << ")  " 

@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <limits>
 #include <array>
+#include <type_traits>
 
 template<typename It>
 struct iterator_range_t {
@@ -85,8 +86,23 @@ bool is_channel_pressure(const midi_ch_event_t&);  // 0xDnu
 bool is_pitch_bend(const midi_ch_event_t&); 
 bool is_channel_mode(const midi_ch_event_t&);
 
-bool is_valid_delta_time(int32_t);
-int32_t to_nearest_valid_delta_time(int32_t);
+//bool is_valid_delta_time(int32_t);
+//int32_t to_nearest_valid_delta_time(int32_t);
+
+
+template<typename T>
+constexpr bool is_valid_delta_time(T dt) {
+	return ((dt <= 0x0FFFFFFF) && (dt >= 0x00));
+};
+template<typename T>
+constexpr int32_t to_nearest_valid_delta_time(T dt) {
+	if (dt > 0x0FFFFFFF) {
+		return 0x0FFFFFFF;
+	} else if (dt < 0) {
+		return 0;
+	}
+	return static_cast<int32_t>(dt);
+};
 
 
 //
@@ -371,42 +387,4 @@ unsigned char mtrk_event_get_midi_p2_dtstart_unsafe(const unsigned char*, unsign
 unsigned char mtrk_event_get_meta_type_byte_dtstart_unsafe(const unsigned char*);
 //midi_vl_field_interpreted mtrk_event_get_meta_length_field_dtstart_unsafe(const unsigned char*);
 uint32_t mtrk_event_get_meta_payload_offset_dtstart_undafe(const unsigned char*);
-
-/*
-struct parse_meta_event_unsafe_result_t {
-	uint32_t dt;
-	uint32_t length;  // reported size of the payload field
-	unsigned char type;
-	// if *p is the first byte of the delta-time, p+=payload_offset is the
-	// first byte past the length field
-	uint8_t payload_offset; 
-};
-parse_meta_event_unsafe_result_t mtrk_event_parse_meta_dtstart_unsafe(const unsigned char*);
-
-
-struct parse_meta_event_result_t {
-	bool is_valid {false};
-	midi_vl_field_interpreted delta_t {};
-	midi_vl_field_interpreted length {};
-	unsigned char type {0};
-	int32_t size {0};
-	int32_t data_length {};  // Everything not delta_time
-};
-parse_meta_event_result_t parse_meta_event(const unsigned char*,int32_t=0);
-struct parse_sysex_event_result_t {
-	bool is_valid {false};
-	midi_vl_field_interpreted delta_t {};
-	midi_vl_field_interpreted length {};
-	uint8_t type {0};  // F0 or F7
-	int32_t size {0};
-	int32_t data_length {};  // Everything not delta_time
-	bool has_terminating_f7 {false};
-};
-parse_sysex_event_result_t parse_sysex_event(const unsigned char*,int32_t=0);
-*/
-
-// It is assumed that the buffer is large enough to accomodate the new dt
-// value.  Returns a ptr to one past the end of the new dt value (ie, the
-// first msg data byte).  
-unsigned char *midi_rewrite_dt_field_unsafe(uint32_t, unsigned char*, unsigned char=0);
 

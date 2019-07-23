@@ -100,12 +100,12 @@ bool is_channel_mode(const midi_ch_event_t& md) {
 	// 120  == 0b01111000u
 }
 
-bool is_valid_delta_time(int32_t dt) {
+/*bool is_valid_delta_time(int32_t dt) {
 	return !((dt>0x0FFFFFFF) || (dt<0));
-}
-int32_t to_nearest_valid_delta_time(int32_t val) {
+}*/
+/*int32_t to_nearest_valid_delta_time(int32_t val) {
 	return std::clamp(val,0,0x0FFFFFFF);
-}
+}*/
 
 //
 // time-division_t class methods
@@ -671,146 +671,6 @@ unsigned char mtrk_event_get_meta_type_byte_dtstart_unsafe(const unsigned char *
 	p += midi_interpret_vl_field(p).N;
 	p += 1;  // Skip the 0xFF;
 	return *p;
-}/*
-midi_vl_field_interpreted mtrk_event_get_meta_length_field_dtstart_unsafe(const unsigned char *p) {
-	p += midi_interpret_vl_field(p).N;
-	p += 2;  // Skip the 0xFF and type byte;
-	return  midi_interpret_vl_field(p);
-}
-uint32_t mtrk_event_get_meta_payload_offset_dtstart_undafe(const unsigned char *p) {
-	uint32_t o = midi_interpret_vl_field(p).N;
-	p += o;  // inc past the delta-time
-	o += 2;  p += o;  // inc past the 0xFF and type byte;
-	o += midi_interpret_vl_field(p).N;  // inc past the length field
-	return o;
-}
-parse_meta_event_unsafe_result_t mtrk_event_parse_meta_dtstart_unsafe(const unsigned char *p) {
-	parse_meta_event_unsafe_result_t result {0x00u,0x00u,0x00u,0x00u};
-	auto dt = midi_interpret_vl_field(p);
-	result.dt = dt.val;
-	p += dt.N;
-	result.payload_offset += dt.N;
-
-	p += 1;  // Skip the 0xFF
-	result.payload_offset += 1;
-	result.type = *p;
-	p += 1;
-	result.payload_offset += 1;
-
-	auto len = midi_interpret_vl_field(p);
-	result.length = len.val;
-	result.payload_offset += len.N;
-
-	return result;
-}
-*/
-
-
-
-/*
-parse_meta_event_result_t parse_meta_event(const unsigned char *p, int32_t max_size) {
-	parse_meta_event_result_t result {};
-	result.delta_t = midi_interpret_vl_field(p);
-	if (result.delta_t.N > 4) {
-		result.is_valid = false;
-		return result;
-	}
-	p += result.delta_t.N;
-	max_size -= result.delta_t.N;
-	if (max_size <= 2) {
-		result.is_valid = false;
-		return result;
-	}
-
-	if (*p != 0xFF) {
-		result.is_valid = false;
-		return result;
-	}
-	++p;  --max_size;
-
-	result.type = *p;
-	++p;  --max_size;
-
-	result.length = midi_interpret_vl_field(p);
-	result.data_length = 2 + result.length.N + result.length.val;
-	result.size = result.data_length + result.delta_t.N;
-	max_size -= (result.length.N + result.length.val);
-	if (max_size < 0) {
-		result.is_valid = false;
-		return result;
-	}
-
-	result.is_valid = true;
-	return result;
-}
-
-parse_sysex_event_result_t parse_sysex_event(const unsigned char *p, int32_t max_size) {
-	parse_sysex_event_result_t result {};
-	result.delta_t = midi_interpret_vl_field(p);
-	if (result.delta_t.N > 4) {
-		result.is_valid = false;
-		return result;
-	}
-	p += result.delta_t.N;
-	max_size -= result.delta_t.N;
-	if (max_size <= 0) {
-		result.is_valid = false;
-		return result;
-	}
-
-	if (*p != 0xF0 && *p != 0xFF) {
-		result.is_valid = false;
-		return result;
-	}
-	result.type = *p;
-	++p;  --max_size;
-	if (max_size <= 0) {
-		result.is_valid = false;
-		return result;
-	}
-
-	result.length = midi_interpret_vl_field(p);
-	result.data_length = 1 + result.length.N + result.length.val;
-	result.size = result.data_length + result.delta_t.N;
-	max_size -= (result.length.N + result.length.val);
-	if (max_size < 0) {
-		result.is_valid = false;
-		return result;
-	}
-
-	result.has_terminating_f7 = (*(--p) == 0xF7);
-	result.is_valid = true;
-	return result;
-}
-*/
-
-
-
-
-
-
-
-
-
-
-
-
-unsigned char *midi_rewrite_dt_field_unsafe(uint32_t dt, unsigned char *p, unsigned char s) {
-	auto old_dt = midi_interpret_vl_field(p);
-	auto new_dt_size = midi_vl_field_size(dt);
-	auto old_size = mtrk_event_get_size_dtstart_unsafe(p,s);
-	auto old_data_size = old_size-old_dt.N;
-
-	if (old_dt.N==new_dt_size) {
-		//...
-	} else if (old_dt.N>new_dt_size) {
-		auto p_new_dataend = std::copy(p+old_dt.N,p+old_size,p+new_dt_size);
-		std::fill(p_new_dataend,p+old_size,0x00u);
-	} else if (old_dt.N<new_dt_size) {
-		auto new_size = new_dt_size+old_data_size;
-		std::copy_backward(p+old_dt.N,p+old_size,p+new_size);
-	}
-	return write_delta_time(dt,p);
 }
 
 
