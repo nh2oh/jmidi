@@ -457,7 +457,7 @@ int midi_mtrk_split_testing() {
 	};  // std::vector<> tsb
 	auto mtrkb = mtrk_t();  // auto to avoid MVP
 	for (const auto& e : tsb) {
-		auto curr_ev = mtrk_event_t(e.d.data(),e.d.size());
+		auto curr_ev = make_mtrk_event(e.d.data(),e.d.data()+e.d.size(),0,nullptr).event;
 		mtrkb.push_back(curr_ev);
 	}
 	auto mtrkb_init = mtrkb;

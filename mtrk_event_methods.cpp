@@ -290,33 +290,28 @@ std::vector<unsigned char> get_seqspecific(const mtrk_event_t& ev,
 	return data;
 }
 mtrk_event_t make_seqn(const uint32_t& dt, const uint16_t& seqn) {
-	std::array<unsigned char,5> evdata {0xFFu,0x00u,0x02u,0x00u,0x00u};
-	write_16bit_be(seqn, evdata.begin()+3);
-	auto result = mtrk_event_t(dt,evdata.data(),evdata.size(),0x00u);
-	return result;
+	std::array<unsigned char,5> d {0xFFu,0x00u,0x02u,0x00u,0x00u};
+	write_16bit_be(seqn, d.begin()+3);
+	return make_mtrk_event(dt,d.data(),d.data()+d.size(),0,nullptr).event;
 }
 mtrk_event_t make_chprefix(const uint32_t& dt, const uint8_t& ch) {
-	std::array<unsigned char,4> evdata {0xFFu,0x20u,0x01u,0x00u};
-	write_bytes(ch, evdata.begin()+3);
-	auto result = mtrk_event_t(dt,evdata.data(),evdata.size(),0x00u);
-	return result;
+	std::array<unsigned char,4> d {0xFFu,0x20u,0x01u,0x00u};
+	write_bytes(ch, d.begin()+3);
+	return make_mtrk_event(dt,d.data(),d.data()+d.size(),0,nullptr).event;
 }
 mtrk_event_t make_tempo(const uint32_t& dt, const uint32_t& uspqn) {
-	std::array<unsigned char,6> evdata {0xFFu,0x51u,0x03u,0x00u,0x00u,0x00u};
-	write_24bit_be((uspqn>0xFFFFFFu ? 0xFFFFFFu : uspqn), evdata.begin()+3);
-	auto result = mtrk_event_t(dt,evdata.data(),evdata.size(),0x00u);
-	return result;
+	std::array<unsigned char,6> d {0xFFu,0x51u,0x03u,0x00u,0x00u,0x00u};
+	write_24bit_be((uspqn>0xFFFFFFu ? 0xFFFFFFu : uspqn), d.begin()+3);
+	return make_mtrk_event(dt,d.data(),d.data()+d.size(),0,nullptr).event;
 }
 mtrk_event_t make_eot(const uint32_t& dt) {
-	std::array<unsigned char,3> evdata {0xFFu,0x2Fu,0x00u};
-	auto result = mtrk_event_t(dt,evdata.data(),evdata.size(),0x00u);
-	return result;
+	std::array<unsigned char,3> d {0xFFu,0x2Fu,0x00u};
+	return make_mtrk_event(dt,d.data(),d.data()+d.size(),0,nullptr).event;
 }
 mtrk_event_t make_timesig(const uint32_t& dt, const midi_timesig_t& ts) {
-	std::array<unsigned char,7> evdata {0xFFu,0x58u,0x04u,
+	std::array<unsigned char,7> d {0xFFu,0x58u,0x04u,
 		ts.num,ts.log2denom,ts.clckspclk,ts.ntd32pq};
-	auto result = mtrk_event_t(dt,evdata.data(),evdata.size(),0x00u);
-	return result;
+	return make_mtrk_event(dt,d.data(),d.data()+d.size(),0,nullptr).event;
 }
 mtrk_event_t make_instname(const uint32_t& dt, const std::string& s) {
 	return make_meta_generic_text(dt,meta_event_t::instname,s);
@@ -346,17 +341,15 @@ mtrk_event_t make_meta_generic_text(const uint32_t& dt, const meta_event_t& type
 		// TODO:  This probably breaks nrvo
 		return mtrk_event_t();
 	}
-	std::vector<unsigned char> evdata;
-	evdata.reserve(sizeof(mtrk_event_t));
-	auto it = write_delta_time(dt,std::back_inserter(evdata));
-	evdata.push_back(0xFFu);
-	evdata.push_back(static_cast<uint8_t>(type_int16&0x00FFu));
+	std::vector<unsigned char> d;
+	d.reserve(sizeof(mtrk_event_t));
+	d.push_back(0xFFu);
+	d.push_back(static_cast<uint8_t>(type_int16&0x00FFu));
 	// TODO:  midi_write_vl_field does not enforce a max size for the length
 	// field of 4 bytes.  
-	it = midi_write_vl_field(std::back_inserter(evdata),s.size());
-	std::copy(s.begin(),s.end(),std::back_inserter(evdata));
-	auto result = mtrk_event_t(evdata.data(),evdata.size(),0x00u);
-	return result;
+	auto it = midi_write_vl_field(std::back_inserter(d),s.size());
+	std::copy(s.begin(),s.end(),std::back_inserter(d));
+	return make_mtrk_event(dt,d.data(),d.data()+d.size(),0,nullptr).event;
 }
 
 
@@ -465,9 +458,6 @@ bool is_onoff_pair(int on_ch, int on_note, int off_ch, int off_note) {
 
 
 mtrk_event_t make_ch_event_generic_unsafe(const uint32_t& dt, const midi_ch_event_t& md) {
-	//std::array<unsigned char,3> evdata {(md.status_nybble|md.ch),md.p1,md.p2};
-	//auto result = mtrk_event_t(dt,evdata.data(),evdata.size(),0x00u);
-	//return result;
 	return mtrk_event_t(dt,md);
 }
 mtrk_event_t make_note_on(const uint32_t& dt, midi_ch_event_t md) {

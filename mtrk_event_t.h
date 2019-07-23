@@ -90,30 +90,11 @@ public:
 	mtrk_event_t();
 	// Default-constructed value w/ the given delta-time.  
 	mtrk_event_t(uint32_t);
-	// Parameter 1 is a pointer to the first byte of the delta-time field
-	// for the event.  In the second overload, parameter 1 is the value
-	// of the delta time, and parameter 2 is a pointer to the first byte 
-	// immediately following the delta time field (the beginning of the 
-	// "event" data).  
-	mtrk_event_t(const unsigned char*, size_type, unsigned char=0);
-	mtrk_event_t(const uint32_t&, const unsigned char*, size_type, unsigned char=0);
-	// delta_time, raw midi channel event data
 	mtrk_event_t(uint32_t, midi_ch_event_t);
-	// TODO:  the field validate_mtrk_event_result_t.running_status is obtained by
-	// a call to get_running status() not get_status_byte().  The meaning is not
-	// quite the same; this is probably a bug.  
-	mtrk_event_t(const unsigned char *p, 
-		const validate_mtrk_event_result_t& ev)
-		: mtrk_event_t::mtrk_event_t(p,ev.size,ev.running_status) {};
-	// Copy ctor
 	mtrk_event_t(const mtrk_event_t&);
-	// Copy assignment; overwrites a pre-existing lhs 'this' w/ rhs
 	mtrk_event_t& operator=(const mtrk_event_t&);
-	// Move ctor
 	mtrk_event_t(mtrk_event_t&&) noexcept;
-	// Move assignment
 	mtrk_event_t& operator=(mtrk_event_t&&) noexcept;
-	// Dtor
 	~mtrk_event_t() noexcept;
 
 	size_type size() const;
@@ -214,6 +195,7 @@ struct mtrk_event_error_t {
 };
 struct maybe_mtrk_event_t {
 	mtrk_event_t event;
+	int32_t size;
 	mtrk_event_error_t::errc error {mtrk_event_error_t::errc::other};
 	operator bool() const;
 };
@@ -226,6 +208,7 @@ maybe_mtrk_event_t make_mtrk_event(int32_t, const unsigned char*,
 
 struct validate_channel_event_result_t {
 	midi_ch_event_t data;
+	int32_t size;
 	mtrk_event_error_t::errc error {mtrk_event_error_t::errc::other};
 	operator bool() const;
 };

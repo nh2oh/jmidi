@@ -80,6 +80,8 @@ public:
 	// note-on events, etc.  Note that the sequence may be only partially
 	// read-in if an error is encountered before the number of bytes 
 	// indicated by the chunk header have been read.  
+	//
+	// TODO:  This should be deprecated
 	mtrk_t(const unsigned char*, uint32_t);
 	mtrk_t(const_iterator,const_iterator);
 

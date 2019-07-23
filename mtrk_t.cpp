@@ -40,13 +40,21 @@ mtrk_t::mtrk_t(const unsigned char *p, uint32_t max_sz) {
 	while (o<sz) {
 		const unsigned char *curr_p = p+o;  // ptr to start of present event
 		uint32_t curr_max_sz = sz-o;
-		curr_event = validate_mtrk_event_dtstart(curr_p,rs,curr_max_sz);
+		
+		auto curr_event = make_mtrk_event(curr_p,curr_p+curr_max_sz,rs,nullptr);
+		if (!curr_event) {
+			break;
+		}
+		rs = curr_event.event.running_status();
+		this->evnts_.push_back(curr_event.event);
+		o += curr_event.size;
+		/*curr_event = validate_mtrk_event_dtstart(curr_p,rs,curr_max_sz);
 		if (curr_event.error!=mtrk_event_validation_error::no_error) {
 			break;
 		}
 		rs = curr_event.running_status;
 		this->evnts_.push_back(mtrk_event_t(curr_p,curr_event));
-		o += curr_event.size;
+		o += curr_event.size;*/
 	}
 }
 mtrk_t::mtrk_t(mtrk_t::const_iterator beg, mtrk_t::const_iterator end) {
@@ -711,13 +719,23 @@ mtrk_from_event_seq_result_t make_mtrk_from_event_seq_array(const unsigned char 
 	bool found_eot = false;
 	unsigned char rs {0x00u};  // value of the running-status
 	while ((p<end) && !found_eot) {
+
+		auto curr_event = make_mtrk_event(p,end,rs,nullptr);
+		if (!curr_event) {
+			break;
+		}
+		rs = curr_event.event.running_status();
+		dest->push_back(curr_event.event);
+
+
+		/*
 		auto curr_event = validate_mtrk_event_dtstart(p,rs,(end-p));
 		if (curr_event.error!=mtrk_event_validation_error::no_error) {
 			return mtrk_from_event_seq_result_t {p,rs};
 		}
 		rs = curr_event.running_status;
 		dest->push_back(mtrk_event_t(p,curr_event));
-
+		*/
 		if (!found_eot) {
 			found_eot = is_eot(dest->back());
 		}

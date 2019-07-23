@@ -15,70 +15,6 @@ mtrk_event_t::mtrk_event_t() {
 mtrk_event_t::mtrk_event_t(uint32_t dt) {
 	this->default_init(dt);
 }
-
-mtrk_event_t::mtrk_event_t(const unsigned char *p, 
-							mtrk_event_t::size_type sz_max, unsigned char rs) {
-	this->d_ = mtrk_event_t_internal::small_bytevec_t();
-	auto dt = midi_interpret_vl_field(p,sz_max);
-	if (!dt.is_valid) {
-		this->default_init();
-		return;
-	}
-	if (dt.N==sz_max) {
-		// If the caller is passing in a buffer containing only a delta-time,
-		// *(p+dt.N) is an invalid deref
-		this->default_init(dt.val);
-		return;
-	}
-	// Note that dt.N is the number of bytes the delta-time actually
-	// occupies in the input buffer; this is not necessarily the same 
-	// as the number of bytes it occupies if canonically encoded, which
-	// is given by delta_time_field_size(dt.val).  
-	auto s = get_status_byte(*(p+dt.N),rs);
-	bool has_local_status = (s==*(p+dt.N));
-	auto data_size = mtrk_event_get_data_size(p+dt.N,rs,(sz_max-dt.N));
-	if (data_size==0) {
-		// mtrk_event_get_data_size() returns 0 if the event is invalid 
-		// in any way.  
-		this->default_init();
-		return;
-	}
-	mtrk_event_t::size_type sz = delta_time_field_size(dt.val)
-		+ data_size + !has_local_status;
-	sz = std::clamp(sz,0,mtrk_event_t::size_max);
-
-	this->d_.resize(sz);
-	auto dest = write_delta_time(dt.val,this->d_.begin());
-	if (!has_local_status) {
-		*dest++ = s;
-	}
-	std::copy(p+dt.N,p+dt.N+data_size,dest);
-}
-mtrk_event_t::mtrk_event_t(const uint32_t& dt, const unsigned char *p, 
-							mtrk_event_t::size_type sz_max, unsigned char rs) {
-	this->d_ = mtrk_event_t_internal::small_bytevec_t();
-	auto data_size = mtrk_event_get_data_size(p,rs,sz_max);
-	if (data_size==0) {
-		// mtrk_event_get_data_size() returns 0 if the event is invalid 
-		// in any way.  
-		this->default_init(dt);
-		return;
-	}
-	auto s = get_status_byte(*p,rs);
-	bool has_local_status = (s==*p);
-	
-	mtrk_event_t::size_type sz = delta_time_field_size(dt)
-		+ data_size + !has_local_status;
-	sz = std::clamp(sz,0,mtrk_event_t::size_max);
-
-	this->d_.resize(sz);
-	auto dest = write_delta_time(dt,this->d_.begin());
-	if (!has_local_status) {
-		*dest++ = s;
-	}
-	std::copy(p,p+data_size,dest);
-}
-
 mtrk_event_t::mtrk_event_t(uint32_t dt, midi_ch_event_t md) {
 	this->d_ = mtrk_event_t_internal::small_bytevec_t();
 	unsigned char s = (md.status_nybble)|(md.ch);
@@ -377,6 +313,7 @@ maybe_mtrk_event_t make_mtrk_event(const unsigned char *beg,
 		return result;
 	}
 	result = make_mtrk_event(dt.val,beg+dt.N,end,rs,err);
+	result.size += dt.N;
 	return result;
 }
 
@@ -421,6 +358,7 @@ maybe_mtrk_event_t make_mtrk_event(int32_t dt, const unsigned char *beg,
 		if (channel_status_byte_n_data_bytes(s)==2) {
 			result.event.push_back(ch.data.p2);
 		}
+		result.size = ch.size;
 	} else if (is_meta_status_byte(s)) {
 		auto mt = validate_meta_event(beg,end);
 		if (!mt) {
@@ -431,6 +369,7 @@ maybe_mtrk_event_t make_mtrk_event(int32_t dt, const unsigned char *beg,
 		result.event.resize(dt_n+(mt.end-mt.begin));
 		auto it = write_delta_time(dt,result.event.begin());
 		std::copy(mt.begin,mt.end,it);
+		result.size = mt.end-mt.begin;
 	} else if (is_sysex_status_byte(s)) {
 		auto sx = validate_sysex_event(beg,end);
 		if (!sx) {
@@ -441,6 +380,7 @@ maybe_mtrk_event_t make_mtrk_event(int32_t dt, const unsigned char *beg,
 		result.event.resize(dt_n+(sx.end-sx.begin));
 		auto it = write_delta_time(dt,result.event.begin());
 		std::copy(sx.begin,sx.end,it);
+		result.size = sx.end-sx.begin;
 	} else {
 		result.error = mtrk_event_error_t::errc::invalid_status_byte;
 		set_err(result.error,dt,rs,0x00u,beg,end);
@@ -459,7 +399,8 @@ validate_channel_event(const unsigned char *beg, const unsigned char *end,
 		result.error = mtrk_event_error_t::errc::channel_overflow;
 		return result;
 	}
-	auto s = get_status_byte(*beg,rs);
+	auto p = beg;
+	auto s = get_status_byte(*p,rs);
 	if (!is_channel_status_byte(s)) {
 		result.error = mtrk_event_error_t::errc::channel_invalid_status_byte;
 		return result;
@@ -467,27 +408,27 @@ validate_channel_event(const unsigned char *beg, const unsigned char *end,
 	result.data.status_nybble = s&0xF0u;
 	result.data.ch = s&0x0Fu;
 	int expect_n_data_bytes = channel_status_byte_n_data_bytes(s);
-	if (*beg==s) {
-		++beg;  // The event has a local status-byte
+	if (*p==s) {
+		++p;  // The event has a local status-byte
 	}
-	if ((end-beg)<expect_n_data_bytes) {
+	if ((end-p)<expect_n_data_bytes) {
 		result.error = mtrk_event_error_t::errc::channel_calcd_length_exceeds_input;
 		return result;
 	}
 
-	result.data.p1 = *beg++;
+	result.data.p1 = *p++;
 	if (!is_data_byte(result.data.p1)) {
 		result.error = mtrk_event_error_t::errc::channel_invalid_data_byte;
 		return result;
 	}
 	if (expect_n_data_bytes==2) {
-		result.data.p2 = *beg;
+		result.data.p2 = *p++;
 		if (!is_data_byte(result.data.p2)) {
 			result.error = mtrk_event_error_t::errc::channel_invalid_data_byte;
 			return result;
 		}
 	}
-
+	result.size = p-beg;
 	result.error=mtrk_event_error_t::errc::no_error;
 	return result;
 }
