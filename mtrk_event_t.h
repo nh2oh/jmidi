@@ -185,11 +185,6 @@ private:
 
 
 struct mtrk_event_error_t {
-	std::array<unsigned char,12> header;
-	int32_t delta_time;
-	unsigned char status {0u};
-};
-struct maybe_mtrk_event_t {
 	enum class errc : uint8_t {
 		invalid_delta_time,
 		zero_sized_input,  // beg==end
@@ -204,8 +199,22 @@ struct maybe_mtrk_event_t {
 		no_error,
 		other
 	};
+	std::array<unsigned char,12> header;
+	// The delta-time either passed in directly to overload 2, or 
+	// processed from the input buffer for overload 1.  
+	int32_t dt_input;
+	// The running status passed in to the make_ function; the status
+	// byte deduced for the event from rs and the input buffer
+	unsigned char rs;
+	unsigned char s;
+	mtrk_event_error_t::errc code {mtrk_event_error_t::errc::other};
+
+	void set(mtrk_event_error_t::errc, int32_t, unsigned char, unsigned char, 
+			const unsigned char*, const unsigned char*);
+};
+struct maybe_mtrk_event_t {
 	mtrk_event_t event;
-	maybe_mtrk_event_t::errc error {maybe_mtrk_event_t::errc::other};
+	mtrk_event_error_t::errc error {mtrk_event_error_t::errc::other};
 	operator bool() const;
 };
 maybe_mtrk_event_t make_mtrk_event(const unsigned char*, const unsigned char*,
@@ -215,19 +224,9 @@ maybe_mtrk_event_t make_mtrk_event(int32_t, const unsigned char*,
 
 
 
-//
-// Should go:
-// template<typename It> make_mtrk_event(It beg, It end, ...)
-// in mtrk_methods
-//
-//
-//
-
-
-
 struct validate_channel_event_result_t {
 	midi_ch_event_t data;
-	maybe_mtrk_event_t::errc error {maybe_mtrk_event_t::errc::other};
+	mtrk_event_error_t::errc error {mtrk_event_error_t::errc::other};
 	operator bool() const;
 };
 validate_channel_event_result_t
@@ -237,7 +236,7 @@ validate_channel_event(const unsigned char*, const unsigned char*,
 struct validate_meta_event_result_t {
 	const unsigned char *begin {nullptr};
 	const unsigned char *end {nullptr};
-	maybe_mtrk_event_t::errc error {maybe_mtrk_event_t::errc::other};
+	mtrk_event_error_t::errc error {mtrk_event_error_t::errc::other};
 	operator bool() const;
 };
 validate_meta_event_result_t
@@ -246,7 +245,7 @@ validate_meta_event(const unsigned char*, const unsigned char*);
 struct validate_sysex_event_result_t {
 	const unsigned char *begin {nullptr};
 	const unsigned char *end {nullptr};
-	maybe_mtrk_event_t::errc error {maybe_mtrk_event_t::errc::other};
+	mtrk_event_error_t::errc error {mtrk_event_error_t::errc::other};
 	operator bool() const;
 };
 validate_sysex_event_result_t

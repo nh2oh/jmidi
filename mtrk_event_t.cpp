@@ -321,93 +321,126 @@ bool mtrk_event_t::is_small() const {
 
 
 maybe_mtrk_event_t::operator bool() const {
-	return this->error==maybe_mtrk_event_t::errc::no_error;
+	return this->error==mtrk_event_error_t::errc::no_error;
 }
 validate_channel_event_result_t::operator bool() const {
-	return this->error==maybe_mtrk_event_t::errc::no_error;
+	return this->error==mtrk_event_error_t::errc::no_error;
 }
 validate_meta_event_result_t::operator bool() const {
-	return this->error==maybe_mtrk_event_t::errc::no_error;
+	return this->error==mtrk_event_error_t::errc::no_error;
 }
 validate_sysex_event_result_t::operator bool() const {
-	return this->error==maybe_mtrk_event_t::errc::no_error;
+	return this->error==mtrk_event_error_t::errc::no_error;
+}
+void mtrk_event_error_t::set(mtrk_event_error_t::errc code, int32_t dt,
+			unsigned char rs, unsigned char s, const unsigned char *beg, 
+			const unsigned char *end) {
+	this->code = code;
+	this->dt_input = dt;
+	this->header.fill(0x00u);
+	this->rs = rs;
+	this->s = s;
+	if (!beg || !end || (beg>=end)) { return; }
+	auto n = end-beg;
+	if (n > static_cast<int>(this->header.size())) {
+		n = static_cast<int>(this->header.size());
+	}
+	std::copy(beg,beg+n,this->header.begin());
+}
+
+maybe_mtrk_event_t make_mtrk_event(const unsigned char *beg,
+					const unsigned char *end, unsigned char rs,
+					mtrk_event_error_t *err) {
+	maybe_mtrk_event_t result;
+	result.error = mtrk_event_error_t::errc::other;
+
+	auto set_err = [&err](mtrk_event_error_t::errc code,int32_t dt, 
+				unsigned char rs, unsigned char s, const unsigned char *beg, 
+				const unsigned char *end) -> void {
+		if (!err) { return; }
+		err->set(code,dt,rs,s,beg,end);
+	};
+
+	if (!beg || !end || (beg>=end)) {
+		result.error = mtrk_event_error_t::errc::zero_sized_input;
+		set_err(result.error,0,rs,0x00u,nullptr,nullptr);
+		return result;
+	}
+
+	auto dt = midi_interpret_vl_field(beg,end);
+	if (!dt.is_valid) {
+		result.error = mtrk_event_error_t::errc::invalid_delta_time;
+		set_err(result.error,dt.val,rs,0x00u,beg,end);
+		return result;
+	}
+	result = make_mtrk_event(dt.val,beg+dt.N,end,rs,err);
+	return result;
 }
 
 maybe_mtrk_event_t make_mtrk_event(int32_t dt, const unsigned char *beg,
 					const unsigned char *end, unsigned char rs,
 					mtrk_event_error_t *err) {
 	maybe_mtrk_event_t result;
-	result.error = maybe_mtrk_event_t::errc::other;
+	result.error = mtrk_event_error_t::errc::other;
 
-	auto set_err = [&err](int32_t dt, unsigned char s, 
-			const unsigned char *beg, const unsigned char *end) -> void {
-		if (!err) {
-			return;
-		}
-		err->delta_time = dt;
-		err->header.fill(0x00u);
-		err->status = s;
-		if (!beg || !end) {
-			return;
-		}
-		auto n = end-beg;
-		if (n > err->header.size()) {
-			n = err->header.size();
-		}
-		std::copy(beg,beg+n,err->header.begin());
+	auto set_err = [&err](mtrk_event_error_t::errc code,int32_t dt, 
+				unsigned char rs, unsigned char s, const unsigned char *beg, 
+				const unsigned char *end) -> void {
+		if (!err) { return; }
+		err->set(code,dt,rs,s,beg,end);
 	};
 
 	if (!is_valid_delta_time(dt)) {
-		set_err(dt,0x00u,nullptr,nullptr);
-		result.error = maybe_mtrk_event_t::errc::invalid_delta_time;
+		result.error = mtrk_event_error_t::errc::invalid_delta_time;
+		set_err(result.error,dt,rs,0x00u,nullptr,nullptr);
 		return result;
 	}
 	auto dt_n = delta_time_field_size(dt);
 
-	if (beg==end) {
-		set_err(dt,0x00u,nullptr,nullptr);
-		result.error = maybe_mtrk_event_t::errc::zero_sized_input;
+	if (!beg || !end || (beg>=end)) {
+		result.error = mtrk_event_error_t::errc::zero_sized_input;
+		set_err(result.error,dt,rs,0x00u,nullptr,nullptr);
 		return result;
 	}
 
 	auto s = get_status_byte(*beg,rs);
 	if (is_channel_status_byte(s)) {
-		auto chdata = validate_channel_event(beg,end,rs);
-		if (!chdata) {
-			set_err(dt,s,beg,end);
-			result.error = chdata.error;
+		auto ch = validate_channel_event(beg,end,rs);
+		if (!ch) {
+			result.error = ch.error;
+			set_err(result.error,dt,rs,s,beg,end);
 			return result;
 		}
 		result.event.resize(dt_n);
 		write_delta_time(dt,result.event.begin());
-		result.event.push_back(chdata.data.status_nybble|chdata.data.ch);
-		result.event.push_back(chdata.data.p1);
+		result.event.push_back(ch.data.status_nybble|ch.data.ch);
+		result.event.push_back(ch.data.p1);
 		if (channel_status_byte_n_data_bytes(s)==2) {
-			result.event.push_back(chdata.data.p2);
+			result.event.push_back(ch.data.p2);
 		}
 	} else if (is_meta_status_byte(s)) {
-		auto mtdata = validate_meta_event(beg,end);
-		if (!mtdata) {
-			set_err(dt,s,mtdata.begin,mtdata.end);
-			result.error = mtdata.error;
+		auto mt = validate_meta_event(beg,end);
+		if (!mt) {
+			result.error = mt.error;
+			set_err(result.error,dt,rs,s,mt.begin,mt.end);
 			return result;
 		}
-		result.event.resize(dt_n+(mtdata.end-mtdata.begin));
+		result.event.resize(dt_n+(mt.end-mt.begin));
 		auto it = write_delta_time(dt,result.event.begin());
-		std::copy(mtdata.begin,mtdata.end,it);
+		std::copy(mt.begin,mt.end,it);
 	} else if (is_sysex_status_byte(s)) {
-		auto sxdata = validate_meta_event(beg,end);
-		if (!sxdata) {
-			set_err(dt,s,sxdata.begin,sxdata.end);
-			result.error = sxdata.error;
+		auto sx = validate_meta_event(beg,end);
+		if (!sx) {
+			result.error = sx.error;
+			set_err(result.error,dt,rs,s,sx.begin,sx.end);
 			return result;
 		}
-		result.event.resize(dt_n+(sxdata.end-sxdata.begin));
+		result.event.resize(dt_n+(sx.end-sx.begin));
 		auto it = write_delta_time(dt,result.event.begin());
-		std::copy(sxdata.begin,sxdata.end,it);
+		std::copy(sx.begin,sx.end,it);
 	} else {
-		set_err(dt,0x00u,beg,end);
-		result.error = maybe_mtrk_event_t::errc::invalid_status_byte;
+		result.error = mtrk_event_error_t::errc::invalid_status_byte;
+		set_err(result.error,dt,rs,0x00u,beg,end);
 		return result;
 	}
 	return result;
@@ -417,77 +450,68 @@ validate_channel_event_result_t
 validate_channel_event(const unsigned char *beg, const unsigned char *end,
 						unsigned char rs) {
 	validate_channel_event_result_t result;
-	result.error = maybe_mtrk_event_t::errc::other;
-	if (beg==end) {
-		result.error = maybe_mtrk_event_t::errc::channel_overflow;
+	result.error = mtrk_event_error_t::errc::other;
+	if (!end || !beg || ((end-beg)<1)) {
+		result.error = mtrk_event_error_t::errc::channel_overflow;
 		return result;
 	}
 	auto s = get_status_byte(*beg,rs);
 	if (!is_channel_status_byte(s)) {
-		result.error = maybe_mtrk_event_t::errc::channel_invalid_status_byte;
+		result.error = mtrk_event_error_t::errc::channel_invalid_status_byte;
 		return result;
 	}
 	result.data.status_nybble = s&0xF0u;
 	result.data.ch = s&0x0Fu;
-	bool has_local_status_byte = (s==*beg);
-	int expect_n_data_bytes = 2;
-	if ((s&0xF0u)==0xC0u || (s&0xF0u)==0xD0u) {
-		expect_n_data_bytes = 1;
+	int expect_n_data_bytes = channel_status_byte_n_data_bytes(s);
+	if (*beg==s) {
+		++beg;  // The event has a local status-byte
 	}
-	if (has_local_status_byte) {
-		++beg;
-	}
-
-	if (beg==end) {
-		result.error = maybe_mtrk_event_t::errc::channel_calcd_length_exceeds_input;
+	if ((end-beg)<expect_n_data_bytes) {
+		result.error = mtrk_event_error_t::errc::channel_calcd_length_exceeds_input;
 		return result;
 	}
+
 	result.data.p1 = *beg++;
 	if (!is_data_byte(result.data.p1)) {
-		result.error = maybe_mtrk_event_t::errc::channel_invalid_data_byte;
+		result.error = mtrk_event_error_t::errc::channel_invalid_data_byte;
 		return result;
 	}
 	if (expect_n_data_bytes==2) {
-		if (beg==end) {
-			result.error = maybe_mtrk_event_t::errc::channel_calcd_length_exceeds_input;
-			return result;
-		}
-		result.data.p2 = *beg++;
+		result.data.p2 = *beg;
 		if (!is_data_byte(result.data.p2)) {
-			result.error = maybe_mtrk_event_t::errc::channel_invalid_data_byte;
+			result.error = mtrk_event_error_t::errc::channel_invalid_data_byte;
 			return result;
 		}
 	}
 
-	result.error=maybe_mtrk_event_t::errc::no_error;
+	result.error=mtrk_event_error_t::errc::no_error;
 	return result;
 }
 
 validate_meta_event_result_t
 validate_meta_event(const unsigned char *beg, const unsigned char *end) {
 	validate_meta_event_result_t result;
-	result.error = maybe_mtrk_event_t::errc::other;
-	if ((end-beg)<3) {
-		result.error = maybe_mtrk_event_t::errc::sysex_or_meta_overflow_in_header;
+	result.error = mtrk_event_error_t::errc::other;
+	if (!end || !beg || ((end-beg)<3)) {
+		result.error = mtrk_event_error_t::errc::sysex_or_meta_overflow_in_header;
 		return result;
 	}
-	auto p = beg;
-	if (!is_meta_status_byte(*p)) {
-		result.error = maybe_mtrk_event_t::errc::invalid_status_byte;
+	if (!is_meta_status_byte(*beg)) {
+		result.error = mtrk_event_error_t::errc::invalid_status_byte;
 		return result;
 	}
-	p+=2;
+	auto p = beg+2;
 	auto len = midi_interpret_vl_field(p,end);
 	if (!len.is_valid) {
-		result.error = maybe_mtrk_event_t::errc::sysex_or_meta_invalid_vlq_length;
+		result.error = mtrk_event_error_t::errc::sysex_or_meta_invalid_vlq_length;
 		return result;
 	}
 	if ((end-p)<(len.N+len.val)) {
-		result.error = maybe_mtrk_event_t::errc::sysex_or_meta_calcd_length_exceeds_input;
+		result.error = mtrk_event_error_t::errc::sysex_or_meta_calcd_length_exceeds_input;
 		return result;
 	}
 	// TODO:  Should return len.val and re-compute its normalized vlq rep
-	result.error = maybe_mtrk_event_t::errc::no_error;
+	result.error = mtrk_event_error_t::errc::no_error;
 	result.begin = beg;
 	result.end = beg + 2 + len.N + len.val;
 	return result;
@@ -497,28 +521,27 @@ validate_meta_event(const unsigned char *beg, const unsigned char *end) {
 validate_sysex_event_result_t
 validate_sysex_event(const unsigned char *beg, const unsigned char *end) {
 	validate_sysex_event_result_t result;
-	result.error = maybe_mtrk_event_t::errc::other;
-	if ((end-beg)<2) {
-		result.error = maybe_mtrk_event_t::errc::sysex_or_meta_overflow_in_header;
+	result.error = mtrk_event_error_t::errc::other;
+	if (!end || !beg || ((end-beg)<2)) {
+		result.error = mtrk_event_error_t::errc::sysex_or_meta_overflow_in_header;
 		return result;
 	}
-	auto p = beg;
-	if (!is_sysex_status_byte(*p)) {
-		result.error = maybe_mtrk_event_t::errc::invalid_status_byte;
+	if (!is_sysex_status_byte(*beg)) {
+		result.error = mtrk_event_error_t::errc::invalid_status_byte;
 		return result;
 	}
-	p+=1;
+	auto p = beg+1;
 	auto len = midi_interpret_vl_field(p,end);
 	if (!len.is_valid) {
-		result.error = maybe_mtrk_event_t::errc::sysex_or_meta_invalid_vlq_length;
+		result.error = mtrk_event_error_t::errc::sysex_or_meta_invalid_vlq_length;
 		return result;
 	}
 	if ((end-p)<(len.N+len.val)) {
-		result.error = maybe_mtrk_event_t::errc::sysex_or_meta_calcd_length_exceeds_input;
+		result.error = mtrk_event_error_t::errc::sysex_or_meta_calcd_length_exceeds_input;
 		return result;
 	}
 	// TODO:  Should return len.val and re-compute its normalized vlq rep
-	result.error = maybe_mtrk_event_t::errc::no_error;
+	result.error = mtrk_event_error_t::errc::no_error;
 	result.begin = beg;
 	result.end = beg + 1 + len.N + len.val;
 	return result;

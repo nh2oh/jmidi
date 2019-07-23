@@ -190,6 +190,25 @@ midi_vl_field_interpreted midi_interpret_vl_field(const unsigned char*, int32_t)
 midi_vl_field_interpreted midi_interpret_vl_field(const unsigned char*, uint32_t);*/
 // Overload for iterators
 template<typename InIt>
+midi_vl_field_interpreted midi_interpret_vl_field(InIt beg, InIt end) {
+	//static_assert(std::is_same<std::remove_reference<decltype(*it)>::type,
+	//	const unsigned char>::value);
+	midi_vl_field_interpreted result {};
+	result.val = 0;
+	while (true) {
+		result.val += (*beg & 0x7Fu);
+		++(result.N);
+		if ((beg==end) || !(*beg & 0x80u) || result.N==4) { // the high-bit is not set
+			break;
+		} else {
+			result.val <<= 7;  // result.val << 7;
+			++beg;
+		}
+	}
+	result.is_valid = !(*beg & 0x80u);
+	return result;
+};
+template<typename InIt>
 midi_vl_field_interpreted midi_interpret_vl_field(InIt it) {
 	//static_assert(std::is_same<std::remove_reference<decltype(*it)>::type,
 	//	const unsigned char>::value);
