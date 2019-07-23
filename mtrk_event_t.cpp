@@ -15,6 +15,7 @@ mtrk_event_t::mtrk_event_t() {
 mtrk_event_t::mtrk_event_t(uint32_t dt) {
 	this->default_init(dt);
 }
+
 mtrk_event_t::mtrk_event_t(const unsigned char *p, 
 							mtrk_event_t::size_type sz_max, unsigned char rs) {
 	this->d_ = mtrk_event_t_internal::small_bytevec_t();
@@ -77,6 +78,7 @@ mtrk_event_t::mtrk_event_t(const uint32_t& dt, const unsigned char *p,
 	}
 	std::copy(p,p+data_size,dest);
 }
+
 mtrk_event_t::mtrk_event_t(uint32_t dt, midi_ch_event_t md) {
 	this->d_ = mtrk_event_t_internal::small_bytevec_t();
 	unsigned char s = (md.status_nybble)|(md.ch);
@@ -321,7 +323,8 @@ bool mtrk_event_t::is_small() const {
 
 
 maybe_mtrk_event_t::operator bool() const {
-	return this->error==mtrk_event_error_t::errc::no_error;
+	auto tf = (this->error==mtrk_event_error_t::errc::no_error);
+	return tf;
 }
 validate_channel_event_result_t::operator bool() const {
 	return this->error==mtrk_event_error_t::errc::no_error;
@@ -429,7 +432,7 @@ maybe_mtrk_event_t make_mtrk_event(int32_t dt, const unsigned char *beg,
 		auto it = write_delta_time(dt,result.event.begin());
 		std::copy(mt.begin,mt.end,it);
 	} else if (is_sysex_status_byte(s)) {
-		auto sx = validate_meta_event(beg,end);
+		auto sx = validate_sysex_event(beg,end);
 		if (!sx) {
 			result.error = sx.error;
 			set_err(result.error,dt,rs,s,sx.begin,sx.end);
@@ -443,6 +446,7 @@ maybe_mtrk_event_t make_mtrk_event(int32_t dt, const unsigned char *beg,
 		set_err(result.error,dt,rs,0x00u,beg,end);
 		return result;
 	}
+	result.error = mtrk_event_error_t::errc::no_error;
 	return result;
 }
 
