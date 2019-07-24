@@ -7,7 +7,7 @@ namespace mtrk_event_t_internal {
 
 void small_t::init() noexcept {
 	this->flags_ = 0x80u;
-	this->d_.fill(0x00u);
+	//this->d_.fill(0x00u);
 }
 int32_t small_t::size() const noexcept {
 	this->abort_if_not_active();
@@ -46,7 +46,7 @@ const unsigned char *small_t::end() const noexcept {
 //-----------------------------------------------------------------------------
 void big_t::init() noexcept {
 	this->flags_=0x00u;
-	this->pad_.fill(0x00u);
+	//this->pad_.fill(0x00u);
 	this->p_ = nullptr;
 	this->sz_ = 0u;
 	this->cap_ = 0u;
@@ -167,7 +167,7 @@ small_bytevec_t::small_bytevec_t(const small_bytevec_t& rhs) {  // Copy ctor
 		std::copy(rhs.u_.b_.begin(),rhs.u_.b_.end(),this->begin());
 	} else {
 		this->init_small();
-		this->resize(rhs.u_.s_.size());
+		this->u_.s_.resize(rhs.u_.s_.size());
 		std::copy(rhs.u_.s_.begin(),rhs.u_.s_.end(),this->u_.s_.begin());
 	}
 }
@@ -175,12 +175,6 @@ small_bytevec_t& small_bytevec_t::operator=(const small_bytevec_t& rhs) {  // Co
 	this->resize_nocopy(rhs.size());
 	std::copy(rhs.begin(),rhs.end(),this->begin());
 	return *this;
-
-	// TODO:  Can be optimized; resize() copies the old data when new[]'ing
-	// a new buffer.  
-	//this->resize(rhs.size());
-	//std::copy(rhs.begin(),rhs.end(),this->begin());
-	//return *this;
 }
 small_bytevec_t::small_bytevec_t(small_bytevec_t&& rhs) noexcept {  // Move ctor
 	// This is a ctor; *this is in an uninitialized state
