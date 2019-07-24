@@ -5,12 +5,6 @@
 #include <array>
 #include <type_traits>
 
-template<typename It>
-struct iterator_range_t {
-	It begin;
-	It end;
-};
-
 
 // midi_time_t 
 // Provides the information needed to convert midi ticks to seconds.  

@@ -9,7 +9,7 @@
 
 
 
-mtrk_event_t::mtrk_event_t() {  
+mtrk_event_t::mtrk_event_t() {
 	this->default_init(0);
 }
 mtrk_event_t::mtrk_event_t(uint32_t dt) {

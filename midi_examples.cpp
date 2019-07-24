@@ -17,9 +17,71 @@
 #include <vector>
 #include <iterator>
 #include <chrono>
+#include <thread>
 
 int midi_example() {
-	avg_and_max_event_sizes("C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\");
+
+	/*{
+	std::filesystem::path oneth_inp = "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\";
+	std::filesystem::path oneth_op = "C:\\Users\\ben\\Desktop\\midi_archive\\one_thread_out.txt";
+	auto start1 = std::chrono::high_resolution_clock::now();
+	std::cout << "Starting 1-thread version:  " << std::endl;
+	std::thread t_oneth(avg_and_max_event_sizes,oneth_inp,oneth_op);
+	t_oneth.join();
+	auto end1 = std::chrono::high_resolution_clock::now();
+	auto d1 = std::chrono::duration_cast<std::chrono::seconds>(end1-start1).count();
+	std::cout << "1-thread version finished in d == " 
+		<< d1 << " seconds." << std::endl << std::endl;
+	}
+
+	{
+	std::filesystem::path twoth_inp1 = "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\0_to_I\\";
+	std::filesystem::path twoth_inp2 = "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\J_to_Z\\";
+	std::filesystem::path twoth_op1 = "C:\\Users\\ben\\Desktop\\midi_archive\\two_thread_out1.txt";
+	std::filesystem::path twoth_op2 = "C:\\Users\\ben\\Desktop\\midi_archive\\two_thread_out2.txt";
+	auto start2 = std::chrono::high_resolution_clock::now();
+	std::cout << "Starting 2-thread version:  " << std::endl;
+	std::thread t_twoth1(avg_and_max_event_sizes,twoth_inp1,twoth_op1);
+	std::thread t_twoth2(avg_and_max_event_sizes,twoth_inp2,twoth_op2);
+	t_twoth1.join();
+	t_twoth2.join();
+	auto end2 = std::chrono::high_resolution_clock::now();
+	auto d2 = std::chrono::duration_cast<std::chrono::seconds>(end2-start2).count();
+	std::cout << "2-thread version finished in d == " 
+		<< d2 << " seconds." << std::endl << std::endl;
+	}*/
+
+	/*{
+	std::filesystem::path fourth_inp1 = "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\0_to_I\\0_to_ch\\";
+	std::filesystem::path fourth_inp2 = "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\0_to_I\\cl_to_I\\";
+	std::filesystem::path fourth_inp3 = "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\J_to_Z\\J_to_P\\";
+	std::filesystem::path fourth_inp4 = "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\J_to_Z\\Q_to_Z\\";
+	std::filesystem::path fourth_op1 = "C:\\Users\\ben\\Desktop\\midi_archive\\four_thread_out1.txt";
+	std::filesystem::path fourth_op2 = "C:\\Users\\ben\\Desktop\\midi_archive\\four_thread_out2.txt";
+	std::filesystem::path fourth_op3 = "C:\\Users\\ben\\Desktop\\midi_archive\\four_thread_out3.txt";
+	std::filesystem::path fourth_op4 = "C:\\Users\\ben\\Desktop\\midi_archive\\four_thread_out4.txt";
+	auto start4 = std::chrono::high_resolution_clock::now();
+	std::cout << "Starting 4-thread version:  " << std::endl;
+	std::thread t_fourth1(avg_and_max_event_sizes,fourth_inp1,fourth_op1);
+	std::thread t_fourth2(avg_and_max_event_sizes,fourth_inp2,fourth_op2);
+	std::thread t_fourth3(avg_and_max_event_sizes,fourth_inp3,fourth_op3);
+	std::thread t_fourth4(avg_and_max_event_sizes,fourth_inp4,fourth_op4);
+	t_fourth1.join();
+	t_fourth2.join();
+	t_fourth3.join();
+	t_fourth4.join();
+	auto end4 = std::chrono::high_resolution_clock::now();
+	auto d4 = std::chrono::duration_cast<std::chrono::seconds>(end4-start4).count();
+	std::cout << "4-thread version finished in d == " 
+		<< d4 << " seconds." << std::endl << std::endl;
+	}*/
+
+
+
+
+	std::filesystem::path inp = "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\J_to_Z\\J_to_P\\K\\K\\";
+	std::filesystem::path op = "C:\\Users\\ben\\Desktop\\midi_archive\\\out.txt";
+	avg_and_max_event_sizes(inp,op);
 
 	//read_midi_directory_mthd_inspection("C:\\Users\\ben\\Desktop\\midi_broken_mtrk\\");
 	//read_midi_directory_mthd_inspection("C:\\Users\\ben\\Desktop\\midi_broken_mthd\\");
@@ -50,7 +112,7 @@ int midi_example() {
 	//testdata::print_meta_tests(mt_tests);
 	//testdata::print_midi_test_cases();
 
-	std::string fn;
+	//std::string fn;
 	//fn = "D:\\cpp\\nh2oh\\au\\au\\gt_aulib\\test_data\\clementi_no_rs.mid";
 	//std::string fn = "D:\\cpp\\nh2oh\\au\\au\\gt_aulib\\test_data\\tc_a_rs.mid";
 	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\CLEMENTI.MID";
@@ -61,7 +123,7 @@ int midi_example() {
 	//std::string fn = "C:\\Users\\ben\\Desktop\\scr\\test.mid";
 
 	// Invalid:
-	fn = "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\1\\10.mid";
+	//fn = "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\1\\10.mid";
 	/*
 	auto maybesmf = read_smf(fn);
 	if (!maybesmf) {
@@ -196,7 +258,9 @@ int read_midi_directory_mthd_inspection(const std::filesystem::path& bp) {
 	return 0;
 }
 
-int avg_and_max_event_sizes(const std::filesystem::path& bp) {
+int avg_and_max_event_sizes(const std::filesystem::path& bp,
+				const std::filesystem::path& of) {
+	std::ofstream outfile(of);
 	auto rdi = std::filesystem::recursive_directory_iterator(bp.parent_path());
 	int n_midi_files = 0;
 	for (const auto& dir_ent : rdi) {
@@ -211,15 +275,15 @@ int avg_and_max_event_sizes(const std::filesystem::path& bp) {
 			continue;
 		}
 		++n_midi_files;
-		/*if (n_midi_files < 72635) {
+		/*if (n_midi_files < 90186) {
 			continue;
 		}*/
 		// Read the file into fdata, close the file
 		auto maybe_smf = read_smf(curr_path);
-		std::cout << "File " << std::to_string(n_midi_files) << ")  " 
+		outfile << "File " << std::to_string(n_midi_files) << ")  " 
 			<< curr_path.string() << '\n';
 		if (!maybe_smf) {
-			std::cout << "\t!maybe_smf;  skipping...\n"; 
+			outfile << "\t!maybe_smf;  skipping...\n"; 
 			continue;
 		}
 		
@@ -248,7 +312,7 @@ int avg_and_max_event_sizes(const std::filesystem::path& bp) {
 				++n_events;
 			}  // To next event in track
 		}  // To next track in smf
-		std::cout << "n_events == " << std::to_string(n_events) 
+		outfile << "n_events == " << std::to_string(n_events) 
 			<< "; avg event size == " 
 			<< std::to_string((1.0*cum_nbytes)/(1.0*n_events))
 			<< '\n'
@@ -256,13 +320,13 @@ int avg_and_max_event_sizes(const std::filesystem::path& bp) {
 			<< "; n >= 24 && <= 31 bytes == " << std::to_string(n_events_2431bytes)
 			<< "; n > 31 bytes == " << std::to_string(n_events_gt31bytes)
 			<< ";\n";
-		std::cout << print(biggest_event,mtrk_sbo_print_opts::detail) << '\n';
-		std::cout << "==============================================="
+		outfile << print(biggest_event,mtrk_sbo_print_opts::detail) << '\n';
+		outfile << "==============================================="
 				"=================================\n\n";
 
 	}
-	std::cout << n_midi_files << " Midi files\n";
-
+	outfile << n_midi_files << " Midi files\n";
+	outfile.close();
 	return 0;
 }
 

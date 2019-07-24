@@ -19,6 +19,14 @@ enum class mtrk_sbo_print_opts {
 };
 
 
+
+template<typename It>
+struct iterator_range_t {
+	It begin;
+	It end;
+};
+
+
 //
 // class mtrk_event_t
 // A container for MTrk events.  
@@ -196,7 +204,7 @@ struct mtrk_event_error_t {
 struct maybe_mtrk_event_t {
 	mtrk_event_t event;
 	int32_t size;
-	mtrk_event_error_t::errc error {mtrk_event_error_t::errc::other};
+	mtrk_event_error_t::errc error;// {mtrk_event_error_t::errc::other};
 	operator bool() const;
 };
 maybe_mtrk_event_t make_mtrk_event(const unsigned char*, const unsigned char*,
