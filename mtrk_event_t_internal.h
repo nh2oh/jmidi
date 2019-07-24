@@ -53,13 +53,18 @@ struct big_t {
 	// free_and_reinit() checks p_ and calls delete []; it should only 
 	// be called from an _initialized_ state.  
 	void free_and_reinit() noexcept;
+	// Deletes p_; object must be initialized before calling
+	void adopt(const pad_t&, unsigned char*, int32_t, int32_t) noexcept;
 	int32_t size() const noexcept;
 	int32_t resize(int32_t);
+	// If resizing to something bigger than the present capacity, does 
+	// not copy the data into the new buffer; if resizing smaller, the 
+	// effect is the same as a call to resize().  
+	int32_t resize_nocopy(int32_t);
 	int32_t reserve(int32_t);
 	int32_t capacity() const noexcept;
 	void abort_if_not_active() const noexcept;
-	// Deletes p_; object must be initialized before calling
-	void adopt(const pad_t&, unsigned char*, int32_t, int32_t) noexcept;
+	
 
 	unsigned char *begin() noexcept;
 	const unsigned char *begin() const noexcept;
@@ -79,10 +84,19 @@ public:
 
 	// Constructs a 'small' object w/ size()==0
 	small_bytevec_t() noexcept;
-	small_bytevec_t(const small_bytevec_t&);  // Copy ctor
-	small_bytevec_t& operator=(const small_bytevec_t&);  // Copy assign
-	small_bytevec_t(small_bytevec_t&&) noexcept;  // Move ctor
-	small_bytevec_t& operator=(small_bytevec_t&&) noexcept;  // Move assign
+	// Copy ctor, copy assign; the new/destination object does not necessarily
+	// inherit the same size-type as the the source.  If the source is 'big'
+	// but its data fits in a small object, the destination object will be
+	// constructed as, or transition to, a small object.  If the source is
+	// small, the destination object is always small.  Contrast w/ the move
+	// functions.  
+	small_bytevec_t(const small_bytevec_t&);
+	small_bytevec_t& operator=(const small_bytevec_t&);  
+	// Move ctor, move assignment; the new/destination object inherits the 
+	// same size-type as the source, even if the source data will fit in a 
+	// small object.  Contrast w/the copy ctor/assign op.  
+	small_bytevec_t(small_bytevec_t&&) noexcept;
+	small_bytevec_t& operator=(small_bytevec_t&&) noexcept;
 	~small_bytevec_t() noexcept;
 
 	int32_t size() const noexcept;
@@ -91,6 +105,11 @@ public:
 	// If 'big' and the new size is <= small_bytevec_t::capacity_small, 
 	// will cause a big->small transition.  
 	int32_t resize(int32_t);
+	// If resizing causes either allocation of a new buffer or a 
+	// big->small transition, the present object's data is not copied into
+	// the new buffer.  Otherwise the effect is the same as a call to 
+	// resize().  
+	int32_t resize_nocopy(int32_t);
 	// int32_t reserve(int32_t new_cap);
 	// Will cause big->small, but never small->big transitions.  
 	int32_t reserve(int32_t);

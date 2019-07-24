@@ -221,31 +221,70 @@ int32_t sec2ticks(const double&, const time_division_t&, int32_t=500000);
 
 
 
-
-
-//
-// Why do i include "invalid," which is clearly not a member of the "class
-// of things-that-are-smf-events"?  Because users switch behavior on 
-// functions that return a value of this type (ex, while iterating through
-// an mtrk chunk, the type of event at the present position in the chunk
-// is detected by validate_mtrk_event_dtstart()).  I want to force users to 
-// deal with the error case rather than relying on the convention that some
-// kind of validate_mtrk_event_result.is_valid field be checked before 
-// moving forward.  
+// 
+// SMF event-types, status bytes, data bytes, and running-status
 //
 enum class smf_event_type : uint8_t {  // MTrk events
 	channel,
 	sysex_f0,
 	sysex_f7,
 	meta,
-	invalid,  // !is_status_byte() 
+	// !is_status_byte() 
+	invalid, 
 	// is_status_byte() 
 	//     && (!is_channel_status_byte() && !is_meta_or_sysex_status_byte())
 	// Also, is_unrecognized_status_byte()
 	// Ex, s==0xF1u
 	unrecognized
 };
+// About "invalid":
+// "invalid" is clearly not a member of the class of things that are "SMF
+// events."  
+// Supporting:  Because users switch behavior on functions that return a 
+// value of this type, for example, while parsing raw a MIDI bytestream and
+// it's convienient to include this error case.  
+// Opposing:  Users doing that should use a maybe-type.  Also, the 
+// mtrk_event_t container can not hold 'invalid' values, so there is an 
+// inconsistency here.  
 std::string print(const smf_event_type&);
+
+// The most lightweight status-byte classifiers in the lib
+smf_event_type classify_status_byte(unsigned char);
+smf_event_type classify_status_byte(unsigned char,unsigned char);
+// _any_ "status" byte, including sysex, meta, or channel_{voice,mode}.  
+// Returns true even for things like 0xF1u that are invalid in an smf.  
+// Same as !is_data_byte()
+bool is_status_byte(const unsigned char);
+// True for status bytes invalid in an smf, ex, 0xF1u
+bool is_unrecognized_status_byte(const unsigned char);
+bool is_channel_status_byte(const unsigned char);
+bool is_sysex_status_byte(const unsigned char);
+bool is_meta_status_byte(const unsigned char);
+bool is_sysex_or_meta_status_byte(const unsigned char);
+bool is_data_byte(const unsigned char);
+// unsigned char get_status_byte(unsigned char s, unsigned char rs);
+// The status byte applicible to an event w/ "maybe-a-status-byte" s
+// and an "inherited" running status byte rs.  Where is_status_byte(s)
+// => true, returns s.  Otherwise, if is_channel_status_byte(rs) =>
+// true, returns rs.  Otherwise, returns 0x00u.  
+unsigned char get_status_byte(unsigned char, unsigned char);
+// unsigned char get_running_status_byte(unsigned char s, unsigned char rs);
+// The value for running-status that an event with status byte s 
+// imparts to the stream.  
+// If is_channel_status_byte(s) => true, returns s.  Otherwise, if 
+// (is_data_byte(s) && is_channel_status_byte(rs)) => true, returns rs.  
+// Otherwise, returns 0x00u.  
+unsigned char get_running_status_byte(unsigned char, unsigned char);
+
+
+
+
+
+
+
+
+
+
 //
 // validate_mtrk_event_dtstart()
 //
@@ -296,42 +335,7 @@ validate_mtrk_event_result_t validate_mtrk_event_dtstart(const unsigned char *,
 													unsigned char, uint32_t=0);
 std::string print(const mtrk_event_validation_error&);
 
-// The most lightweight status-byte classifiers in the lib
-smf_event_type classify_status_byte(unsigned char);
-smf_event_type classify_status_byte(unsigned char,unsigned char);
-// _any_ "status" byte, including sysex, meta, or channel_{voice,mode}.  
-// Returns true even for things like 0xF1u that are invalid in an smf.  
-// Same as !is_data_byte()
-bool is_status_byte(const unsigned char);
-// True for status bytes invalid in an smf, ex, 0xF1u
-bool is_unrecognized_status_byte(const unsigned char);
-bool is_channel_status_byte(const unsigned char);
-bool is_sysex_status_byte(const unsigned char);
-bool is_meta_status_byte(const unsigned char);
-bool is_sysex_or_meta_status_byte(const unsigned char);
-bool is_data_byte(const unsigned char);
-//
-// get_status_byte(s,rs)
-// The status byte applicible to the present event.  For meta && sysex
-// events, will return 0xFFu, 0xF0u, 0xF7u as appropriate.  Returns
-// 0x00u where no status byte can be determined for the event, which 
-// occurs if !is_status_byte(s) && !is_channel_status_byte(rs).  
-unsigned char get_status_byte(unsigned char, unsigned char);
-// get_running_status_byte(s,rs)
-// The status byte that the present event imparts to the stream.  In
-// general, this is _not_ the status byte applicable to the event w/
-// status byte == s: for meta or sysex events, will return 0x00u instead
-// of 0xFFu, 0xF0u, 0xF7u, since these events reset the running-status.  
-// Also returns 0x00u where the event-local status byte s is valid but 
-// "unrecognized," ex, s==0xF1u.  Only for channel events is the byte
-// applicable to the event the same as the running-status imparted to the
-// stream.  
-// Hence, always returns either a valid channel status byte, or returns 
-// 0x00u.  If 0x00u, either:
-// 1) s indicates a sysex_f0/f7, meta or valid but unrecognized status byte.  
-// or,
-// 2) s is a midi _data_ byte (!(s&0x80u)), and !is_channel_status_byte(rs).  
-unsigned char get_running_status_byte(unsigned char, unsigned char);
+
 // Returns smf_event_type::invalid if the dt field is invalid or if there is
 // a size-overrun error (ex, if the dt field is valid but dt.N==max_size).  
 // Only the status byte is examined; in no case are the data bytes of the

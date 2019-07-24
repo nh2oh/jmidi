@@ -98,7 +98,19 @@ int32_t big_t::resize(int32_t new_sz) {
 		// For a freshly init()'d object, p_==nullptr, but sz_==cap_==0
 		unsigned char *pdest = new unsigned char[static_cast<uint32_t>(new_cap)];
 		std::copy(this->begin(),this->end(),pdest);
-		this->adopt(this->pad_,pdest,new_sz,new_cap);
+		this->adopt(this->pad_,pdest,new_sz,new_cap);  // Frees the current p_
+	}
+	return this->size();
+}
+int32_t big_t::resize_nocopy(int32_t new_sz) {
+	this->abort_if_not_active();
+	new_sz = std::clamp(new_sz,0,big_t::size_max);
+	if (new_sz <= this->capacity()) {
+		this->sz_ = static_cast<uint32_t>(new_sz);
+	} else {  // resize to new_size > present capacity
+		auto new_cap = new_sz;
+		unsigned char *pdest = new unsigned char[static_cast<uint32_t>(new_cap)];
+		this->adopt(this->pad_,pdest,new_sz,new_cap);  // Frees the current p_
 	}
 	return this->size();
 }
@@ -143,52 +155,68 @@ void small_bytevec_t::init_big() noexcept {
 small_bytevec_t::small_bytevec_t(const small_bytevec_t& rhs) {  // Copy ctor
 	// This is a ctor; *this is in an uninitialized state
 	if (rhs.is_big()) {
+		// I *probably* need a big object, but rhs may be a small amount of
+		// data in a big object.  
 		this->init_big();
+		this->resize_nocopy(rhs.u_.b_.size());
+		// Note that calling this->resize_nocopy() is different from calling 
+		// this->u_.b_.resize_nocopy(); the former will cause a big->small 
+		// transition if possible.  Thus, although i began w/ a 
+		// this->init_big(), after resize_nocopy()ing, this may be small, 
+		// hence copying into this->begin() rather than this->u_.b_.begin().  
+		std::copy(rhs.u_.b_.begin(),rhs.u_.b_.end(),this->begin());
 	} else {
 		this->init_small();
+		this->resize(rhs.u_.s_.size());
+		std::copy(rhs.u_.s_.begin(),rhs.u_.s_.end(),this->u_.s_.begin());
 	}
-	this->resize(rhs.size());
-	std::copy(rhs.begin(),rhs.end(),this->begin());
 }
 small_bytevec_t& small_bytevec_t::operator=(const small_bytevec_t& rhs) {  // Copy assign
-	// TODO:  Can be optimized; resize() copies the old data when new[]'ing
-	// a new buffer.  
-	this->resize(rhs.size());
+	this->resize_nocopy(rhs.size());
 	std::copy(rhs.begin(),rhs.end(),this->begin());
 	return *this;
+
+	// TODO:  Can be optimized; resize() copies the old data when new[]'ing
+	// a new buffer.  
+	//this->resize(rhs.size());
+	//std::copy(rhs.begin(),rhs.end(),this->begin());
+	//return *this;
 }
 small_bytevec_t::small_bytevec_t(small_bytevec_t&& rhs) noexcept {  // Move ctor
 	// This is a ctor; *this is in an uninitialized state
 	if (rhs.is_big()) {
 		this->init_big();
-		this->u_.b_.adopt(rhs.u_.b_.pad_,rhs.begin(),rhs.size(),
-							rhs.capacity());
-		rhs.init_small();
-		//rhs.init_big();  // Does not delete [] rhs.u_.b_.p_
+		this->u_.b_.adopt(rhs.u_.b_.pad_,rhs.u_.b_.begin(),rhs.u_.b_.size(),
+							rhs.u_.b_.capacity());
+		rhs.init_small();  // Does not delete [] rhs.u_.b_.p_
+		// TODO:  Not really needed; need to null rhs->u_.b_.p_, but not zero 
+		// it all out
 	} else {  // rhs is 'small'
 		this->init_small();
-		this->resize(rhs.size());
-		std::copy(rhs.begin(),rhs.end(),this->begin());
-		rhs.init_small();
+		this->resize(rhs.u_.s_.size());
+		std::copy(rhs.u_.s_.begin(),rhs.u_.s_.end(),this->u_.s_.begin());
+		rhs.init_small();  // TODO:  Not really needed
 	}
 }
 small_bytevec_t& small_bytevec_t::operator=(small_bytevec_t&& rhs) noexcept {  // Move assign
-	// TODO:  Can be optimized; resize() copies the old data when new[]'ing
-	// a new buffer.  
-	if (this->is_big()) {
-		this->u_.b_.free_and_reinit();
-	}
 	if (rhs.is_big()) {
-		this->init_big();
-		this->u_.b_.adopt(rhs.u_.b_.pad_,rhs.begin(),rhs.size(),
-							rhs.capacity());
-		//rhs.init_big();  // Does not delete [] rhs.u_.b_.p_
-		rhs.init_small();
+		if (this->is_small()) {
+			this->init_big();
+		}
+		// If this->is_big(), this->u_.b_.adopt() frees u_.b_.p_.  
+		this->u_.b_.adopt(rhs.u_.b_.pad_,rhs.u_.b_.begin(),rhs.u_.b_.size(),
+							rhs.u_.b_.capacity());
+		rhs.init_small();  // Does not delete [] rhs.u_.b_.p_
+		// TODO:  Not really needed; need to null rhs->u_.b_.p_, but not zero 
+		// it all out
 	} else {  // rhs is 'small'
+		if (this->is_big()) {
+			this->u_.b_.free_and_reinit();
+		}
 		this->init_small();
-		this->resize(rhs.size());
-		std::copy(rhs.begin(),rhs.end(),this->begin());
-		rhs.init_small();
+		this->u_.s_.resize(rhs.u_.s_.size());
+		std::copy(rhs.u_.s_.begin(),rhs.u_.s_.end(),this->u_.s_.begin());
+		rhs.init_small();  // TODO:  Not really needed
 	}
 	return *this;
 }
@@ -249,6 +277,30 @@ int32_t small_bytevec_t::resize(int32_t new_sz) {
 			std::copy(this->begin(),this->end(),pdest);
 			this->init_big();
 			this->u_.b_.adopt(this->u_.b_.pad_,pdest,new_sz,new_cap);
+		}
+	}
+	return new_sz;
+}
+int32_t small_bytevec_t::resize_nocopy(int32_t new_sz) {
+	new_sz = std::clamp(new_sz,0,small_bytevec_t::size_max);
+	if (this->is_big()) {
+		if (new_sz <= small_t::size_max) {  // Resize big->small
+			if (this->u_.b_.p_) {
+				delete [] this->u_.b_.p_;
+			}
+			this->init_small();  // Does not try to delete [] b_.p_
+			return this->u_.s_.resize(new_sz);
+		} else {  // new_sz > small_t::size_max;  keep object big
+			return this->u_.b_.resize_nocopy(new_sz);
+		}
+	} else {  // present object is small
+		if (new_sz <= small_t::size_max) {  // Keep small
+			return this->u_.s_.resize(new_sz);
+		} else {  // new_sz > small_t::size_max; Resize small->big
+			auto new_cap = new_sz;
+			unsigned char *p = new unsigned char[static_cast<uint32_t>(new_cap)];
+			this->init_big();
+			this->u_.b_.adopt(this->u_.b_.pad_,p,new_sz,new_cap);
 		}
 	}
 	return new_sz;
