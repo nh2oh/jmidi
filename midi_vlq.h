@@ -182,12 +182,7 @@ struct midi_vl_field_interpreted {
 	int8_t N {0};
 	bool is_valid {false};
 };
-/*midi_vl_field_interpreted midi_interpret_vl_field(const unsigned char*);
-// Specify the max number of bytes allowed to be read.  If the terminating
-// byte is not encountered after reading max_size bytes, returns w/ 
-// !is_valid
-midi_vl_field_interpreted midi_interpret_vl_field(const unsigned char*, int32_t);
-midi_vl_field_interpreted midi_interpret_vl_field(const unsigned char*, uint32_t);*/
+
 // Overload for iterators
 template<typename InIt>
 midi_vl_field_interpreted midi_interpret_vl_field(InIt beg, InIt end) {
@@ -260,6 +255,8 @@ InIt advance_to_vlq_end(InIt it) {
 	}
 	return it;
 };
+
+/*
 // Advance the iterator to the end of the vlq, by 4 bytes, or to the end
 // of the range, whichever comes first.  
 template<typename InIt>
@@ -278,7 +275,7 @@ InIt advance_to_dt_end(InIt it) {
 	}
 	return it;
 };
-
+*/
 
 //
 // Returns an integer with the bit representation of the input encoded as a midi
@@ -310,7 +307,7 @@ constexpr uint32_t midi_vl_field_equiv_value(T val) {
 	}
 
 	return res;
-}
+};
 //
 // Computes the size (in bytes) of the field required to encode a given 
 // number as a MIDI vlq-quantity.  
@@ -326,18 +323,15 @@ constexpr int midi_vl_field_size(T val) {
 	} while (val != 0);
 
 	return n;
-}
+};
+
+/*
 //
 // Computes the size (in bytes) of the field required to encode a given 
 // value as a delta time.  Functions that write delta time vlq fields 
 // clamp the max allowable value to 0x0FFFFFFFu => 4 bytes, hence this never
 // returns > 4.  
 //
-/*
-constexpr int delta_time_field_size(int32_t);
-constexpr int delta_time_field_size(uint32_t);
-constexpr int yaaaaaay(uint32_t);
-*/
 template<typename InIt>
 midi_vl_field_interpreted read_delta_time(InIt beg, InIt end) {
 	midi_vl_field_interpreted result {};
@@ -372,7 +366,7 @@ constexpr int delta_time_field_size(T val) {
 
 	return n;
 }
-
+*/
 
 // 
 // Encode a value in vl form and write it out into the range [beg,end).  
@@ -409,7 +403,7 @@ It midi_write_vl_field(It beg, It end, T val) {
 	}
 
 	return beg;
-}
+};
 //
 // Overload that can take a std::back_inseter(some_container)
 //
@@ -441,6 +435,7 @@ OutIt midi_write_vl_field(OutIt it, T val) {
 	return it;
 };
 
+/*
 // These clamp the input value to [0,0x0FFFFFFF] == [0,268,435,455]
 template<typename OIt>
 OIt write_delta_time(int32_t val, OIt it) {
@@ -458,16 +453,6 @@ OIt write_delta_time(uint32_t val, OIt it) {
 	return midi_write_vl_field(it,val);
 };
 
-/*
-// Clamps the input value to [0,0x0FFFFFFF] == [0,268,435,455]
-template<typename T, typename OIt>
-OIt write_delta_time(T val, OIt it) {
-	static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value,
-		"MIDI delta-time fields only encode unsigned integral values");
-
-	val &= 0x0FFFFFFFu;
-	return midi_write_vl_field(it,val);
-};
 */
 
 //

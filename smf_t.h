@@ -127,6 +127,8 @@ private:
 };
 std::string print(const smf_t&);
 
+static constexpr auto sz_smf_t = sizeof(smf_t);
+
 // maybe_smf_t read_smf(const std::string& filename);
 // Reads in the smf indicated by filename.  The maybe_smf_t returned can
 // be tested for validity through an implicit conversion to bool.  Note 

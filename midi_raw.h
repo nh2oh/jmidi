@@ -80,11 +80,10 @@ bool is_channel_pressure(const midi_ch_event_t&);  // 0xDnu
 bool is_pitch_bend(const midi_ch_event_t&); 
 bool is_channel_mode(const midi_ch_event_t&);
 
-//bool is_valid_delta_time(int32_t);
-//int32_t to_nearest_valid_delta_time(int32_t);
 
 
-template<typename T>
+
+/*template<typename T>
 constexpr bool is_valid_delta_time(T dt) {
 	return ((dt <= 0x0FFFFFFF) && (dt >= 0x00));
 };
@@ -96,7 +95,7 @@ constexpr int32_t to_nearest_valid_delta_time(T dt) {
 		return 0;
 	}
 	return static_cast<int32_t>(dt);
-};
+};*/
 
 
 //

@@ -44,7 +44,7 @@ struct iterator_range_t {
 //
 // The rationale for storing MTrk events with the same byte representation
 // as when serialized to a SMF, as opposed to some processed aggregate of
-// platform-native types (ex, with a uint32_t for the delta-time, an 
+// platform-native types (ex, with an int32_t for the delta-time, an 
 // enum for the smf_event_type, etc), is as follows:
 // 1)  This is probably the most compact representation of MIDI event data
 //     possible, and the manipulations needed to extract native quantites
@@ -61,11 +61,10 @@ struct iterator_range_t {
 
 
 //
-// TODO:  Error handling policy for some of the ctors
-// TODO:  Safe resize()/reserve()
-// TODO:  push_back()
-//
-
+// TODO:  payload_begin/end() functions are calling advance_to_dt_end()
+// on the meta & sysex vlq length fields; they should be calling a 
+// more generic advance_to_vlq_end() function of some sort.  
+// 
 struct mtrk_event_error_t;
 struct maybe_mtrk_event_t;
 

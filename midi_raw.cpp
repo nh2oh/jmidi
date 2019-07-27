@@ -104,12 +104,7 @@ bool is_channel_mode(const midi_ch_event_t& md) {
 	// 120  == 0b01111000u
 }
 
-/*bool is_valid_delta_time(int32_t dt) {
-	return !((dt>0x0FFFFFFF) || (dt<0));
-}*/
-/*int32_t to_nearest_valid_delta_time(int32_t val) {
-	return std::clamp(val,0,0x0FFFFFFF);
-}*/
+
 
 //
 // time-division_t class methods

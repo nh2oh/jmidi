@@ -6,6 +6,7 @@
 #include "mtrk_event_methods.h"
 #include "smf_t.h"
 #include "midi_vlq.h"
+#include "midi_delta_time.h"
 #include <iostream>
 #include <filesystem>
 #include <string>

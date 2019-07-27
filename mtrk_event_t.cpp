@@ -2,10 +2,9 @@
 #include "mtrk_event_methods.h"
 #include "midi_raw.h"
 #include "midi_vlq.h"
-#include <string>
+#include "midi_delta_time.h"
 #include <cstdint>
 #include <algorithm>
-#include <limits>  // std::numeric_limits<uint32t>::max()
 
 
 
@@ -122,51 +121,55 @@ mtrk_event_t::iterator mtrk_event_t::event_begin() {
 }
 mtrk_event_t::const_iterator mtrk_event_t::payload_begin() const {
 	auto it = this->event_begin();
+	auto it_end = this->end();
 	if (this->type()==smf_event_type::meta) {
 		it += 2;  // 0xFFu, type-byte
-		it = advance_to_dt_end(it);
+		it = advance_to_dt_end(it,it_end);
 	} else if (this->type()==smf_event_type::sysex_f0
 					|| this->type()==smf_event_type::sysex_f7) {
 		it += 1;  // 0xF0u or 0xF7u
-		it = advance_to_dt_end(it);
+		it = advance_to_dt_end(it,it_end);
 	} // else { smf_event_type::channel_voice, _mode, unknown, invalid...
 	return it;
 }
 mtrk_event_t::iterator mtrk_event_t::payload_begin() {
 	auto it = this->event_begin();
+	auto it_end = this->end();
 	if (this->type()==smf_event_type::meta) {
 		it += 2;  // 0xFFu, type-byte
-		it = advance_to_dt_end(it);
+		it = advance_to_dt_end(it,it_end);
 	} else if (this->type()==smf_event_type::sysex_f0
 					|| this->type()==smf_event_type::sysex_f7) {
 		it += 1;  // 0xF0u or 0xF7u
-		it = advance_to_dt_end(it);
+		it = advance_to_dt_end(it,it_end);
 	} // else { smf_event_type::channel_voice, _mode, unknown, invalid...
 	return it;
 }
 iterator_range_t<mtrk_event_t::const_iterator> mtrk_event_t::payload_range() const {
 	auto sz = this->size();
 	auto it = this->event_begin();
+	auto it_end = this->end();
 	if (this->type()==smf_event_type::meta) {
 		it += 2;  // 0xFFu, type-byte
-		it = advance_to_dt_end(it);
+		it = advance_to_dt_end(it,it_end);
 	} else if (this->type()==smf_event_type::sysex_f0
 					|| this->type()==smf_event_type::sysex_f7) {
 		it += 1;  // 0xF0u or 0xF7u
-		it = advance_to_dt_end(it);
+		it = advance_to_dt_end(it,it_end);
 	} // else { smf_event_type::channel_voice, _mode, unknown, invalid...
 	return {it,this->end()};
 }
 iterator_range_t<mtrk_event_t::iterator> mtrk_event_t::payload_range() {
 	auto sz = this->size();
 	auto it = this->event_begin();
+	auto it_end = this->end();
 	if (this->type()==smf_event_type::meta) {
 		it += 2;  // 0xFFu, type-byte
-		it = advance_to_dt_end(it);
+		it = advance_to_dt_end(it,it_end);
 	} else if (this->type()==smf_event_type::sysex_f0
 					|| this->type()==smf_event_type::sysex_f7) {
 		it += 1;  // 0xF0u or 0xF7u
-		it = advance_to_dt_end(it);
+		it = advance_to_dt_end(it,it_end);
 	} // else { smf_event_type::channel_voice, _mode, unknown, invalid...
 	return {it,this->end()};
 }
@@ -251,6 +254,7 @@ bool mtrk_event_t::operator!=(const mtrk_event_t& rhs) const {
 void mtrk_event_t::default_init(int32_t dt) {
 	this->d_ = mtrk_event_t_internal::small_bytevec_t();
 	if (dt>0) {
+		dt = to_nearest_valid_delta_time(dt);
 		this->d_.resize(delta_time_field_size(dt)+3);
 		auto it = write_delta_time(dt,this->d_.begin());
 		*it++ = 0x90u;  // Note-on, channel "1"
@@ -332,7 +336,7 @@ maybe_mtrk_event_t make_mtrk_event(const unsigned char *beg,
 		return result;
 	}
 
-	auto dt = midi_interpret_vl_field(beg,end);
+	auto dt = read_delta_time(beg,end);
 	if (!dt.is_valid) {
 		result.error = mtrk_event_error_t::errc::invalid_delta_time;
 		set_err(result.error,dt.val,rs,0x00u,beg,end);

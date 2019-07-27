@@ -2,6 +2,7 @@
 #include "mtrk_event_t.h"
 #include "midi_raw.h"
 #include "midi_vlq.h"
+#include "midi_delta_time.h"
 #include <string>
 #include <vector>
 #include <array>
