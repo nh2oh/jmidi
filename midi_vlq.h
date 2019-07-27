@@ -357,12 +357,13 @@ midi_vl_field_interpreted read_delta_time(InIt beg, InIt end) {
 };
 template<typename T>
 constexpr int delta_time_field_size(T val) {
-	//static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value,
-	//	"MIDI VL fields only encode unsigned integral values");
-	auto uval = static_cast<typename std::make_unsigned<T>::type>(val);
-	if (val < (T {0})) {
-		uval = static_cast<typename std::make_unsigned<T>::type>(0);
+	uint32_t uval = 0;
+	if (val > 0x0FFFFFFF) {
+		uval = 0x0FFFFFFFu;
+	} else if (val < 0) {
+		uval = 0;
 	}
+	uval = static_cast<uint32_t>(val);
 	int n {0};
 	do {
 		uval >>= 7;
@@ -443,8 +444,12 @@ OutIt midi_write_vl_field(OutIt it, T val) {
 // These clamp the input value to [0,0x0FFFFFFF] == [0,268,435,455]
 template<typename OIt>
 OIt write_delta_time(int32_t val, OIt it) {
-	val = std::max(0,val);
-	uint32_t uval = static_cast<uint32_t>(val)&0x0FFFFFFFu;
+	if (val < 0) {
+		val = 0;
+	} else if (val > 0x0FFFFFFF) {
+		val = 0x0FFFFFFF;
+	}
+	uint32_t uval = static_cast<uint32_t>(val);
 	return midi_write_vl_field(it,uval);
 };
 template<typename OIt>

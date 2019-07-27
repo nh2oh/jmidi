@@ -522,7 +522,7 @@ bool is_sysex_f0(const mtrk_event_t& ev) {
 bool is_sysex_f7(const mtrk_event_t& ev) {
 	return ev.type()==smf_event_type::sysex_f7;
 }
-mtrk_event_t make_sysex_generic_impl(const uint32_t& dt, unsigned char type, 
+mtrk_event_t make_sysex_generic_impl(const int32_t& dt, unsigned char type, 
 					bool f7_terminate, const std::vector<unsigned char>& pyld) {
 	// 'pyld' is missing the leading F0 and vlq length field.  
 	// If f7_terminate == true, the caller wants the event to end in an 0xF7.  

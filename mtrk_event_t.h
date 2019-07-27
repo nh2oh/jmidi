@@ -146,7 +146,7 @@ public:
 private:
 	mtrk_event_t_internal::small_bytevec_t d_;
 
-	void default_init(uint32_t=0);
+	void default_init(int32_t=0);
 
 	size_type resize(size_type);
 	unsigned char *data();
@@ -167,7 +167,7 @@ private:
 	bool is_big() const;
 	bool is_small() const;
 
-	friend mtrk_event_t make_sysex_generic_impl(const uint32_t&, unsigned char, 
+	friend mtrk_event_t make_sysex_generic_impl(const int32_t&, unsigned char, 
 					bool, const std::vector<unsigned char>&);
 
 	friend maybe_mtrk_event_t make_mtrk_event(int32_t, const unsigned char*,

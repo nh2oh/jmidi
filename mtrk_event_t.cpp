@@ -248,7 +248,7 @@ bool mtrk_event_t::operator!=(const mtrk_event_t& rhs) const {
 	return !(*this==rhs);
 }
 
-void mtrk_event_t::default_init(uint32_t dt) {
+void mtrk_event_t::default_init(int32_t dt) {
 	this->d_ = mtrk_event_t_internal::small_bytevec_t();
 	if (dt>0) {
 		this->d_.resize(delta_time_field_size(dt)+3);
@@ -259,7 +259,7 @@ void mtrk_event_t::default_init(uint32_t dt) {
 	} else {
 		this->d_.resize(4);
 		auto it = this->d_.begin();
-		*it++ = 0x00u;
+		*it++ = 0x00u;  // The delta-time
 		*it++ = 0x90u;  // Note-on, channel "1"
 		*it++ = 0x3Cu;  // 0x3C==60=="Middle C" (C4, 261.63Hz)
 		*it++ = 0x3Fu;  // 0x3F==63, ~= 127/2

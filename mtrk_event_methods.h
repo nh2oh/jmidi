@@ -241,10 +241,10 @@ bool is_sysex(const mtrk_event_t&);
 bool is_sysex_f0(const mtrk_event_t&);
 bool is_sysex_f7(const mtrk_event_t&);
 // Sysex factories
-// mtrk_event_t make_sysex_generic_impl(const uint32_t& delta_time, 
+// mtrk_event_t make_sysex_generic_impl(const int32_t& delta_time, 
 //     unsigned char type_byte, bool terminate,
 //     const std::vector<unsigned char>& payload);
-mtrk_event_t make_sysex_generic_impl(const uint32_t&, unsigned char, bool, 
+mtrk_event_t make_sysex_generic_impl(const int32_t&, unsigned char, bool, 
 	const std::vector<unsigned char>&);
 // Create a sysex event w/ type byte == 0xF0u and payload == to the contents 
 // of the provided vector.  In the event returned, the final byte of the 
