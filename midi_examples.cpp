@@ -78,10 +78,15 @@ int midi_example() {
 
 
 
-
+	auto start1 = std::chrono::high_resolution_clock::now();
 	std::filesystem::path inp = "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\J_to_Z\\J_to_P\\K\\K\\";
 	std::filesystem::path op = "C:\\Users\\ben\\Desktop\\midi_archive\\\out.txt";
 	avg_and_max_event_sizes(inp,op);
+	auto end1 = std::chrono::high_resolution_clock::now();
+	auto d1 = std::chrono::duration_cast<std::chrono::seconds>(end1-start1).count();
+	std::cout << "1-thread version finished in d == " 
+		<< d1 << " seconds." << std::endl << std::endl;
+
 
 	//read_midi_directory_mthd_inspection("C:\\Users\\ben\\Desktop\\midi_broken_mtrk\\");
 	//read_midi_directory_mthd_inspection("C:\\Users\\ben\\Desktop\\midi_broken_mthd\\");

@@ -97,8 +97,8 @@ public:
 	// on channel "1" w/ velocity 60 and delta-time == 0.  
 	mtrk_event_t();
 	// Default-constructed value w/ the given delta-time.  
-	mtrk_event_t(uint32_t);
-	mtrk_event_t(uint32_t, midi_ch_event_t);
+	mtrk_event_t(int32_t);
+	mtrk_event_t(int32_t, midi_ch_event_t);
 	mtrk_event_t(const mtrk_event_t&);
 	mtrk_event_t& operator=(const mtrk_event_t&);
 	mtrk_event_t(mtrk_event_t&&) noexcept;
@@ -112,9 +112,15 @@ public:
 	const unsigned char *data() const;
 	const_iterator begin() const;
 	const_iterator end() const;
+	const_iterator cbegin();
+	const_iterator cend();
+	const_iterator cbegin() const;
+	const_iterator cend() const;
 	const_iterator dt_begin() const;
 	const_iterator dt_end() const;
 	const_iterator event_begin() const;
+	const_iterator cevent_begin();
+	const_iterator cevent_begin() const;
 	
 	// TODO:  These call type(), which advances past the delta_t to determine
 	// the status byte, then they manually advance a local iterator past the 
@@ -126,14 +132,14 @@ public:
 
 	// Getters
 	smf_event_type type() const;
-	uint32_t delta_time() const;
+	int32_t delta_time() const;
 	unsigned char status_byte() const;
 	// The value of the running-status _after_ this event has passed
 	unsigned char running_status() const;
 	size_type data_size() const;  // Not including the delta-t
 
 	// Setters
-	uint32_t set_delta_time(uint32_t);
+	int32_t set_delta_time(int32_t);
 
 	bool operator==(const mtrk_event_t&) const;
 	bool operator!=(const mtrk_event_t&) const;

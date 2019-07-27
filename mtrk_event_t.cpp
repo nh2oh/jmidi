@@ -12,16 +12,14 @@
 mtrk_event_t::mtrk_event_t() {
 	this->default_init(0);
 }
-mtrk_event_t::mtrk_event_t(uint32_t dt) {
+mtrk_event_t::mtrk_event_t(int32_t dt) {
 	this->default_init(dt);
 }
-mtrk_event_t::mtrk_event_t(uint32_t dt, midi_ch_event_t md) {
+mtrk_event_t::mtrk_event_t(int32_t dt, midi_ch_event_t md) {
 	this->d_ = mtrk_event_t_internal::small_bytevec_t();
+	md = normalize(md);
 	unsigned char s = (md.status_nybble)|(md.ch);
 	auto n = channel_status_byte_n_data_bytes(s);
-	if (n==0) {
-		this->default_init(dt);
-	}
 	// NB:  n==0 if s is invalid (ex, s==0xFFu)
 	this->d_.resize(delta_time_field_size(dt)+1+n);  // +1=>s
 	auto dest = write_delta_time(dt,this->d_.begin());
@@ -40,11 +38,11 @@ mtrk_event_t& mtrk_event_t::operator=(const mtrk_event_t& rhs) {
 }
 mtrk_event_t::mtrk_event_t(mtrk_event_t&& rhs) noexcept {
 	this->d_ = std::move(rhs.d_);
-	rhs.default_init();
+	rhs.default_init(0);
 }
 mtrk_event_t& mtrk_event_t::operator=(mtrk_event_t&& rhs) noexcept {
 	this->d_ = std::move(rhs.d_);
-	rhs.default_init();
+	rhs.default_init(0);
 	return *this;
 }
 mtrk_event_t::~mtrk_event_t() noexcept {  // dtor
@@ -80,11 +78,23 @@ mtrk_event_t::iterator mtrk_event_t::begin() {
 mtrk_event_t::const_iterator mtrk_event_t::begin() const {
 	return mtrk_event_t::const_iterator(this->data());
 }
+mtrk_event_t::const_iterator mtrk_event_t::cbegin() {
+	return mtrk_event_t::const_iterator(this->data());
+}
+mtrk_event_t::const_iterator mtrk_event_t::cbegin() const {
+	return mtrk_event_t::const_iterator(this->data());
+}
 mtrk_event_t::iterator mtrk_event_t::end() {
 	return this->begin()+this->size();
 }
 mtrk_event_t::const_iterator mtrk_event_t::end() const {
 	return this->begin()+this->size();
+}
+mtrk_event_t::const_iterator mtrk_event_t::cend() {
+	return this->cbegin()+this->size();
+}
+mtrk_event_t::const_iterator mtrk_event_t::cend() const {
+	return this->cbegin()+this->size();
 }
 mtrk_event_t::const_iterator mtrk_event_t::dt_begin() const {
 	return this->begin();
@@ -100,6 +110,12 @@ mtrk_event_t::iterator mtrk_event_t::dt_end() {
 }
 mtrk_event_t::const_iterator mtrk_event_t::event_begin() const {
 	return advance_to_dt_end(this->begin(),this->end());
+}
+mtrk_event_t::const_iterator mtrk_event_t::cevent_begin() {
+	return advance_to_dt_end(this->cbegin(),this->cend());
+}
+mtrk_event_t::const_iterator mtrk_event_t::cevent_begin() const {
+	return advance_to_dt_end(this->cbegin(),this->cend());
 }
 mtrk_event_t::iterator mtrk_event_t::event_begin() {
 	return advance_to_dt_end(this->begin(),this->end());
@@ -171,8 +187,8 @@ smf_event_type mtrk_event_t::type() const {
 	// calls classify_status_byte(get_status_byte(s,rs)); here, i do not 
 	// need to worry about the possibility of the rs byte.  
 }
-uint32_t mtrk_event_t::delta_time() const {
-	return midi_interpret_vl_field(this->data()).val;
+int32_t mtrk_event_t::delta_time() const {
+	return read_delta_time(this->data(),this->data()+this->size()).val;
 }
 unsigned char mtrk_event_t::status_byte() const {
 	return *advance_to_dt_end(this->d_.begin(),this->d_.end());
@@ -187,8 +203,9 @@ mtrk_event_t::size_type mtrk_event_t::data_size() const {  // Not including delt
 	return end-p;
 }
 
-uint32_t mtrk_event_t::set_delta_time(uint32_t dt) {
-	dt &= 0x0FFFFFFFu;
+int32_t mtrk_event_t::set_delta_time(int32_t dt) {
+	dt = std::clamp(dt,0,0x0FFFFFFF);
+	//dt &= 0x0FFFFFFFu;
 	auto new_dt_size = delta_time_field_size(dt);
 	auto beg = this->begin();  auto end = this->end();
 	auto curr_dt_size = advance_to_dt_end(beg,end)-beg;
@@ -233,11 +250,20 @@ bool mtrk_event_t::operator!=(const mtrk_event_t& rhs) const {
 
 void mtrk_event_t::default_init(uint32_t dt) {
 	this->d_ = mtrk_event_t_internal::small_bytevec_t();
-	this->d_.resize(delta_time_field_size(dt)+3);
-	auto it = write_delta_time(dt,this->d_.begin());
-	*it++ = 0x90u;  // Note-on, channel "1"
-	*it++ = 0x3Cu;  // 0x3C==60=="Middle C" (C4, 261.63Hz)
-	*it++ = 0x3Fu;  // 0x3F==63, ~= 127/2
+	if (dt>0) {
+		this->d_.resize(delta_time_field_size(dt)+3);
+		auto it = write_delta_time(dt,this->d_.begin());
+		*it++ = 0x90u;  // Note-on, channel "1"
+		*it++ = 0x3Cu;  // 0x3C==60=="Middle C" (C4, 261.63Hz)
+		*it++ = 0x3Fu;  // 0x3F==63, ~= 127/2
+	} else {
+		this->d_.resize(4);
+		auto it = this->d_.begin();
+		*it++ = 0x00u;
+		*it++ = 0x90u;  // Note-on, channel "1"
+		*it++ = 0x3Cu;  // 0x3C==60=="Middle C" (C4, 261.63Hz)
+		*it++ = 0x3Fu;  // 0x3F==63, ~= 127/2
+	}
 }
 
 

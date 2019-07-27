@@ -338,6 +338,23 @@ constexpr int delta_time_field_size(int32_t);
 constexpr int delta_time_field_size(uint32_t);
 constexpr int yaaaaaay(uint32_t);
 */
+template<typename InIt>
+midi_vl_field_interpreted read_delta_time(InIt beg, InIt end) {
+	midi_vl_field_interpreted result {};
+	result.val = 0;
+	while (true) {
+		result.val += (*beg & 0x7Fu);
+		++(result.N);
+		if ((beg==end) || !(*beg & 0x80u) || result.N==4) { // the high-bit is not set
+			break;
+		} else {
+			result.val <<= 7;  // result.val << 7;
+			++beg;
+		}
+	}
+	result.is_valid = !(*beg & 0x80u);
+	return result;
+};
 template<typename T>
 constexpr int delta_time_field_size(T val) {
 	//static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value,

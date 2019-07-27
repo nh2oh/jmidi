@@ -83,7 +83,9 @@ public:
 	static constexpr int32_t capacity_small = small_t::size_max;
 
 	// Constructs a 'small' object w/ size()==0
+	//small_bytevec_t() = default;
 	small_bytevec_t() noexcept;
+	small_bytevec_t(int32_t);
 	// Copy ctor, copy assign; the new/destination object does not necessarily
 	// inherit the same size-type as the the source.  If the source is 'big'
 	// but its data fits in a small object, the destination object will be

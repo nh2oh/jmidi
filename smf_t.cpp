@@ -14,7 +14,7 @@
 #include <iostream>
 #include <filesystem>
 #include <fstream>
-
+#include <iterator>
 
 
 smf_t::size_type smf_t::size() const {
@@ -222,6 +222,9 @@ maybe_smf_t read_smf(const std::filesystem::path& fp, smf_error_t *err) {
 	// Read the file into fdata, close the file
 	std::vector<unsigned char> fdata {};
 	std::basic_ifstream<unsigned char> f(fp,std::ios_base::in|std::ios_base::binary);
+	//std::ifstream f(fp,std::ios::in|std::ios::binary);
+	//std::istream_iterator<unsigned char> myit(f);
+
 	if (!f.is_open() || !f.good()) {
 		if (err) {
 			err->code = smf_error_t::errc::file_read_error;

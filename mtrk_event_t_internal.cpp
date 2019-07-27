@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <cstdlib>  // std::abort()
 #include <algorithm>  // std::clamp(), std::max(), std::copy()
+#include <cstring>
 
 namespace mtrk_event_t_internal {
 
@@ -146,6 +147,16 @@ const unsigned char *big_t::end() const noexcept {
 small_bytevec_t::small_bytevec_t() noexcept {
 	this->init_small();
 }
+small_bytevec_t::small_bytevec_t(int32_t sz) {
+	sz = std::clamp(sz,0,small_bytevec_t::size_max);
+	if (sz > small_t::size_max) {
+		this->init_small();
+		this->u_.s_.resize(sz);
+	} else {
+		this->init_big();
+		this->u_.b_.resize_nocopy(sz);
+	}
+}
 void small_bytevec_t::init_small() noexcept {
 	this->u_.s_.init();
 }
@@ -178,6 +189,8 @@ small_bytevec_t& small_bytevec_t::operator=(const small_bytevec_t& rhs) {  // Co
 }
 small_bytevec_t::small_bytevec_t(small_bytevec_t&& rhs) noexcept {  // Move ctor
 	// This is a ctor; *this is in an uninitialized state
+	//std::memcpy(&(this->u_.raw_[0]),&(rhs.u_.raw_[0]),sizeof(small_t));
+	//rhs.init_small();
 	if (rhs.is_big()) {
 		this->init_big();
 		this->u_.b_.adopt(rhs.u_.b_.pad_,rhs.u_.b_.begin(),rhs.u_.b_.size(),
@@ -193,6 +206,13 @@ small_bytevec_t::small_bytevec_t(small_bytevec_t&& rhs) noexcept {  // Move ctor
 	}
 }
 small_bytevec_t& small_bytevec_t::operator=(small_bytevec_t&& rhs) noexcept {  // Move assign
+	//if (this->is_big()) {
+	//	delete [] this->u_.b_.p_;
+	//}
+	//std::memcpy(&(this->u_.raw_[0]),&(rhs.u_.raw_[0]),sizeof(small_t));
+	//rhs.init_small();
+	//return *this;
+
 	if (rhs.is_big()) {
 		if (this->is_small()) {
 			this->init_big();
@@ -243,16 +263,9 @@ int32_t small_bytevec_t::resize(int32_t new_sz) {
 			// Note that even though the present object is big and the new
 			// size is <= small_t::size_max, it is still possible that the
 			// size of the present object is < new_sz.  
-			// TODO:  
-			// small_bytevec_t yay=small_bytevec_t();
-			// std::copy(this->begin(),this->begin()+n_bytes2copy,yay.begin());
-			// *this=yay;
-			// (ie, reuse the copy ctor); won't have this messy delete []
-			// ??? 
-
 			// If !psrc, expect n_bytes2copy == 0
-			auto n_bytes2copy = std::min(new_sz,this->size());
-			auto psrc = this->begin();
+			auto n_bytes2copy = std::min(new_sz,this->u_.b_.size());
+			auto psrc = this->u_.b_.begin();
 			this->init_small();  // Does not delete [] b_.p_
 			this->u_.s_.resize(new_sz);
 			std::copy(psrc,psrc+n_bytes2copy,this->u_.s_.begin());
@@ -268,7 +281,7 @@ int32_t small_bytevec_t::resize(int32_t new_sz) {
 		} else {  // new_sz > small_t::size_max; Resize small->big
 			auto new_cap = new_sz;
 			unsigned char *pdest = new unsigned char[static_cast<uint32_t>(new_cap)];
-			std::copy(this->begin(),this->end(),pdest);
+			std::copy(this->u_.s_.begin(),this->u_.s_.end(),pdest);
 			this->init_big();
 			this->u_.b_.adopt(this->u_.b_.pad_,pdest,new_sz,new_cap);
 		}
@@ -305,9 +318,9 @@ int32_t small_bytevec_t::reserve(int32_t new_cap) {
 		new_cap = this->u_.b_.reserve(new_cap);
 	} else {  // present object is small
 		if (new_cap > small_t::size_max) {  // Resize small->big
-			auto new_sz = this->size();
+			auto new_sz = this->u_.s_.size();
 			unsigned char *pdest = new unsigned char[static_cast<uint32_t>(new_cap)];
-			std::copy(this->begin(),this->end(),pdest);
+			std::copy(this->u_.s_.begin(),this->u_.s_.end(),pdest);
 			
 			this->init_big();
 			this->u_.b_.adopt(this->u_.b_.pad_,pdest,new_sz,new_cap);
@@ -316,6 +329,8 @@ int32_t small_bytevec_t::reserve(int32_t new_cap) {
 	return this->capacity();
 }
 unsigned char *small_bytevec_t::push_back(unsigned char c) {
+	// TODO:  Could optimize this by first determining if is_big/small(),
+	// then delegating to this->u_.s/b_.push_back() functions
 	auto sz = this->size();
 	if (sz==this->capacity()) {
 		// Note that a consequence of this test is that if this->is_small(),
