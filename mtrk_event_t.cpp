@@ -471,3 +471,97 @@ validate_sysex_event(const unsigned char *beg, const unsigned char *end) {
 	return result;
 }
 
+
+maybe_mtrk_event_t yay(const unsigned char *it, const unsigned char *end,
+						mtrk_event_error_t *err) {
+	maybe_mtrk_event_t r;
+
+	int i = 0;
+	unsigned char uc = 0;
+
+	auto set_error = [&r](const mtrk_event_error_t::errc& ec)->void {
+		r.event = mtrk_event_t();
+		r.error = mtrk_event_error_t::errc::invalid_delta_time;
+	};
+
+	auto inl_read_vlq = [&it, &end, &i, &uc]()->int32_t {
+		uint32_t uval = 0;
+		while (it!=end) {
+			uc = *it++;  ++i;
+			uval += uc&0x7Fu;
+			if ((uc&0x80u) && (i<4)) {
+				uval <<= 7;  // Note:  Not shifting on the final iteration
+			} else {  // High bit not set => this is the final byte
+				break;
+			}
+		}
+		return static_cast<int32_t>(uval);
+	};
+
+	// 10 == 4-byte dt + 0xFF + type-byte + 4-byte len vlq
+	r.event.d_.resize(10);
+	auto r_it = r.event.d_.begin();
+
+	auto dt = inl_read_vlq();
+	if (uc & 0x80u) {
+		set_error(mtrk_event_error_t::errc::invalid_delta_time);
+		return r;
+	}
+	r_it = write_delta_time(dt,r_it);
+
+	// The status byte
+	if (it==end) {
+		set_error(mtrk_event_error_t::errc::no_data_following_delta_time);
+		return r;
+	}
+	uc = *it++;  ++i;
+	
+	if (is_channel_status_byte(uc)) {
+		*r_it++ = uc;
+		auto s = uc;
+		for (int j=0; j<channel_status_byte_n_data_bytes(s); ++j) {
+			if (it==end) {
+				set_error(mtrk_event_error_t::errc::channel_calcd_length_exceeds_input);
+				return r;
+			}
+			uc = *it++;  ++i;
+			if (!is_data_byte(uc)) {
+				set_error(mtrk_event_error_t::errc::channel_invalid_data_byte);
+				return r;
+			}
+			*r_it++ = uc;  // Resize first...
+		}
+	} else if (is_sysex_or_meta_status_byte(uc)) {
+		*r_it++ = uc;  // 0xFF || 0xF7 || 0xF0
+		if (is_meta_status_byte(uc)) {
+			if (it==end) {
+				set_error(mtrk_event_error_t::errc::sysex_or_meta_overflow_in_header);
+				return r;
+			}
+			uc = *it++;  ++i;  // Type byte
+			*r_it++ = uc;
+		}
+		auto len = inl_read_vlq();
+		r_it = write_vlq(static_cast<uint32_t>(len),r_it);  // Resize invalidates r_it...
+		r.event.d_.resize(i+len);
+		int j=0;
+		for (true; (j<len && it!=end); ++j) {
+			*r_it++ = *it++;  ++i;
+			// uc is not the most recent byte anymore
+		}
+		if (j!=len) {
+			set_error(mtrk_event_error_t::errc::sysex_or_meta_calcd_length_exceeds_input);
+			return r;
+		}
+	} else if (is_unrecognized_status_byte(uc)) {
+		set_error(mtrk_event_error_t::errc::invalid_status_byte);
+		return r;
+	}
+
+	return r;
+}
+
+
+
+
+

@@ -173,8 +173,8 @@ private:
 							const unsigned char*, unsigned char, 
 							mtrk_event_error_t*);
 
-	//friend std::string print(const mtrk_event_t&,
-	//		mtrk_sbo_print_opts);
+	friend maybe_mtrk_event_t yay(const unsigned char *,
+				const unsigned char *, mtrk_event_error_t*);
 
 	friend mtrk_event_debug_helper_t debug_info(const mtrk_event_t&);
 };
@@ -190,6 +190,7 @@ struct mtrk_event_error_t {
 	enum class errc : uint8_t {
 		invalid_delta_time,
 		zero_sized_input,  // beg==end
+		no_data_following_delta_time,
 		invalid_status_byte,  // Can't determine, or ex, 0xF8, 0xFC,...
 		channel_invalid_status_byte,
 		channel_overflow,
@@ -256,5 +257,5 @@ validate_sysex_event_result_t
 validate_sysex_event(const unsigned char*, const unsigned char*);
 
 
-
+maybe_mtrk_event_t yay(const unsigned char *, const unsigned char *, mtrk_event_error_t*);
 
