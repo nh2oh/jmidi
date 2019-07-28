@@ -476,7 +476,7 @@ validate_meta_event(const unsigned char *beg, const unsigned char *end) {
 		return result;
 	}
 	auto p = beg+2;
-	auto len = midi_interpret_vl_field(p,end);
+	auto len = read_vlq(p,end);
 	if (!len.is_valid) {
 		result.error = mtrk_event_error_t::errc::sysex_or_meta_invalid_vlq_length;
 		return result;
@@ -506,7 +506,7 @@ validate_sysex_event(const unsigned char *beg, const unsigned char *end) {
 		return result;
 	}
 	auto p = beg+1;
-	auto len = midi_interpret_vl_field(p,end);
+	auto len = read_vlq(p,end);
 	if (!len.is_valid) {
 		result.error = mtrk_event_error_t::errc::sysex_or_meta_invalid_vlq_length;
 		return result;

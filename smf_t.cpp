@@ -3,6 +3,7 @@
 #include "mthd_t.h"
 #include "mtrk_t.h"
 #include "midi_vlq.h"
+#include "print_hexascii.h"
 #include <string>
 #include <cstdint>
 #include <vector>

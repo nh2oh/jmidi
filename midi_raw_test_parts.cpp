@@ -1,6 +1,7 @@
 #include "midi_raw_test_parts.h"
 #include "midi_raw.h"
 #include "midi_vlq.h"
+#include "print_hexascii.h"
 #include "midi_delta_time.h"
 #include <vector>
 #include <cstdint>
@@ -150,8 +151,8 @@ meta_events_t random_meta_event(uint8_t type_byte, int len) {
 		len = rd200(re);
 	}
 	std::array<unsigned char,4> temp_len_field {};
-	auto len_field_end = midi_write_vl_field(temp_len_field.begin(),
-		temp_len_field.end(),static_cast<uint8_t>(len));
+	auto len_field_end = write_vlq(static_cast<uint8_t>(len),
+		temp_len_field.begin());
 	std::copy(temp_len_field.begin(),len_field_end,std::back_inserter(result.data));
 	result.payload_size = len;
 
@@ -221,7 +222,7 @@ std::vector<midi_tests_t> make_random_midi_tests() {
 
 		// delta-time
 		auto curr_dt_field = random_dt_field();
-		auto curr_dt = midi_interpret_vl_field(&(curr_dt_field[0]));
+		auto curr_dt = read_delta_time(curr_dt_field.begin(),curr_dt_field.end());
 		curr.dt_value = curr_dt.val;
 		curr.dt_field_size = curr_dt.N;
 		std::copy(curr_dt_field.begin(),curr_dt_field.begin()+curr.dt_field_size,
@@ -422,7 +423,7 @@ std::vector<meta_test_t> make_random_meta_tests(int n) {
 	auto make_rand_dtval = [&re]()->uint32_t {
 		std::uniform_int_distribution rd_dt_size(0,4);
 		auto fld = random_dt_field(rd_dt_size(re));
-		return midi_interpret_vl_field(&(fld[0])).val;
+		return read_vlq(fld.begin(),fld.end()).val;
 
 		/*
 		std::uniform_int_distribution<uint32_t> rd_rand_dt(0x00u,0xFFFFFFFFu);
@@ -440,7 +441,7 @@ std::vector<meta_test_t> make_random_meta_tests(int n) {
 		meta_test_t curr;
 
 		curr.dt_value = make_rand_dtval();
-		midi_write_vl_field(std::back_inserter(curr.data),curr.dt_value);
+		write_vlq(curr.dt_value,std::back_inserter(curr.data));
 
 		curr.data.push_back(0xFFu);
 
@@ -459,7 +460,7 @@ std::vector<meta_test_t> make_random_meta_tests(int n) {
 			curr.payload_length = make_random_size();
 		}
 		curr.data.push_back(curr.type_byte);
-		midi_write_vl_field(std::back_inserter(curr.data),curr.payload_length);
+		write_vlq(curr.payload_length,std::back_inserter(curr.data));
 		
 		//
 		// Random payload
@@ -473,7 +474,7 @@ std::vector<meta_test_t> make_random_meta_tests(int n) {
 				std::back_inserter(curr.data));
 		}
 
-		curr.data_size = curr.data.size()-midi_vl_field_size(curr.dt_value);
+		curr.data_size = curr.data.size()-vlq_field_size(curr.dt_value);
 
 		result.push_back(curr);
 	}

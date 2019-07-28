@@ -82,22 +82,6 @@ bool is_channel_mode(const midi_ch_event_t&);
 
 
 
-
-/*template<typename T>
-constexpr bool is_valid_delta_time(T dt) {
-	return ((dt <= 0x0FFFFFFF) && (dt >= 0x00));
-};
-template<typename T>
-constexpr int32_t to_nearest_valid_delta_time(T dt) {
-	if (dt > 0x0FFFFFFF) {
-		return 0x0FFFFFFF;
-	} else if (dt < 0) {
-		return 0;
-	}
-	return static_cast<int32_t>(dt);
-};*/
-
-
 //
 // Class time_division_t
 //

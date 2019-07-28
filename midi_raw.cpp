@@ -1,5 +1,5 @@
 #include "midi_raw.h"
-#include "midi_vlq.h"
+#include "midi_delta_time.h"
 #include "mthd_t.h"  // is_valid_time_division_raw_value()
 #include <string>
 #include <cstdint>
@@ -377,7 +377,7 @@ validate_mtrk_event_result_t validate_mtrk_event_dtstart(
 	// All mtrk events begin with a delta-time occupying a maximum of 4 bytes
 	// and a minimum of 1 byte.  Note that even a delta-time of 0 occupies 1
 	// byte.  
-	auto dt = midi_interpret_vl_field(p,max_size);
+	auto dt = read_delta_time(p,p+max_size);
 	if (!dt.is_valid) {
 		result.type = smf_event_type::invalid;
 		result.error = mtrk_event_validation_error::invalid_dt_field;
@@ -420,7 +420,7 @@ validate_mtrk_event_result_t validate_mtrk_event_dtstart(
 				result.error = mtrk_event_validation_error::sysex_or_meta_overflow_in_header;
 			} else {  // no overflow in header
 				p+=2;  max_size-=2;  // 0xFF,type
-				auto len = midi_interpret_vl_field(p,max_size);
+				auto len = read_vlq(p,p+max_size);
 				if (!len.is_valid) {
 					result.error = mtrk_event_validation_error::sysex_or_meta_invalid_length_field;
 				} else {
@@ -435,7 +435,7 @@ validate_mtrk_event_result_t validate_mtrk_event_dtstart(
 				result.error = mtrk_event_validation_error::sysex_or_meta_overflow_in_header;
 			} else {  // no overflow in header
 				++p;  max_size-=1;  // 0xF0 || 0xF7
-				auto len = midi_interpret_vl_field(p,max_size);
+				auto len = read_vlq(p,p+max_size);
 				if (!len.is_valid) {
 					result.error = mtrk_event_validation_error::sysex_or_meta_invalid_length_field;
 				} else {  // len field is valid
@@ -510,7 +510,7 @@ uint8_t channel_status_byte_n_data_bytes(unsigned char s) {
 
 smf_event_type classify_mtrk_event_dtstart(const unsigned char *p,
 									unsigned char rs, uint32_t max_sz) {
-	auto dt = midi_interpret_vl_field(p,max_sz);
+	auto dt = read_delta_time(p,p+max_sz);
 	if (dt.N >= max_sz || !dt.is_valid) {
 		// dt.N==max_sz => 0 bytes following the delta-time field, but the 
 		// smallest running-status channel_voice events have at least 1 data 
@@ -524,7 +524,7 @@ smf_event_type classify_mtrk_event_dtstart(const unsigned char *p,
 }
 smf_event_type classify_mtrk_event_dtstart_unsafe(const unsigned char *p,
 									unsigned char rs) {
-	p = advance_to_vlq_end(p);
+	p = advance_to_dt_end(p,p+4);
 	return classify_status_byte(*p,rs);
 }
 
@@ -542,7 +542,7 @@ uint32_t meta_event_get_data_size(const unsigned char *p, uint32_t max_size) {
 		return 0;
 	}
 	p += 2;  n += 2;  max_size -= 2;
-	auto len = midi_interpret_vl_field(p,max_size);
+	auto len = read_vlq(p,p+max_size);
 	n += (len.N + len.val);
 	return n;
 }
@@ -552,7 +552,7 @@ uint32_t sysex_event_get_data_size(const unsigned char *p, uint32_t max_size) {
 		return 0;
 	}
 	p += 1;  n += 1;  max_size -= 1;
-	auto len = midi_interpret_vl_field(p,max_size);
+	auto len = read_vlq(p,p+max_size);
 	n += (len.N + len.val);
 	return n;
 }
@@ -578,7 +578,7 @@ uint32_t mtrk_event_get_data_size(const unsigned char *p, unsigned char rs,
 }
 uint32_t mtrk_event_get_size_dtstart(const unsigned char *p, unsigned char rs,
 								uint32_t max_size) {
-	auto dt = midi_interpret_vl_field(p,max_size);
+	auto dt = read_delta_time(p,p+max_size);
 	if ((!dt.is_valid) || (dt.N >= max_size)) {
 		return 0;
 	}
@@ -600,12 +600,12 @@ uint32_t mtrk_event_get_data_size_unsafe(const unsigned char *p,
 		}
 	} else if (ev_type==smf_event_type::meta) {
 		p+=2;  result+=2;  // 0xFFu,type-byte
-		auto len = midi_interpret_vl_field(p);
+		auto len = read_vlq(p,p+4);
 		result += (len.N + len.val);
 	} else if (ev_type==smf_event_type::sysex_f0
 						|| ev_type==smf_event_type::sysex_f7) {
 		p+=1;  result+=1;  // 0xF0u||0xF7u
-		auto len = midi_interpret_vl_field(p);
+		auto len = read_vlq(p,p+4);
 		result += (len.N + len.val);
 	} else {
 		// smf_event_type::invalid || ::unrecognized
@@ -615,13 +615,13 @@ uint32_t mtrk_event_get_data_size_unsafe(const unsigned char *p,
 }
 uint32_t mtrk_event_get_size_dtstart_unsafe(const unsigned char *p,
 											unsigned char rs) {
-	auto dt = midi_interpret_vl_field(p);
+	auto dt = read_delta_time(p,p+4);
 	p+=dt.N;
 	return (dt.N + mtrk_event_get_data_size_unsafe(p,rs));
 }
 uint32_t mtrk_event_get_data_size_dtstart_unsafe(const unsigned char *p,
 												unsigned char rs) {
-	auto dt = midi_interpret_vl_field(p);
+	auto dt = read_delta_time(p,p+4);
 	p+=dt.N;
 	return mtrk_event_get_data_size_unsafe(p,rs);
 }
@@ -631,7 +631,7 @@ uint32_t mtrk_event_get_data_size_dtstart_unsafe(const unsigned char *p,
 
 unsigned char mtrk_event_get_midi_p1_dtstart_unsafe(const unsigned char *p,
 													unsigned char s) {
-	p += midi_interpret_vl_field(p).N;
+	p = advance_to_dt_end(p,p+4);
 	s = get_status_byte(*p,s);
 	if (!is_channel_status_byte(s)) { // p does not indicate a midi event
 		return 0x80u;  // Invalid data byte
@@ -646,7 +646,7 @@ unsigned char mtrk_event_get_midi_p1_dtstart_unsafe(const unsigned char *p,
 	}
 }
 unsigned char mtrk_event_get_midi_p2_dtstart_unsafe(const unsigned char *p, unsigned char s) {
-	p += midi_interpret_vl_field(p).N;
+	p = advance_to_dt_end(p,p+4);
 	s = get_status_byte(*p,s);
 	if (!is_channel_status_byte(s)) { // p does not indicate a midi event
 		return 0x80u;  // Invalid data byte
@@ -671,7 +671,7 @@ unsigned char mtrk_event_get_midi_p2_dtstart_unsafe(const unsigned char *p, unsi
 
 
 unsigned char mtrk_event_get_meta_type_byte_dtstart_unsafe(const unsigned char *p) {
-	p += midi_interpret_vl_field(p).N;
+	p = advance_to_dt_end(p,p+4);
 	p += 1;  // Skip the 0xFF;
 	return *p;
 }

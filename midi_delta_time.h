@@ -53,7 +53,7 @@ template<typename OIt>
 OIt write_delta_time(int32_t val, OIt it) {
 	val = to_nearest_valid_delta_time(val);
 	uint32_t uval = static_cast<uint32_t>(val);
-	return midi_write_vl_field(it,uval);
+	return write_vlq(uval,it);
 };
 
 

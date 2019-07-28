@@ -1,14 +1,133 @@
 #pragma once
-#include "..\\..\\clamped_value.h"
 #include <limits>  // CHAR_BIT
 #include <type_traits>  // std::enable_if<>, is_integral<>, is_unsigned<>
 #include <cstdint>
 #include <cstring>
 #include <algorithm>
-#include <array>
-#include <string>
 
-using delta_time_t = clamped_value<uint32_t,0,0x0FFFFFFFu>;
+
+// 
+// The max size of a vlq field is 4 bytes, and the largest value it may 
+// encode is 0x0FFFFFFFu (BE-encoded as: FF FF FF 7F) => 268,435,455, 
+// which fits safely in an int32_t:  
+// std::numeric_limits<int32_t>::max() == 2,147,483,647;
+//
+struct vlq_field_interpreted {
+	int32_t val {0};
+	int8_t N {0};
+	bool is_valid {false};
+};
+template<typename InIt>
+vlq_field_interpreted read_vlq(InIt beg, InIt end) {
+	//static_assert(std::is_same<std::remove_reference<decltype(*InIt)>::type,
+	//	const unsigned char>::value);
+
+	vlq_field_interpreted result {0,0,false};
+	uint32_t uval = 0;
+	unsigned char uc = 0;
+	while (beg!=end) {
+		uc = *beg++;
+		uval += uc&0x7Fu;
+		++(result.N);
+		if ((uc&0x80u) && (result.N<4)) {
+			uval <<= 7;  // Note:  Not shifting on the final iteration
+		} else {
+			break;
+		}
+	}
+	result.val = static_cast<int32_t>(uval);
+	result.is_valid = !(uc & 0x80u);
+	return result;
+};
+//
+// Advance the iterator to the end of the vlq; do not parse the field
+//
+template<typename InIt>
+InIt advance_to_vlq_end(InIt beg, InIt end) {
+	while((beg!=end) && (*beg++)&0x80u) {
+		true;
+	}
+	return beg;
+};
+
+//
+// Returns an integer with the bit representation of the input encoded 
+// as a midi vlq.  Ex for:
+// input 0b1111'1111 == 0xFF == 255 
+// => 0b1000'0001''0111'1111 == 0x817F == 33151
+// The largest value a vlq can accommodate is 0x0FFFFFFF == 268,435,455.  
+// Note that the MSByte of the max value is 0, not 7, corresponding to the 4 
+// leading 0's in the MSBit of each byte below the most-significant in the 
+// field.  
+//
+// The vlq representation of a given int is not necessarily unique; above,
+// 0xFF == 255 => 0x81'7F == 33,151
+//             => 0x80'81'7F == 8,421,759
+//             => 0x80'80'81'7F == 2,155,905,407
+//
+template<typename T>
+constexpr uint32_t vlq_field_literal_value(T val) {
+	static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value,
+		"MIDI VL fields only encode unsigned integral values");
+	if (val > 0x0FFFFFFF) {
+		return 0;
+	}
+	uint32_t res {0};
+	for (int i=0; val>0; ++i) {
+		if (i > 0) {
+			res |= (0x80u<<(i*CHAR_BIT));
+		}
+		res += (val & 0x7Fu)<<(i*CHAR_BIT);
+		val>>=7;
+	}
+	return res;
+};
+//
+// Computes the size (in bytes) of the field required to encode a given 
+// number as a MIDI vlq.  
+//
+template<typename T>
+constexpr int vlq_field_size(T val) {
+	static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value,
+		"MIDI VL fields only encode unsigned integral values");
+	if (val > 0x0FFFFFFF) {
+		return 0;
+	}
+	int n = 0;
+	do {
+		val >>= 7;
+		++n;
+	} while ((val!=0) && (n<4));
+	return n;
+};
+
+//
+// TODO:  This should clamp the inout between 0x0FFFFFFF and 0.  
+//
+template<typename T, typename OIt>
+OIt write_vlq(T val, OIt it) {
+	static_assert(CHAR_BIT == 8);
+	static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value);
+	auto vlval = vlq_field_literal_value(val);  // requires integral, unsigned
+	
+	uint8_t bytepos = 3;
+	uint32_t mask = 0xFF000000;
+	while (((vlval&mask)==0) && (mask>0)) {
+		mask>>=8;  --bytepos;
+	}
+
+	if (mask==0) {  // Means vlval==0; still necessary to write an 0x00u
+		*it=0x00u;
+		++it;
+	} else {
+		while (mask>0) {
+			*it = (vlval&mask)>>(8*bytepos);
+			mask>>=8;  --bytepos;
+			++it;
+		}
+	}
+	return it;
+};
 
 
 //
@@ -171,390 +290,5 @@ OIt write_32bit_be(uint32_t val, OIt dest) {
 	}
 	return dest;
 };
-// 
-// The max size of a vl field is 4 bytes, and the largest value it may encode is
-// 0x0FFFFFFFu (BE-encoded as: FF FF FF 7F) => 268,435,455, which fits safely in
-// an int32_t:  std::numeric_limits<int32_t>::max() == 2,147,483,647;
-//
-//
-struct midi_vl_field_interpreted {
-	int32_t val {0};
-	int8_t N {0};
-	bool is_valid {false};
-};
-
-// Overload for iterators
-template<typename InIt>
-midi_vl_field_interpreted midi_interpret_vl_field(InIt beg, InIt end) {
-	//static_assert(std::is_same<std::remove_reference<decltype(*it)>::type,
-	//	const unsigned char>::value);
-	midi_vl_field_interpreted result {};
-	result.val = 0;
-	while (true) {
-		result.val += (*beg & 0x7Fu);
-		++(result.N);
-		if ((beg==end) || !(*beg & 0x80u) || result.N==4) { // the high-bit is not set
-			break;
-		} else {
-			result.val <<= 7;  // result.val << 7;
-			++beg;
-		}
-	}
-	result.is_valid = !(*beg & 0x80u);
-	return result;
-};
-template<typename InIt>
-midi_vl_field_interpreted midi_interpret_vl_field(InIt it) {
-	//static_assert(std::is_same<std::remove_reference<decltype(*it)>::type,
-	//	const unsigned char>::value);
-	midi_vl_field_interpreted result {};
-	result.val = 0;
-	while (true) {
-		result.val += (*it & 0x7Fu);
-		++(result.N);
-		if (!(*it & 0x80u) || result.N==4) { // the high-bit is not set
-			break;
-		} else {
-			result.val <<= 7;  // result.val << 7;
-			++it;
-		}
-	}
-	result.is_valid = !(*it & 0x80u);
-	return result;
-};
-template<typename InIt, typename T>
-midi_vl_field_interpreted midi_interpret_vl_field(InIt it, T max_sz) {
-	//static_assert(std::is_same<std::remove_reference<decltype(*it)>::type,
-	//	const unsigned char>::value);
-
-	int8_t yay = 4;
-	if ((max_sz < 4) && (max_sz > 0)) {
-		yay = static_cast<int8_t>(max_sz);
-	}
-
-	midi_vl_field_interpreted result {};
-	result.val = 0;
-	while (true) {
-		result.val += (*it & 0x7Fu);
-		++(result.N);
-		if (!(*it & 0x80u) || result.N==yay) { // the high-bit is not set
-			break;
-		} else {
-			result.val <<= 7;  // result.val << 7;
-			++it;
-		}
-	}
-	result.is_valid = !(*it & 0x80u);
-	return result;
-};
-// Advance the iterator to the end of the vlq; do not parse the field
-template<typename InIt>
-InIt advance_to_vlq_end(InIt it) {
-	while((*it++)&0x80u) {
-		true;
-	}
-	return it;
-};
-
-/*
-// Advance the iterator to the end of the vlq, by 4 bytes, or to the end
-// of the range, whichever comes first.  
-template<typename InIt>
-InIt advance_to_dt_end(InIt beg, InIt end) {
-	int n=0;
-	while ((beg!=end) && (n++<4) && ((*beg++)&0x80u)) {
-		true;
-	}
-	return beg;
-};
-template<typename InIt>
-InIt advance_to_dt_end(InIt it) {
-	int n=0;
-	while ((n++<4) && ((*it++)&0x80u)) {
-		true;
-	}
-	return it;
-};
-*/
-
-//
-// Returns an integer with the bit representation of the input encoded as a midi
-// vl quantity.  Ex for:
-// input 0b1111'1111 == 0xFF == 255 => 0b1000'0001''0111'1111 == 0x817F == 33151
-// The largest value a midi vl field can accommodate is 0x0FFFFFFF == 268,435,455
-// (note that the MSB of the max value is 0, not 7, corresponding to 4 leading 
-// 0's in the MSB of the binary representation).  
-//
-// The midi-vl representation of a given int is not necessarily unique; above,
-// 0xFF == 255 => 0x81'7F == 33,151
-//             => 0x80'81'7F == 8,421,759
-//             => 0x80'80'81'7F == 2,155,905,407
-//
-template<typename T>
-constexpr uint32_t midi_vl_field_equiv_value(T val) {
-	static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value,
-		"MIDI VL fields only encode unsigned integral values");
-	if (val > 0x0FFFFFFF) {
-		return 0;
-	}
-	uint32_t res {0};
-	for (int i=0; val>0; ++i) {
-		if (i > 0) {
-			res |= (0x80u<<(i*CHAR_BIT));
-		}
-		res += (val & 0x7Fu)<<(i*CHAR_BIT);
-		val>>=7;
-	}
-
-	return res;
-};
-//
-// Computes the size (in bytes) of the field required to encode a given 
-// number as a MIDI vlq-quantity.  
-//
-template<typename T>
-constexpr int midi_vl_field_size(T val) {
-	static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value,
-		"MIDI VL fields only encode unsigned integral values");
-	int n {0};
-	do {
-		val >>= 7;
-		++n;
-	} while (val != 0);
-
-	return n;
-};
-
-/*
-//
-// Computes the size (in bytes) of the field required to encode a given 
-// value as a delta time.  Functions that write delta time vlq fields 
-// clamp the max allowable value to 0x0FFFFFFFu => 4 bytes, hence this never
-// returns > 4.  
-//
-template<typename InIt>
-midi_vl_field_interpreted read_delta_time(InIt beg, InIt end) {
-	midi_vl_field_interpreted result {};
-	result.val = 0;
-	while (true) {
-		result.val += (*beg & 0x7Fu);
-		++(result.N);
-		if ((beg==end) || !(*beg & 0x80u) || result.N==4) { // the high-bit is not set
-			break;
-		} else {
-			result.val <<= 7;  // result.val << 7;
-			++beg;
-		}
-	}
-	result.is_valid = !(*beg & 0x80u);
-	return result;
-};
-template<typename T>
-constexpr int delta_time_field_size(T val) {
-	uint32_t uval = 0;
-	if (val > 0x0FFFFFFF) {
-		uval = 0x0FFFFFFFu;
-	} else if (val < 0) {
-		uval = 0;
-	}
-	uval = static_cast<uint32_t>(val);
-	int n {0};
-	do {
-		uval >>= 7;
-		++n;
-	} while ((uval!=0) && (n<4));
-
-	return n;
-}
-*/
-
-// 
-// Encode a value in vl form and write it out into the range [beg,end).  
-//
-// If end-beg is not large enough to accomodate the number of bytes required
-// to encode the value, only end-beg bytes will be written, and the field 
-// will be invalid, since the last byte written will not have its MSB==0.  
-//
-template<typename It, typename T>
-It midi_write_vl_field(It beg, It end, T val) {
-	static_assert(CHAR_BIT == 8);
-	static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value);
-	auto vlval = midi_vl_field_equiv_value(val);
-	static_assert(std::is_same<decltype(vlval),uint32_t>::value);
-
-	uint8_t bytepos = 3;
-	uint32_t mask=0xFF000000;
-	while (((vlval&mask)==0) && (mask>0)) {
-		mask>>=8;
-		--bytepos;
-	}
-
-	if (mask==0 && beg!=end) {
-		// This means that vlval==0; it is still necessary to write out a
-		// 0x00 and increment beg.  
-		*beg = 0x00u;
-		++beg;
-	} else {
-		while (mask>0 && beg!=end) {
-			*beg = (vlval&mask)>>(8*bytepos);
-			mask>>=8;  --bytepos;
-			++beg;
-		}
-	}
-
-	return beg;
-};
-//
-// Overload that can take a std::back_inseter(some_container)
-//
-template<typename OutIt, typename T>
-OutIt midi_write_vl_field(OutIt it, T val) {
-	static_assert(CHAR_BIT == 8);
-	static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value);
-	auto vlval = midi_vl_field_equiv_value(val);  // requires integral, unsigned
-	
-	uint8_t bytepos = 3;
-	uint32_t mask = 0xFF000000;
-	while (((vlval&mask)==0) && (mask>0)) {
-		mask>>=8;  --bytepos;
-	}
-
-	if (mask==0) {
-		// This means that vlval==0; it is still necessary to write out an
-		// 0x00u
-		*it=0x00u;
-		++it;
-	} else {
-		while (mask>0) {
-			*it = (vlval&mask)>>(8*bytepos);
-			mask>>=8;  --bytepos;
-			++it;
-		}
-	}
-
-	return it;
-};
-
-/*
-// These clamp the input value to [0,0x0FFFFFFF] == [0,268,435,455]
-template<typename OIt>
-OIt write_delta_time(int32_t val, OIt it) {
-	if (val < 0) {
-		val = 0;
-	} else if (val > 0x0FFFFFFF) {
-		val = 0x0FFFFFFF;
-	}
-	uint32_t uval = static_cast<uint32_t>(val);
-	return midi_write_vl_field(it,uval);
-};
-template<typename OIt>
-OIt write_delta_time(uint32_t val, OIt it) {
-	val &= 0x0FFFFFFFu;
-	return midi_write_vl_field(it,val);
-};
-
-*/
-
-//
-// For some array (of any type) on [beg,end), writes the underlying byte
-// representation as hex ASCII into OIt out.  For each element, the ASCII
-// representation of each byte except the last is folllowed by a byte_sep 
-// char.  The final byte of each element, except the last element in the 
-// array is followed by an elem_sep char.  A seperator w/ the value '\0' 
-// is not printed.  
-//
-// std:: string s {};
-// std::array<int16_t,3> arry {0,256,128};
-// print_hexascii(arry.begin(),arry.end(),std::back_inserter(s),'\0','|');
-// => s == "0000|0010|8000  (note:  on an LE system).  
-// print_hexascii(arry.begin(),arry.end(),std::back_inserter(s),'\0',' ');
-// => s == "0000 0010 8000  (note:  on an LE system).  
-// print_hexascii(arry.begin(),arry.end(),std::back_inserter(s),'\'','|');
-// => s == "00'00|00'10|80'00  (note:  on an LE system).  
-//
-//
-template<typename InIt, typename OIt>
-OIt print_hexascii(InIt beg, InIt end, OIt out,
-			const unsigned char byte_sep = ' ', const unsigned char t_sep = '\0') {
-	std::array<char,16> nybble2ascii {'0','1','2','3','4','5',
-		'6','7','8','9','A','B','C','D','E','F'};
-	
-	while (beg!=end) {
-		const auto tval = *beg;
-		const unsigned char *p = &tval;
-		for (int i=0; i<sizeof(tval); ++i) {
-			*out++ = nybble2ascii[((*p) & 0xF0u)>>4];
-			*out++ = nybble2ascii[((*p) & 0x0Fu)];
-			if ((i+1)!=sizeof(tval) && byte_sep!='\0') {
-				*out++ = byte_sep;
-			}
-			++p;
-		}
-		if (((end-beg)>1) && (t_sep!='\0')) {
-			*out++ = t_sep;
-		}
-		++beg;
-	}
-	return out;
-};
 
 
-//
-// Same deal but w/ more spohisticated prefix, suffix, & seperator options.
-// All bytes in the array are prefixed by sep.byte_pfx and suffexed by 
-// sep.byte_suffix.  All bytes _except_ the final byte of an element have
-// sep.byte_sep added following the sep.byte_suffix.  
-// The first byte of each element is prefixed by sep.elem_pfx and suffixed
-// by sep.elem_sfx.  The final byte of each element in the array except for
-// that of the last element has sep.elem_sep added following the 
-// sep.elem_sfx.  
-struct sep_t {
-	std::string byte_pfx {""};
-	std::string byte_sfx {""};
-	std::string byte_sep {""};  // not appended to the very last byte
-	std::string elem_pfx {""};
-	std::string elem_sfx {""};
-	std::string elem_sep {""};  // not appended to the very last element
-};
-template<typename InIt, typename OIt>
-OIt print_hexascii(InIt beg, InIt end, OIt out, const sep_t& sep) {
-	std::array<char,16> nybble2ascii {'0','1','2','3','4','5',
-		'6','7','8','9','A','B','C','D','E','F'};
-	
-	auto printstdstr = [&out](const std::string& s)->void {
-		for (const auto& c : s) {
-			*out++ = c;
-		}
-	};
-
-	while (beg!=end) {
-		const auto tval = *beg;
-		const unsigned char *p = &tval;
-
-		printstdstr(sep.elem_pfx);
-		for (int i=0; i<sizeof(tval); ++i) {
-			printstdstr(sep.byte_pfx);
-			*out++ = nybble2ascii[((*p) & 0xF0u)>>4];
-			*out++ = nybble2ascii[((*p) & 0x0Fu)];
-			printstdstr(sep.byte_sfx);
-			if ((i+1)!=sizeof(tval)) {  // Not the last byte
-				printstdstr(sep.byte_sep);
-			}
-			++p;
-		}
-		printstdstr(sep.elem_sfx);
-		if ((end-beg)>1) {
-			printstdstr(sep.elem_sep);
-		}
-		++beg;
-	}
-	return out;
-};
-
-
-/*
-//
-// A slightly less STL-ish overload...
-//
-std::string print_hexascii(const unsigned char*, int, const char = ' ');
-*/

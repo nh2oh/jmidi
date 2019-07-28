@@ -3,6 +3,7 @@
 #include "midi_raw.h"
 #include "midi_vlq.h"
 #include "midi_delta_time.h"
+#include "print_hexascii.h"
 #include <string>
 #include <vector>
 #include <array>
@@ -348,7 +349,7 @@ mtrk_event_t make_meta_generic_text(const uint32_t& dt, const meta_event_t& type
 	d.push_back(static_cast<uint8_t>(type_int16&0x00FFu));
 	// TODO:  midi_write_vl_field does not enforce a max size for the length
 	// field of 4 bytes.  
-	auto it = midi_write_vl_field(std::back_inserter(d),s.size());
+	auto it = write_vlq(s.size(),std::back_inserter(d));
 	std::copy(s.begin(),s.end(),std::back_inserter(d));
 	return make_mtrk_event(dt,d.data(),d.data()+d.size(),0,nullptr).event;
 }
@@ -534,14 +535,14 @@ mtrk_event_t make_sysex_generic_impl(const int32_t& dt, unsigned char type,
 		++payload_eff_size;
 	}
 	auto sz_reserve = delta_time_field_size(dt) + 1  // dt + 0xF0u/0xF7u
-		+ midi_vl_field_size(payload_eff_size)  // payload-length-vlq
+		+ vlq_field_size(payload_eff_size)  // payload-length-vlq
 		+ payload_eff_size;
 	auto result = mtrk_event_t();
 	result.resize(sz_reserve);
 	auto it = result.begin();
 	it = write_delta_time(dt,it);
 	*it++ = type;
-	it = midi_write_vl_field(it,payload_eff_size);
+	it = write_vlq(payload_eff_size,it);
 	it = std::copy(pyld.begin(),pyld.end(),it);
 	if (pyld.size()!=payload_eff_size) {  // pyld is not F7-capped && f7_terminate
 		*it++ = 0xF7u;
