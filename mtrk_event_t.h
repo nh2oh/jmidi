@@ -109,8 +109,11 @@ public:
 	
 	size_type reserve(size_type);
 	const unsigned char *data() const;
+	const unsigned char *data();
 	const_iterator begin() const;
 	const_iterator end() const;
+	const_iterator begin();
+	const_iterator end();
 	const_iterator cbegin();
 	const_iterator cend();
 	const_iterator cbegin() const;
@@ -118,14 +121,18 @@ public:
 	const_iterator dt_begin() const;
 	const_iterator dt_end() const;
 	const_iterator event_begin() const;
-	const_iterator cevent_begin();
-	const_iterator cevent_begin() const;
-	
+	const_iterator payload_begin();
+	const_iterator dt_begin();
+	const_iterator dt_end();
+	const_iterator event_begin();
+
+
 	// TODO:  These call type(), which advances past the delta_t to determine
 	// the status byte, then they manually advance a local iterator past the 
 	// delta_t... redundant...
 	const_iterator payload_begin() const;
 	iterator_range_t<const_iterator> payload_range() const;
+	iterator_range_t<const_iterator> payload_range();
 	const unsigned char operator[](size_type) const;
 	unsigned char operator[](size_type);
 
@@ -147,15 +154,6 @@ private:
 
 	void default_init(int32_t=0);
 
-	size_type resize(size_type);
-	unsigned char *data();
-	iterator begin();
-	iterator end();
-	iterator dt_begin();
-	iterator dt_end();
-	iterator event_begin();
-	iterator payload_begin();
-	iterator_range_t<iterator> payload_range();
 	unsigned char *push_back(unsigned char);
 	
 

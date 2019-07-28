@@ -3,7 +3,6 @@
 #include <type_traits>  // std::enable_if<>, is_integral<>, is_unsigned<>
 #include <cstdint>
 #include <cstring>
-#include <algorithm>
 
 
 // 

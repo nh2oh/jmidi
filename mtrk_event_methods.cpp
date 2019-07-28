@@ -538,8 +538,8 @@ mtrk_event_t make_sysex_generic_impl(const int32_t& dt, unsigned char type,
 		+ vlq_field_size(payload_eff_size)  // payload-length-vlq
 		+ payload_eff_size;
 	auto result = mtrk_event_t();
-	result.resize(sz_reserve);
-	auto it = result.begin();
+	result.d_.resize(sz_reserve);
+	auto it = result.d_.begin();
 	it = write_delta_time(dt,it);
 	*it++ = type;
 	it = write_vlq(payload_eff_size,it);
