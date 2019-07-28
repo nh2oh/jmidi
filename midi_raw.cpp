@@ -55,7 +55,6 @@ midi_ch_event_t normalize(midi_ch_event_t md) {
 	md.status_nybble &= 0xF0u;
 	md.status_nybble = std::clamp(md.status_nybble,
 		static_cast<uint8_t>(0x80u),static_cast<uint8_t>(0xE0u));
-	//md.status_nybble |= 0x80u;
 	md.status_nybble = 0xF0u&(0x80u|(md.status_nybble));
 	md.ch &= 0x0Fu; // std::max(md.ch,15);
 	md.p1 &= 0x7Fu; 

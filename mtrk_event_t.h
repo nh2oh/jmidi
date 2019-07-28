@@ -58,16 +58,20 @@ struct iterator_range_t {
 //     unsigned char and is therefore amenable to analysis with 3rd party 
 //     code.  
 // 
-
-
+// Invariants
+// -> size() == mtrk_event_get_size_dtstart_unsafe(begin(),0x00u);
 //
-// TODO:  payload_begin/end() functions are calling advance_to_dt_end()
-// on the meta & sysex vlq length fields; they should be calling a 
-// more generic advance_to_vlq_end() function of some sort.  
-// 
+//
+
 struct mtrk_event_error_t;
 struct maybe_mtrk_event_t;
-
+struct mtrk_event_debug_helper_t;/* {
+	const unsigned char *raw_beg {nullptr};
+	const unsigned char *raw_end {nullptr};
+	unsigned char flags {0x00u};
+	bool is_big {false};
+};
+*/
 struct mtrk_event_container_types_t {
 	using value_type = unsigned char;
 	using size_type = int32_t;
@@ -106,8 +110,8 @@ public:
 
 	size_type size() const;
 	size_type capacity() const;
-	
 	size_type reserve(size_type);
+
 	const unsigned char *data() const;
 	const unsigned char *data();
 	const_iterator begin() const;
@@ -125,11 +129,6 @@ public:
 	const_iterator dt_begin();
 	const_iterator dt_end();
 	const_iterator event_begin();
-
-
-	// TODO:  These call type(), which advances past the delta_t to determine
-	// the status byte, then they manually advance a local iterator past the 
-	// delta_t... redundant...
 	const_iterator payload_begin() const;
 	iterator_range_t<const_iterator> payload_range() const;
 	iterator_range_t<const_iterator> payload_range();
@@ -151,13 +150,16 @@ public:
 	bool operator!=(const mtrk_event_t&) const;
 private:
 	mtrk_event_t_internal::small_bytevec_t d_;
-
+	
+	// delta_time()==0, Note-on, channel==1, note==60 (0x3C), 
+	// velocity==63 (0x3F).  
+	// 63 is ~1/2 way between 0 and the max velocity of 127 (0x7F)
+	// {0x00u,0x90u,0x3Cu,0x3Fu}
 	void default_init(int32_t=0);
 
 	unsigned char *push_back(unsigned char);
-	
+	iterator_range_t<const_iterator> payload_range_impl() const;
 
-	// TODO:  Do something about this trash
 	const unsigned char *raw_begin() const;
 	const unsigned char *raw_end() const;
 	unsigned char flags() const;
@@ -171,10 +173,18 @@ private:
 							const unsigned char*, unsigned char, 
 							mtrk_event_error_t*);
 
-	friend std::string print(const mtrk_event_t&,
-			mtrk_sbo_print_opts);
-};
+	//friend std::string print(const mtrk_event_t&,
+	//		mtrk_sbo_print_opts);
 
+	friend mtrk_event_debug_helper_t debug_info(const mtrk_event_t&);
+};
+struct mtrk_event_debug_helper_t {
+	const unsigned char *raw_beg {nullptr};
+	const unsigned char *raw_end {nullptr};
+	unsigned char flags {0x00u};
+	bool is_big {false};
+};
+mtrk_event_debug_helper_t debug_info(const mtrk_event_t&);
 
 struct mtrk_event_error_t {
 	enum class errc : uint8_t {

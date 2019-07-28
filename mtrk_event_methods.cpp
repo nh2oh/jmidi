@@ -43,18 +43,19 @@ std::string print(const mtrk_event_t& evnt, mtrk_sbo_print_opts opts) {
 		}
 	} 
 	if (opts == mtrk_sbo_print_opts::debug) {
+		auto dbg = debug_info(evnt);
 		s += "\n\t";
-		if (evnt.is_small()) {
+		if (!dbg.is_big) {
 			s += "sbo=>small = ";
 		} else {
 			s += "sbo=>big   = ";
 		}
 		s += "{";
-		print_hexascii(evnt.raw_begin(),evnt.raw_end(),
+		print_hexascii(dbg.raw_beg,dbg.raw_end,
 			std::back_inserter(s),'\0',' ');
 		s += "}; \n";
 		s += "\tbigsmall_flag = ";
-		auto f = evnt.flags();
+		auto f = dbg.flags;
 		print_hexascii(&f, &f+1, std::back_inserter(s), ' ');
 	}
 	return s;

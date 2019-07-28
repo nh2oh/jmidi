@@ -19,13 +19,14 @@ mtrk_event_t::mtrk_event_t(int32_t dt, midi_ch_event_t md) {
 	md = normalize(md);
 	unsigned char s = (md.status_nybble)|(md.ch);
 	auto n = channel_status_byte_n_data_bytes(s);
-	// NB:  n==0 if s is invalid (ex, s==0xFFu)
+	// NB:  n==0 if s is invalid, but this is impossible after a call
+	// to normalize().  
 	this->d_.resize(delta_time_field_size(dt)+1+n);  // +1=>s
 	auto dest = write_delta_time(dt,this->d_.begin());
 	*dest++ = s;
-	*dest++ = (md.p1)&0x7Fu;
+	*dest++ = md.p1;
 	if (n==2) {
-		*dest++ = (md.p2)&0x7Fu;
+		*dest++ = md.p2;
 	}
 }
 mtrk_event_t::mtrk_event_t(const mtrk_event_t& rhs) {
@@ -50,9 +51,6 @@ mtrk_event_t::~mtrk_event_t() noexcept {  // dtor
 
 mtrk_event_t::size_type mtrk_event_t::size() const {
 	return this->d_.size();
-	//auto sz = mtrk_event_get_size_dtstart_unsafe(this->d_.begin(),0x00u);
-	//auto cap = this->capacity();
-	//return sz > cap ? cap : sz;
 }
 mtrk_event_t::size_type mtrk_event_t::capacity() const {
 	return this->d_.capacity();
@@ -68,120 +66,89 @@ const unsigned char *mtrk_event_t::data() const {
 	return this->d_.begin();
 }
 mtrk_event_t::const_iterator mtrk_event_t::begin() {
-	return mtrk_event_t::iterator(this->d_.begin());
+	return mtrk_event_t::const_iterator(this->d_.begin());
 }
 mtrk_event_t::const_iterator mtrk_event_t::begin() const {
-	return mtrk_event_t::const_iterator(this->data());
+	return mtrk_event_t::const_iterator(this->d_.begin());
 }
 mtrk_event_t::const_iterator mtrk_event_t::cbegin() {
-	return mtrk_event_t::const_iterator(this->data());
+	return mtrk_event_t::const_iterator(this->d_.begin());
 }
 mtrk_event_t::const_iterator mtrk_event_t::cbegin() const {
-	return mtrk_event_t::const_iterator(this->data());
+	return mtrk_event_t::const_iterator(this->d_.begin());
 }
 mtrk_event_t::const_iterator mtrk_event_t::end() {
-	return this->begin()+this->size();
+	return mtrk_event_t::const_iterator(this->d_.end());
 }
 mtrk_event_t::const_iterator mtrk_event_t::end() const {
-	return this->begin()+this->size();
+	return mtrk_event_t::const_iterator(this->d_.end());
 }
 mtrk_event_t::const_iterator mtrk_event_t::cend() {
-	return this->cbegin()+this->size();
+	return mtrk_event_t::const_iterator(this->d_.end());
 }
 mtrk_event_t::const_iterator mtrk_event_t::cend() const {
-	return this->cbegin()+this->size();
+	return mtrk_event_t::const_iterator(this->d_.end());
 }
 mtrk_event_t::const_iterator mtrk_event_t::dt_begin() const {
-	return this->begin();
+	return mtrk_event_t::const_iterator(this->d_.begin());
 }
 mtrk_event_t::const_iterator mtrk_event_t::dt_begin() {
-	return this->begin();
+	return mtrk_event_t::const_iterator(this->d_.begin());
 }
 mtrk_event_t::const_iterator mtrk_event_t::dt_end() const {
-	return advance_to_dt_end(this->begin(),this->end());
+	return advance_to_dt_end(this->d_.begin(),this->d_.end());
 }
 mtrk_event_t::const_iterator mtrk_event_t::dt_end() {
-	return advance_to_dt_end(this->begin(),this->end());
+	return advance_to_dt_end(this->d_.begin(),this->d_.end());
 }
 mtrk_event_t::const_iterator mtrk_event_t::event_begin() const {
-	return advance_to_dt_end(this->begin(),this->end());
+	return advance_to_dt_end(this->d_.begin(),this->d_.end());
 }
 mtrk_event_t::const_iterator mtrk_event_t::event_begin() {
-	return advance_to_dt_end(this->begin(),this->end());
+	return advance_to_dt_end(this->d_.begin(),this->d_.end());
 }
 mtrk_event_t::const_iterator mtrk_event_t::payload_begin() const {
-	auto it = this->event_begin();
-	auto it_end = this->end();
-	if (this->type()==smf_event_type::meta) {
-		it += 2;  // 0xFFu, type-byte
-		it = advance_to_dt_end(it,it_end);
-	} else if (this->type()==smf_event_type::sysex_f0
-					|| this->type()==smf_event_type::sysex_f7) {
-		it += 1;  // 0xF0u or 0xF7u
-		it = advance_to_dt_end(it,it_end);
-	} // else { smf_event_type::channel_voice, _mode, unknown, invalid...
-	return it;
+	return this->payload_range_impl().begin;
+	return this->payload_range_impl().begin;
 }
 mtrk_event_t::const_iterator mtrk_event_t::payload_begin() {
-	auto it = this->event_begin();
-	auto it_end = this->end();
-	if (this->type()==smf_event_type::meta) {
-		it += 2;  // 0xFFu, type-byte
-		it = advance_to_dt_end(it,it_end);
-	} else if (this->type()==smf_event_type::sysex_f0
-					|| this->type()==smf_event_type::sysex_f7) {
-		it += 1;  // 0xF0u or 0xF7u
-		it = advance_to_dt_end(it,it_end);
-	} // else { smf_event_type::channel_voice, _mode, unknown, invalid...
-	return it;
+	return this->payload_range_impl().begin;
 }
 iterator_range_t<mtrk_event_t::const_iterator> mtrk_event_t::payload_range() const {
-	auto sz = this->size();
-	auto it = this->event_begin();
-	auto it_end = this->end();
-	if (this->type()==smf_event_type::meta) {
-		it += 2;  // 0xFFu, type-byte
-		it = advance_to_dt_end(it,it_end);
-	} else if (this->type()==smf_event_type::sysex_f0
-					|| this->type()==smf_event_type::sysex_f7) {
-		it += 1;  // 0xF0u or 0xF7u
-		it = advance_to_dt_end(it,it_end);
-	} // else { smf_event_type::channel_voice, _mode, unknown, invalid...
-	return {it,it_end};
+	return this->payload_range_impl();
 }
 iterator_range_t<mtrk_event_t::const_iterator> mtrk_event_t::payload_range() {
-	auto sz = this->size();
-	auto it = this->event_begin();
-	auto it_end = this->end();
-	if (this->type()==smf_event_type::meta) {
+	return this->payload_range_impl();
+}
+const unsigned char mtrk_event_t::operator[](mtrk_event_t::size_type i) const {
+	return *(this->d_.begin()+i);
+};
+unsigned char mtrk_event_t::operator[](mtrk_event_t::size_type i) {
+	return *(this->d_.begin()+i);
+};
+unsigned char *mtrk_event_t::push_back(unsigned char c) {  // Private
+	return this->d_.push_back(c);
+}
+iterator_range_t<mtrk_event_t::const_iterator> mtrk_event_t::payload_range_impl() const {
+	auto it_end = this->d_.end();
+	auto it = advance_to_dt_end(this->d_.begin(),it_end);
+	auto t = classify_status_byte(*it);
+	if (t==smf_event_type::meta) {
 		it += 2;  // 0xFFu, type-byte
-		it = advance_to_dt_end(it,it_end);
-	} else if (this->type()==smf_event_type::sysex_f0
-					|| this->type()==smf_event_type::sysex_f7) {
+		it = advance_to_vlq_end(it,it_end);
+	} else if (t==smf_event_type::sysex_f0
+					|| t==smf_event_type::sysex_f7) {
 		it += 1;  // 0xF0u or 0xF7u
-		it = advance_to_dt_end(it,it_end);
+		it = advance_to_vlq_end(it,it_end);
 	} // else { smf_event_type::channel_voice, _mode, unknown, invalid...
 	return {it,it_end};
 }
-const unsigned char mtrk_event_t::operator[](mtrk_event_t::size_type i) const {
-	return *(this->data()+i);
-};
-unsigned char mtrk_event_t::operator[](mtrk_event_t::size_type i) {
-	return *(this->data()+i);
-};
-unsigned char *mtrk_event_t::push_back(unsigned char c) {
-	return this->d_.push_back(c);
-}
-
 smf_event_type mtrk_event_t::type() const {
-	auto p = advance_to_dt_end(this->begin(),this->end());
+	auto p = advance_to_dt_end(this->d_.begin(),this->d_.end());
 	return classify_status_byte(*p);
-	// Faster than classify_mtrk_event_dtstart_unsafe(s,rs), b/c the latter
-	// calls classify_status_byte(get_status_byte(s,rs)); here, i do not 
-	// need to worry about the possibility of the rs byte.  
 }
 int32_t mtrk_event_t::delta_time() const {
-	return read_delta_time(this->data(),this->data()+this->size()).val;
+	return read_delta_time(this->d_.begin(),this->d_.end()).val;
 }
 unsigned char mtrk_event_t::status_byte() const {
 	return *advance_to_dt_end(this->d_.begin(),this->d_.end());
@@ -191,29 +158,22 @@ unsigned char mtrk_event_t::running_status() const {
 	return get_running_status_byte(*p,0x00u);
 }
 mtrk_event_t::size_type mtrk_event_t::data_size() const {  // Not including delta-t
-	auto end = this->end();
-	auto p = advance_to_dt_end(this->begin(),end);
+	auto end = this->d_.end();
+	auto p = advance_to_dt_end(this->d_.begin(),end);
 	return end-p;
 }
 
 int32_t mtrk_event_t::set_delta_time(int32_t dt) {
-	dt = std::clamp(dt,0,0x0FFFFFFF);
-	//dt &= 0x0FFFFFFFu;
 	auto new_dt_size = delta_time_field_size(dt);
 	auto beg = this->d_.begin();  auto end = this->d_.end();
 	auto curr_dt_size = advance_to_dt_end(beg,end)-beg;
 	if (curr_dt_size == new_dt_size) {
 		write_delta_time(dt,beg);
 	} else if (new_dt_size < curr_dt_size) {  // shrink present event
-		auto new_event_beg = beg+new_dt_size;
 		auto curr_event_beg = beg+curr_dt_size;
-		std::copy(curr_event_beg,end,new_event_beg);
-		//std::copy(this->event_begin(),this->end(),new_event_beg);
-		write_delta_time(dt,this->d_.begin());
-		// TODO:  resize() this->d_ ?
-		//midi_rewrite_dt_field_unsafe(dt,this->data(),0x00u);
-		auto new_size = this->d_.size()-(curr_dt_size-new_dt_size);
-		this->d_.resize(new_size);
+		auto it = write_delta_time(dt,beg);
+		it = std::copy(curr_event_beg,end,it);
+		this->d_.resize(it-beg);
 	} else if (new_dt_size > curr_dt_size) {  // grow present event
 		auto old_size = this->d_.size();
 		auto new_size = old_size + (new_dt_size-curr_dt_size);
@@ -227,17 +187,15 @@ int32_t mtrk_event_t::set_delta_time(int32_t dt) {
 }
 
 bool mtrk_event_t::operator==(const mtrk_event_t& rhs) const {
-	auto it_lhs = this->begin();  auto lhs_end = this->end();
-	auto it_rhs = rhs.begin();  auto rhs_end = rhs.end();
+	auto it_lhs = this->d_.begin();  auto lhs_end = this->d_.end();
+	auto it_rhs = rhs.d_.begin();  auto rhs_end = rhs.d_.end();
 	if ((lhs_end-it_lhs) != (rhs_end-it_rhs)) {
 		return false;
 	}
-	while (it_lhs!=lhs_end && it_rhs!=rhs_end) {
-		if (*it_lhs != *it_rhs) {
+	while (it_lhs!=lhs_end) {
+		if (*it_lhs++ != *it_rhs++) {
 			return false;
 		}
-		++it_lhs;
-		++it_rhs;
 	}
 	return true;
 }
@@ -247,23 +205,12 @@ bool mtrk_event_t::operator!=(const mtrk_event_t& rhs) const {
 
 void mtrk_event_t::default_init(int32_t dt) {
 	this->d_ = mtrk_event_t_internal::small_bytevec_t();
-	if (dt>0) {
-		dt = to_nearest_valid_delta_time(dt);
-		this->d_.resize(delta_time_field_size(dt)+3);
-		auto it = write_delta_time(dt,this->d_.begin());
-		*it++ = 0x90u;  // Note-on, channel "1"
-		*it++ = 0x3Cu;  // 0x3C==60=="Middle C" (C4, 261.63Hz)
-		*it++ = 0x3Fu;  // 0x3F==63, ~= 127/2
-	} else {
-		this->d_.resize(4);
-		auto it = this->d_.begin();
-		*it++ = 0x00u;  // The delta-time
-		*it++ = 0x90u;  // Note-on, channel "1"
-		*it++ = 0x3Cu;  // 0x3C==60=="Middle C" (C4, 261.63Hz)
-		*it++ = 0x3Fu;  // 0x3F==63, ~= 127/2
-	}
+	this->d_.resize(delta_time_field_size(dt)+3);
+	auto it = write_delta_time(dt,this->d_.begin());
+	*it++ = 0x90u;  // Note-on, channel "1"
+	*it++ = 0x3Cu;  // 0x3C==60=="Middle C" (C4, 261.63Hz)
+	*it++ = 0x3Fu;  // 0x3F==63, ~= 127/2
 }
-
 
 const unsigned char *mtrk_event_t::raw_begin() const {
 	return this->d_.raw_begin();
@@ -279,6 +226,14 @@ bool mtrk_event_t::is_big() const {
 }
 bool mtrk_event_t::is_small() const {
 	return !(this->is_big());
+}
+mtrk_event_debug_helper_t debug_info(const mtrk_event_t& ev) {
+	mtrk_event_debug_helper_t r;
+	r.raw_beg = ev.d_.raw_begin();
+	r.raw_end = ev.d_.raw_end();
+	r.flags = *(r.raw_beg);
+	r.is_big = ev.d_.debug_is_big();
+	return r;
 }
 
 
