@@ -107,7 +107,7 @@ constexpr int32_t to_nearest_valid_delta_time(T dt) {
 // values.  
 //
 // The "support" class smpte_t represents the pair of SMPTE fields; it
-// does not enforce any invariants and is only used for as a convienint
+// does not enforce any invariants and is only used for as a convenient
 // return type for the time_division_t::get_smpte() getter and for the
 // SMPTE ctor time_division_t::time_division_t(smpte_t).  
 // 

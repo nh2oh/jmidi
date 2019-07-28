@@ -22,12 +22,12 @@ dt_field_interpreted read_delta_time(InIt beg, InIt end) {
 	dt_field_interpreted result {0,0,false};
 	uint32_t uval = 0;
 	unsigned char uc = 0;
-	while ((beg!=end) && (result.N<4)) {
+	while (beg!=end) {
 		uc = *beg++;
 		uval += uc&0x7Fu;
 		++(result.N);
-		if (uc&0x80u) {
-			uval <<= 7;
+		if ((uc&0x80u) && (result.N<4)) {
+			uval <<= 7;  // Note:  Not shifting on the final iteration
 		} else {  // High bit not set => this is the final byte
 			break;
 		}
