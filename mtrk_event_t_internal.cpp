@@ -3,6 +3,7 @@
 #include <cstdlib>  // std::abort()
 #include <algorithm>  // std::clamp(), std::max(), std::copy()
 #include <cstring>
+#include <utility>  // std::move()
 
 namespace mtrk_event_t_internal {
 

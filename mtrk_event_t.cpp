@@ -1,11 +1,10 @@
 #include "mtrk_event_t.h"
-#include "mtrk_event_methods.h"
 #include "midi_raw.h"
 #include "midi_vlq.h"
 #include "midi_delta_time.h"
 #include <cstdint>
 #include <algorithm>
-
+#include <utility>  // std::move()
 
 
 mtrk_event_t::mtrk_event_t() {
@@ -481,7 +480,7 @@ maybe_mtrk_event_t yay(const unsigned char *it, const unsigned char *end,
 
 	auto set_error = [&r](const mtrk_event_error_t::errc& ec)->void {
 		r.event = mtrk_event_t();
-		r.error = mtrk_event_error_t::errc::invalid_delta_time;
+		r.error = ec;
 	};
 
 	auto inl_read_vlq = [&it, &end, &i, &uc]()->int32_t {

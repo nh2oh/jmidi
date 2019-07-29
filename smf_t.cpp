@@ -153,20 +153,11 @@ time_division_t smf_t::division() const {
 int32_t smf_t::mthd_size() const {
 	return this->mthd_.size();
 }
-const std::string& smf_t::fname() const {
-	return (*this).fname_;
-}
-
 const mthd_t& smf_t::mthd() const {
 	return this->mthd_;
 }
 mthd_t& smf_t::mthd() {
 	return this->mthd_;
-}
-
-const std::string& smf_t::set_fname(const std::string& fname) {
-	this->fname_ = fname;
-	return (*this).fname_;
 }
 /*void smf_t::set_mthd(const validate_mthd_chunk_result_t& val_mthd) {
 	this->mthd_ = mthd_t(val_mthd);
@@ -182,8 +173,7 @@ std::string print(const smf_t& smf) {
 	std::string s {};
 	s.reserve(20*smf.size());  // TODO: Magic constant 20
 
-	s += smf.fname();
-	s += "\nnum bytes = " + std::to_string(smf.nbytes()) + ", "
+	s += "num bytes = " + std::to_string(smf.nbytes()) + ", "
 		"num chunks = " + std::to_string(smf.nchunks()) + ", "
 		"num tracks = " + std::to_string(smf.ntrks());
 	s += "\n\n";
@@ -243,8 +233,6 @@ maybe_smf_t read_smf(const std::filesystem::path& fp, smf_error_t *err) {
 
 	const unsigned char *beg = fdata.data();
 	const unsigned char *end = fdata.data()+fdata.size();
-
-	result.smf.set_fname(fp.string());
 
 	auto maybe_mthd = make_mthd(beg,end);
 	if (!maybe_mthd) {

@@ -101,7 +101,7 @@ constexpr int vlq_field_size(T val) {
 };
 
 //
-// TODO:  This should clamp the inout between 0x0FFFFFFF and 0.  
+// TODO:  This should clamp the input between 0x0FFFFFFF and 0.  
 //
 template<typename T, typename OIt>
 OIt write_vlq(T val, OIt it) {

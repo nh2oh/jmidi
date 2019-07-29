@@ -11,12 +11,10 @@
 //
 // smf_t
 //
-// Holds an smf; presents an interface similar to a std::vector<mtrk_t>.  
-// Also stores the filename and MThd chunk.  
-//
-// Also holds non-MTrk smf chunks ("unknown" chunks) as a 
-// std::vector<std::vector<unsigned char>>.  The relative order of the Mtrk
-// and uchks as they appeared in the file is preserved.  
+// Holds an smf, presenting an interface similar to a std::vector<mtrk_t>.  
+// Also stores the MThd chunk, and non-MTrk non-MThd "unknown" chunks 
+// ("uchk"s as a std::vector<std::vector<unsigned char>>.  The relative 
+// order of the MTrk and uchks as they appeared in the file is preserved.  
 //
 // Although both MTrk and  "unknown" are stored in an smf_t, the STL 
 // container-inspired methods size(), operator[], begin(), end(), etc, 
@@ -111,11 +109,7 @@ public:
 	int32_t mthd_size() const;  // mthd alias
 	//void set_mthd(const validate_mthd_chunk_result_t&);
 	void set_mthd(const maybe_mthd_t&);
-
-	const std::string& fname() const;
-	const std::string& set_fname(const std::string&);
 private:
-	std::string fname_ {};
 	mthd_t mthd_ {};
 	std::vector<value_type> mtrks_ {};
 	std::vector<std::vector<unsigned char>> uchks_ {};
@@ -128,6 +122,9 @@ private:
 std::string print(const smf_t&);
 
 static constexpr auto sz_smf_t = sizeof(smf_t);
+static constexpr auto sz_vuc = sizeof(std::vector<unsigned char>);
+static constexpr auto sz_sstr = sizeof(std::string);
+static constexpr auto sz_mthd = sizeof(mthd_t);
 
 // maybe_smf_t read_smf(const std::string& filename);
 // Reads in the smf indicated by filename.  The maybe_smf_t returned can
