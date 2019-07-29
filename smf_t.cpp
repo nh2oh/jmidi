@@ -266,20 +266,21 @@ maybe_smf_t read_smf(const std::filesystem::path& fp, smf_error_t *err) {
 			return result;
 		}
 
-		auto nbytes_read = header.length+8;
+		// Pointer to the end of the current chunk end_curr_chunk is passed
+		// to make_mtrk().  
+		// It is significant that i am passing end_curr_chunk rather 
+		// than end.  This causes make_mtrk_permissive() to never read
+		// more than 8+header.length bytes.  This can be changed, but must
+		// be synchronyzed with the way p is incremented at the bottom
+		// of this loop.  See below.  
+		auto end_curr_chunk = p + 8 + header.length;
+		if (end_curr_chunk > end) {
+			end_curr_chunk = end;
+		}
 
 		if (header.id == chunk_id::mtrk) {
 			mtrk_error_t mtrk_error {};
-			// It is significant that i am passing p+header.length rather 
-			// than end.  This causes make_mtrk_permissive() to never read
-			// more than header.length bytes.  This can be changed, but must
-			// be synchronyzed with the way p is incremented at the bottom
-			// of this loop.  See below.  
-			auto max_nbytes = end-p;
-			if (header.length > max_nbytes) {
-				max_nbytes = header.length;
-			}
-			auto curr_mtrk = make_mtrk_permissive(p,p+max_nbytes,
+			auto curr_mtrk = make_mtrk_permissive(p,end_curr_chunk,
 				&mtrk_error);
 			// push_back the mtrk even if invalid; make_mtrk will return a
 			// partial mtrk terminating at the event right before the error,
@@ -297,9 +298,9 @@ maybe_smf_t read_smf(const std::filesystem::path& fp, smf_error_t *err) {
 				return result;
 			}
 			++n_mtrks_read;
-		} else if ((header.id==chunk_id::unknown) && ((header.length+p+8)>end)) {
+		} else if (header.id==chunk_id::unknown) {
 			result.smf.push_back(
-				std::vector<unsigned char>(p,p+header.length));
+				std::vector<unsigned char>(p,end_curr_chunk));
 			++n_uchks_read;
 		} else {
 			// header.id could perhaps == chunk_id::mtrk, or == chunk_id::unknown
@@ -314,13 +315,14 @@ maybe_smf_t read_smf(const std::filesystem::path& fp, smf_error_t *err) {
 			return result;
 		}
 
-		// make_mtrk[_permissive]() may or may not read the number of bytes
-		// indicated by header.length, for example, if an invalid event or a
-		// premature EOT is hit (for chunk_id::unknown chunks, header.length
-		// bytes are always read).  p += (header.length+8) assumes the file 
-		// is not so fucked up that the chunk spacing can't be calculated 
-		// from the length field in the headers.  
-		p += nbytes_read;
+		// make_mtrk[_permissive]() may or may not read all the way up to 
+		// end_curr_chunk, for example, if an invalid event or a premature
+		// EOT is hit (chunk_id::unknown chunks are always read completely to 
+		// the end).  
+		// Below, p = end_curr_chunk assumes the file is not so fucked up 
+		// that the chunk spacing can't be calculated from the length field 
+		// in the headers.  
+		p = end_curr_chunk;
 	}
 
 	// If p<pend, might indicate the file is zero-padded after 
