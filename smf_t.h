@@ -174,10 +174,18 @@ struct maybe_smf_t {
 maybe_smf_t read_smf(const std::filesystem::path&);
 maybe_smf_t read_smf(const std::filesystem::path&, smf_error_t*);
 std::string explain(const smf_error_t&);
+
+// For the path fp, checks that std::filesystem::is_regular_file(fp)
+// is true, and that the extension is "mid", "MID", "midi", or 
+// "MIDI"
+bool has_midifile_extension(const std::filesystem::path&);
+
+
 struct mtrk_event_range_t {
 	mtrk_event_t::const_iterator beg;
 	mtrk_event_t::const_iterator end;
 };
+
 
 class sequential_range_iterator {
 public:

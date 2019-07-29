@@ -179,18 +179,12 @@ int read_midi_directory(const std::filesystem::path& bp) {
 	int n_midi_files = 0;  // The total number of midi files
 	int n_err_files = 0;  // The number of midi files w/ errors
 	for (const auto& dir_ent : rdi) {
-		if (!std::filesystem::is_regular_file(dir_ent)) {
-			continue;
-		}
 		auto curr_path = dir_ent.path();
-		// This throws a std::system_error if native pathnames are wchar_t 
-		// and there is no conversion to char.  
-		auto ext = curr_path.extension().string();  
-		if ((ext!=".mid") && (ext!=".midi")) {
+		if (!has_midifile_extension(curr_path)) {
 			continue;
 		}
-		
 		++n_midi_files;
+
 		smf_error_t smf_error;
 		auto maybesmf = read_smf(curr_path,&smf_error);
 		std::cout << "File number " << n_midi_files << '\n' 
@@ -216,14 +210,8 @@ int read_midi_directory_mthd_inspection(const std::filesystem::path& bp) {
 	int nbytes_read = 14;
 	int n_midi_files = 0;
 	for (const auto& dir_ent : rdi) {
-		if (!std::filesystem::is_regular_file(dir_ent)) {
-			continue;
-		}
 		auto curr_path = dir_ent.path();
-		// This throws a std::system_error if native pathnames are wchar_t 
-		// and there is no conversion to char.  
-		auto ext = curr_path.extension().string();  
-		if ((ext!=".mid") && (ext!=".midi")) {
+		if (!has_midifile_extension(curr_path)) {
 			continue;
 		}
 		++n_midi_files;
@@ -270,14 +258,8 @@ int avg_and_max_event_sizes(const std::filesystem::path& bp,
 	auto rdi = std::filesystem::recursive_directory_iterator(bp.parent_path());
 	int n_midi_files = 0;
 	for (const auto& dir_ent : rdi) {
-		if (!std::filesystem::is_regular_file(dir_ent)) {
-			continue;
-		}
 		auto curr_path = dir_ent.path();
-		// This throws a std::system_error if native pathnames are wchar_t 
-		// and there is no conversion to char.  
-		auto ext = curr_path.extension().string();  
-		if ((ext!=".mid") && (ext!=".MID") && (ext!=".midi")) {
+		if (!has_midifile_extension(curr_path)) {
 			continue;
 		}
 		++n_midi_files;
@@ -336,49 +318,6 @@ int avg_and_max_event_sizes(const std::filesystem::path& bp,
 	return 0;
 }
 
-
-int midi_setdt_testing() {
-	std::vector<uint32_t> dts {
-		0x00u,0x40u,0x7Fu,  // field size == 1
-		0x80u,0x2000u,0x3FFFu,  // field size == 2
-		0x4000u,0x100000u,0x1FFFFFu,  // field size == 3
-		0x00200000u,0x08000000u,0x0FFFFFFFu,  // field size == 4
-		// Attempt to write values exceeding the allowed max; field size
-		// should be 4, and all values written should be == 0x0FFFFFFFu
-		0x1FFFFFFFu,0x2FFFFFFFu,0x7FFFFFFFu,0x8FFFFFFFu,
-		0x9FFFFFFFu,0xBFFFFFFFu,0xEFFFFFFFu,0xFFFFFFFFu
-	};
-	for (const auto& dt_init : dts) {
-		auto curr_ev = mtrk_event_t();
-		curr_ev.set_delta_time(dt_init);
-		//mtrk_event_unit_test_helper_t h(curr_ev);
-		for (const auto& new_dt : dts) {
-			std::cout << "dt_init==" <<  dt_init << "; " 
-				<< "new_dt==" << new_dt << std::endl;
-			std::cout << print(curr_ev,mtrk_sbo_print_opts::debug) 
-				<< std::endl;
-
-			curr_ev.set_delta_time(new_dt);
-			std::cout << print(curr_ev,mtrk_sbo_print_opts::debug) 
-				<< std::endl;
-			std::cout << "-------------------------------------------" << std::endl << std::endl;
-
-			auto curr_dt_ans = (0x0FFFFFFFu&new_dt);
-			auto curr_dt_sz = 1;
-			if ((new_dt>=0x00u) && (new_dt < 0x80u)) {
-				curr_dt_sz = 1;
-			} else if ((new_dt>= 0x80u) && (new_dt<0x4000u)) {
-				curr_dt_sz = 2;
-			} else if ((new_dt>= 0x4000u) && (new_dt<0x00200000u)) {
-				curr_dt_sz = 3;
-			} else {
-				curr_dt_sz = 4;
-			}
-		}
-	}
-
-	return 0;
-}
 
 
 

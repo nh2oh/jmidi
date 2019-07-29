@@ -406,6 +406,25 @@ std::string explain(const smf_error_t& err) {
 }
 
 
+bool has_midifile_extension(const std::filesystem::path& fp) {
+	if (!std::filesystem::is_regular_file(fp)) {
+		return false;
+	}
+	const auto ext_mid_lc = std::filesystem::path(".mid");
+	const auto ext_mid_uc = std::filesystem::path(".MID");
+	const auto ext_midi_lc = std::filesystem::path(".midi");
+	const auto ext_midi_uc = std::filesystem::path(".MIDI");
+	const auto ext = fp.extension();  
+	if ((ext!=ext_mid_lc) && (ext!=ext_mid_uc) 
+			&& (ext!=ext_midi_lc) && (ext!=ext_midi_uc)) {
+		return false;
+	}
+
+	return true;
+}
+
+
+
 std::vector<all_smf_events_dt_ordered_t> get_events_dt_ordered(const smf_t& smf) {
 	std::vector<all_smf_events_dt_ordered_t> result;
 	//result.reserve(smf.nchunks...
