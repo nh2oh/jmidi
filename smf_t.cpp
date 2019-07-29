@@ -234,7 +234,7 @@ maybe_smf_t read_smf(const std::filesystem::path& fp, smf_error_t *err) {
 	const unsigned char *beg = fdata.data();
 	const unsigned char *end = fdata.data()+fdata.size();
 
-	auto maybe_mthd = make_mthd(beg,end);
+	auto maybe_mthd = make_mthd(beg,end,nullptr);
 	if (!maybe_mthd) {
 		if (err) {
 			mthd_error_t mthd_err {};

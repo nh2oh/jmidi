@@ -80,13 +80,15 @@ int midi_example() {
 
 
 	auto start1 = std::chrono::high_resolution_clock::now();
-	std::filesystem::path inp = "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\J_to_Z\\J_to_P\\K\\K\\";
+	std::filesystem::path inp = "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\J_to_Z\\J_to_P\\M\\";
+	//std::filesystem::path inp = "C:\\Users\\ben\\Desktop\\midi_broken_mthd\\";
 	std::filesystem::path op = "C:\\Users\\ben\\Desktop\\midi_archive\\\out.txt";
-	avg_and_max_event_sizes(inp,op);
+	inspect_mthds(inp);
+	//avg_and_max_event_sizes(inp,op);
 	auto end1 = std::chrono::high_resolution_clock::now();
-	auto d1 = std::chrono::duration_cast<std::chrono::seconds>(end1-start1).count();
+	auto d1 = std::chrono::duration_cast<std::chrono::milliseconds>(end1-start1).count();
 	std::cout << "1-thread version finished in d == " 
-		<< d1 << " seconds." << std::endl << std::endl;
+		<< d1 << " milliseconds." << std::endl << std::endl;
 
 
 	//read_midi_directory_mthd_inspection("C:\\Users\\ben\\Desktop\\midi_broken_mtrk\\");
@@ -205,9 +207,8 @@ int read_midi_directory(const std::filesystem::path& bp) {
 	return 0;
 }
 
-int read_midi_directory_mthd_inspection(const std::filesystem::path& bp) {
+int inspect_mthds(const std::filesystem::path& bp) {
 	auto rdi = std::filesystem::recursive_directory_iterator(bp.parent_path());
-	int nbytes_read = 14;
 	int n_midi_files = 0;
 	for (const auto& dir_ent : rdi) {
 		auto curr_path = dir_ent.path();
@@ -216,39 +217,29 @@ int read_midi_directory_mthd_inspection(const std::filesystem::path& bp) {
 		}
 		++n_midi_files;
 
-		// Read the file into fdata, close the file
-		std::vector<unsigned char> fdata {};
-		std::basic_ifstream<unsigned char> f(curr_path,std::ios_base::in|std::ios_base::binary);
+		std::basic_ifstream<unsigned char> f(curr_path,
+			std::ios_base::in|std::ios_base::binary);
 		if (!f.is_open() || !f.good()) {
 			std::cout << "Could not open file.  Wat.  " << std::endl;
 			std::cout << std::endl;
 			continue;
 		}
-		f.seekg(0,std::ios::end);
-		auto fsize = f.tellg();
-		f.seekg(0,std::ios::beg);
-		if (fsize < nbytes_read) {
-			continue;
-		}
-		fdata.resize(nbytes_read);
-		f.read(fdata.data(),nbytes_read);
 		f.close();
-
+		
+		std::string s; s.reserve(1000);
+		s += curr_path.string() + '\n';
 		mthd_error_t mthd_error {};
-		auto mthd = make_mthd(fdata.data(),fdata.data()+fdata.size(),&mthd_error);
-		if ((fsize > 400000) && mthd) {// || ((mthd) && (mthd.mthd.ntrks()>130))) {
-			std::cout << curr_path.string() << '\n';
-			std::string s; s.reserve(1000);
+		auto it = std::istreambuf_iterator(f);
+		auto mthd = make_mthd(it,std::istreambuf_iterator<unsigned char>(),&mthd_error);
+		if (mthd) {
 			print(mthd.mthd,s);
-			std::cout << s << "\n";
-			std::cout << "==============================================="
-				"=================================\n";
+		} else {
+			s += explain(mthd_error);
 		}
-
+		std::cout << s << '\n';
+		std::cout << "==============================================="
+			"=================================\n";
 	}
-	std::cout << n_midi_files << " Midi files\n";
-	//	<< n_smpte_files << " with SMPTE 'division' fields\n"
-	//	<< n_smpte_err << " with Errors in their SMPTE value\n";
 	return 0;
 }
 
