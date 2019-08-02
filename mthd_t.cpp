@@ -224,6 +224,6 @@ std::string& print(const mthd_t& mthd, std::string& s) {
 
 
 maybe_mthd_t::operator bool() const {
-	return this->is_valid;
+	return this->code==mthd_error_t::errc::no_error;
 }
 

@@ -5,7 +5,6 @@
 #include <array>
 #include <type_traits>
 
-
 // midi_time_t 
 // Provides the information needed to convert midi ticks to seconds.  
 // The tpq field is contained in the MThd chunk of an smf; there is no

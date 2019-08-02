@@ -153,7 +153,9 @@ private:
 std::string print(const mthd_t&);
 std::string& print(const mthd_t&, std::string&);
 
-
+//
+// template <typename InIt>
+// maybe_mthd_t make_mthd(InIt it, InIt end, mthd_error_t *err)
 //
 // Low-level validation & processing of MThd chunks
 // <Header Chunk> = <chunk type> <length> <format> <ntrks> <division>  
@@ -161,7 +163,9 @@ std::string& print(const mthd_t&, std::string&);
 // - If division specifies an SMPTE value, the only allowed values of
 //   time code are -24, -25, -29, or -30.  
 // - The smallest value allowed for the 'length' field is 6.  
-// Larger values for 'length' (up to mthd_t::length_max) are allowed.  
+// Larger values for 'length' (up to mthd_t::length_max) are allowed, but 
+//   the specified number of bytes must actually be extractable from the
+//   iterators.  
 // From the MIDI std p.134:
 //  "Also, more parameters may be added to the MThd chunk in the 
 //  future: it is important to read and honor the length, even if it is 
@@ -173,9 +177,6 @@ std::string& print(const mthd_t&, std::string&);
 //  still read other MTrk chunks it finds from the file, as format
 //  1 or 2, if its user can make sense..."
 //
-//
-// maybe_mthd_t make_mthd(It beg, It end, lib_err_t err=lib_err_t())
-// And friends...
 //
 struct mthd_error_t {
 	enum class errc : uint8_t {
@@ -200,18 +201,19 @@ struct mthd_error_t {
 std::string explain(const mthd_error_t&);
 struct maybe_mthd_t {
 	mthd_t mthd;
-	bool is_valid {false};
+	mthd_error_t::errc code {mthd_error_t::errc::other};
 	operator bool() const;
 };
-
 template <typename InIt>
 maybe_mthd_t make_mthd(InIt it, InIt end, mthd_error_t *err) {
 	// <Header Chunk> = <chunk type> <length> <format> <ntrks> <division> 
 	//                   MThd uint32_t uint16_t uint16_t uint16_t
 
-	auto set_error = [&err](mthd_error_t::errc ec, 
+	maybe_mthd_t result;
+	auto set_error = [&err,&result](mthd_error_t::errc ec, 
 						uint32_t length, uint16_t fmt, uint16_t ntrks,
 						uint16_t div) -> void {
+		result.code = ec;
 		if (err) {
 			err->length = length;
 			err->format = fmt;
@@ -220,8 +222,7 @@ maybe_mthd_t make_mthd(InIt it, InIt end, mthd_error_t *err) {
 			err->code = ec;
 		}
 	};
-	maybe_mthd_t result;
-	result.is_valid = false;
+	
 	result.mthd.d_.resize(14);
 	auto dest = result.mthd.d_.begin();
 	int i=0;
@@ -290,10 +291,11 @@ maybe_mthd_t make_mthd(InIt it, InIt end, mthd_error_t *err) {
 		if (i!=len) {
 			set_error(mthd_error_t::errc::overflow,
 				length,format,ntrks,division);
+			return result;
 		}
 	}
 	
-	result.is_valid = true;
+	result.code = mthd_error_t::errc::no_error;
 	return result;
 };
 

@@ -18,7 +18,9 @@
 #include <vector>
 #include <iterator>
 #include <chrono>
-#include <thread>
+
+
+
 
 int midi_example() {
 
@@ -80,10 +82,11 @@ int midi_example() {
 
 
 	auto start1 = std::chrono::high_resolution_clock::now();
-	std::filesystem::path inp = "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\J_to_Z\\J_to_P\\M\\";
-	//std::filesystem::path inp = "C:\\Users\\ben\\Desktop\\midi_broken_mthd\\";
-	std::filesystem::path op = "C:\\Users\\ben\\Desktop\\midi_archive\\\out.txt";
-	inspect_mthds(inp);
+	//std::filesystem::path inp = "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\J_to_Z\\";
+	std::filesystem::path inp = "C:\\Users\\ben\\Desktop\\midi_broken_mthd\\";
+	std::filesystem::path op = "C:\\Users\\ben\\Desktop\\midi_archive\\out.txt";
+	inspect_mthds(inp,"yaaaaaaay.txt");
+	//inspect_mthds(inp,"");
 	//avg_and_max_event_sizes(inp,op);
 	auto end1 = std::chrono::high_resolution_clock::now();
 	auto d1 = std::chrono::duration_cast<std::chrono::milliseconds>(end1-start1).count();
@@ -207,7 +210,13 @@ int read_midi_directory(const std::filesystem::path& bp) {
 	return 0;
 }
 
-int inspect_mthds(const std::filesystem::path& bp) {
+int inspect_mthds(const std::filesystem::path& bp, 
+					const std::filesystem::path& of) {
+	auto outf = std::ofstream(of);
+	std::ostream* out = &outf;
+	if (of.empty()) {
+		out = &std::cout;
+	}
 	auto rdi = std::filesystem::recursive_directory_iterator(bp.parent_path());
 	int n_midi_files = 0;
 	for (const auto& dir_ent : rdi) {
@@ -216,7 +225,7 @@ int inspect_mthds(const std::filesystem::path& bp) {
 			continue;
 		}
 		++n_midi_files;
-
+		
 		std::basic_ifstream<unsigned char> f(curr_path,
 			std::ios_base::in|std::ios_base::binary);
 		if (!f.is_open() || !f.good()) {
@@ -224,10 +233,9 @@ int inspect_mthds(const std::filesystem::path& bp) {
 			std::cout << std::endl;
 			continue;
 		}
-		f.close();
-		
 		std::string s; s.reserve(1000);
 		s += curr_path.string() + '\n';
+
 		mthd_error_t mthd_error {};
 		auto it = std::istreambuf_iterator(f);
 		auto mthd = make_mthd(it,std::istreambuf_iterator<unsigned char>(),&mthd_error);
@@ -236,9 +244,11 @@ int inspect_mthds(const std::filesystem::path& bp) {
 		} else {
 			s += explain(mthd_error);
 		}
-		std::cout << s << '\n';
-		std::cout << "==============================================="
+		*out << s << '\n';
+		*out << "==============================================="
 			"=================================\n";
+
+		f.close();
 	}
 	return 0;
 }
