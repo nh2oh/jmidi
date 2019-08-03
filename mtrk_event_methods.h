@@ -106,29 +106,29 @@ std::vector<unsigned char> get_seqspecific(const mtrk_event_t&, std::vector<unsi
 //
 // For all these make_* functions, parameter 1 is a delta-time.  
 //
-mtrk_event_t make_seqn(const uint32_t&, const uint16_t&);
-mtrk_event_t make_chprefix(const uint32_t&, const uint8_t&);
-// mtrk_event_t make_tempo(const uint32_t&, const uint32_t&)
+mtrk_event_t make_seqn(const int32_t&, const uint16_t&);
+mtrk_event_t make_chprefix(const int32_t&, const uint8_t&);
+// mtrk_event_t make_tempo(const int32_t&, const uint32_t&)
 // Parameter 2 is us/quarter-note
 // A meta tempo event stores the tempo as a 24-bit int, hence the max
 // value is 0xFFFFFFu (==16777215); values larger are truncated to this
 // max value.  
-mtrk_event_t make_tempo(const uint32_t&, const uint32_t&);
-mtrk_event_t make_eot(const uint32_t&);
+mtrk_event_t make_tempo(const int32_t&, const uint32_t&);
+mtrk_event_t make_eot(const int32_t&);
 // TODO:  Are there bounds on the values of the ts params?
-mtrk_event_t make_timesig(const uint32_t&, const midi_timesig_t&);
-mtrk_event_t make_instname(const uint32_t&, const std::string&);
-mtrk_event_t make_trackname(const uint32_t&, const std::string&);
-mtrk_event_t make_lyric(const uint32_t&, const std::string&);
-mtrk_event_t make_marker(const uint32_t&, const std::string&);
-mtrk_event_t make_cuepoint(const uint32_t&, const std::string&);
-mtrk_event_t make_text(const uint32_t&, const std::string&);
-mtrk_event_t make_copyright(const uint32_t&, const std::string&);
+mtrk_event_t make_timesig(const int32_t&, const midi_timesig_t&);
+mtrk_event_t make_instname(const int32_t&, const std::string&);
+mtrk_event_t make_trackname(const int32_t&, const std::string&);
+mtrk_event_t make_lyric(const int32_t&, const std::string&);
+mtrk_event_t make_marker(const int32_t&, const std::string&);
+mtrk_event_t make_cuepoint(const int32_t&, const std::string&);
+mtrk_event_t make_text(const int32_t&, const std::string&);
+mtrk_event_t make_copyright(const int32_t&, const std::string&);
 // Writes the delta time, 0xFF, type, a vl-length, then the string into
 // the event.  If the uint8_t type byte does not correspond to a
 // text-containing meta event, returns a default-constructed mtrk_event_t
 // (which is a meta text event w/ payload size 0).  
-mtrk_event_t make_meta_generic_text(const uint32_t&, const meta_event_t&,
+mtrk_event_t make_meta_generic_text(const int32_t&, const meta_event_t&,
 									const std::string&);
 
 //

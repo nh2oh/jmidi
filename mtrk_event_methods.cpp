@@ -292,52 +292,52 @@ std::vector<unsigned char> get_seqspecific(const mtrk_event_t& ev,
 	}
 	return data;
 }
-mtrk_event_t make_seqn(const uint32_t& dt, const uint16_t& seqn) {
+mtrk_event_t make_seqn(const int32_t& dt, const uint16_t& seqn) {
 	std::array<unsigned char,5> d {0xFFu,0x00u,0x02u,0x00u,0x00u};
 	write_16bit_be(seqn, d.begin()+3);
-	return make_mtrk_event(d.data(),d.data()+d.size(),static_cast<int32_t>(dt),0,nullptr).event;
+	return make_mtrk_event(d.data(),d.data()+d.size(),dt,0,nullptr).event;
 }
-mtrk_event_t make_chprefix(const uint32_t& dt, const uint8_t& ch) {
+mtrk_event_t make_chprefix(const int32_t& dt, const uint8_t& ch) {
 	std::array<unsigned char,4> d {0xFFu,0x20u,0x01u,0x00u};
 	write_bytes(ch, d.begin()+3);
-	return make_mtrk_event(d.data(),d.data()+d.size(),static_cast<int32_t>(dt),0,nullptr).event;
+	return make_mtrk_event(d.data(),d.data()+d.size(),dt,0,nullptr).event;
 }
-mtrk_event_t make_tempo(const uint32_t& dt, const uint32_t& uspqn) {
+mtrk_event_t make_tempo(const int32_t& dt, const uint32_t& uspqn) {
 	std::array<unsigned char,6> d {0xFFu,0x51u,0x03u,0x00u,0x00u,0x00u};
 	write_24bit_be((uspqn>0xFFFFFFu ? 0xFFFFFFu : uspqn), d.begin()+3);
-	return make_mtrk_event(d.data(),d.data()+d.size(),static_cast<int32_t>(dt),0,nullptr).event;
+	return make_mtrk_event(d.data(),d.data()+d.size(),dt,0,nullptr).event;
 }
-mtrk_event_t make_eot(const uint32_t& dt) {
+mtrk_event_t make_eot(const int32_t& dt) {
 	std::array<unsigned char,3> d {0xFFu,0x2Fu,0x00u};
-	return make_mtrk_event(d.data(),d.data()+d.size(),static_cast<int32_t>(dt),0,nullptr).event;
+	return make_mtrk_event(d.data(),d.data()+d.size(),dt,0,nullptr).event;
 }
-mtrk_event_t make_timesig(const uint32_t& dt, const midi_timesig_t& ts) {
+mtrk_event_t make_timesig(const int32_t& dt, const midi_timesig_t& ts) {
 	std::array<unsigned char,7> d {0xFFu,0x58u,0x04u,
 		ts.num,ts.log2denom,ts.clckspclk,ts.ntd32pq};
-	return make_mtrk_event(d.data(),d.data()+d.size(),static_cast<int32_t>(dt),0,nullptr).event;
+	return make_mtrk_event(d.data(),d.data()+d.size(),dt,0,nullptr).event;
 }
-mtrk_event_t make_instname(const uint32_t& dt, const std::string& s) {
+mtrk_event_t make_instname(const int32_t& dt, const std::string& s) {
 	return make_meta_generic_text(dt,meta_event_t::instname,s);
 }
-mtrk_event_t make_trackname(const uint32_t& dt, const std::string& s) {
+mtrk_event_t make_trackname(const int32_t& dt, const std::string& s) {
 	return make_meta_generic_text(dt,meta_event_t::trackname,s);
 }
-mtrk_event_t make_lyric(const uint32_t& dt, const std::string& s) {
+mtrk_event_t make_lyric(const int32_t& dt, const std::string& s) {
 	return make_meta_generic_text(dt,meta_event_t::lyric,s);
 }
-mtrk_event_t make_marker(const uint32_t& dt, const std::string& s) {
+mtrk_event_t make_marker(const int32_t& dt, const std::string& s) {
 	return make_meta_generic_text(dt,meta_event_t::marker,s);
 }
-mtrk_event_t make_cuepoint(const uint32_t& dt, const std::string& s) {
+mtrk_event_t make_cuepoint(const int32_t& dt, const std::string& s) {
 	return make_meta_generic_text(dt,meta_event_t::cuepoint,s);
 }
-mtrk_event_t make_text(const uint32_t& dt, const std::string& s) {
+mtrk_event_t make_text(const int32_t& dt, const std::string& s) {
 	return make_meta_generic_text(dt,meta_event_t::text,s);
 }
-mtrk_event_t make_copyright(const uint32_t& dt, const std::string& s) {
+mtrk_event_t make_copyright(const int32_t& dt, const std::string& s) {
 	return make_meta_generic_text(dt,meta_event_t::copyright,s);
 }
-mtrk_event_t make_meta_generic_text(const uint32_t& dt, const meta_event_t& type, 
+mtrk_event_t make_meta_generic_text(const int32_t& dt, const meta_event_t& type, 
 									const std::string& s) {
 	auto type_int16 = static_cast<uint16_t>(type);  // TODO:  Gross
 	if (!meta_hastext_impl(type_int16)) {
@@ -352,7 +352,7 @@ mtrk_event_t make_meta_generic_text(const uint32_t& dt, const meta_event_t& type
 	// field of 4 bytes.  
 	auto it = write_vlq(s.size(),std::back_inserter(d));
 	std::copy(s.begin(),s.end(),std::back_inserter(d));
-	return make_mtrk_event(d.data(),d.data()+d.size(),static_cast<int32_t>(dt),0,nullptr).event;
+	return make_mtrk_event(d.data(),d.data()+d.size(),dt,0,nullptr).event;
 }
 
 
