@@ -280,8 +280,12 @@ maybe_smf_t read_smf(const std::filesystem::path& fp, smf_error_t *err) {
 
 		if (header.id == chunk_id::mtrk) {
 			mtrk_error_t mtrk_error {};
-			auto curr_mtrk = make_mtrk_permissive(p,end_curr_chunk,
+			//auto curr_mtrk = make_mtrk_permissive(p,end_curr_chunk,
+			//	&mtrk_error);
+			auto curr_mtrk = make_mtrk(p,end_curr_chunk,
 				&mtrk_error);
+
+
 			// push_back the mtrk even if invalid; make_mtrk will return a
 			// partial mtrk terminating at the event right before the error,
 			// and this partial mtrk may be useful to the user.  

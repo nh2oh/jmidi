@@ -2,6 +2,7 @@
 #include "midi_raw.h"  // midi_time_t
 #include "generic_chunk_low_level.h"  // chunk_header_error_t in mtrk_error_t
 #include "mtrk_event_t.h"
+#include "mtrk_event_methods.h"  // is_eot()
 #include "..\..\generic_iterator.h"
 #include <string>
 #include <cstdint>
@@ -11,6 +12,7 @@
 #include <algorithm>  // std::rotate()
 #include <iterator>  // std::back_inserter
 
+struct mtrk_error_t;
 struct maybe_mtrk_t;
 
 // Intended to represent an event occuring in an mtrk at a tk value given
@@ -174,6 +176,10 @@ public:
 	validate_t validate() const;
 private:
 	std::vector<mtrk_event_t> evnts_ {};
+
+	template <typename InIt>
+	friend maybe_mtrk_t make_mtrk(InIt, InIt, mtrk_error_t*);
+
 };
 std::string print(const mtrk_t&);
 // Prints each mtrk event as hexascii (using dbk::print_hexascii()) along
@@ -234,8 +240,6 @@ struct maybe_mtrk_t {
 	operator bool() const;
 };
 
-//
-// TODO:  Should make this a friend and access mtrk.evnts_ directly
 template <typename InIt>
 maybe_mtrk_t make_mtrk(InIt it, InIt end, mtrk_error_t *err) {
 	maybe_mtrk_t result;
@@ -261,7 +265,7 @@ maybe_mtrk_t make_mtrk(InIt it, InIt end, mtrk_error_t *err) {
 		*dest++ = *it++;  ++i;
 	}
 	if (i!=8) {
-		set_error(mthd_error_t::errc::header_error,0u,i);
+		set_error(mtrk_error_t::errc::header_error,0u,i);
 		return result;
 	}
 	if (!is_mtrk_header_id(header.data(),header.data()+header.size())) {
@@ -270,7 +274,7 @@ maybe_mtrk_t make_mtrk(InIt it, InIt end, mtrk_error_t *err) {
 	}
 	auto ulen = read_be<uint32_t>(header.data()+4,header.data()+header.size());
 	if (ulen > mtrk_t::length_max) {
-		set_error(mthd_error_t::errc::invalid_length,ulen,i);
+		set_error(mtrk_error_t::errc::length_gt_mtrk_max,ulen,i);
 		return result;
 	}
 	auto len = static_cast<int32_t>(ulen);
@@ -278,31 +282,33 @@ maybe_mtrk_t make_mtrk(InIt it, InIt end, mtrk_error_t *err) {
 	// From experience with thousands of midi files encountered in the wild,
 	// the average number of bytes per MTrk event is about 3.  
 	auto approx_nevents = static_cast<double>(len/3.0);
-	result.mtrk.reserve(static_cast<mtrk_t::size_type>(approx_nevents));
+	result.mtrk.evnts_.reserve(static_cast<mtrk_t::size_type>(approx_nevents));
 
 	bool found_eot = false;
 	unsigned char rs = 0x00u;  // value of the running-status
+	maybe_mtrk_event_t curr_event;
 	while (it!=end && !found_eot) {
-		auto curr_event = make_mtrk_event(it,end,rs,nullptr);
-		i += curr_event.size;
+		it = make_mtrk_event(it,end,rs,&curr_event,nullptr);
+		i += curr_event.nbytes_read;
 		if (!curr_event) {
 			set_error(mtrk_error_t::errc::invalid_event,ulen,i);
 			return result;
 		}
 		rs = curr_event.event.running_status();
-		result.mtrk.push_back(curr_event.event);
+		result.mtrk.evnts_.push_back(std::move(curr_event.event));
 
 		if (!found_eot) {
-			found_eot = is_eot(dest->back());
+			found_eot = is_eot(result.mtrk.evnts_.back());
 		}
 		
-		it += curr_event.size;
+		//it += curr_event.size;
 	}
 	if (!found_eot) {
 		set_error(mtrk_error_t::errc::no_eot_event,ulen,i);
 		return result;
 	}
 
+	result.is_valid = true;
 	result.nbytes_read = i;
 	return result;
 };

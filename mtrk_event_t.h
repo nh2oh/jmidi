@@ -69,13 +69,8 @@ struct iterator_range_t {
 
 struct mtrk_event_error_t;
 struct maybe_mtrk_event_t;
-struct mtrk_event_debug_helper_t;/* {
-	const unsigned char *raw_beg {nullptr};
-	const unsigned char *raw_end {nullptr};
-	unsigned char flags {0x00u};
-	bool is_big {false};
-};
-*/
+struct mtrk_event_debug_helper_t;
+
 struct mtrk_event_container_types_t {
 	using value_type = unsigned char;
 	using size_type = int32_t;
@@ -219,9 +214,6 @@ struct mtrk_event_error_t {
 	unsigned char rs;
 	unsigned char s;
 	mtrk_event_error_t::errc code;
-
-	/*void set(mtrk_event_error_t::errc, int32_t, unsigned char, unsigned char, 
-			const unsigned char*, const unsigned char*);*/
 };
 struct maybe_mtrk_event_t {
 	mtrk_event_t event;
@@ -353,7 +345,11 @@ InIt make_mtrk_event(InIt it, InIt end, int32_t dt,
 	// The largest possible event "header" is 10 bytes, corresponding to
 	// a meta event w/a 4-byte delta time and a 4 byte vlq length field:
 	// 10 == 4-byte dt + 0xFF + type-byte + 4-byte len vlq
-	result->event.d_.resize(10);
+	if (result->event.size() < 10) {
+		// If the caller has already allocated something bigger, don't
+		// force a big->small transition
+		result->event.d_.resize(10);
+	}
 	auto dest = result->event.d_.begin();
 	result->nbytes_read = 0;
 	result->error = mtrk_event_error_t::errc::other;
