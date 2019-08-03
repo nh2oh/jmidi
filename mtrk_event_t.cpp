@@ -249,21 +249,6 @@ validate_meta_event_result_t::operator bool() const {
 validate_sysex_event_result_t::operator bool() const {
 	return this->error==mtrk_event_error_t::errc::no_error;
 }
-void mtrk_event_error_t::set(mtrk_event_error_t::errc code, int32_t dt,
-			unsigned char rs, unsigned char s, const unsigned char *beg, 
-			const unsigned char *end) {
-	this->code = code;
-	this->dt_input = dt;
-	this->header.fill(0x00u);
-	this->rs = rs;
-	this->s = s;
-	if (!beg || !end || (beg>=end)) { return; }
-	auto n = end-beg;
-	if (n > static_cast<int>(this->header.size())) {
-		n = static_cast<int>(this->header.size());
-	}
-	std::copy(beg,beg+n,this->header.begin());
-}
 
 validate_channel_event_result_t
 validate_channel_event(const unsigned char *beg, const unsigned char *end,

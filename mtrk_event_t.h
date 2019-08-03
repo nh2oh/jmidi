@@ -6,7 +6,7 @@
 #include <string>  // For declaration of print()
 #include <cstdint>
 #include <vector>
-
+#include <utility>  // std::pair
 
 
 
@@ -174,16 +174,18 @@ private:
 					bool, const std::vector<unsigned char>&);
 
 	template <typename InIt>
-	friend maybe_mtrk_event_t *make_mtrk_event_impl(maybe_mtrk_event_t*, 
-						unsigned char*, InIt, InIt, unsigned char, 
-						mtrk_event_error_t *err);
-
+	friend InIt make_mtrk_event(InIt, InIt, unsigned char, 
+				maybe_mtrk_event_t*, mtrk_event_error_t*);
 	template <typename InIt>
-	friend maybe_mtrk_event_t make_mtrk_event(InIt, InIt, unsigned char, 
-									mtrk_event_error_t*);
+	friend InIt make_mtrk_event(InIt, InIt, int32_t, 
+							unsigned char, maybe_mtrk_event_t*, 
+							mtrk_event_error_t*);
 	template <typename InIt>
-	friend maybe_mtrk_event_t make_mtrk_event(int32_t, InIt, InIt, 
-									unsigned char, mtrk_event_error_t*);
+	friend maybe_mtrk_event_t make_mtrk_event(InIt, InIt, 
+								unsigned char, mtrk_event_error_t*);
+	template <typename InIt>
+	friend maybe_mtrk_event_t make_mtrk_event(InIt, InIt, int32_t, 
+								unsigned char, mtrk_event_error_t*);
 
 	friend mtrk_event_debug_helper_t debug_info(const mtrk_event_t&);
 };
@@ -211,23 +213,20 @@ struct mtrk_event_error_t {
 		no_error,
 		other
 	};
-	std::array<unsigned char,12> header;
-	// The delta-time either passed in directly to overload 2, or 
-	// processed from the input buffer for overload 1.  
-	int32_t dt_input;
+	std::array<unsigned char,12> data;
 	// The running status passed in to the make_ function; the status
 	// byte deduced for the event from rs and the input buffer
 	unsigned char rs;
 	unsigned char s;
-	mtrk_event_error_t::errc code {mtrk_event_error_t::errc::other};
+	mtrk_event_error_t::errc code;
 
-	void set(mtrk_event_error_t::errc, int32_t, unsigned char, unsigned char, 
-			const unsigned char*, const unsigned char*);
+	/*void set(mtrk_event_error_t::errc, int32_t, unsigned char, unsigned char, 
+			const unsigned char*, const unsigned char*);*/
 };
 struct maybe_mtrk_event_t {
 	mtrk_event_t event;
-	int32_t size;
-	mtrk_event_error_t::errc error;// {mtrk_event_error_t::errc::other};
+	int32_t nbytes_read;
+	mtrk_event_error_t::errc error;
 	operator bool() const;
 };
 
@@ -260,21 +259,43 @@ validate_sysex_event_result_t
 validate_sysex_event(const unsigned char*, const unsigned char*);
 
 
+
+//
+// make_mtrk_event() overloads
+//
+//
+// template <typename InIt>
+// InIt make_mtrk_event(InIt it, InIt end, unsigned char rs, 
+//			maybe_mtrk_event_t *result, mtrk_event_error_t *err);
+// template <typename InIt>
+// maybe_mtrk_event_t make_mtrk_event(InIt it, InIt end, 
+//							unsigned char rs, mtrk_event_error_t *err);
+//
+// 'it' points at the first byte of the delta-time field of an MTrk
+// event.  *err may be null, *result must not be null.  
+//
+//
+//template <typename InIt>
+//InIt make_mtrk_event(InIt it, InIt end, int32_t dt, 
+//						unsigned char rs, maybe_mtrk_event_t *result, 
+//						mtrk_event_error_t *err);
+//template <typename InIt>
+//maybe_mtrk_event_t make_mtrk_event(InIt it, InIt end, int32_t dt, 
+//							unsigned char rs, mtrk_event_error_t *err);
 // 
-// maybe_mtrk_event_t *result has the delta-time field aready written into
-// result->event.d_, dest points into result->event.d_ one past the end of 
-// the dt field, and result->event.size==10.  
+// 'it' points one past the final byte of the delta-time field of an
+// MTrk event.  *err may be null, *result may not be null.  
+//
 template <typename InIt>
-maybe_mtrk_event_t *make_mtrk_event_impl(maybe_mtrk_event_t *result, 
-			unsigned char *dest, InIt it, InIt end, unsigned char rs, 
-			mtrk_event_error_t *err) {
+InIt make_mtrk_event(InIt it, InIt end, unsigned char rs, 
+			maybe_mtrk_event_t *result, mtrk_event_error_t *err) {
 
 	int i = 0;  // Counts the number of times 'it' has been incremented
 	unsigned char uc = 0;  // The last byte extracted from 'it'
 
 	auto set_error = [&err,&result,&rs,&i](mtrk_event_error_t::errc ec) -> void {
 		result->error = ec;
-		result->size = i;
+		result->nbytes_read = i;
 		if (err) {
 			err->rs = rs;
 			err->code = ec;
@@ -299,10 +320,84 @@ maybe_mtrk_event_t *make_mtrk_event_impl(maybe_mtrk_event_t *result,
 		return static_cast<int32_t>(uval);
 	};
 
+	// The delta-time field
+	// make_mtrk_event_evstart() checks is_valid_delta_time(dt)
+	auto dt = inl_read_vlq();
+	if (uc&0x80u) {
+		set_error(mtrk_event_error_t::errc::invalid_delta_time);
+		return it;
+	}
+
+	// result->nbytes_read,event,size, etc is untouched; if the caller 
+	// passed in a ptr to an uninitialized result, these values are 
+	// garbage; this is ok!
+	it = make_mtrk_event(it, end, dt, rs, result, err);
+	result->nbytes_read += i;
+	return it;
+};
+
+
+// 
+// maybe_mtrk_event_t *result is empty; it points one past the end of a 
+// dt field.  
+//
+// TODO:  If exiting due to error, result->event.size() is in general >
+// the number of bytes written in to it; count resize() to 
+// dest-event.begin() in set_error().  
+//
+template <typename InIt>
+InIt make_mtrk_event(InIt it, InIt end, int32_t dt, 
+						unsigned char rs, maybe_mtrk_event_t *result, 
+						mtrk_event_error_t *err) {
+	// Initialize 'result'
+	// The largest possible event "header" is 10 bytes, corresponding to
+	// a meta event w/a 4-byte delta time and a 4 byte vlq length field:
+	// 10 == 4-byte dt + 0xFF + type-byte + 4-byte len vlq
+	result->event.d_.resize(10);
+	auto dest = result->event.d_.begin();
+	result->nbytes_read = 0;
+	result->error = mtrk_event_error_t::errc::other;
+	int i = 0;  // Counts the number of times 'it' has been incremented
+	unsigned char uc = 0;  // The last byte extracted from 'it'
+
+	auto set_error = [&err,&result,&rs,&i](mtrk_event_error_t::errc ec) -> void {
+		result->error = ec;
+		result->nbytes_read = i;
+		if (err) {
+			err->rs = rs;
+			err->code = ec;
+		}
+	};
+
+	// On return, 'it' points one past the final byte of the field, and uc
+	// is the final byte of the field.  This holds even for invalid fields
+	// where the msb of the 4'th byte  == 1.  
+	auto inl_read_vlq = [&it, &end, &i, &uc]()->int32_t {
+		uint32_t uval = 0;
+		int j = 0;
+		while (it!=end) {
+			uc = *it++;  ++i;  ++j;
+			uval += uc&0x7Fu;
+			if ((uc&0x80u) && (j<4)) {
+				uval <<= 7;  // Note:  Not shifting on the final iteration
+			} else {  // High bit not set => this is the final byte
+				break;
+			}
+		}
+		return static_cast<int32_t>(uval);
+	};
+
+	// The delta-time field
+	if (!is_valid_delta_time(dt)) {
+		set_error(mtrk_event_error_t::errc::invalid_delta_time);
+		return it;
+	}
+	dest = write_delta_time(dt,dest);
+
 	// The status byte
 	if (it==end) {
 		set_error(mtrk_event_error_t::errc::no_data_following_delta_time);
-		return result;
+		return it;
 	}
 	uc = *it++;  ++i;
 	auto s = get_status_byte(uc,rs);
@@ -317,12 +412,12 @@ maybe_mtrk_event_t *make_mtrk_event_impl(maybe_mtrk_event_t *result,
 		for (int j=0; j<n; ++j) {
 			if (it==end) {
 				set_error(mtrk_event_error_t::errc::channel_calcd_length_exceeds_input);
-				return result;
+				return it;
 			}
 			uc = *it++;  ++i;
 			if (!is_data_byte(uc)) {
 				set_error(mtrk_event_error_t::errc::channel_invalid_data_byte);
-				return result;
+				return it;
 			}
 			*dest++ = uc;
 		}
@@ -332,134 +427,63 @@ maybe_mtrk_event_t *make_mtrk_event_impl(maybe_mtrk_event_t *result,
 		if (is_meta_status_byte(s)) {
 			if (it==end) {
 				set_error(mtrk_event_error_t::errc::sysex_or_meta_overflow_in_header);
-				return result;
+				return it;
 			}
 			uc = *it++;  ++i;  // The Meta-type byte
 			*dest++ = uc;
 		}
 		if (it==end) {
 			set_error(mtrk_event_error_t::errc::sysex_or_meta_overflow_in_header);
-			return result;
+			return it;
 		}
 		auto len = inl_read_vlq();
 		if (uc & 0x80u) {
 			set_error(mtrk_event_error_t::errc::sysex_or_meta_invalid_vlq_length);
-			return result;
+			return it;
 		}
 		dest = write_vlq(static_cast<uint32_t>(len),dest);
 		auto n_written = (dest-result->event.d_.begin());
 		result->event.d_.resize(n_written+len);  // Resize may invalidate dest
 		dest = result->event.d_.begin()+n_written;
 
-		int j=0;
-		for (true; (j<len && it!=end); ++j) {
+		for (int j=0; (j<len && it!=end); ++j) {
+			if (it==end) {
+				set_error(mtrk_event_error_t::errc::sysex_or_meta_calcd_length_exceeds_input);
+				return it;
+			}
 			uc = *it++;  ++i;
 			*dest++ = uc;
 		}
-		if (j!=len) {
-			set_error(mtrk_event_error_t::errc::sysex_or_meta_calcd_length_exceeds_input);
-			return result;
-		}
 	} else if (is_unrecognized_status_byte(s) || !is_status_byte(s)) {
 		set_error(mtrk_event_error_t::errc::invalid_status_byte);
-		return result;
+		return it;
 	}
 
-	result->size = (dest - result->event.d_.begin());
-	result->event.d_.resize(result->size);
+	result->event.d_.resize(dest - result->event.d_.begin());
+	result->nbytes_read = i;
 	result->error = mtrk_event_error_t::errc::no_error;
-	return result;
+	return it;
 };
-//
-// It, end point into a byte array _not_ beginning w/a delta-time.  
+
+
+// 
+// it points at the first byte of a dt field.  
 //
 template <typename InIt>
-maybe_mtrk_event_t make_mtrk_event(int32_t dt, InIt it, InIt end, 
-								unsigned char rs, mtrk_event_error_t *err) {
+maybe_mtrk_event_t make_mtrk_event(InIt it, InIt end, 
+							unsigned char rs, mtrk_event_error_t *err) {
 	maybe_mtrk_event_t result;
-	result.error = mtrk_event_error_t::errc::other;
-	int i = 0;  // Counts the number of times 'it' has been incremented
-	unsigned char uc = 0;  // The last byte extracted from 'it'
-
-	auto set_error = [&err,&result,&rs,&i](mtrk_event_error_t::errc ec) -> void {
-		result.error = ec;
-		result.size = i;
-		if (err) {
-			err->rs = rs;
-			err->code = ec;
-		}
-	};
-
-	// The largest possible event "header" is 10 bytes, corresponding to
-	// a meta event w/a 4-byte delta time and a 4 byte vlq length field:
-	// 10 == 4-byte dt + 0xFF + type-byte + 4-byte len vlq
-	result.event.d_.resize(10);
-	auto dest = result.event.d_.begin();
-
-	// The delta-time field
-	if (!is_valid_delta_time(dt)) {
-		set_error(mtrk_event_error_t::errc::invalid_delta_time);
-		return result;
-	}
-	dest = write_delta_time(dt,dest);
-	
-	make_mtrk_event_impl(&result,dest,it,end,rs,err);
+	it = make_mtrk_event(it,end,rs,&result,err);
 	return result;
 };
-//
-// It, end point into a byte array beginning w/a delta-time.  
+// 
+// it points one past the end of a dt field.  
 //
 template <typename InIt>
-maybe_mtrk_event_t make_mtrk_event(InIt it, InIt end, unsigned char rs, 
-									mtrk_event_error_t *err) {
+maybe_mtrk_event_t make_mtrk_event(InIt it, InIt end, int32_t dt, 
+							unsigned char rs, mtrk_event_error_t *err) {
 	maybe_mtrk_event_t result;
-	result.error = mtrk_event_error_t::errc::other;
-	int i = 0;  // Counts the number of times 'it' has been incremented
-	unsigned char uc = 0;  // The last byte extracted from 'it'
-
-	auto set_error = [&err,&result,&rs,&i](mtrk_event_error_t::errc ec) -> void {
-		result.error = ec;
-		result.size = i;
-		if (err) {
-			err->rs = rs;
-			err->code = ec;
-		}
-	};
-	// On return, 'it' points one past the final byte of the field, and uc
-	// is the final byte of the field.  This holds even for invalid fields
-	// where the msb of the 4'th byte  == 1.  
-	auto inl_read_vlq = [&it, &end, &i, &uc]()->int32_t {
-		uint32_t uval = 0;
-		int j = 0;
-		while (it!=end) {
-			uc = *it++;  ++i;  ++j;
-			uval += uc&0x7Fu;
-			if ((uc&0x80u) && (j<4)) {
-				uval <<= 7;  // Note:  Not shifting on the final iteration
-			} else {  // High bit not set => this is the final byte
-				break;
-			}
-		}
-		return static_cast<int32_t>(uval);
-	};
-
-	// The largest possible event "header" is 10 bytes, corresponding to
-	// a meta event w/a 4-byte delta time and a 4 byte vlq length field:
-	// 10 == 4-byte dt + 0xFF + type-byte + 4-byte len vlq
-	result.event.d_.resize(10);
-	auto dest = result.event.d_.begin();
-
-	// The delta-time field
-	auto dt = inl_read_vlq();
-	if (uc & 0x80u) {
-		set_error(mtrk_event_error_t::errc::invalid_delta_time);
-		return result;
-	}
-	dest = write_delta_time(dt,dest);
-	
-	make_mtrk_event_impl(&result, dest, it, end, rs, err);
+	it = make_mtrk_event(it,end,dt,rs,&result,err);
 	return result;
 };
-
-
 

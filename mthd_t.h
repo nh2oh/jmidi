@@ -228,7 +228,7 @@ maybe_mthd_t make_mthd(InIt it, InIt end, mthd_error_t *err) {
 	int i=0;
 	
 	//
-	// {'M','T','r','k'}
+	// {'M','T','h','d'}
 	//
 	i = 0;
 	while ((it!=end)&&(i<8)) {

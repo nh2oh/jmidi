@@ -85,7 +85,7 @@ int midi_example() {
 	//std::filesystem::path inp = "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\J_to_Z\\";
 	std::filesystem::path inp = "C:\\Users\\ben\\Desktop\\midi_broken_mthd\\";
 	std::filesystem::path op = "C:\\Users\\ben\\Desktop\\midi_archive\\out.txt";
-	inspect_mthds(inp,"yaaaaaaay.txt");
+	inspect_mthds(inp,op);
 	//inspect_mthds(inp,"");
 	//avg_and_max_event_sizes(inp,op);
 	auto end1 = std::chrono::high_resolution_clock::now();

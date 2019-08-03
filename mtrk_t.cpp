@@ -48,7 +48,8 @@ mtrk_t::mtrk_t(const unsigned char *p, uint32_t max_sz) {
 		}
 		rs = curr_event.event.running_status();
 		this->evnts_.push_back(curr_event.event);
-		o += curr_event.size;
+		//o += curr_event.size;
+		o += curr_event.nbytes_read;
 	}
 }
 mtrk_t::mtrk_t(mtrk_t::const_iterator beg, mtrk_t::const_iterator end) {
@@ -725,7 +726,8 @@ mtrk_from_event_seq_result_t make_mtrk_from_event_seq_array(const unsigned char 
 			found_eot = is_eot(dest->back());
 		}
 
-		p += curr_event.size;
+		//p += curr_event.size;
+		p += curr_event.nbytes_read;
 	}
 
 	return mtrk_from_event_seq_result_t {p,rs};
