@@ -159,9 +159,6 @@ const mthd_t& smf_t::mthd() const {
 mthd_t& smf_t::mthd() {
 	return this->mthd_;
 }
-/*void smf_t::set_mthd(const validate_mthd_chunk_result_t& val_mthd) {
-	this->mthd_ = mthd_t(val_mthd);
-}*/
 void smf_t::set_mthd(const maybe_mthd_t& mthd) {
 	if (mthd) {
 		this->mthd_ = mthd.mthd;
@@ -204,233 +201,45 @@ std::string print(const smf_t& smf) {
 maybe_smf_t::operator bool() const {
 	return this->error==smf_error_t::errc::no_error;
 }
-maybe_smf_t read_smf(const std::filesystem::path& fp) {
-	return read_smf(fp,nullptr);
-}
 maybe_smf_t read_smf(const std::filesystem::path& fp, smf_error_t *err) {
 	maybe_smf_t result;
-	mthd_error_t mthd_error;
-	mtrk_error_t mtrk_error;
-	std::ptrdiff_t i = 0;  // The number of bytes read from the stream
-
-
-	auto set_error = [&result,&err,&i,&mthd_error,&mtrk_error]
-					(smf_error_t::errc ec, int expect_ntrks, 
-						int n_mtrks_read, int n_uchks_read)->void {
-		result.nbytes_read = i;
-		result.error = ec;
-		if (err) {
-			err->code = ec;
-			err->mthd_err_obj = mthd_error;
-			err->mtrk_err_obj = mtrk_error;
-			err->num_mtrks_read = n_mtrks_read;
-			err->num_uchks_read = n_uchks_read;
-			err->expect_num_mtrks = expect_ntrks;
-		}
-	};
-
 	std::basic_ifstream<unsigned char> f(fp,std::ios::in|std::ios::binary);
-	std::istreambuf_iterator<unsigned char> myit(f);
+	std::istreambuf_iterator<unsigned char> it(f);
+	auto end = std::istreambuf_iterator<unsigned char>();
 
 	if (!f.is_open() || !f.good()) {
 		result.error = smf_error_t::errc::file_read_error;
 		if (err) {
 			err->code = smf_error_t::errc::file_read_error;
-			//*err += "Unable to open file:  (!f.is_open() || !f.good()).  "
-			//	"std::basic_ifstream<unsigned char> f";
 		}
 		return result;
 	}
-
 	
-	auto end = std::istreambuf_iterator<unsigned char>();
-	maybe_mthd_t maybe_mthd;
-	myit = make_mthd(myit,end,&maybe_mthd,&mthd_error);
-	i += maybe_mthd.nbytes_read;
-	if (!maybe_mthd) {
-		set_error(smf_error_t::errc::mthd_error,0,0,0);
-		f.close();
-		return result;
-	}
-	result.smf.set_mthd(maybe_mthd);
-	
-	auto expect_ntrks = result.smf.mthd().ntrks();
-	int n_mtrks_read = 0;
-	int n_uchks_read = 0;
-	maybe_mtrk_t curr_mtrk;
-	while ((myit!=end) && (n_mtrks_read<expect_ntrks)) {
-		myit = make_mtrk(myit,end,&curr_mtrk,&mtrk_error);
-		i += curr_mtrk.nbytes_read;
-		if (!curr_mtrk && (curr_mtrk.error == mtrk_error_t::errc::valid_but_non_mtrk_id)) {
-			auto ph = mtrk_error.header.data();
-			auto hsz = mtrk_error.header.size();
-			if (!is_mthd_header_id(ph,ph+hsz)) {
-				std::vector<unsigned char> curr_uchk;
-				auto bi_uchk = std::back_inserter(curr_uchk);
-				std::copy(ph,ph+hsz,bi_uchk);
-				auto uchk_sz = read_be<uint32_t>(ph+4,ph+hsz);
-				int j=0;
-				for (j=0; (myit!=end && j<uchk_sz); ++j) {
-					*bi_uchk++ = *myit++;  ++i;
-				}
-				if (j!=uchk_sz) {
-					set_error(smf_error_t::errc::overflow_reading_uchk,
-						expect_ntrks,n_mtrks_read,n_uchks_read);
-					f.close();
-					return result;
-				}
-				++n_uchks_read;
-				result.smf.push_back(curr_uchk);
-				continue;
-			}
-		}
-
-		// push_back the mtrk even if invalid; make_mtrk will return a
-		// partial mtrk terminating at the event right before the error,
-		// and this partial mtrk may be useful to the user.  
-		result.smf.push_back(curr_mtrk.mtrk);
-		curr_mtrk.mtrk.clear();
-
-		if (!curr_mtrk) {
-			set_error(smf_error_t::errc::mtrk_error,expect_ntrks,
-				n_mtrks_read,n_uchks_read);
-			f.close();
-			return result;
-		}
-		++n_mtrks_read;
-	}
-
-	// Might indicate the file is zero-padded after the final chunk.  
-	if (myit!=end) {
-		set_error(smf_error_t::errc::terminated_before_end_of_file,
-				expect_ntrks,n_mtrks_read,n_uchks_read);
-		f.close();
-		return result;
-	}
-
-	if (n_mtrks_read != expect_ntrks) {
-		set_error(smf_error_t::errc::unexpected_num_mtrks,
-				expect_ntrks,n_mtrks_read,n_uchks_read);
-		f.close();
-		return result;
-	}
-	
-	f.close();
-	result.error = smf_error_t::errc::no_error;
-	result.nbytes_read = i;
+	make_smf(it,end,&result,err);
 	return result;
-}
+};
 
-maybe_smf_t read_smf_bulkfileread(const std::filesystem::path& fp, smf_error_t *err) {
+maybe_smf_t read_smf_bulkfileread(const std::filesystem::path& fp, 
+									smf_error_t *err) {
 	maybe_smf_t result;
-	mthd_error_t mthd_error;
-	mtrk_error_t mtrk_error;
-	std::ptrdiff_t i = 0;  // The number of bytes read from the stream
-
-	auto set_error = [&result,&err,&i,&mthd_error,&mtrk_error]
-					(smf_error_t::errc ec, int expect_ntrks, 
-						int n_mtrks_read, int n_uchks_read)->void {
-		result.nbytes_read = i;
-		result.error = ec;
-		if (err) {
-			err->code = ec;
-			err->mthd_err_obj = mthd_error;
-			err->mtrk_err_obj = mtrk_error;
-			err->num_mtrks_read = n_mtrks_read;
-			err->num_uchks_read = n_uchks_read;
-			err->expect_num_mtrks = expect_ntrks;
-		}
-	};
-
-	// Read the file into fdata, close the file
-	std::vector<unsigned char> fdata {};
-	std::basic_ifstream<unsigned char> f(fp,std::ios_base::in|std::ios_base::binary);
-
+	std::basic_ifstream<unsigned char> f(fp,
+		std::ios_base::in|std::ios_base::binary);
 	if (!f.is_open() || !f.good()) {
 		if (err) {
 			err->code = smf_error_t::errc::file_read_error;
-			//*err += "Unable to open file:  (!f.is_open() || !f.good()).  "
-			//	"std::basic_ifstream<unsigned char> f";
 		}
 		return result;
 	}
 	f.seekg(0,std::ios::end);
 	auto fsize = f.tellg();
 	f.seekg(0,std::ios::beg);
-	fdata.resize(fsize);
+	std::vector<unsigned char> fdata(fsize);
 	f.read(fdata.data(),fsize);
 	f.close();
-
-	const unsigned char *myit = fdata.data();
+	const unsigned char *it = fdata.data();
 	const unsigned char *end = fdata.data()+fdata.size();
-	maybe_mthd_t maybe_mthd;
-	myit = make_mthd(myit,end,&maybe_mthd,&mthd_error);
-	i += maybe_mthd.nbytes_read;
-	if (!maybe_mthd) {
-		set_error(smf_error_t::errc::mthd_error,0,0,0);
-		return result;
-	}
-	result.smf.set_mthd(maybe_mthd);
 	
-	auto expect_ntrks = result.smf.mthd().ntrks();
-	int n_mtrks_read = 0;
-	int n_uchks_read = 0;
-	maybe_mtrk_t curr_mtrk;
-	while ((myit!=end) && (n_mtrks_read<expect_ntrks)) {
-		myit = make_mtrk(myit,end,&curr_mtrk,&mtrk_error);
-		i += curr_mtrk.nbytes_read;
-		if (!curr_mtrk && (curr_mtrk.error == mtrk_error_t::errc::valid_but_non_mtrk_id)) {
-			auto ph = mtrk_error.header.data();
-			auto hsz = mtrk_error.header.size();
-			if (!is_mthd_header_id(ph,ph+hsz)) {
-				std::vector<unsigned char> curr_uchk;
-				auto bi_uchk = std::back_inserter(curr_uchk);
-				std::copy(ph,ph+hsz,bi_uchk);
-				auto uchk_sz = read_be<uint32_t>(ph+4,ph+hsz);
-				int j=0;
-				for (j=0; (myit!=end && j<uchk_sz); ++j) {
-					*bi_uchk++ = *myit++;  ++i;
-				}
-				if (j!=uchk_sz) {
-					set_error(smf_error_t::errc::overflow_reading_uchk,
-						expect_ntrks,n_mtrks_read,n_uchks_read);
-					return result;
-				}
-				++n_uchks_read;
-				result.smf.push_back(curr_uchk);
-				continue;
-			}
-		}
-
-		// push_back the mtrk even if invalid; make_mtrk will return a
-		// partial mtrk terminating at the event right before the error,
-		// and this partial mtrk may be useful to the user.  
-		result.smf.push_back(curr_mtrk.mtrk);
-		curr_mtrk.mtrk.clear();
-
-		if (!curr_mtrk) {
-			set_error(smf_error_t::errc::mtrk_error,expect_ntrks,
-				n_mtrks_read,n_uchks_read);
-			return result;
-		}
-		++n_mtrks_read;
-	}
-
-	// Might indicate the file is zero-padded after the final chunk.  
-	if (myit!=end) {
-		set_error(smf_error_t::errc::terminated_before_end_of_file,
-				expect_ntrks,n_mtrks_read,n_uchks_read);
-		return result;
-	}
-
-	if (n_mtrks_read != expect_ntrks) {
-		set_error(smf_error_t::errc::unexpected_num_mtrks,
-				expect_ntrks,n_mtrks_read,n_uchks_read);
-		return result;
-	}
-	
-	result.error = smf_error_t::errc::no_error;
-	result.nbytes_read = i;
+	make_smf(it,end,&result,err);
 	return result;
 }
 
@@ -440,6 +249,7 @@ std::string explain(const smf_error_t& err) {
 		return s;
 	}
 
+	s.reserve(500);
 	auto append_values = [&s,err]()->void {
 		s += "Expected number of MTrks == ";
 		s += std::to_string(err.expect_num_mtrks);

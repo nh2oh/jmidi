@@ -304,9 +304,8 @@ smf_event_type classify_status_byte(unsigned char s) {
 		}
 	} else if (is_unrecognized_status_byte(s)) {
 		return smf_event_type::unrecognized;
-	} else {
-		return smf_event_type::invalid;
 	}
+	return smf_event_type::invalid;
 }
 smf_event_type classify_status_byte(unsigned char s, unsigned char rs) {
 	s = get_status_byte(s,rs);

@@ -63,7 +63,7 @@ public:
 	using const_iterator = generic_ra_const_iterator<mtrk_container_types_t>;
 
 	// The max. allowed value of the 'length' field in the chunk header;
-	// _Not_ the same as the max allowed number of events.  
+	// _not_ the same as the max allowed number of events.  
 	static constexpr size_type length_max = std::numeric_limits<size_type>::max()-8;
 
 	// Creates an empty MTrk event sequence:

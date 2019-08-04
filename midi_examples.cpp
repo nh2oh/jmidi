@@ -55,7 +55,7 @@ int midi_example() {
 		<< d2 << " milliseconds." << std::endl << std::endl;
 	}*/
 
-	{
+	/*{
 	std::filesystem::path fourth_inp1 = "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\0_to_I\\0_to_ch\\";
 	std::filesystem::path fourth_inp2 = "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\0_to_I\\cl_to_I\\";
 	std::filesystem::path fourth_inp3 = "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\J_to_Z\\J_to_P\\";
@@ -78,26 +78,25 @@ int midi_example() {
 	auto d4 = std::chrono::duration_cast<std::chrono::milliseconds>(end4-start4).count();
 	std::cout << "4-thread version finished in d == " 
 		<< d4 << " milliseconds." << std::endl << std::endl;
-	}
+	}*/
 
 
-	/*
 	auto start1 = std::chrono::high_resolution_clock::now();
 	//std::filesystem::path inp = "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\";
 	//std::filesystem::path inp = "C:\\Users\\ben\\Desktop\\midi_benchmark\\";
-	std::filesystem::path inp = "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\J_to_Z\\Q_to_Z\\";
-	//std::filesystem::path inp = R"(C:\Users\ben\Desktop\midi_simple_valid\)";
-	std::filesystem::path op = "C:\\Users\\ben\\Desktop\\midi_archive\\bench_out.txt";
+	//std::filesystem::path inp = "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\J_to_Z\\Q_to_Z\\";
+	std::filesystem::path inp = R"(C:\Users\ben\Desktop\midi_archive\midi_archive\0_to_I\0_to_ch\)";
+	std::filesystem::path op = "C:\\Users\\ben\\Desktop\\midi_archive\\junk.txt";
 	//std::filesystem::path op = inp / "out_bulkread.txt";
 	//inspect_mthds(inp,"");
-	avg_and_max_event_sizes(inp,op);
+	avg_and_max_event_sizes(inp,op,0);
 	//read_midi_directory(inp);
 	auto end1 = std::chrono::high_resolution_clock::now();
 	auto d1 = std::chrono::duration_cast<std::chrono::milliseconds>(end1-start1).count();
 	std::cout << "1-thread version finished in d == " 
 		<< d1 << " milliseconds." << std::endl << std::endl;
 	std::cout << std::endl;
-	*/
+
 
 	//read_midi_directory_mthd_inspection("C:\\Users\\ben\\Desktop\\midi_broken_mtrk\\");
 	//read_midi_directory_mthd_inspection("C:\\Users\\ben\\Desktop\\midi_broken_mthd\\");
@@ -266,10 +265,9 @@ int inspect_mthds(const std::filesystem::path& bp,
 }
 
 int avg_and_max_event_sizes(const std::filesystem::path& bp,
-				const std::filesystem::path& of) {
+				const std::filesystem::path& of, const int mode) {
 	std::ofstream outfile(of);
-	//std::basic_ofstream<unsigned char> outfile(of, std::ios::binary);
-	smf_error_t smf_error;
+	std::vector<unsigned char> fdata;  // Used if mode == 0
 	auto rdi = std::filesystem::recursive_directory_iterator(bp.parent_path());
 	int n_midi_files = 0;
 	for (const auto& dir_ent : rdi) {
@@ -277,14 +275,34 @@ int avg_and_max_event_sizes(const std::filesystem::path& bp,
 		if (!has_midifile_extension(curr_path)) {
 			continue;
 		}
+		std::basic_ifstream<unsigned char> f(curr_path,
+				std::ios_base::in|std::ios_base::binary);
+		if (!f.is_open() || !f.good()) {
+			continue;
+		}
 		++n_midi_files;
 
-		auto maybe_smf = read_smf_bulkfileread(curr_path,&smf_error);
-		//auto maybe_smf = read_smf(curr_path,&smf_error);
+		maybe_smf_t maybe_smf;
+		smf_error_t smf_error;
+		if (mode == 0) {  // Batch
+			// Read the file into fdata, close the file
+			f.seekg(0,std::ios::end);
+			auto fsize = f.tellg();
+			f.seekg(0,std::ios::beg);
+			fdata.resize(fsize);
+			f.read(fdata.data(),fsize);
+			make_smf(fdata.data(),fdata.data()+fdata.size(),&maybe_smf,&smf_error);
+		} else if (mode == 1) {  // iostreams
+			std::istreambuf_iterator<unsigned char> it(f);
+			auto end = std::istreambuf_iterator<unsigned char>();	
+			make_smf(it,end,&maybe_smf,&smf_error);
+		}
+		f.close();
+
 		outfile << "File " << std::to_string(n_midi_files) << ")  " 
 			<< curr_path.string() << '\n';
 		if (!maybe_smf) {
-			outfile << "\t!maybe_smf:  ";// << explain(smf_error) << "\nskipping...\n"; 
+			outfile << "\t!maybe_smf:  " << explain(smf_error) << "\nskipping...\n"; 
 			continue;
 		}
 		
@@ -324,7 +342,6 @@ int avg_and_max_event_sizes(const std::filesystem::path& bp,
 		outfile << print(biggest_event,mtrk_sbo_print_opts::detail) << '\n';
 		outfile << "==============================================="
 				"=================================\n\n";
-
 	}
 	outfile << n_midi_files << " Midi files\n";
 	outfile.close();
