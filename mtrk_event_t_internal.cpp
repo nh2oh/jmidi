@@ -257,6 +257,20 @@ int32_t small_bytevec_t::capacity() const noexcept {
 		return this->u_.b_.capacity();
 	}
 }
+int32_t small_bytevec_t::resize(int64_t new_sz) {
+	if (new_sz < 0) {
+		new_sz = 0;
+	} else if (new_sz > small_bytevec_t::size_max) {
+		new_sz = small_bytevec_t::size_max;
+	}
+	return this->resize(static_cast<int32_t>(new_sz));
+}
+int32_t small_bytevec_t::resize(uint64_t new_sz) {
+	if (new_sz > small_bytevec_t::size_max) {
+		return this->resize(small_bytevec_t::size_max);
+	}
+	return this->resize(static_cast<int32_t>(new_sz));
+}
 int32_t small_bytevec_t::resize(int32_t new_sz) {
 	new_sz = std::clamp(new_sz,0,small_bytevec_t::size_max);
 	if (this->is_big()) {

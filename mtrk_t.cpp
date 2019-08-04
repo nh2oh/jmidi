@@ -13,7 +13,7 @@
 #include <sstream>
 
 
-mtrk_t::mtrk_t(const unsigned char *p, uint32_t max_sz) {
+mtrk_t::mtrk_t(const unsigned char *p, int32_t max_sz) {
 	//auto chunk_detect = validate_chunk_header(p,max_sz);
 	auto chunk_detect = read_chunk_header(p,p+max_sz);
 	if (chunk_detect.id != chunk_id::mtrk) {
@@ -22,25 +22,25 @@ mtrk_t::mtrk_t(const unsigned char *p, uint32_t max_sz) {
 	if (chunk_detect.length > max_sz) {
 		return;
 	}
-	uint32_t sz = chunk_detect.length+8;
+	int32_t sz = chunk_detect.length+8;
 
 	// From experience with thousands of midi files encountered in the wild,
 	// the average number of bytes per MTrk event is about 3.  
 	auto approx_nevents = static_cast<double>(chunk_detect.length)/3.0;
-	this->evnts_.reserve(approx_nevents);
+	this->evnts_.reserve(static_cast<int32_t>(approx_nevents));
 	
 	// Loop continues until o==sz (==chunk_detect.size) or a invalid 
 	// smf_event_type is encountered.  Note that it does _not_ break 
 	// upon encountering an EOT meta event.  If an invalid event is
 	// hit before o==sz, the actual data_size of the track (==o-8) is
 	// written for this->data_size_.  
-	uint32_t o = 8;  // offset; skip "MTrk" & the 4-byte length
+	std::ptrdiff_t o = 8;  // offset; skip "MTrk" & the 4-byte length
 	unsigned char rs {0};  // value of the running-status
-	uint64_t cumtk = 0;  // Cumulative delta-time
+	int64_t cumtk = 0;  // Cumulative delta-time
 	validate_mtrk_event_result_t curr_event;
 	while (o<sz) {
 		const unsigned char *curr_p = p+o;  // ptr to start of present event
-		uint32_t curr_max_sz = sz-o;
+		std::ptrdiff_t curr_max_sz = sz-o;
 		
 		auto curr_event = make_mtrk_event(curr_p,curr_p+curr_max_sz,rs,nullptr);
 		if (!curr_event) {
@@ -500,7 +500,7 @@ double duration(mtrk_t::const_iterator& beg, mtrk_t::const_iterator& end,
 }
 
 maybe_mtrk_t::operator bool() const {
-	return this->is_valid;
+	return (this->error == mtrk_error_t::errc::no_error);
 }
 /*maybe_mtrk_t make_mtrk(const unsigned char *p, uint32_t max_sz) {
 	maybe_mtrk_t result {};
@@ -629,6 +629,7 @@ maybe_mtrk_t::operator bool() const {
 	return result;
 }  // make_mtrk()*/
 
+/*
 maybe_mtrk_t make_mtrk_permissive(const unsigned char *beg, 
 									const unsigned char *end) {
 	return make_mtrk_permissive(beg,end,nullptr);
@@ -636,7 +637,7 @@ maybe_mtrk_t make_mtrk_permissive(const unsigned char *beg,
 maybe_mtrk_t make_mtrk_permissive(const unsigned char *beg, 
 								const unsigned char *end, mtrk_error_t *err) {
 	maybe_mtrk_t result {};
-	result.is_valid = false;
+	result.error = mtrk_error_t::errc::other;
 
 	auto header = read_chunk_header(beg,end);
 	if (!header) {
@@ -644,28 +645,28 @@ maybe_mtrk_t make_mtrk_permissive(const unsigned char *beg,
 			chunk_header_error_t header_error {};
 			read_chunk_header(beg,end,&header_error);
 			err->code  = mtrk_error_t::errc::header_error;
-			err->hdr_error = header_error;
+			//err->hdr_error = header_error;
 		}
 		return result;
 	}
 	if (header.id != chunk_id::mtrk) {
 		if (err) {
 			err->code = mtrk_error_t::errc::invalid_id;
-			err->length = header.length;
+			err->reported_chunk_length = header.length;
 		}
 		return result;
 	}
 	if (header.length > mtrk_t::length_max) {
 		if (err) {
 			err->code = mtrk_error_t::errc::length_gt_mtrk_max;
-			err->length = header.length;
+			err->reported_chunk_length = header.length;
 		}
 		return result;
 	}
 	if (header.length > (end-(beg+8))) {
 		if (err) {
 			err->code = mtrk_error_t::errc::overflow;
-			err->length = header.length;
+			err->reported_chunk_length = header.length;
 		}
 		return result;
 	}
@@ -687,8 +688,8 @@ maybe_mtrk_t make_mtrk_permissive(const unsigned char *beg,
 				&& (next_event.error!=mtrk_event_validation_error::no_error)) {
 		if (err) {
 			err->code = mtrk_error_t::errc::invalid_event;
-			err->length = header.length;
-			err->termination_offset = p-beg;
+			err->reported_chunk_length = header.length;
+			//err->termination_offset = p-beg;
 		}
 		return result;
 	}
@@ -696,16 +697,16 @@ maybe_mtrk_t make_mtrk_permissive(const unsigned char *beg,
 	if (!found_eot_event) {
 		if (err) {
 			err->code = mtrk_error_t::errc::no_eot_event;
-			err->length = header.length;
-			err->termination_offset = p-beg;
+			err->reported_chunk_length = header.length;
+			//err->termination_offset = p-beg;
 		}
 		return result;
 	}
 
-	result.is_valid = true;
+	result.error = mtrk_error_t::errc::no_error;
 	result.nbytes_read = p-beg;
 	return result;
-}
+}*/
 
 mtrk_from_event_seq_result_t make_mtrk_from_event_seq_array(const unsigned char *beg, 
 						const unsigned char *end, mtrk_t *dest) {
@@ -740,35 +741,29 @@ std::string explain(const mtrk_error_t& err) {
 	}
 	s = "Invalid MTrk chunk:  ";
 
-	if (err.code==mtrk_error_t::errc::header_error) {
-		s += explain(err.hdr_error);
-	} else if (err.code==mtrk_error_t::errc::overflow) {
-		s += "The input range is not large enough to accommodate "
-			"the number of bytes specified by the 'length' field.  "
-			"length == ";
-		s += std::to_string(err.length);
-		s += ".  ";
+	if (err.code==mtrk_error_t::errc::header_overflow) {
+		s += "Encountered end-of-input after reading < 8 bytes.  ";
+	} else if (err.code==mtrk_error_t::errc::valid_but_non_mtrk_id) {
+		s += "The header contains a valid, but non-MTrk chunk ID:  "
+			"{ '" + std::to_string(err.header[0]) + "', " 
+			+ std::to_string(err.header[1]) + "', '" 
+			+ std::to_string(err.header[2]) + "', '" 
+			+ std::to_string(err.header[3]) + "' }.  ";
 	} else if (err.code==mtrk_error_t::errc::invalid_id) {
-		s += "Invalid MTrk ID field; expected the first 4 bytes to be "
-			"'MThd' (0x4D,54,72,6B).  ";
+		s += "The header begins with an invalid SMF chunk ID.  ";
 	} else if (err.code==mtrk_error_t::errc::length_gt_mtrk_max) {
-		s += "The length field encodes a value that is too large.  "
-			"This library enforces a maximum MTrk chunk length of "
-			"mtrk_t::length_max.  length == ";
-		s += std::to_string(err.length);
-		s += ", mtrk_t::length_max == ";
+		s += "The length field in the chunk header encodes the value ";
+		s += std::to_string(read_be<uint32_t>(err.header.data()+4,err.header.data()+8));
+		s += ".  This library enforces a maximum MTrk chunk length of "
+			"mtrk_t::length_max == ";
 		s += std::to_string(mtrk_t::length_max);
 		s += ".  ";
 	} else if (err.code==mtrk_error_t::errc::no_eot_event) {
-		s += "No end-of-track meta event found.  Terminated scanning at offset == ";
-		s += std::to_string(err.termination_offset);
-		s += ".  ";
+		s += "No end-of-track meta event found.  ";
 	} else if (err.code==mtrk_error_t::errc::invalid_event) {
-		s += "Terminated scanning at offset == ";
-		s += std::to_string(err.termination_offset);
-		s += " due to an invalid mtrk event.  ";
+		s += explain(err.event_error);
 	} else if (err.code==mtrk_error_t::errc::other) {
-		s += "Error code mtrk_error_t::errc::other.  ";
+		s += "mtrk_error_t::errc::other.  ";
 	} else {
 		s += "Unknown error.  ";
 	}

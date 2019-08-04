@@ -147,8 +147,8 @@ private:
 		0x00u,0x01u,  0x00u,0x00u,  0x00u,0x78u
 	};
 
-	template<typename InIt>
-	friend maybe_mthd_t make_mthd(InIt, InIt, mthd_error_t *);
+	template <typename InIt>
+	friend InIt make_mthd(InIt, InIt, maybe_mthd_t*, mthd_error_t*);
 };
 std::string print(const mthd_t&);
 std::string& print(const mthd_t&, std::string&);
@@ -180,123 +180,123 @@ std::string& print(const mthd_t&, std::string&);
 //
 struct mthd_error_t {
 	enum class errc : uint8_t {
-		header_error,
-		overflow,  // in the data section; (end-beg)<14 or (end-beg)<(4+length)
-		invalid_id,  // Not == 'MThd'
+		header_overflow,
+		non_mthd_id,
 		invalid_length,
-		length_lt_min,  // length < 6
-		length_gt_mthd_max,  // length > ...limits<int32_t>::max()
+		length_lt_mthd_min,  // 6
+		length_gt_mthd_max,  // length > ...limits<int32_t>::max()-8
+		overflow_in_data_section,
 		invalid_time_division,
 		inconsistent_format_ntrks,  // Format == 0 but ntrks > 1
 		no_error,
 		other
 	};
-	chunk_header_error_t hdr_error;
-	uint32_t length {0u};
-	uint16_t format {0u};
-	uint16_t ntrks {0u};
-	uint16_t division {0u};
-	mthd_error_t::errc code {mthd_error_t::errc::no_error};
+	std::array<unsigned char, 14> header;
+	mthd_error_t::errc code;
 };
 std::string explain(const mthd_error_t&);
 struct maybe_mthd_t {
 	mthd_t mthd;
+	std::ptrdiff_t nbytes_read;
 	mthd_error_t::errc code {mthd_error_t::errc::other};
 	operator bool() const;
 };
+template <typename InIt>
+InIt make_mthd(InIt it, InIt end, maybe_mthd_t *result, mthd_error_t *err) {
+	// <Header Chunk> = <chunk type> <length> <format> <ntrks> <division> 
+	//                   MThd uint32_t uint16_t uint16_t uint16_t
+
+	result->mthd.d_.resize(14);
+	auto dest = result->mthd.d_.begin();
+	std::ptrdiff_t i=0;  // The number of bytes read from the input stream
+
+	auto set_error = [&err,&result,&dest,&i](mthd_error_t::errc ec/*, 
+						uint32_t length, uint16_t fmt, uint16_t ntrks,
+						uint16_t div*/) -> void {
+		result->code = ec;
+		result->nbytes_read = i;
+		if (err) {
+			err->header.fill(0x00u);
+			std::copy(result->mthd.d_.data(),result->mthd.d_.data()+14,
+				err->header.data());
+			/*err->length = length;
+			err->format = fmt;
+			err->ntrks = ntrks;
+			err->division = div;*/
+			err->code = ec;
+		}
+	};
+	
+	// {'M','T','h','d'}
+	while ((it!=end)&&(i<8)) {
+		++i;
+		*dest++ = *it++;
+	}
+	if (i!=8) {
+		set_error(mthd_error_t::errc::header_overflow);
+		return it;
+	}
+	if (!is_mthd_header_id(result->mthd.d_.data(),result->mthd.d_.data()+4)) {
+		set_error(mthd_error_t::errc::non_mthd_id);
+		return it;
+	}
+	auto length = read_be<uint32_t>(result->mthd.d_.data()+4,
+		result->mthd.d_.data()+8);
+	if ((length < 6) || (length > mthd_t::length_max)) {
+		set_error(mthd_error_t::errc::invalid_length);
+		return it;
+	}
+	auto slength = static_cast<int32_t>(length);
+	
+	// Format, ntrks, division
+	int j = 0;
+	while ((it!=end)&&(j<6)) {
+		++j;
+		*dest++ = *it++;  ++i;
+	}
+	if (j!=6) {
+		set_error(mthd_error_t::errc::overflow_in_data_section);
+		return it;
+	}
+	auto format = read_be<uint16_t>(result->mthd.d_.data()+8,result->mthd.d_.data()+10);
+	auto ntrks = read_be<uint16_t>(result->mthd.d_.data()+10,result->mthd.d_.data()+12);
+	auto division = read_be<uint16_t>(result->mthd.d_.data()+12,result->mthd.d_.data()+14);
+	if ((format==0) && (ntrks >1)) {
+		set_error(mthd_error_t::errc::inconsistent_format_ntrks);
+		return it;
+	}
+	if (!is_valid_time_division_raw_value(division)) {
+		set_error(mthd_error_t::errc::invalid_time_division);
+		return it;
+	}
+
+	// Data beyond the std-specified format-ntrks-division fields
+	if (slength > 6) {
+		result->mthd.d_.resize(8+slength);  // NB:  invalidates dest
+		dest = result->mthd.d_.begin()+14;
+		auto len = slength - 6;
+		j=0;
+		while ((it!=end) && (j<len)) {
+			++j;
+			*dest++ = *it++;  ++i;
+		}
+		if (j!=len) {
+			set_error(mthd_error_t::errc::overflow_in_data_section);
+			return it;
+		}
+	}
+	
+	result->code = mthd_error_t::errc::no_error;
+	result->nbytes_read = i;
+	return it;
+};
+
 template <typename InIt>
 maybe_mthd_t make_mthd(InIt it, InIt end, mthd_error_t *err) {
 	// <Header Chunk> = <chunk type> <length> <format> <ntrks> <division> 
 	//                   MThd uint32_t uint16_t uint16_t uint16_t
 
 	maybe_mthd_t result;
-	auto set_error = [&err,&result](mthd_error_t::errc ec, 
-						uint32_t length, uint16_t fmt, uint16_t ntrks,
-						uint16_t div) -> void {
-		result.code = ec;
-		if (err) {
-			err->length = length;
-			err->format = fmt;
-			err->ntrks = ntrks;
-			err->division = div;
-			err->code = ec;
-		}
-	};
-	
-	result.mthd.d_.resize(14);
-	auto dest = result.mthd.d_.begin();
-	int i=0;
-	
-	//
-	// {'M','T','h','d'}
-	//
-	i = 0;
-	while ((it!=end)&&(i<8)) {
-		++i;
-		*dest++ = *it++;
-	}
-	if (i!=8) {
-		set_error(mthd_error_t::errc::header_error,0u,0,0,0);
-		return result;
-	}
-	if (!is_mthd_header_id(result.mthd.d_.data(),result.mthd.d_.data()+4)) {
-		set_error(mthd_error_t::errc::invalid_id,0u,0,0,0);
-		return result;
-	}
-	auto length = read_be<uint32_t>(result.mthd.d_.data()+4,result.mthd.d_.data()+8);
-	if ((length < 6) || (length > mthd_t::length_max)) {
-		set_error(mthd_error_t::errc::invalid_length,length,0,0,0);
-		return result;
-	}
-	auto slength = static_cast<int32_t>(length);
-	
-	//
-	// Format, ntrks, division
-	//
-	i = 0;
-	while ((it!=end)&&(i<6)) {
-		++i;
-		*dest++ = *it++;
-	}
-	if (i!=6) {
-		set_error(mthd_error_t::errc::overflow,length,0,0,0);
-		return result;
-	}
-	auto format = read_be<uint16_t>(result.mthd.d_.data()+8,result.mthd.d_.data()+10);
-	auto ntrks = read_be<uint16_t>(result.mthd.d_.data()+10,result.mthd.d_.data()+12);
-	auto division = read_be<uint16_t>(result.mthd.d_.data()+12,result.mthd.d_.data()+14);
-	if ((format==0) && (ntrks >1)) {
-		set_error(mthd_error_t::errc::inconsistent_format_ntrks,
-			length,format,ntrks,division);
-		return result;
-	}
-	if (!is_valid_time_division_raw_value(division)) {
-		set_error(mthd_error_t::errc::invalid_time_division,
-			length,format,ntrks,division);
-		return result;
-	}
-
-	//
-	// Data beyond the std-specified format-ntrks-division fields
-	//
-	if (slength > 6) {
-		result.mthd.d_.resize(8+slength);  // NB:  invalidates dest
-		dest = result.mthd.d_.begin()+14;
-		auto len = slength - 6;
-		i=0;
-		while ((it!=end) && (i<len)) {
-			*dest++ = *it++;
-			++i;
-		}
-		if (i!=len) {
-			set_error(mthd_error_t::errc::overflow,
-				length,format,ntrks,division);
-			return result;
-		}
-	}
-	
-	result.code = mthd_error_t::errc::no_error;
+	it = make_mthd(it,end,&result,err);
 	return result;
 };
-
-

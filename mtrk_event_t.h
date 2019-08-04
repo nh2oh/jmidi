@@ -195,11 +195,8 @@ mtrk_event_debug_helper_t debug_info(const mtrk_event_t&);
 struct mtrk_event_error_t {
 	enum class errc : uint8_t {
 		invalid_delta_time,
-		zero_sized_input,  // beg==end
 		no_data_following_delta_time,
 		invalid_status_byte,  // Can't determine, or ex, 0xF8, 0xFC,...
-		channel_invalid_status_byte,
-		channel_overflow,
 		channel_calcd_length_exceeds_input,  // anticipated size() > (end-beg)
 		channel_invalid_data_byte,  // non-data-byte in data section of channel event
 		sysex_or_meta_overflow_in_header,
@@ -208,19 +205,20 @@ struct mtrk_event_error_t {
 		no_error,
 		other
 	};
-	std::array<unsigned char,12> data;
 	// The running status passed in to the make_ function; the status
 	// byte deduced for the event from rs and the input buffer
 	unsigned char rs;
 	unsigned char s;
 	mtrk_event_error_t::errc code;
 };
+std::string explain(const mtrk_event_error_t&);
 struct maybe_mtrk_event_t {
 	mtrk_event_t event;
-	int32_t nbytes_read;
+	std::ptrdiff_t nbytes_read;
 	mtrk_event_error_t::errc error;
 	operator bool() const;
 };
+
 
 struct validate_channel_event_result_t {
 	midi_ch_event_t data;
@@ -345,15 +343,16 @@ InIt make_mtrk_event(InIt it, InIt end, int32_t dt,
 	// The largest possible event "header" is 10 bytes, corresponding to
 	// a meta event w/a 4-byte delta time and a 4 byte vlq length field:
 	// 10 == 4-byte dt + 0xFF + type-byte + 4-byte len vlq
-	if (result->event.size() < 10) {
+	// TODO:
+	//if (result->event.size() < 10) {
 		// If the caller has already allocated something bigger, don't
 		// force a big->small transition
 		result->event.d_.resize(10);
-	}
+	//}
 	auto dest = result->event.d_.begin();
 	result->nbytes_read = 0;
 	result->error = mtrk_event_error_t::errc::other;
-	int i = 0;  // Counts the number of times 'it' has been incremented
+	std::ptrdiff_t i = 0;  // Counts the number of times 'it' has been incremented
 	unsigned char uc = 0;  // The last byte extracted from 'it'
 
 	auto set_error = [&err,&result,&rs,&i](mtrk_event_error_t::errc ec) -> void {
@@ -442,7 +441,7 @@ InIt make_mtrk_event(InIt it, InIt end, int32_t dt,
 		result->event.d_.resize(n_written+len);  // Resize may invalidate dest
 		dest = result->event.d_.begin()+n_written;
 
-		for (int j=0; (j<len && it!=end); ++j) {
+		for (int j=0; j<len; ++j) {
 			if (it==end) {
 				set_error(mtrk_event_error_t::errc::sysex_or_meta_calcd_length_exceeds_input);
 				return it;

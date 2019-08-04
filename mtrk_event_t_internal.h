@@ -106,6 +106,8 @@ public:
 	// int32_t resize(int32_t new_sz);
 	// If 'big' and the new size is <= small_bytevec_t::capacity_small, 
 	// will cause a big->small transition.  
+	int32_t resize(int64_t);
+	int32_t resize(uint64_t);
 	int32_t resize(int32_t);
 	// If resizing causes either allocation of a new buffer or a 
 	// big->small transition, the present object's data is not copied into

@@ -126,53 +126,33 @@ static constexpr auto sz_vuc = sizeof(std::vector<unsigned char>);
 static constexpr auto sz_sstr = sizeof(std::string);
 static constexpr auto sz_mthd = sizeof(mthd_t);
 
-// maybe_smf_t read_smf(const std::string& filename);
-// Reads in the smf indicated by filename.  The maybe_smf_t returned can
-// be tested for validity through an implicit conversion to bool.  Note 
-// that if the maybe_smf_t tests false (the smf is invalid for some reason),
-// no guarantees about the value of .smf are made.  In general, .smf will
-// contain a partial smf, ie, one without all the MTrks as in the file
-// and/or with truncated MTrks (probably lacking an end-of-track meta 
-// event), and with MThd data inconsistent with the track data.  This is
-// done because users may find the partial file data useful for 
-// troubleshooting the error.  
 struct smf_error_t {
-	smf_error_t() : chunk_err {mthd_error_t {}} {};
 	enum class errc : uint8_t {
 		file_read_error,
 		mthd_error,
 		mtrk_error,
-		generic_chunk_header_error,
-		unknown_chunk_implies_overflow,
+		overflow_reading_uchk,
 		terminated_before_end_of_file,
 		unexpected_num_mtrks,
 		no_error,
 		other
 	};
-	union u_t {
-		mthd_error_t mthd_err_obj;
-		mtrk_error_t mtrk_err_obj;
-		chunk_header_error_t generic_chunk_err_obj;
-	};
-	u_t chunk_err;
-	uint16_t expect_num_mtrks {0};
-	uint16_t num_mtrks_read {0};
-	uint16_t num_uchks_read {0};
-	std::ptrdiff_t termination_offset {0};
-	smf_error_t::errc code {smf_error_t::errc::no_error};
+	mthd_error_t mthd_err_obj;
+	mtrk_error_t mtrk_err_obj;
+	uint16_t expect_num_mtrks;
+	uint16_t num_mtrks_read;
+	uint16_t num_uchks_read;
+	smf_error_t::errc code;
 };
-auto constexpr sdfwf = sizeof(smf_error_t);
-auto constexpr szut = sizeof(smf_error_t::u_t);
-auto constexpr sdvs = sizeof(mthd_error_t);
-auto constexpr dfs = sizeof(mtrk_error_t);
-auto constexpr dfegegs = sizeof(chunk_header_error_t);
 struct maybe_smf_t {
 	smf_t smf;
-	bool is_valid {false};
+	std::ptrdiff_t nbytes_read;
+	smf_error_t::errc error;
 	operator bool() const;
 };
 maybe_smf_t read_smf(const std::filesystem::path&);
 maybe_smf_t read_smf(const std::filesystem::path&, smf_error_t*);
+maybe_smf_t read_smf_bulkfileread(const std::filesystem::path&, smf_error_t*);
 std::string explain(const smf_error_t&);
 
 // For the path fp, checks that std::filesystem::is_regular_file(fp)

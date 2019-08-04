@@ -18,7 +18,7 @@
 #include <vector>
 #include <iterator>
 #include <chrono>
-
+#include <thread>
 
 
 
@@ -32,10 +32,11 @@ int midi_example() {
 	std::thread t_oneth(avg_and_max_event_sizes,oneth_inp,oneth_op);
 	t_oneth.join();
 	auto end1 = std::chrono::high_resolution_clock::now();
-	auto d1 = std::chrono::duration_cast<std::chrono::seconds>(end1-start1).count();
+	auto d1 = std::chrono::duration_cast<std::chrono::milliseconds>(end1-start1).count();
 	std::cout << "1-thread version finished in d == " 
-		<< d1 << " seconds." << std::endl << std::endl;
+		<< d1 << " milliseconds." << std::endl << std::endl;
 	}
+
 
 	{
 	std::filesystem::path twoth_inp1 = "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\0_to_I\\";
@@ -49,12 +50,12 @@ int midi_example() {
 	t_twoth1.join();
 	t_twoth2.join();
 	auto end2 = std::chrono::high_resolution_clock::now();
-	auto d2 = std::chrono::duration_cast<std::chrono::seconds>(end2-start2).count();
+	auto d2 = std::chrono::duration_cast<std::chrono::milliseconds>(end2-start2).count();
 	std::cout << "2-thread version finished in d == " 
-		<< d2 << " seconds." << std::endl << std::endl;
+		<< d2 << " milliseconds." << std::endl << std::endl;
 	}*/
 
-	/*{
+	{
 	std::filesystem::path fourth_inp1 = "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\0_to_I\\0_to_ch\\";
 	std::filesystem::path fourth_inp2 = "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\0_to_I\\cl_to_I\\";
 	std::filesystem::path fourth_inp3 = "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\J_to_Z\\J_to_P\\";
@@ -74,26 +75,29 @@ int midi_example() {
 	t_fourth3.join();
 	t_fourth4.join();
 	auto end4 = std::chrono::high_resolution_clock::now();
-	auto d4 = std::chrono::duration_cast<std::chrono::seconds>(end4-start4).count();
+	auto d4 = std::chrono::duration_cast<std::chrono::milliseconds>(end4-start4).count();
 	std::cout << "4-thread version finished in d == " 
-		<< d4 << " seconds." << std::endl << std::endl;
-	}*/
+		<< d4 << " milliseconds." << std::endl << std::endl;
+	}
 
 
-
+	/*
 	auto start1 = std::chrono::high_resolution_clock::now();
-	//std::filesystem::path inp = "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\J_to_Z\\";
-	//std::filesystem::path inp = "C:\\Users\\ben\\Desktop\\midi_broken_mthd\\";
-	std::filesystem::path inp = R"(C:\Users\ben\Desktop\midi_simple_valid\)";
-	std::filesystem::path op = "C:\\Users\\ben\\Desktop\\midi_archive\\out.txt";
-	//inspect_mthds(inp,op);
+	//std::filesystem::path inp = "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\";
+	//std::filesystem::path inp = "C:\\Users\\ben\\Desktop\\midi_benchmark\\";
+	std::filesystem::path inp = "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\J_to_Z\\Q_to_Z\\";
+	//std::filesystem::path inp = R"(C:\Users\ben\Desktop\midi_simple_valid\)";
+	std::filesystem::path op = "C:\\Users\\ben\\Desktop\\midi_archive\\bench_out.txt";
+	//std::filesystem::path op = inp / "out_bulkread.txt";
 	//inspect_mthds(inp,"");
 	avg_and_max_event_sizes(inp,op);
+	//read_midi_directory(inp);
 	auto end1 = std::chrono::high_resolution_clock::now();
 	auto d1 = std::chrono::duration_cast<std::chrono::milliseconds>(end1-start1).count();
 	std::cout << "1-thread version finished in d == " 
 		<< d1 << " milliseconds." << std::endl << std::endl;
-
+	std::cout << std::endl;
+	*/
 
 	//read_midi_directory_mthd_inspection("C:\\Users\\ben\\Desktop\\midi_broken_mtrk\\");
 	//read_midi_directory_mthd_inspection("C:\\Users\\ben\\Desktop\\midi_broken_mthd\\");
@@ -203,7 +207,14 @@ int read_midi_directory(const std::filesystem::path& bp) {
 		} else {
 			std::cout << "File Ok!\n" 
 				<< "Format = " << maybesmf.smf.format() << ", "
-				<< "N MTrks = " << maybesmf.smf.ntrks() << '\n';
+				<< "N MTrks = " << maybesmf.smf.ntrks() << ", "
+				<< "N bytes = " << maybesmf.smf.nbytes() <<'\n';
+			int trkn = 0;
+			for (const auto& trk : maybesmf.smf) {
+				std::cout << "Track " << trkn++ << ":  " 
+					<< trk.size() << " events, " << trk.nbytes()
+					<< " bytes.\n";
+			}
 		}
 		std::cout << "==============================================="
 				"=================================\n\n";
@@ -257,6 +268,8 @@ int inspect_mthds(const std::filesystem::path& bp,
 int avg_and_max_event_sizes(const std::filesystem::path& bp,
 				const std::filesystem::path& of) {
 	std::ofstream outfile(of);
+	//std::basic_ofstream<unsigned char> outfile(of, std::ios::binary);
+	smf_error_t smf_error;
 	auto rdi = std::filesystem::recursive_directory_iterator(bp.parent_path());
 	int n_midi_files = 0;
 	for (const auto& dir_ent : rdi) {
@@ -265,15 +278,13 @@ int avg_and_max_event_sizes(const std::filesystem::path& bp,
 			continue;
 		}
 		++n_midi_files;
-		/*if (n_midi_files < 90186) {
-			continue;
-		}*/
-		// Read the file into fdata, close the file
-		auto maybe_smf = read_smf(curr_path);
+
+		auto maybe_smf = read_smf_bulkfileread(curr_path,&smf_error);
+		//auto maybe_smf = read_smf(curr_path,&smf_error);
 		outfile << "File " << std::to_string(n_midi_files) << ")  " 
 			<< curr_path.string() << '\n';
 		if (!maybe_smf) {
-			outfile << "\t!maybe_smf;  skipping...\n"; 
+			outfile << "\t!maybe_smf:  ";// << explain(smf_error) << "\nskipping...\n"; 
 			continue;
 		}
 		
@@ -323,7 +334,7 @@ int avg_and_max_event_sizes(const std::filesystem::path& bp,
 
 
 
-
+/*
 int raw_bytes_as_midi_file() {
 	std::vector<unsigned char> tc_a_rs {
 		0x4D, 0x54, 0x68, 0x64,  // MThd
@@ -393,11 +404,11 @@ int raw_bytes_as_midi_file() {
 	fptr.close();
 
 	return 0;
-}
+}*/
 
 
 
-
+/*
 int midi_mtrk_split_testing() {
 	struct tsb_t {
 		std::vector<unsigned char> d {};
@@ -507,5 +518,5 @@ int midi_mtrk_split_testing() {
 
 	return 0;
 }
-
+*/
 

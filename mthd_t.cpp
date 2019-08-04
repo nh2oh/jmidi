@@ -149,52 +149,50 @@ std::string explain(const mthd_error_t& err) {
 	}
 	
 	s += "Invalid MThd chunk:  ";
-	if (err.code==mthd_error_t::errc::header_error) {
-		s += explain(err.hdr_error);
-	} else if (err.code==mthd_error_t::errc::overflow) {
-		s += "The input range is not large enough to accommodate "
-			"the number of bytes specified by the 'length' field.  "
-			"length == ";
-		s += std::to_string(err.length);
-		s += ".  ";
-	} else if (err.code==mthd_error_t::errc::invalid_id) {
+	if (err.code==mthd_error_t::errc::header_overflow) {
+		s += "Encountered end-of-input after reading < 8 bytes.";
+	} else if (err.code==mthd_error_t::errc::non_mthd_id) {
 		s += "Invalid MThd ID field; expected the first 4 bytes to be "
 			"'MThd' (0x4D,54,68,64).  ";
-	} else if (err.code==mthd_error_t::errc::length_lt_min) {
-		s += "The 'length' field encodes a value < the minimum of 6 bytes.  length == ";
-		s += std::to_string(err.length);
-		s += ".  ";
-	} else if (err.code==mthd_error_t::errc::length_gt_mthd_max) {
-		s += "The length field encodes a value that is too large.  "
-			"This library enforces a maximum MThd chunk length of ";
+	} else if (err.code==mthd_error_t::errc::invalid_length) {
+		s += "The length field in the chunk header encodes the value ";
+		s += std::to_string(read_be<uint32_t>(err.header.data()+4,err.header.data()+8));
+		s += ".  This library requires that MThd chunks have length >= 6 && <= "
+			"mthd_t::length_max == ";
 		s += std::to_string(mthd_t::length_max);
-		s += ".  length == ";
-		s += std::to_string(err.length);
 		s += ".  ";
+	} else if (err.code==mthd_error_t::errc::overflow_in_data_section) {
+		s += "Encountered end-of-input after reading < 'length' bytes; "
+			"length == " + std::to_string(read_be<uint32_t>(err.header.data()+4,err.header.data()+8))
+			+ ".  ";
 	} else if (err.code==mthd_error_t::errc::invalid_time_division) {
 		int8_t time_code = 0;
-		uint8_t subframes = ((err.division)&0x00FFu);
-		uint8_t high = ((err.division)>>8);
+		uint16_t division = read_be<uint16_t>(err.header.data()+12,err.header.data()+14);
+		uint8_t subframes = (division&0x00FFu);
+		uint8_t high = (division>>8);
 		auto psrc = static_cast<const unsigned char*>(static_cast<const void*>(&high));
 		auto pdest = static_cast<unsigned char*>(static_cast<void*>(&time_code));
 		*pdest = *psrc;
 		s += "The value of field 'division' is invalid.  It is probably an "
 			"SMPTE-type field attempting to specify a time-code of something "
 			"other than -24, -25, -29, or -30.  division == ";
-		s += std::to_string(err.division);
+		s += std::to_string(division);
 		s += " => time-code == ";
 		s += std::to_string(time_code);
 		s += " => ticks-per-frame == ";
 		s += std::to_string(subframes);
 		s += ".  ";
 	} else if (err.code==mthd_error_t::errc::inconsistent_format_ntrks) {
-		s += "In a format==0 SMF, ntrks must be <= 1.  format == ";
-		s += std::to_string(err.format);
+		uint16_t format = read_be<uint16_t>(err.header.data()+8,err.header.data()+10);
+		uint16_t ntrks = read_be<uint16_t>(err.header.data()+10,err.header.data()+12);
+		s += "The values encoded by 'format' 'division' are inconsistent.  "
+			"In a format==0 SMF, ntrks must be <= 1.  format == ";
+		s += std::to_string(format);
 		s += ", ntrks == ";
-		s += std::to_string(err.ntrks);
+		s += std::to_string(ntrks);
 		s += ".  ";
 	} else if (err.code==mthd_error_t::errc::other) {
-		s += "Error code mthd_error_t::errc::other.  ";
+		s += "mthd_error_t::errc::other.  ";
 	} else {
 		s += "Unknown error.  ";
 	}

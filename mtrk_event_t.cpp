@@ -235,6 +235,41 @@ mtrk_event_debug_helper_t debug_info(const mtrk_event_t& ev) {
 	return r;
 }
 
+std::string explain(const mtrk_event_error_t& err) {
+	std::string s;  
+	if (err.code==mtrk_event_error_t::errc::no_error) {
+		return s;
+	}
+	s = "Invalid MTrk event:  ";
+
+	if (err.code==mtrk_event_error_t::errc::invalid_delta_time) {
+		s += "Invalid delta-time.  ";
+	} else if (err.code==mtrk_event_error_t::errc::no_data_following_delta_time) {
+		s += "Encountered end-of-input immediately following the delta-time field.";
+	} else if (err.code==mtrk_event_error_t::errc::invalid_status_byte) {
+		s += "Invalid status byte s == " 
+			+ std::to_string(err.s) + ", rs == "
+			+std::to_string(err.rs) + ".  ";
+	} else if (err.code==mtrk_event_error_t::errc::channel_calcd_length_exceeds_input) {
+		s += "Encountered end-of-input prior to reading the number of expected "
+			"data bytes for the present channel event.  ";
+	} else if (err.code==mtrk_event_error_t::errc::channel_invalid_data_byte) {
+		s += "Invalid channel event data byte.  ";
+	} else if (err.code==mtrk_event_error_t::errc::sysex_or_meta_overflow_in_header) {
+		s += "Encountered end-of-input while processing the header of the present "
+			"sysex of meta event.  ";
+	} else if (err.code==mtrk_event_error_t::errc::sysex_or_meta_invalid_vlq_length) {
+		s += "The present sysex or meta event encodes an invalid length.  ";
+	} else if (err.code==mtrk_event_error_t::errc::sysex_or_meta_calcd_length_exceeds_input) {
+		s += "Encountered end-of-input while reading in the payload of the "
+			"present sysex or meta event.  ";
+	} else if (err.code==mtrk_event_error_t::errc::other) {
+		s += "mtrk_event_error_t::errc::other.  ";
+	} else {
+		s += "Unknown error.  ";
+	}
+	return s;
+}
 
 maybe_mtrk_event_t::operator bool() const {
 	auto tf = (this->error==mtrk_event_error_t::errc::no_error);
@@ -256,13 +291,13 @@ validate_channel_event(const unsigned char *beg, const unsigned char *end,
 	validate_channel_event_result_t result;
 	result.error = mtrk_event_error_t::errc::other;
 	if (!end || !beg || ((end-beg)<1)) {
-		result.error = mtrk_event_error_t::errc::channel_overflow;
+		result.error = mtrk_event_error_t::errc::no_data_following_delta_time;
 		return result;
 	}
 	auto p = beg;
 	auto s = get_status_byte(*p,rs);
 	if (!is_channel_status_byte(s)) {
-		result.error = mtrk_event_error_t::errc::channel_invalid_status_byte;
+		result.error = mtrk_event_error_t::errc::invalid_status_byte;
 		return result;
 	}
 	result.data.status_nybble = s&0xF0u;
