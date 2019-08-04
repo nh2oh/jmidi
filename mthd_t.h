@@ -4,10 +4,12 @@
 #include "midi_raw.h"  // time_division_t
 #include "midi_vlq.h"
 #include <cstdint>
+#include <cstddef>  // std::ptrdiff_t
 #include <string>
 #include <vector>
 #include <limits> 
 #include <array>
+#include <algorithm>  // std::copy() to set mtrk_err_t in make_mtrk(...
 
 //
 // Class mthd_t
@@ -44,7 +46,6 @@
 // stipulates that in the future it may be enlarged to contain addnl 
 // fields, hence i can not simply use a std::array<,14>.  
 //
-
 struct maybe_mthd_t;
 struct mthd_error_t;
 
@@ -88,9 +89,12 @@ public:
 	size_type size() const;
 	size_type nbytes() const;
 	const_pointer data() const;
+	const_pointer data();
 	const_reference operator[](size_type) const;
 	const_iterator begin() const;
 	const_iterator end() const;
+	const_iterator begin();
+	const_iterator end();
 	const_iterator cbegin() const;
 	const_iterator cend() const;
 
@@ -135,10 +139,7 @@ private:
 	static_assert(ntrks_min >= std::numeric_limits<uint16_t>::min());
 	static_assert(ntrks_max_fmt_gt0 <= std::numeric_limits<uint16_t>::max());
 
-	iterator begin();
-	iterator end();
 	reference operator[](size_type);
-	pointer data();
 
 	std::vector<unsigned char> d_ {
 		// MThd                   chunk length == 6
@@ -154,6 +155,9 @@ std::string print(const mthd_t&);
 std::string& print(const mthd_t&, std::string&);
 
 //
+// template <typename InIt>
+// InIt make_mthd(InIt it, InIt end, maybe_mthd_t *result,
+//					mthd_error_t *err)
 // template <typename InIt>
 // maybe_mthd_t make_mthd(InIt it, InIt end, mthd_error_t *err)
 //
@@ -198,31 +202,26 @@ std::string explain(const mthd_error_t&);
 struct maybe_mthd_t {
 	mthd_t mthd;
 	std::ptrdiff_t nbytes_read;
-	mthd_error_t::errc code {mthd_error_t::errc::other};
+	mthd_error_t::errc error;
 	operator bool() const;
 };
 template <typename InIt>
 InIt make_mthd(InIt it, InIt end, maybe_mthd_t *result, mthd_error_t *err) {
 	// <Header Chunk> = <chunk type> <length> <format> <ntrks> <division> 
 	//                   MThd uint32_t uint16_t uint16_t uint16_t
-
 	result->mthd.d_.resize(14);
 	auto dest = result->mthd.d_.begin();
 	std::ptrdiff_t i=0;  // The number of bytes read from the input stream
 
-	auto set_error = [&err,&result,&dest,&i](mthd_error_t::errc ec/*, 
-						uint32_t length, uint16_t fmt, uint16_t ntrks,
-						uint16_t div*/) -> void {
-		result->code = ec;
+	auto set_error = [&err,&result,&dest,&i](mthd_error_t::errc ec)->void {
+		result->error = ec;
 		result->nbytes_read = i;
 		if (err) {
+			auto n = std::min(err->header.end()-err->header.begin(),
+				result->mthd.d_.end()-result->mthd.d_.begin());
 			err->header.fill(0x00u);
-			std::copy(result->mthd.d_.data(),result->mthd.d_.data()+14,
+			std::copy(result->mthd.d_.data(),result->mthd.d_.data()+n,
 				err->header.data());
-			/*err->length = length;
-			err->format = fmt;
-			err->ntrks = ntrks;
-			err->division = div;*/
 			err->code = ec;
 		}
 	};
@@ -286,7 +285,7 @@ InIt make_mthd(InIt it, InIt end, maybe_mthd_t *result, mthd_error_t *err) {
 		}
 	}
 	
-	result->code = mthd_error_t::errc::no_error;
+	result->error = mthd_error_t::errc::no_error;
 	result->nbytes_read = i;
 	return it;
 };
@@ -295,8 +294,9 @@ template <typename InIt>
 maybe_mthd_t make_mthd(InIt it, InIt end, mthd_error_t *err) {
 	// <Header Chunk> = <chunk type> <length> <format> <ntrks> <division> 
 	//                   MThd uint32_t uint16_t uint16_t uint16_t
-
 	maybe_mthd_t result;
 	it = make_mthd(it,end,&result,err);
 	return result;
 };
+
+

@@ -4,11 +4,10 @@
 #include "midi_vlq.h"
 #include "print_hexascii.h"
 #include <cstdint>
+#include <cstddef>  // std::ptrdiff_t
 #include <string>
 #include <algorithm>  // std::copy() in mthd_t ctor(s), std::clamp()
 #include <limits>  // in format, ntrks, ... setters
-
-
 
 
 //
@@ -38,7 +37,7 @@ mthd_t::size_type mthd_t::size() const {
 mthd_t::size_type mthd_t::nbytes() const {
 	return static_cast<mthd_t::size_type>(this->size());
 }
-mthd_t::pointer mthd_t::data() {  // private
+mthd_t::const_pointer mthd_t::data() {
 	return this->d_.data();
 }
 mthd_t::const_pointer mthd_t::data() const {
@@ -50,11 +49,11 @@ mthd_t::reference mthd_t::operator[](mthd_t::size_type idx) {  // private
 mthd_t::const_reference mthd_t::operator[](mthd_t::size_type idx) const {
 	return this->d_[idx];
 }
-mthd_t::iterator mthd_t::begin() {  // private
-	return mthd_t::iterator(this->d_.data());
+mthd_t::const_iterator mthd_t::begin() {
+	return mthd_t::const_iterator(this->d_.data());
 }
-mthd_t::iterator mthd_t::end() {  // private
-	return mthd_t::iterator(this->d_.data()) + this->size();
+mthd_t::const_iterator mthd_t::end() {
+	return mthd_t::const_iterator(this->d_.data()) + this->size();
 }
 mthd_t::const_iterator mthd_t::begin() const {
 	return mthd_t::const_iterator(this->d_.data());
@@ -75,7 +74,6 @@ int32_t mthd_t::length() const {
 }
 int32_t mthd_t::format() const {
 	int32_t f = read_be<uint16_t>(this->d_.cbegin()+8,this->d_.cend());
-	//return std::clamp(f,mthd_t::format_min,mthd_t::format_max);
 	return f;
 }
 int32_t mthd_t::ntrks() const {
@@ -83,7 +81,6 @@ int32_t mthd_t::ntrks() const {
 }
 time_division_t mthd_t::division() const {
 	auto raw_val = read_be<uint16_t>(this->d_.cbegin()+12,this->d_.cend());
-	//return time_division_t(raw_val);
 	return make_time_division_from_raw(raw_val).value;
 }
 int32_t mthd_t::set_format(int32_t f) {
@@ -147,12 +144,13 @@ std::string explain(const mthd_error_t& err) {
 	if (err.code==mthd_error_t::errc::no_error) {
 		return s;
 	}
-	
+	s.reserve(250);
+
 	s += "Invalid MThd chunk:  ";
 	if (err.code==mthd_error_t::errc::header_overflow) {
-		s += "Encountered end-of-input after reading < 8 bytes.";
+		s += "Encountered end-of-input after reading < 8 bytes.  ";
 	} else if (err.code==mthd_error_t::errc::non_mthd_id) {
-		s += "Invalid MThd ID field; expected the first 4 bytes to be "
+		s += "Invalid ID field; expected the first 4 bytes to be "
 			"'MThd' (0x4D,54,68,64).  ";
 	} else if (err.code==mthd_error_t::errc::invalid_length) {
 		s += "The length field in the chunk header encodes the value ";
@@ -162,8 +160,9 @@ std::string explain(const mthd_error_t& err) {
 		s += std::to_string(mthd_t::length_max);
 		s += ".  ";
 	} else if (err.code==mthd_error_t::errc::overflow_in_data_section) {
+		auto p = err.header.data();
 		s += "Encountered end-of-input after reading < 'length' bytes; "
-			"length == " + std::to_string(read_be<uint32_t>(err.header.data()+4,err.header.data()+8))
+			"length == " + std::to_string(read_be<uint32_t>(p+4,p+8))
 			+ ".  ";
 	} else if (err.code==mthd_error_t::errc::invalid_time_division) {
 		int8_t time_code = 0;
@@ -222,6 +221,6 @@ std::string& print(const mthd_t& mthd, std::string& s) {
 
 
 maybe_mthd_t::operator bool() const {
-	return this->code==mthd_error_t::errc::no_error;
+	return this->error==mthd_error_t::errc::no_error;
 }
 
