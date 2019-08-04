@@ -299,7 +299,7 @@ InIt make_mtrk_event(InIt it, InIt end, unsigned char rs,
 		uint32_t uval = 0;
 		int j = 0;
 		while (it!=end) {
-			uc = *it++;  ++i;  ++j;
+			uc = static_cast<unsigned char>(*it++);  ++i;  ++j;
 			uval += uc&0x7Fu;
 			if ((uc&0x80u) && (j<4)) {
 				uval <<= 7;  // Note:  Not shifting on the final iteration
@@ -371,7 +371,7 @@ InIt make_mtrk_event(InIt it, InIt end, int32_t dt,
 		uint32_t uval = 0;
 		int j = 0;
 		while (it!=end) {
-			uc = *it++;  ++i;  ++j;
+			uc = static_cast<unsigned char>(*it++);  ++i;  ++j;
 			uval += uc&0x7Fu;
 			if ((uc&0x80u) && (j<4)) {
 				uval <<= 7;  // Note:  Not shifting on the final iteration
@@ -394,7 +394,7 @@ InIt make_mtrk_event(InIt it, InIt end, int32_t dt,
 		set_error(mtrk_event_error_t::errc::no_data_following_delta_time);
 		return it;
 	}
-	uc = *it++;  ++i;
+	uc = static_cast<unsigned char>(*it++);  ++i;
 	auto s = get_status_byte(uc,rs);
 	*dest++ = s;
 
@@ -409,7 +409,7 @@ InIt make_mtrk_event(InIt it, InIt end, int32_t dt,
 				set_error(mtrk_event_error_t::errc::channel_calcd_length_exceeds_input);
 				return it;
 			}
-			uc = *it++;  ++i;
+			uc = static_cast<unsigned char>(*it++);  ++i;
 			if (!is_data_byte(uc)) {
 				set_error(mtrk_event_error_t::errc::channel_invalid_data_byte);
 				return it;
@@ -424,7 +424,7 @@ InIt make_mtrk_event(InIt it, InIt end, int32_t dt,
 				set_error(mtrk_event_error_t::errc::sysex_or_meta_overflow_in_header);
 				return it;
 			}
-			uc = *it++;  ++i;  // The Meta-type byte
+			uc = static_cast<unsigned char>(*it++);  ++i;  // The Meta-type byte
 			*dest++ = uc;
 		}
 		if (it==end) {
@@ -446,7 +446,7 @@ InIt make_mtrk_event(InIt it, InIt end, int32_t dt,
 				set_error(mtrk_event_error_t::errc::sysex_or_meta_calcd_length_exceeds_input);
 				return it;
 			}
-			uc = *it++;  ++i;
+			uc = static_cast<unsigned char>(*it++);  ++i;
 			*dest++ = uc;
 		}
 	} else if (is_unrecognized_status_byte(s) || !is_status_byte(s)) {

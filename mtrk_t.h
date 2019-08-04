@@ -284,7 +284,7 @@ InIt make_mtrk(InIt it, InIt end, maybe_mtrk_t *result, mtrk_error_t *err) {
 	
 	// Copy the {'M','T','r','k', a,b,c,d}
 	while ((it!=end)&&(i<8)) {
-		*dest++ = *it++;  ++i;
+		*dest++ = static_cast<unsigned char>(*it++);  ++i;
 	}
 	if (i!=8) {
 		set_error(mtrk_error_t::errc::header_overflow,0x00u);

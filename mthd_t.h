@@ -229,7 +229,7 @@ InIt make_mthd(InIt it, InIt end, maybe_mthd_t *result, mthd_error_t *err) {
 	// {'M','T','h','d'}
 	while ((it!=end)&&(i<8)) {
 		++i;
-		*dest++ = *it++;
+		*dest++ = static_cast<unsigned char>(*it++);
 	}
 	if (i!=8) {
 		set_error(mthd_error_t::errc::header_overflow);
@@ -251,7 +251,7 @@ InIt make_mthd(InIt it, InIt end, maybe_mthd_t *result, mthd_error_t *err) {
 	int j = 0;
 	while ((it!=end)&&(j<6)) {
 		++j;
-		*dest++ = *it++;  ++i;
+		*dest++ = static_cast<unsigned char>(*it++);  ++i;
 	}
 	if (j!=6) {
 		set_error(mthd_error_t::errc::overflow_in_data_section);
@@ -277,7 +277,7 @@ InIt make_mthd(InIt it, InIt end, maybe_mthd_t *result, mthd_error_t *err) {
 		j=0;
 		while ((it!=end) && (j<len)) {
 			++j;
-			*dest++ = *it++;  ++i;
+			*dest++ = static_cast<unsigned char>(*it++);  ++i;
 		}
 		if (j!=len) {
 			set_error(mthd_error_t::errc::overflow_in_data_section);

@@ -199,7 +199,7 @@ InIt make_smf(InIt it, InIt end, maybe_smf_t *result, smf_error_t *err) {
 				auto uchk_sz = read_be<uint32_t>(ph+4,ph+hsz);
 				uint32_t j=0;
 				for (j=0; (it!=end && j<uchk_sz); ++j) {
-					*bi_uchk++ = *it++;  ++i;
+					*bi_uchk++ = static_cast<unsigned char>(*it++);  ++i;
 				}
 				if (j!=uchk_sz) {
 					set_error(smf_error_t::errc::overflow_reading_uchk,

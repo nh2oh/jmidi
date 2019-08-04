@@ -24,12 +24,14 @@
 
 int midi_example() {
 
+	constexpr int mode = 1;  // 0 => batch, 1=>istreambuf_iterator
+
 	/*{
 	std::filesystem::path oneth_inp = "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\";
 	std::filesystem::path oneth_op = "C:\\Users\\ben\\Desktop\\midi_archive\\one_thread_out.txt";
 	auto start1 = std::chrono::high_resolution_clock::now();
 	std::cout << "Starting 1-thread version:  " << std::endl;
-	std::thread t_oneth(avg_and_max_event_sizes,oneth_inp,oneth_op);
+	std::thread t_oneth(avg_and_max_event_sizes,oneth_inp,oneth_op,mode);
 	t_oneth.join();
 	auto end1 = std::chrono::high_resolution_clock::now();
 	auto d1 = std::chrono::duration_cast<std::chrono::milliseconds>(end1-start1).count();
@@ -45,8 +47,8 @@ int midi_example() {
 	std::filesystem::path twoth_op2 = "C:\\Users\\ben\\Desktop\\midi_archive\\two_thread_out2.txt";
 	auto start2 = std::chrono::high_resolution_clock::now();
 	std::cout << "Starting 2-thread version:  " << std::endl;
-	std::thread t_twoth1(avg_and_max_event_sizes,twoth_inp1,twoth_op1);
-	std::thread t_twoth2(avg_and_max_event_sizes,twoth_inp2,twoth_op2);
+	std::thread t_twoth1(avg_and_max_event_sizes,twoth_inp1,twoth_op1,mode);
+	std::thread t_twoth2(avg_and_max_event_sizes,twoth_inp2,twoth_op2,mode);
 	t_twoth1.join();
 	t_twoth2.join();
 	auto end2 = std::chrono::high_resolution_clock::now();
@@ -55,7 +57,7 @@ int midi_example() {
 		<< d2 << " milliseconds." << std::endl << std::endl;
 	}*/
 
-	/*{
+	{
 	std::filesystem::path fourth_inp1 = "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\0_to_I\\0_to_ch\\";
 	std::filesystem::path fourth_inp2 = "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\0_to_I\\cl_to_I\\";
 	std::filesystem::path fourth_inp3 = "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\J_to_Z\\J_to_P\\";
@@ -66,10 +68,10 @@ int midi_example() {
 	std::filesystem::path fourth_op4 = "C:\\Users\\ben\\Desktop\\midi_archive\\four_thread_out4.txt";
 	auto start4 = std::chrono::high_resolution_clock::now();
 	std::cout << "Starting 4-thread version:  " << std::endl;
-	std::thread t_fourth1(avg_and_max_event_sizes,fourth_inp1,fourth_op1);
-	std::thread t_fourth2(avg_and_max_event_sizes,fourth_inp2,fourth_op2);
-	std::thread t_fourth3(avg_and_max_event_sizes,fourth_inp3,fourth_op3);
-	std::thread t_fourth4(avg_and_max_event_sizes,fourth_inp4,fourth_op4);
+	std::thread t_fourth1(avg_and_max_event_sizes,fourth_inp1,fourth_op1,mode);
+	std::thread t_fourth2(avg_and_max_event_sizes,fourth_inp2,fourth_op2,mode);
+	std::thread t_fourth3(avg_and_max_event_sizes,fourth_inp3,fourth_op3,mode);
+	std::thread t_fourth4(avg_and_max_event_sizes,fourth_inp4,fourth_op4,mode);
 	t_fourth1.join();
 	t_fourth2.join();
 	t_fourth3.join();
@@ -78,9 +80,9 @@ int midi_example() {
 	auto d4 = std::chrono::duration_cast<std::chrono::milliseconds>(end4-start4).count();
 	std::cout << "4-thread version finished in d == " 
 		<< d4 << " milliseconds." << std::endl << std::endl;
-	}*/
+	}
 
-
+	/*
 	auto start1 = std::chrono::high_resolution_clock::now();
 	//std::filesystem::path inp = "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\";
 	//std::filesystem::path inp = "C:\\Users\\ben\\Desktop\\midi_benchmark\\";
@@ -89,14 +91,14 @@ int midi_example() {
 	std::filesystem::path op = "C:\\Users\\ben\\Desktop\\midi_archive\\junk.txt";
 	//std::filesystem::path op = inp / "out_bulkread.txt";
 	//inspect_mthds(inp,"");
-	avg_and_max_event_sizes(inp,op,0);
+	avg_and_max_event_sizes(inp,op,mode);
 	//read_midi_directory(inp);
 	auto end1 = std::chrono::high_resolution_clock::now();
 	auto d1 = std::chrono::duration_cast<std::chrono::milliseconds>(end1-start1).count();
 	std::cout << "1-thread version finished in d == " 
 		<< d1 << " milliseconds." << std::endl << std::endl;
 	std::cout << std::endl;
-
+	*/
 
 	//read_midi_directory_mthd_inspection("C:\\Users\\ben\\Desktop\\midi_broken_mtrk\\");
 	//read_midi_directory_mthd_inspection("C:\\Users\\ben\\Desktop\\midi_broken_mthd\\");
@@ -267,7 +269,7 @@ int inspect_mthds(const std::filesystem::path& bp,
 int avg_and_max_event_sizes(const std::filesystem::path& bp,
 				const std::filesystem::path& of, const int mode) {
 	std::ofstream outfile(of);
-	std::vector<unsigned char> fdata;  // Used if mode == 0
+	std::vector<char> fdata;  // Used if mode == 0
 	auto rdi = std::filesystem::recursive_directory_iterator(bp.parent_path());
 	int n_midi_files = 0;
 	for (const auto& dir_ent : rdi) {
@@ -275,7 +277,7 @@ int avg_and_max_event_sizes(const std::filesystem::path& bp,
 		if (!has_midifile_extension(curr_path)) {
 			continue;
 		}
-		std::basic_ifstream<unsigned char> f(curr_path,
+		std::basic_ifstream<char> f(curr_path,
 				std::ios_base::in|std::ios_base::binary);
 		if (!f.is_open() || !f.good()) {
 			continue;
@@ -293,8 +295,8 @@ int avg_and_max_event_sizes(const std::filesystem::path& bp,
 			f.read(fdata.data(),fsize);
 			make_smf(fdata.data(),fdata.data()+fdata.size(),&maybe_smf,&smf_error);
 		} else if (mode == 1) {  // iostreams
-			std::istreambuf_iterator<unsigned char> it(f);
-			auto end = std::istreambuf_iterator<unsigned char>();	
+			std::istreambuf_iterator<char> it(f);
+			auto end = std::istreambuf_iterator<char>();	
 			make_smf(it,end,&maybe_smf,&smf_error);
 		}
 		f.close();
