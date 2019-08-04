@@ -1,6 +1,6 @@
 #pragma once
 #include "midi_raw.h"  // midi_time_t
-#include "generic_chunk_low_level.h"  // chunk_header_error_t in mtrk_error_t
+#include "generic_chunk_low_level.h"
 #include "mtrk_event_t.h"
 #include "mtrk_event_methods.h"  // is_eot()
 #include "..\..\generic_iterator.h"
@@ -23,7 +23,7 @@ struct event_tk_t {
 	static_assert(std::is_same<It,typename mtrk_t::iterator>::value
 		|| std::is_same<It,typename mtrk_t::const_iterator>::value);
 	It it;
-	uint64_t tk;
+	int64_t tk;
 };
 
 //
@@ -42,8 +42,8 @@ struct event_tk_t {
 //
 struct mtrk_container_types_t {
 	using value_type = mtrk_event_t;
-	using size_type = uint32_t;
-	using difference_type = std::ptrdiff_t;  // TODO:  Inconsistent w/ size_type
+	using size_type = int32_t;
+	using difference_type = int32_t;
 	using reference = value_type&;
 	using const_reference = const value_type&;
 	using pointer = value_type*;
@@ -54,7 +54,7 @@ class mtrk_t {
 public:
 	using value_type = mtrk_container_types_t::value_type;
 	using size_type = mtrk_container_types_t::size_type;
-	using difference_type = mtrk_container_types_t::difference_type;  // TODO:  Inconsistent
+	using difference_type = mtrk_container_types_t::difference_type;
 	using reference = mtrk_container_types_t::reference;
 	using const_reference = mtrk_container_types_t::const_reference;
 	using pointer = mtrk_container_types_t::pointer;
@@ -62,6 +62,8 @@ public:
 	using iterator = generic_ra_iterator<mtrk_container_types_t>;
 	using const_iterator = generic_ra_const_iterator<mtrk_container_types_t>;
 
+	// The max. allowed value of the 'length' field in the chunk header;
+	// _Not_ the same as the max allowed number of events.  
 	static constexpr size_type length_max = std::numeric_limits<size_type>::max()-8;
 
 	// Creates an empty MTrk event sequence:
@@ -88,16 +90,16 @@ public:
 	mtrk_t(const_iterator,const_iterator);
 
 	// The number of events in the track
-	uint32_t size() const;
-	uint32_t capacity() const;
+	size_type size() const;
+	size_type capacity() const;
 	// The size in bytes occupied by the container written out (serialized)
 	// as an MTrk chunk, including the 8-bytes occupied by the header.  
 	// This is an O(n) operation
-	uint32_t nbytes() const;
+	size_type nbytes() const;
 	// Same as .nbytes(), but excluding the chunk header
-	uint32_t data_nbytes() const;
+	size_type data_nbytes() const;
 	// Cumulative number of midi ticks occupied by the entire sequence
-	uint64_t nticks() const;
+	int64_t nticks() const;
 
 	// Writes out the literal chunk header:
 	// {'M','T','r','k',_,_,_,_}
@@ -117,14 +119,14 @@ public:
 	// cumtk >= the number provided, and the exact cumtk for that event.  
 	// The onset tk for the event pointed to by .it is:
 	// .tk + .it->delta_time();
-	event_tk_t<iterator> at_cumtk(uint64_t);
-	event_tk_t<const_iterator> at_cumtk(uint64_t) const;
+	event_tk_t<iterator> at_cumtk(int64_t);
+	event_tk_t<const_iterator> at_cumtk(int64_t) const;
 	// at_tkonset() returns an iterator to the first event with onset
 	// tk >= the number provided, and the exact onset tk for that event.  
 	// The cumtk for the event pointed to by .it is:
 	// .tk - .it->delta_time();
-	event_tk_t<iterator> at_tkonset(uint64_t);
-	event_tk_t<const_iterator> at_tkonset(uint64_t) const;
+	event_tk_t<iterator> at_tkonset(int64_t);
+	event_tk_t<const_iterator> at_tkonset(int64_t) const;
 
 	// Returns a ref to the event just added
 	mtrk_event_t& push_back(const mtrk_event_t&);
@@ -146,7 +148,7 @@ public:
 	// Insert the provided event into the sequence such that its onset tick
 	// is == arg1 + arg2.delta_time()
 	// TODO:  Unit tests
-	iterator insert(uint64_t, mtrk_event_t);	
+	iterator insert(int64_t, mtrk_event_t);	
 	
 	// Erase the event pointed to by the iterator.  Returns an iterator to 
 	// the event immediately following the erased event.  
@@ -161,7 +163,7 @@ public:
 	// Note that calling clear will cause !this.validate(), since there is
 	// no longer an EOT meta event at the end of the sequence.  
 	void clear();
-	void resize(uint32_t);
+	void resize(size_type);
 	void reserve(size_type);
 
 	// TODO:  This substantially duplicates the functionality of 
@@ -175,6 +177,10 @@ public:
 	};
 	validate_t validate() const;
 private:
+	// The maximum number of events allowed... should probably be 
+	// something like length_max/4, not what i have here...
+	static constexpr size_type capacity_max = 0x0FFFFFFF;
+
 	std::vector<mtrk_event_t> evnts_ {};
 
 	template <typename InIt>
@@ -227,7 +233,7 @@ struct mtrk_error_t {
 		no_error,
 		other
 	};
-	// This is the chunk header copied verbatim.  For an chunk w/a valid
+	// This is the chunk header copied verbatim.  For a chunk w/a valid
 	// ID != 'MTrk' (ie, an "unknown" chunk), this can be examined by a
 	// caller of make_mtrk() to optionally read in a UChk.  
 	std::array<unsigned char,8> header;
@@ -243,14 +249,26 @@ struct maybe_mtrk_t {
 	operator bool() const;
 };
 
+//
+// This ignores the 'length' field in the MTrk header, and only stops 
+// collecting mtrk events into the array upon encountering and EOT event
+// or the end of the input stream.  A 'length' value not matching the
+// actual event sequence is not reported as an error.  
+// 
+//
 template <typename InIt>
 InIt make_mtrk(InIt it, InIt end, maybe_mtrk_t *result, mtrk_error_t *err) {
-	result->nbytes_read = 0;
 	std::ptrdiff_t i = 0;  // The number of bytes read from the stream
-	mtrk_event_error_t mtrk_event_error;
+	
 	std::array<unsigned char, 8> header;
 
-	auto set_error = [&err,&result,&i,&mtrk_event_error,&header](mtrk_error_t::errc ec, 
+	// The main loop calls make_mtrk_event(..., p_mtrk_event_error), which
+	// can write directly into the error object, if approproate.  
+	mtrk_event_error_t* p_mtrk_event_error = nullptr;
+	if (err) {
+		p_mtrk_event_error = &(err->event_error);
+	}
+	auto set_error = [&err,&result,&i,&header](mtrk_error_t::errc ec, 
 						unsigned char rs) -> void {
 		result->nbytes_read = i;
 		result->error = ec;
@@ -258,7 +276,6 @@ InIt make_mtrk(InIt it, InIt end, maybe_mtrk_t *result, mtrk_error_t *err) {
 			err->header.fill(0x00u);
 			err->header = header;
 			err->rs = rs;
-			err->event_error = mtrk_event_error;
 			err->code = ec;
 		}
 	};
@@ -298,18 +315,18 @@ InIt make_mtrk(InIt it, InIt end, maybe_mtrk_t *result, mtrk_error_t *err) {
 	unsigned char rs = 0x00u;  // value of the running-status
 	maybe_mtrk_event_t curr_event;
 	while (it!=end && !found_eot) {
-		it = make_mtrk_event(it,end,rs,&curr_event,&mtrk_event_error);
+		it = make_mtrk_event(it,end,rs,&curr_event,p_mtrk_event_error);
 		i += curr_event.nbytes_read;
 		if (!curr_event) {
 			set_error(mtrk_error_t::errc::invalid_event,rs);
 			return it;
 		}
+		
+		if (!found_eot) {
+			found_eot = is_eot(curr_event.event);
+		}
 		rs = curr_event.event.running_status();
 		result->mtrk.evnts_.push_back(std::move(curr_event.event));
-
-		if (!found_eot) {
-			found_eot = is_eot(result->mtrk.evnts_.back());
-		}
 	}
 	if (!found_eot) {
 		set_error(mtrk_error_t::errc::no_eot_event,rs);

@@ -57,24 +57,28 @@ mtrk_t::mtrk_t(mtrk_t::const_iterator beg, mtrk_t::const_iterator end) {
 		this->push_back(*it);
 	}
 }
-uint32_t mtrk_t::size() const {
-	return this->evnts_.size();
+mtrk_t::size_type mtrk_t::size() const {
+	return static_cast<mtrk_t::size_type>(this->evnts_.size());
 }
-uint32_t mtrk_t::capacity() const {
-	return this->evnts_.capacity();
+mtrk_t::size_type mtrk_t::capacity() const {
+	auto cap = this->evnts_.capacity();
+	if (cap > mtrk_t::capacity_max) {
+		return mtrk_t::capacity_max;
+	}
+	return static_cast<mtrk_t::size_type>(cap);
 }
-uint32_t mtrk_t::nbytes() const {
-	uint32_t sz = 8;  // MTrk+4-byte length field
+mtrk_t::size_type mtrk_t::nbytes() const {
+	mtrk_t::size_type sz = 8;  // MTrk+4-byte length field
 	for (const auto& e : this->evnts_) {
 		sz += e.size();
 	}
 	return sz;
 }
-uint32_t mtrk_t::data_nbytes() const {
+mtrk_t::size_type mtrk_t::data_nbytes() const {
 	return (this->nbytes()-8);
 }
-uint64_t mtrk_t::nticks() const {
-	uint64_t cumtk = 0;
+int64_t mtrk_t::nticks() const {
+	int64_t cumtk = 0;
 	for (const auto& e : this->evnts_) {
 		cumtk += e.delta_time();
 	}
@@ -134,7 +138,7 @@ mtrk_event_t& mtrk_t::front() {
 const mtrk_event_t& mtrk_t::front() const {
 	return this->evnts_.front();
 }
-event_tk_t<mtrk_t::iterator> mtrk_t::at_cumtk(uint64_t cumtk_on) {
+event_tk_t<mtrk_t::iterator> mtrk_t::at_cumtk(int64_t cumtk_on) {
 	event_tk_t<mtrk_t::iterator> res {this->begin(),0};
 	while (res.it!=this->end() && res.tk<cumtk_on) {
 		res.tk += res.it->delta_time();
@@ -143,7 +147,7 @@ event_tk_t<mtrk_t::iterator> mtrk_t::at_cumtk(uint64_t cumtk_on) {
 	return res;
 }
 event_tk_t<mtrk_t::const_iterator>
-						mtrk_t::at_cumtk(uint64_t cumtk_on) const {
+						mtrk_t::at_cumtk(int64_t cumtk_on) const {
 	event_tk_t<mtrk_t::const_iterator> res {this->begin(),0};
 	while (res.it!=this->end() && res.tk<cumtk_on) {
 		res.tk += res.it->delta_time();
@@ -151,7 +155,7 @@ event_tk_t<mtrk_t::const_iterator>
 	}
 	return res;
 }
-event_tk_t<mtrk_t::iterator> mtrk_t::at_tkonset(uint64_t tk_on) {
+event_tk_t<mtrk_t::iterator> mtrk_t::at_tkonset(int64_t tk_on) {
 	event_tk_t<mtrk_t::iterator> 
 		res {this->begin(),0};
 	while (res.it!=this->end()) {
@@ -163,7 +167,7 @@ event_tk_t<mtrk_t::iterator> mtrk_t::at_tkonset(uint64_t tk_on) {
 	}
 	return res;
 }
-event_tk_t<mtrk_t::const_iterator> mtrk_t::at_tkonset(uint64_t tk_on) const {
+event_tk_t<mtrk_t::const_iterator> mtrk_t::at_tkonset(int64_t tk_on) const {
 	event_tk_t<mtrk_t::const_iterator> 
 		res {this->begin(),this->begin()->delta_time()};
 	while (res.it!=this->end()) {
@@ -176,7 +180,9 @@ event_tk_t<mtrk_t::const_iterator> mtrk_t::at_tkonset(uint64_t tk_on) const {
 	return res;
 }
 mtrk_event_t& mtrk_t::push_back(const mtrk_event_t& ev) {
-	this->evnts_.push_back(ev);
+	if (this->evnts_.size() < mtrk_t::capacity_max) {
+		this->evnts_.push_back(ev);
+	}
 	return this->back();
 }
 void mtrk_t::pop_back() {
@@ -184,10 +190,10 @@ void mtrk_t::pop_back() {
 }
 mtrk_t::iterator mtrk_t::insert(mtrk_t::iterator it, const mtrk_event_t& ev) {
 	auto vit = this->evnts_.insert(this->evnts_.begin()+(it-this->begin()),ev);
-	return this->begin() + (vit-this->evnts_.begin());
+	return this->begin() + static_cast<mtrk_t::size_type>(vit-this->evnts_.begin());
 }
 mtrk_t::iterator mtrk_t::insert_no_tkshift(mtrk_t::iterator it, mtrk_event_t ev) {
-	uint64_t new_dt = ev.delta_time();
+	int32_t new_dt = ev.delta_time();
 	while ((it != this->end()) && (it->delta_time() < new_dt)) {
 		new_dt -= it->delta_time();
 		++it;
@@ -200,7 +206,7 @@ mtrk_t::iterator mtrk_t::insert_no_tkshift(mtrk_t::iterator it, mtrk_event_t ev)
 }
 // Insert the provided event into the sequence such that its onset tick
 // is == arg1 + arg2.delta_time()
-mtrk_t::iterator mtrk_t::insert(uint64_t cumtk_pos, mtrk_event_t ev) {
+mtrk_t::iterator mtrk_t::insert(int64_t cumtk_pos, mtrk_event_t ev) {
 	auto new_tk_onset = cumtk_pos+ev.delta_time();
 	auto where = this->at_tkonset(cumtk_pos);
 	// Insertion before where.it guarantees insertion at cumtk < cumtk_pos
@@ -216,12 +222,12 @@ mtrk_t::iterator mtrk_t::insert(uint64_t cumtk_pos, mtrk_event_t ev) {
 mtrk_t::iterator mtrk_t::erase(mtrk_t::iterator it) {
 	auto idx = it-this->begin();
 	auto vit = this->evnts_.erase(this->evnts_.begin()+idx);
-	return this->begin()+(vit-this->evnts_.begin());
+	return this->begin()+static_cast<mtrk_t::size_type>(vit-this->evnts_.begin());
 }
 mtrk_t::const_iterator mtrk_t::erase(mtrk_t::const_iterator it) {
 	auto idx = it-this->begin();
 	auto vit = this->evnts_.erase(this->evnts_.begin()+idx);
-	return this->begin()+(vit-this->evnts_.begin());
+	return this->begin()+static_cast<mtrk_t::size_type>(vit-this->evnts_.begin());
 }
 mtrk_t::iterator mtrk_t::erase_no_tkshift(mtrk_t::iterator it) {
 	auto dt = it->delta_time();
@@ -234,10 +240,13 @@ mtrk_t::iterator mtrk_t::erase_no_tkshift(mtrk_t::iterator it) {
 void mtrk_t::clear() {
 	this->evnts_.clear();
 }
-void mtrk_t::resize(uint32_t n) {
+void mtrk_t::resize(mtrk_t::size_type n) {
 	this->evnts_.resize(n);
 }
 void mtrk_t::reserve(mtrk_t::size_type n) {
+	if (n > mtrk_t::capacity_max) {
+		n = mtrk_t::capacity_max;
+	}
 	this->evnts_.reserve(n);
 }
 mtrk_t::validate_t mtrk_t::validate() const {
