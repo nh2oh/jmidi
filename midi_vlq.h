@@ -66,18 +66,25 @@ InIt advance_to_vlq_end(InIt beg, InIt end) {
 //
 template<typename T>
 constexpr uint32_t vlq_field_literal_value(T val) {
-	static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value,
-		"MIDI VL fields only encode unsigned integral values");
-	if (val > 0x0FFFFFFF) {
-		return 0;
+	//static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value,
+	//	"MIDI VL fields only encode unsigned integral values");
+	
+	uint32_t uval;
+	if (val < 0) {
+		uval = 0;
+	} else if (val > 0x0FFFFFFF) {
+		return uval = 0x0FFFFFFF;
+	} else {
+		uval = static_cast<uint32_t>(val);
 	}
+	
 	uint32_t res {0};
-	for (int i=0; val>0; ++i) {
+	for (int i=0; uval>0; ++i) {
 		if (i > 0) {
 			res |= (0x80u<<(i*CHAR_BIT));
 		}
-		res += (val & 0x7Fu)<<(i*CHAR_BIT);
-		val>>=7;
+		res += (uval & 0x7Fu)<<(i*CHAR_BIT);
+		uval>>=7;
 	}
 	return res;
 };
@@ -87,10 +94,16 @@ constexpr uint32_t vlq_field_literal_value(T val) {
 //
 template<typename T>
 constexpr int vlq_field_size(T val) {
-	static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value,
-		"MIDI VL fields only encode unsigned integral values");
-	if (val > 0x0FFFFFFF) {
-		return 0;
+	//static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value,
+	//	"MIDI VL fields only encode unsigned integral values");
+	
+	uint32_t uval;
+	if (val < 0) {
+		uval = 0;
+	} else if (val > 0x0FFFFFFF) {
+		return uval = 0x0FFFFFFF;
+	} else {
+		uval = static_cast<uint32_t>(val);
 	}
 	int n = 0;
 	do {
@@ -106,7 +119,7 @@ constexpr int vlq_field_size(T val) {
 template<typename T, typename OIt>
 OIt write_vlq(T val, OIt it) {
 	static_assert(CHAR_BIT == 8);
-	static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value);
+	//static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value);
 	auto vlval = vlq_field_literal_value(val);  // requires integral, unsigned
 	
 	uint8_t bytepos = 3;

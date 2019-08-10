@@ -226,6 +226,32 @@ bool mtrk_event_t::is_big() const {
 bool mtrk_event_t::is_small() const {
 	return !(this->is_big());
 }
+
+// Declared as a friend of mtrk_event_t
+mtrk_event_t make_meta_sysex_generic_unsafe(int32_t dt, unsigned char type,
+		int32_t len, const unsigned char *beg, const unsigned char *end, 
+		bool add_f7_cap) {
+	// Assumes dt is valid, type is valid (==0xFF,F7,F0), 
+	// len==end-beg+add_f7_cap.  
+	// Ex, 
+	// if end-beg == 7 && add_f7_cap, len will == 8
+	// if end-beg == 31 && !add_f7_cap, len will == 31
+	int32_t sz = delta_time_field_size(dt) + 1 + vlq_field_size(len)
+		+ len;
+
+	auto result = mtrk_event_t();
+	result.d_.resize(sz);
+	auto it = result.d_.begin();
+	it = write_delta_time(dt,it);
+	*it++ = type;
+	it = write_vlq(len,it);
+	it = std::copy(beg,end,it);
+	if (add_f7_cap) {
+		*it++ = 0xF7u;
+	}
+	return result;
+}
+
 mtrk_event_debug_helper_t debug_info(const mtrk_event_t& ev) {
 	mtrk_event_debug_helper_t r;
 	r.raw_beg = ev.d_.raw_begin();
@@ -249,7 +275,7 @@ std::string explain(const mtrk_event_error_t& err) {
 	} else if (err.code==mtrk_event_error_t::errc::invalid_status_byte) {
 		s += "Invalid status byte s == " 
 			+ std::to_string(err.s) + ", rs == "
-			+std::to_string(err.rs) + ".  ";
+			+ std::to_string(err.rs) + ".  ";
 	} else if (err.code==mtrk_event_error_t::errc::channel_calcd_length_exceeds_input) {
 		s += "Encountered end-of-input prior to reading the number of expected "
 			"data bytes for the present channel event.  ";

@@ -357,9 +357,6 @@ mtrk_event_t make_meta_generic_text(const int32_t& dt, const meta_event_t& type,
 
 
 
-
-
-
 midi_ch_event_t get_channel_event(const mtrk_event_t& ev, midi_ch_event_t def) {
 	auto result = get_channel_event_impl(ev);
 	if (!verify(result)) {
@@ -525,34 +522,48 @@ bool is_sysex_f0(const mtrk_event_t& ev) {
 bool is_sysex_f7(const mtrk_event_t& ev) {
 	return ev.type()==smf_event_type::sysex_f7;
 }
-mtrk_event_t make_sysex_generic_impl(const int32_t& dt, unsigned char type, 
-					bool f7_terminate, const std::vector<unsigned char>& pyld) {
-	// 'pyld' is missing the leading F0 and vlq length field.  
+
+// Delegates to make_meta_sysex_generic_unsafe() after checking the input.  
+// For invalid input, returns a default-constructed mtrk_event_t.  
+mtrk_event_t make_meta_sysex_generic_impl(int32_t dt, unsigned char type, 
+					bool f7_terminate, const unsigned char *beg,
+					const unsigned char *end) {
+	// [beg,end) is the event data without the delta-time, the leading F0, 
+	// the vlq length field, and possibly the terminating F7.  
 	// If f7_terminate == true, the caller wants the event to end in an 0xF7.  
-	// If pyld does not end in an F7, an F7 appended.  f7_terminate == false,
-	// no terminating F7 is added.  
-	auto payload_eff_size = pyld.size();
-	if ((pyld.size()>0) && (pyld.back()!=0xF7u) && f7_terminate) {
-		++payload_eff_size;
+	// If pyld does not end in an F7, an F7 is appended.  
+	// If f7_terminate == false, no terminating F7 is added.  
+	mtrk_event_t result;
+
+	dt = to_nearest_valid_delta_time(dt);
+	if (type!=0xFFu && type!=0xF7u && type!=0xF0u) {
+		result = mtrk_event_t();
+		return result;
 	}
-	auto sz_reserve = delta_time_field_size(dt) + 1  // dt + 0xF0u/0xF7u
-		+ vlq_field_size(payload_eff_size)  // payload-length-vlq
-		+ payload_eff_size;
-	auto result = mtrk_event_t();
-	result.d_.resize(sz_reserve);
-	auto it = result.d_.begin();
-	it = write_delta_time(dt,it);
-	*it++ = type;
-	it = write_vlq(payload_eff_size,it);
-	it = std::copy(pyld.begin(),pyld.end(),it);
-	if (pyld.size()!=payload_eff_size) {  // pyld is not F7-capped && f7_terminate
-		*it++ = 0xF7u;
+
+	int32_t payload_len;
+	if (((end-beg)>=0) && ((end-beg) <= 0x0FFFFFFF)) {
+		payload_len = static_cast<int32_t>(end-beg);
+	} else {  // end-beg < 0 || > the max allowed payload size
+		payload_len = 0;
 	}
+
+	bool add_f7_cap = false;
+	if ((payload_len==0 && f7_terminate) 
+			|| (payload_len>0 && f7_terminate && (*(end-1))!=0xF7u)) {
+		++payload_len;
+		add_f7_cap = true;
+	}
+	result = make_meta_sysex_generic_unsafe(dt, type, 
+		payload_len, beg, end, add_f7_cap);
+	
 	return result;
 }
 mtrk_event_t make_sysex_f0(const uint32_t& dt, const std::vector<unsigned char>& pyld) {
-	return make_sysex_generic_impl(dt,0xF0u,true,pyld);
+	return make_meta_sysex_generic_impl(dt,0xF0u,true,
+		pyld.data(),pyld.data()+pyld.size());
 }
 mtrk_event_t make_sysex_f7(const uint32_t& dt, const std::vector<unsigned char>& pyld) {
-	return make_sysex_generic_impl(dt,0xF7u,true,pyld);
+	return make_meta_sysex_generic_impl(dt,0xF7u,true,
+		pyld.data(),pyld.data()+pyld.size());
 }

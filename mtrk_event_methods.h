@@ -234,6 +234,11 @@ mtrk_event_t make_channel_pressure(const uint32_t&, midi_ch_event_t);  // 0xD0u
 mtrk_event_t make_pitch_bend(const uint32_t&, midi_ch_event_t);  // 0xE0u
 mtrk_event_t make_channel_mode(const uint32_t&, midi_ch_event_t);  // 0xB0u
 
+
+
+
+
+
 //
 // Sysex event classification
 //
@@ -241,11 +246,12 @@ bool is_sysex(const mtrk_event_t&);
 bool is_sysex_f0(const mtrk_event_t&);
 bool is_sysex_f7(const mtrk_event_t&);
 // Sysex factories
-// mtrk_event_t make_sysex_generic_impl(const int32_t& delta_time, 
-//     unsigned char type_byte, bool terminate,
-//     const std::vector<unsigned char>& payload);
-mtrk_event_t make_sysex_generic_impl(const int32_t&, unsigned char, bool, 
-	const std::vector<unsigned char>&);
+// mtrk_event_t make_meta_sysex_generic_impl(int32_t, unsigned char, 
+//					bool, const unsigned char *,
+//					const unsigned char *);
+mtrk_event_t make_meta_sysex_generic_impl(int32_t, unsigned char, 
+					bool, const unsigned char *,
+					const unsigned char *);
 // Create a sysex event w/ type byte == 0xF0u and payload == to the contents 
 // of the provided vector.  In the event returned, the final byte of the 
 // payload is always 0xF7u, even if this is not the final byte of the input
