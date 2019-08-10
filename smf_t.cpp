@@ -203,9 +203,9 @@ maybe_smf_t::operator bool() const {
 }
 maybe_smf_t read_smf(const std::filesystem::path& fp, smf_error_t *err) {
 	maybe_smf_t result;
-	std::basic_ifstream<unsigned char> f(fp,std::ios::in|std::ios::binary);
-	std::istreambuf_iterator<unsigned char> it(f);
-	auto end = std::istreambuf_iterator<unsigned char>();
+	std::basic_ifstream<char> f(fp,std::ios::in|std::ios::binary);
+	std::istreambuf_iterator<char> it(f);
+	auto end = std::istreambuf_iterator<char>();
 
 	if (!f.is_open() || !f.good()) {
 		result.error = smf_error_t::errc::file_read_error;
@@ -222,7 +222,7 @@ maybe_smf_t read_smf(const std::filesystem::path& fp, smf_error_t *err) {
 maybe_smf_t read_smf_bulkfileread(const std::filesystem::path& fp, 
 									smf_error_t *err) {
 	maybe_smf_t result;
-	std::basic_ifstream<unsigned char> f(fp,
+	std::basic_ifstream<char> f(fp,
 		std::ios_base::in|std::ios_base::binary);
 	if (!f.is_open() || !f.good()) {
 		if (err) {
@@ -233,11 +233,11 @@ maybe_smf_t read_smf_bulkfileread(const std::filesystem::path& fp,
 	f.seekg(0,std::ios::end);
 	auto fsize = f.tellg();
 	f.seekg(0,std::ios::beg);
-	std::vector<unsigned char> fdata(fsize);
+	std::vector<char> fdata(fsize);
 	f.read(fdata.data(),fsize);
 	f.close();
-	const unsigned char *it = fdata.data();
-	const unsigned char *end = fdata.data()+fdata.size();
+	const char *it = fdata.data();
+	const char *end = fdata.data()+fdata.size();
 	
 	make_smf(it,end,&result,err);
 	return result;

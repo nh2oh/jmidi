@@ -144,6 +144,17 @@ struct maybe_smf_t {
 	smf_error_t::errc error;
 	operator bool() const;
 };
+//
+// (1)
+// maybe_smf_t read_smf(const std::filesystem::path&, smf_error_t*);
+//
+// 
+// 
+// (2)
+// maybe_smf_t read_smf_bulkfileread(const std::filesystem::path&,
+//									smf_error_t*);
+// Copies the entire file into a std::vector<unsigned char>, then delegates
+// to overload (1)
 maybe_smf_t read_smf(const std::filesystem::path&, smf_error_t*);
 maybe_smf_t read_smf_bulkfileread(const std::filesystem::path&, smf_error_t*);
 std::string explain(const smf_error_t&);
