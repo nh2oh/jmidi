@@ -250,7 +250,7 @@ bool is_sysex_f7(const mtrk_event_t&);
 //					bool, const unsigned char *,
 //					const unsigned char *);
 mtrk_event_t make_meta_sysex_generic_impl(int32_t, unsigned char, 
-					bool, const unsigned char *,
+					unsigned char, bool, const unsigned char *,
 					const unsigned char *);
 // Create a sysex event w/ type byte == 0xF0u and payload == to the contents 
 // of the provided vector.  In the event returned, the final byte of the 

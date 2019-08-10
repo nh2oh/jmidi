@@ -293,23 +293,22 @@ std::vector<unsigned char> get_seqspecific(const mtrk_event_t& ev,
 	return data;
 }
 mtrk_event_t make_seqn(const int32_t& dt, const uint16_t& seqn) {
-	std::array<unsigned char,5> d {0xFFu,0x00u,0x02u,0x00u,0x00u};
-	write_16bit_be(seqn, d.begin()+3);
-	return make_mtrk_event(d.data(),d.data()+d.size(),dt,0,nullptr).event;
+	uint16_t pyld = to_be_byte_order(seqn);
+	auto p = static_cast<unsigned char*>(static_cast<void*>(&pyld));
+	return make_meta_sysex_generic_impl(dt,0xFFu,0x00u,false,p,p+2);
 }
 mtrk_event_t make_chprefix(const int32_t& dt, const uint8_t& ch) {
-	std::array<unsigned char,4> d {0xFFu,0x20u,0x01u,0x00u};
-	write_bytes(ch, d.begin()+3);
-	return make_mtrk_event(d.data(),d.data()+d.size(),dt,0,nullptr).event;
+	const unsigned char pyld = 0x01u;
+	return make_meta_sysex_generic_impl(dt,0xFFu,0x20u,false,&pyld,&pyld+1);
 }
 mtrk_event_t make_tempo(const int32_t& dt, const uint32_t& uspqn) {
-	std::array<unsigned char,6> d {0xFFu,0x51u,0x03u,0x00u,0x00u,0x00u};
-	write_24bit_be((uspqn>0xFFFFFFu ? 0xFFFFFFu : uspqn), d.begin()+3);
-	return make_mtrk_event(d.data(),d.data()+d.size(),dt,0,nullptr).event;
+	std::array<unsigned char,3> pyld;
+	write_24bit_be((uspqn>0xFFFFFFu ? 0xFFFFFFu : uspqn), pyld.data());
+	return make_meta_sysex_generic_impl(dt,0xFFu,0x51u,false,
+		pyld.data(),pyld.data()+pyld.size());
 }
 mtrk_event_t make_eot(const int32_t& dt) {
-	std::array<unsigned char,3> d {0xFFu,0x2Fu,0x00u};
-	return make_mtrk_event(d.data(),d.data()+d.size(),dt,0,nullptr).event;
+	return make_meta_sysex_generic_impl(dt,0xFFu,0x2Fu,false,nullptr,nullptr);
 }
 mtrk_event_t make_timesig(const int32_t& dt, const midi_timesig_t& ts) {
 	std::array<unsigned char,7> d {0xFFu,0x58u,0x04u,
@@ -339,20 +338,20 @@ mtrk_event_t make_copyright(const int32_t& dt, const std::string& s) {
 }
 mtrk_event_t make_meta_generic_text(const int32_t& dt, const meta_event_t& type, 
 									const std::string& s) {
+	mtrk_event_t result;
+
 	auto type_int16 = static_cast<uint16_t>(type);  // TODO:  Gross
-	if (!meta_hastext_impl(type_int16)) {
-		// TODO:  This probably breaks nrvo
-		return mtrk_event_t();
+	if (!meta_hastext_impl(type_int16)) {  // TODO:  This probably breaks nrvo ??
+		result = mtrk_event_t();
+		return result;
 	}
-	std::vector<unsigned char> d;
-	d.reserve(sizeof(mtrk_event_t));
-	d.push_back(0xFFu);
-	d.push_back(static_cast<uint8_t>(type_int16&0x00FFu));
-	// TODO:  midi_write_vl_field does not enforce a max size for the length
-	// field of 4 bytes.  
-	auto it = write_vlq(s.size(),std::back_inserter(d));
-	std::copy(s.begin(),s.end(),std::back_inserter(d));
-	return make_mtrk_event(d.data(),d.data()+d.size(),dt,0,nullptr).event;
+
+	auto mtype = static_cast<unsigned char>(type_int16 & 0x00FFu);
+	result = make_meta_sysex_generic_impl(dt,0xFFu,mtype,false,
+		reinterpret_cast<const unsigned char*>(s.data()), 
+		reinterpret_cast<const unsigned char*>(s.data()+s.size()));
+
+	return result;
 }
 
 
@@ -526,8 +525,8 @@ bool is_sysex_f7(const mtrk_event_t& ev) {
 // Delegates to make_meta_sysex_generic_unsafe() after checking the input.  
 // For invalid input, returns a default-constructed mtrk_event_t.  
 mtrk_event_t make_meta_sysex_generic_impl(int32_t dt, unsigned char type, 
-					bool f7_terminate, const unsigned char *beg,
-					const unsigned char *end) {
+					unsigned char mtype, bool f7_terminate,
+					const unsigned char *beg, const unsigned char *end) {
 	// [beg,end) is the event data without the delta-time, the leading F0, 
 	// the vlq length field, and possibly the terminating F7.  
 	// If f7_terminate == true, the caller wants the event to end in an 0xF7.  
@@ -554,16 +553,16 @@ mtrk_event_t make_meta_sysex_generic_impl(int32_t dt, unsigned char type,
 		++payload_len;
 		add_f7_cap = true;
 	}
-	result = make_meta_sysex_generic_unsafe(dt, type, 
+	result = make_meta_sysex_generic_unsafe(dt, type, mtype,
 		payload_len, beg, end, add_f7_cap);
 	
 	return result;
 }
 mtrk_event_t make_sysex_f0(const uint32_t& dt, const std::vector<unsigned char>& pyld) {
-	return make_meta_sysex_generic_impl(dt,0xF0u,true,
+	return make_meta_sysex_generic_impl(dt,0xF0u,0x00u,true,
 		pyld.data(),pyld.data()+pyld.size());
 }
 mtrk_event_t make_sysex_f7(const uint32_t& dt, const std::vector<unsigned char>& pyld) {
-	return make_meta_sysex_generic_impl(dt,0xF7u,true,
+	return make_meta_sysex_generic_impl(dt,0xF7u,0x00u,true,
 		pyld.data(),pyld.data()+pyld.size());
 }

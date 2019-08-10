@@ -229,8 +229,8 @@ bool mtrk_event_t::is_small() const {
 
 // Declared as a friend of mtrk_event_t
 mtrk_event_t make_meta_sysex_generic_unsafe(int32_t dt, unsigned char type,
-		int32_t len, const unsigned char *beg, const unsigned char *end, 
-		bool add_f7_cap) {
+		unsigned char mtype, int32_t len, const unsigned char *beg, 
+		const unsigned char *end, bool add_f7_cap) {
 	// Assumes dt is valid, type is valid (==0xFF,F7,F0), 
 	// len==end-beg+add_f7_cap.  
 	// Ex, 
@@ -238,12 +238,18 @@ mtrk_event_t make_meta_sysex_generic_unsafe(int32_t dt, unsigned char type,
 	// if end-beg == 31 && !add_f7_cap, len will == 31
 	int32_t sz = delta_time_field_size(dt) + 1 + vlq_field_size(len)
 		+ len;
+	if (type == 0xFFu) {
+		sz += 1;  // For meta events, 1 extra byte for the mtype byte
+	}
 
 	auto result = mtrk_event_t();
 	result.d_.resize(sz);
 	auto it = result.d_.begin();
 	it = write_delta_time(dt,it);
 	*it++ = type;
+	if (type==0xFFu) {
+		*it++ = mtype;
+	}
 	it = write_vlq(len,it);
 	it = std::copy(beg,end,it);
 	if (add_f7_cap) {

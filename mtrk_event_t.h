@@ -5,7 +5,6 @@
 #include "midi_delta_time.h"
 #include <string>  // For declaration of print()
 #include <cstdint>
-#include <vector>
 #include <utility>  // std::pair
 
 
@@ -165,10 +164,10 @@ private:
 	bool is_big() const;
 	bool is_small() const;
 
-	// delta-time, type (0x{FF,F0,F7}), length, payload beg, payload end, 
+	// delta-time, type (0x{FF,F0,F7}), meta-type, length, payload beg, payload end, 
 	// add_f7_cap.  length must be consistent w/ end-beg && add_f7_cap.  
 	friend mtrk_event_t make_meta_sysex_generic_unsafe(int32_t, unsigned char, 
-		int32_t, const unsigned char *, const unsigned char *, bool);
+		unsigned char, int32_t, const unsigned char *, const unsigned char *, bool);
 
 	template <typename InIt>
 	friend InIt make_mtrk_event(InIt, InIt, int32_t, 
@@ -186,7 +185,8 @@ struct mtrk_event_debug_helper_t {
 mtrk_event_debug_helper_t debug_info(const mtrk_event_t&);
 
 mtrk_event_t make_meta_sysex_generic_unsafe(int32_t, unsigned char, 
-		int32_t, const unsigned char *, const unsigned char *, bool);
+		unsigned char, int32_t, const unsigned char *,
+		const unsigned char *, bool);
 
 struct mtrk_event_error_t {
 	enum class errc : uint8_t {
