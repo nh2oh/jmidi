@@ -126,7 +126,7 @@ struct smf_error_t {
 		mthd_error,
 		mtrk_error,
 		overflow_reading_uchk,
-		terminated_before_end_of_file,
+		terminated_before_end_of_file,  // TODO:  Nothing sets this
 		unexpected_num_mtrks,
 		no_error,
 		other

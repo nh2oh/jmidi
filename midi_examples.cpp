@@ -44,7 +44,9 @@ const std::vector<midi_test_stuff_t> midi_test_dirs {
 	{"mtrk",R"(C:\Users\ben\Desktop\midi_broken_mtrk\)",
 	R"(C:\Users\ben\Desktop\midi_archive\mtrk.txt)"},
 	{"simple",R"(C:\Users\ben\Desktop\midi_simple_valid\)",
-	R"(C:\Users\ben\Desktop\midi_archive\simple_valid.txt)"}
+	R"(C:\Users\ben\Desktop\midi_archive\simple_valid.txt)"},
+	{"random_collection",R"(C:\Users\ben\Desktop\midi_random_collection\)",
+	R"(C:\Users\ben\Desktop\midi_archive\midi_random_collection.txt)"}
 };
 inout_dirs_t get_midi_test_dirs(const std::string& name) {
 	auto p = [&name](const midi_test_stuff_t& e)->bool {
@@ -56,10 +58,13 @@ inout_dirs_t get_midi_test_dirs(const std::string& name) {
 	result.outp = it->outp;
 	return result;
 }
-	
+
 
 int midi_example() {
-	event_sizes_benchmark();
+	//auto d = get_midi_test_dirs("random_collection");
+	auto d = get_midi_test_dirs("all");
+	classify_smf_errors(d.inp,d.outp.parent_path()/"errors_all.txt");
+	//event_sizes_benchmark();
 	return 0;
 }
 
@@ -84,6 +89,8 @@ int event_sizes_benchmark() {
 	auto tdelta = std::chrono::duration_cast<std::chrono::milliseconds>(tend-tstart);;
 	std::cout << Nth << "-thread version finished in d == " 
 		<< tdelta.count() << " milliseconds." << std::endl << std::endl;
+
+	return 0;
 }
 
 int avg_and_max_event_sizes(const std::filesystem::path& bp,
@@ -172,7 +179,138 @@ int avg_and_max_event_sizes(const std::filesystem::path& bp,
 	return 0;
 }
 
+int classify_smf_errors(const std::filesystem::path& inp,
+						const std::filesystem::path& outf) {
+	std::ofstream outfile(outf);
+	std::vector<char> fdata;
+	auto rdi = std::filesystem::recursive_directory_iterator(inp.parent_path());
+	int n_midi_files = 0;
+	for (const auto& dir_ent : rdi) {
+		auto curr_path = dir_ent.path();
+		if (!has_midifile_extension(curr_path)) {
+			continue;
+		}
+		std::basic_ifstream<char> f(curr_path,
+				std::ios_base::in|std::ios_base::binary);
+		if (!f.is_open() || !f.good()) {
+			continue;
+		}
+		++n_midi_files;
+		if (n_midi_files%10000 == 0) {
+			std::cout << "File num " << n_midi_files << std::endl;
+		}
 
+		// Read the file into fdata, close the file
+		f.seekg(0,std::ios::end);
+		auto fsize = f.tellg();
+		f.seekg(0,std::ios::beg);
+		fdata.resize(fsize);
+		f.read(fdata.data(),fsize);
+		f.close();
+
+		maybe_smf_t maybe_smf;
+		smf_error_t smf_error;
+		make_smf(fdata.data(),fdata.data()+fdata.size(),
+			&maybe_smf,&smf_error);
+		if (maybe_smf) {
+			continue;  // The file is ok
+		}
+
+		outfile << curr_path.string() << "\n";
+		switch (smf_error.code) {
+		case smf_error_t::errc::mthd_error:
+			outfile << "smf_error_t::errc::mthd_error";
+			break;
+		case smf_error_t::errc::mtrk_error:
+			outfile << "smf_error_t::errc::mtrk_error";
+			break;
+		case smf_error_t::errc::overflow_reading_uchk:
+			outfile << "smf_error_t::errc::overflow_reading_uchk";
+			break;
+		case smf_error_t::errc::unexpected_num_mtrks:
+			outfile << "smf_error_t::errc::unexpected_num_mtrks";
+			break;
+		case smf_error_t::errc::other:
+			outfile << "smf_error_t::errc::other";
+			break;
+		default:
+			outfile << "smf_error_t::errc::???";
+			break;
+		}
+		
+		if (smf_error.code==smf_error_t::errc::mtrk_error) {
+			outfile << '\t';
+			switch (smf_error.mtrk_err_obj.code) {
+			case mtrk_error_t::errc::header_overflow:
+				outfile << "mtrk_error_t::errc::header_overflow";
+				break;
+			case mtrk_error_t::errc::valid_but_non_mtrk_id:
+				outfile << "mtrk_error_t::errc::valid_but_non_mtrk_id";
+				break;
+			case mtrk_error_t::errc::invalid_id:
+				outfile << "mtrk_error_t::errc::invalid_id";
+				break;
+			case mtrk_error_t::errc::length_gt_mtrk_max:
+				outfile << "mtrk_error_t::errc::length_gt_mtrk_max";
+				break;
+			case mtrk_error_t::errc::invalid_event:
+				outfile << "mtrk_error_t::errc::invalid_event";
+				break;
+			case mtrk_error_t::errc::no_eot_event:
+				outfile << "mtrk_error_t::errc::no_eot_event";
+				break;
+			case mtrk_error_t::errc::other:
+				outfile << "mtrk_error_t::errc::other";
+				break;
+			default:
+				outfile << "mtrk_error_t::errc::???";
+				break;
+			}
+		}
+
+		if (smf_error.code==smf_error_t::errc::mtrk_error
+				&& smf_error.mtrk_err_obj.code==mtrk_error_t::errc::invalid_event) {
+			outfile << '\t';
+			switch (smf_error.mtrk_err_obj.event_error.code) {
+			case mtrk_event_error_t::errc::invalid_delta_time:
+				outfile << "mtrk_event_error_t::errc::invalid_delta_time";
+				break;
+			case mtrk_event_error_t::errc::no_data_following_delta_time:
+				outfile << "mtrk_event_error_t::errc::no_data_following_delta_time";
+				break;
+			case mtrk_event_error_t::errc::invalid_status_byte:
+				outfile << "mtrk_event_error_t::errc::invalid_status_byte";
+				break;
+			case mtrk_event_error_t::errc::channel_calcd_length_exceeds_input:
+				outfile << "mtrk_event_error_t::errc::channel_calcd_length_exceeds_input";
+				break;
+			case mtrk_event_error_t::errc::channel_invalid_data_byte:
+				outfile << "mtrk_event_error_t::errc::channel_invalid_data_byte";
+				break;
+			case mtrk_event_error_t::errc::sysex_or_meta_overflow_in_header:
+				outfile << "mtrk_event_error_t::errc::sysex_or_meta_overflow_in_header";
+				break;
+			case mtrk_event_error_t::errc::sysex_or_meta_invalid_vlq_length:
+				outfile << "mtrk_event_error_t::errc::sysex_or_meta_invalid_vlq_length";
+				break;
+			case mtrk_event_error_t::errc::sysex_or_meta_calcd_length_exceeds_input:
+				outfile << "mtrk_event_error_t::errc::sysex_or_meta_calcd_length_exceeds_input";
+				break;
+			case mtrk_event_error_t::errc::other:
+				outfile << "mtrk_event_error_t::errc::other";
+				break;
+			default:
+				outfile << "mtrk_event_error_t::errc::???";
+				break;
+			}
+		}
+
+		outfile << "\n\n";
+	}
+	outfile << n_midi_files << " Midi files\n";
+	outfile.close();
+	return 0;
+}
 
 
 
