@@ -345,6 +345,21 @@ maybe_mtrk_t make_mtrk(InIt it, InIt end, mtrk_error_t *err) {
 	return result;
 };
 
+template<typename OIt>
+OIt write_mtrk(const mtrk_t& mtrk, OIt it) {
+	std::array<char,4> h {'M','T','r','k'};
+	it = std::copy(h.begin(),h.end(),it);
+	it = write_32bit_be(static_cast<uint32_t>(mtrk.data_nbytes()), it);
+	for (const auto& ev : mtrk) {
+		for (const auto& b : ev) {
+			*it++ = b;
+		}
+	}
+	return it;
+};
+
+
+
 /*
 maybe_mtrk_t make_mtrk_permissive(const unsigned char*, const unsigned char*,
 									mtrk_error_t*);

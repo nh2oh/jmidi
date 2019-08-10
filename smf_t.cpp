@@ -8,7 +8,6 @@
 #include <cstdint>
 #include <vector>
 #include <algorithm>  // std::copy() in smf_t::smf_t(const validate_smf_result_t& maybe_smf)
-#include <iostream>
 #include <iomanip>  // std::setw()
 #include <ios>  // std::left
 #include <sstream>
@@ -164,6 +163,9 @@ void smf_t::set_mthd(const maybe_mthd_t& mthd) {
 		this->mthd_ = mthd.mthd;
 	}
 }
+void smf_t::set_mthd(const mthd_t& mthd) {
+	this->mthd_ = mthd;
+}
 
 // TODO:  The call to nbytes() is v. expensive
 std::string print(const smf_t& smf) {
@@ -220,7 +222,7 @@ maybe_smf_t read_smf(const std::filesystem::path& fp, smf_error_t *err) {
 };
 
 maybe_smf_t read_smf_bulkfileread(const std::filesystem::path& fp, 
-									smf_error_t *err) {
+					smf_error_t *err, std::vector<char> *pfdata) {
 	maybe_smf_t result;
 	std::basic_ifstream<char> f(fp,
 		std::ios_base::in|std::ios_base::binary);
@@ -233,12 +235,20 @@ maybe_smf_t read_smf_bulkfileread(const std::filesystem::path& fp,
 	f.seekg(0,std::ios::end);
 	auto fsize = f.tellg();
 	f.seekg(0,std::ios::beg);
-	std::vector<char> fdata(fsize);
-	f.read(fdata.data(),fsize);
-	f.close();
-	const char *it = fdata.data();
-	const char *end = fdata.data()+fdata.size();
 	
+	std::vector<char> fdata;
+	if (!pfdata) {
+		fdata.resize(fsize);
+		pfdata = &fdata;
+	} else {
+		pfdata->resize(fsize);
+	}
+
+	f.read(pfdata->data(),fsize);
+	f.close();
+
+	const char *it = pfdata->data();
+	const char *end = pfdata->data()+pfdata->size();
 	make_smf(it,end,&result,err);
 	return result;
 }
@@ -290,6 +300,14 @@ std::string explain(const smf_error_t& err) {
 	return s;
 }
 
+
+std::filesystem::path write_smf(const smf_t& smf, const std::filesystem::path& p) {
+	std::basic_ofstream<char> fsout(p,std::ios::out|std::ios::binary);
+	std::ostreambuf_iterator<char> it(fsout);
+	write_smf(smf,it);
+	fsout.close();
+	return p;
+}
 
 bool has_midifile_extension(const std::filesystem::path& fp) {
 	if (!std::filesystem::is_regular_file(fp)) {

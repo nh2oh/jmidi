@@ -40,7 +40,7 @@
 // TODO:  Does not really need to hold an mthd_t; can just hold 3 
 // uint16_t's representing the data fields.  Saves 24-3*2 == 18
 // bytes...
-//
+// TODO:  No nticks() (see mtrk_t)
 //
 
 struct smf_container_types_t {
@@ -108,6 +108,7 @@ public:
 	time_division_t division() const;  // mthd alias
 	int32_t mthd_size() const;  // mthd alias
 	void set_mthd(const maybe_mthd_t&);
+	void set_mthd(const mthd_t&);
 private:
 	mthd_t mthd_ {};
 	std::vector<value_type> mtrks_ {};
@@ -145,18 +146,24 @@ struct maybe_smf_t {
 	operator bool() const;
 };
 //
+// maybe_smf_t read_smf(...)
+//
 // (1)
 // maybe_smf_t read_smf(const std::filesystem::path&, smf_error_t*);
-//
-// 
+// Constructs a std::basic_ifstream<char> and std::istreambuf_iterator<char>
+// iterator pair, then delegates to make_smf().  
 // 
 // (2)
 // maybe_smf_t read_smf_bulkfileread(const std::filesystem::path&,
-//									smf_error_t*);
-// Copies the entire file into a std::vector<unsigned char>, then delegates
-// to overload (1)
+//									smf_error_t*, std::vector<char>*);
+// Constructs a std::basic_ifstream<char> and std::istreambuf_iterator<char>
+// iterator pair, then copies the entire file into a 
+// std::vector<char>, in one shot w/a call to std::ifstream::read().  
+// Delegates to make_smf() w/ the vector iterators.
+//
 maybe_smf_t read_smf(const std::filesystem::path&, smf_error_t*);
-maybe_smf_t read_smf_bulkfileread(const std::filesystem::path&, smf_error_t*);
+maybe_smf_t read_smf_bulkfileread(const std::filesystem::path&, 
+						smf_error_t*, std::vector<char>*);
 std::string explain(const smf_error_t&);
 
 template<typename InIt>
@@ -251,6 +258,19 @@ InIt make_smf(InIt it, InIt end, maybe_smf_t *result, smf_error_t *err) {
 	return it;
 };
 
+
+template<typename OIt>
+OIt write_smf(const smf_t& smf, OIt it) {
+	for (const auto& e : smf.mthd()) {
+		*it++ = e;
+	}
+	for (const auto& trk : smf) {
+		it = write_mtrk(trk,it);
+	}
+	return it;
+};
+
+std::filesystem::path write_smf(const smf_t&, const std::filesystem::path&);
 
 // For the path fp, checks that std::filesystem::is_regular_file(fp)
 // is true, and that the extension is "mid", "MID", "midi", or 

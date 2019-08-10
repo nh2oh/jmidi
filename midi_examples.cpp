@@ -20,8 +20,14 @@
 #include <chrono>
 #include <thread>
 #include <cstddef>
+#include <sstream>
+#include <random>
+
 
 const std::vector<midi_test_stuff_t> midi_test_dirs {
+	{"write",R"(C:\Users\ben\Desktop\midi_archive\self_written\)",
+	R"(C:\Users\ben\Desktop\midi_archive\self_written\out.midi)"},
+
 	{"all",R"(C:\Users\ben\Desktop\midi_archive\midi_archive\)",
 	R"(C:\Users\ben\Desktop\midi_archive\all.txt)"},
 
@@ -61,11 +67,81 @@ inout_dirs_t get_midi_test_dirs(const std::string& name) {
 
 
 int midi_example() {
-	//auto d = get_midi_test_dirs("random_collection");
-	auto d = get_midi_test_dirs("all");
-	classify_smf_errors(d.inp,d.outp.parent_path()/"errors_all.txt");
+	//auto d = get_midi_test_dirs("all");
+	//classify_smf_errors(d.inp,d.outp.parent_path()/"errors_all.txt");
 	//event_sizes_benchmark();
+
+
+	auto d = get_midi_test_dirs("write");
+	auto smf_out_path = make_midifile(d.outp,true);
+
+	smf_error_t smf_read_err;
+	auto smf_in = read_smf(smf_out_path,&smf_read_err);
+
+	auto smf_out2_path 
+		= smf_out_path.replace_filename(smf_out_path.stem()+="_again.midi");
+	write_smf(smf_in.smf,smf_out2_path);
+	
+
 	return 0;
+}
+
+
+std::filesystem::path make_midifile(std::filesystem::path smf_path, 
+									bool random_fname) {
+	auto smf = smf_t();
+	
+	auto mthd = mthd_t();
+	mthd.set_format(0);
+	mthd.set_ntrks(1);
+	mthd.set_division(time_division_t(25));
+
+	auto mtrk1 = mtrk_t();
+	mtrk1.push_back(make_seqn(0,0));
+	mtrk1.push_back(make_copyright(0,"Ben Knowles 2019"));
+	mtrk1.push_back(make_trackname(0,"Track 1 (0)"));
+	mtrk1.push_back(make_instname(0,"Harpsichord"));
+	mtrk1.push_back(make_timesig(0,{4,2,24,8}));
+	mtrk1.push_back(make_tempo(0,250000)); // 0.5 seconds/qnt
+	mtrk1.push_back(make_program_change(0,
+		midi_ch_event_t{0xC0u,0x00u,0x06u,0x00u}));
+	// 0 => Acoustic Grand; 6 => Harpsichord
+
+	int32_t cumtk = 0;
+	int32_t note_duration = 50;  // 2 q notes == 1 h note
+	int32_t note_spacing = 0;  // 1 q note apart
+	for (int i=0; i<12; ++i) {
+		auto curr_ntnum = i+60;
+		auto curr_notespacing = i==0 ? 0 : note_spacing;
+		midi_ch_event_t note_on {0x90u,0x00u,curr_ntnum,127/2};
+		midi_ch_event_t note_off {0x80u,0x00u,curr_ntnum,127/2};
+		
+		mtrk1.push_back(make_note_on(curr_notespacing,note_on));
+		mtrk1.push_back(make_note_off(note_duration,note_off));
+		cumtk += curr_notespacing + note_duration;
+	}
+	mtrk1.push_back(make_eot(0));
+	smf.set_mthd(mthd);
+	smf.push_back(mtrk1);
+	
+	if (random_fname) {
+		smf_path.replace_filename(randfn()+".midi");
+	}
+	smf_path = write_smf(smf,smf_path);
+
+	return smf_path;
+}
+
+std::string randfn() {
+	std::random_device rdev;
+	std::default_random_engine re(rdev());
+	std::uniform_int_distribution<int> rd(0,24);
+
+	std::string s;
+	for (int i=0; i<4; ++i) {
+		s.push_back('A' + rd(re));
+	}
+	return s;
 }
 
 
@@ -124,7 +200,7 @@ int avg_and_max_event_sizes(const std::filesystem::path& bp,
 				&maybe_smf,&smf_error);
 		} else if (mode == 1) {  // iostreams
 			std::istreambuf_iterator<char> it(f);
-			auto end = std::istreambuf_iterator<char>();	
+			auto end = std::istreambuf_iterator<char>();
 			make_smf(it,end,&maybe_smf,&smf_error);
 		}
 		f.close();

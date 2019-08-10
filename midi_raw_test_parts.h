@@ -110,7 +110,7 @@ struct meta_test_t {
 std::vector<meta_test_t> make_random_meta_tests(int);
 void print_meta_tests(const std::vector<meta_test_t>&);
 
-
+int make_example_midifile_081019();
 
 
 };  // namespace testdata

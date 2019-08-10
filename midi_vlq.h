@@ -292,8 +292,8 @@ OIt write_16bit_be(uint16_t val, OIt dest) {
 // TODO:  Could use write_bytes() here
 template<typename OIt>
 OIt write_32bit_be(uint32_t val, OIt dest) {
-	static_assert(std::is_same<
-		std::remove_cvref<decltype(*dest)>::type,unsigned char>::value);
+	//static_assert(std::is_same<
+	//	std::remove_cvref<decltype(*dest)>::type,unsigned char>::value);
 	
 	auto be_val = to_be_byte_order(val);
 	unsigned char *p = static_cast<unsigned char*>(static_cast<void*>(&be_val));
