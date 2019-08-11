@@ -71,13 +71,6 @@ int midi_example() {
 	//classify_smf_errors(d.inp,d.outp.parent_path()/"errors_all.txt");
 	//event_sizes_benchmark();
 
-
-	mtrk_event_t ev1;
-	//mtrk_event_t ev2(123);
-	mtrk_event_t ev3;
-	mtrk_event_t ev4;
-	mtrk_event_t ev5;
-
 	auto d = get_midi_test_dirs("write");
 	auto smf_out_path = make_midifile(d.outp,true);
 
@@ -119,11 +112,13 @@ std::filesystem::path make_midifile(std::filesystem::path smf_path,
 	for (int i=0; i<12; ++i) {
 		auto curr_ntnum = i+60;
 		auto curr_notespacing = i==0 ? 0 : note_spacing;
-		midi_ch_event_t note_on {0x90u,0x00u,curr_ntnum,127/2};
-		midi_ch_event_t note_off {0x80u,0x00u,curr_ntnum,127/2};
-		
-		mtrk1.push_back(make_note_on(curr_notespacing,note_on));
-		mtrk1.push_back(make_note_off(note_duration,note_off));
+		//midi_ch_event_t note_on {0x90u,0x00u,curr_ntnum,127/2};
+		//midi_ch_event_t note_off {0x80u,0x00u,curr_ntnum,127/2};
+		//mtrk1.push_back(make_note_on(curr_notespacing,note_on));
+		//mtrk1.push_back(make_note_off(note_duration,note_off));
+
+		mtrk1.push_back(make_note_on(curr_notespacing,0,curr_ntnum,127/2));
+		mtrk1.push_back(make_note_off(note_duration,0,curr_ntnum,127/2));
 		cumtk += curr_notespacing + note_duration;
 	}
 	mtrk1.push_back(make_eot(0));

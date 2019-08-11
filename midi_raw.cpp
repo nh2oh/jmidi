@@ -34,6 +34,15 @@ bool is_major(const midi_keysig_t& ks) {
 bool is_minor(const midi_keysig_t& ks) {
 	return ks.mi==1;
 }
+// TODO:  Dumb, gross, etc
+midi_ch_event_t make_midi_ch_event_data(int sn, int ch, int p1, int p2) {
+	midi_ch_event_t md;
+	md.status_nybble = 0xF0u & std::clamp(sn,0x80,0xF0);
+	md.ch = std::clamp(ch,0,15);
+	md.p1 = std::clamp(p1,0,0x7F);
+	md.p2 = std::clamp(p2,0,0x7F);
+	return md;
+}
 bool verify(const midi_ch_event_t& md) {
 	auto s = ((md.status_nybble & 0xF0u) + (md.ch & 0x0Fu));
 	if (!is_channel_status_byte(s)) {

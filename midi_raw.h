@@ -64,6 +64,7 @@ struct midi_ch_event_t {
 	uint8_t p1 {0x00u};
 	uint8_t p2 {0x00u};
 };
+midi_ch_event_t make_midi_ch_event_data(int, int, int, int);
 
 bool verify(const midi_ch_event_t&);
 // "Forcefully" sets bits in the fields of the input midi_ch_event_t such

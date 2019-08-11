@@ -201,19 +201,26 @@ mtrk_event_t make_ch_event_generic_unsafe(int32_t, const midi_ch_event_t&);
 mtrk_event_t make_ch_event(int32_t, const midi_ch_event_t&);
 // Sets the status nybble to 0x90u and p2 to be the greater of the value
 // passed in or 1 (a note-on event can not have a velocity of 0).  
-mtrk_event_t make_note_on(const int32_t&, midi_ch_event_t);
+mtrk_event_t make_note_on(int32_t, midi_ch_event_t);
+mtrk_event_t make_note_on(int32_t, int, int, int);
 // Makes a channel event w/ status nybble == 0x80u
-mtrk_event_t make_note_off(const int32_t&, midi_ch_event_t);
+mtrk_event_t make_note_off(int32_t, midi_ch_event_t);
+mtrk_event_t make_note_off(int32_t, int, int, int);
 // Makes a channel event w/ status nybble == 0x90u (normally => note on),
 // but w/a p2 of 0.  
-mtrk_event_t make_note_off90(const int32_t&, midi_ch_event_t);
-mtrk_event_t make_key_pressure(const int32_t&, midi_ch_event_t);  // 0xA0u
-mtrk_event_t make_control_change(const int32_t&, midi_ch_event_t);  // 0xB0u
-mtrk_event_t make_program_change(const int32_t&, midi_ch_event_t);  // 0xC0u
-mtrk_event_t make_channel_pressure(const int32_t&, midi_ch_event_t);  // 0xD0u
-mtrk_event_t make_pitch_bend(const int32_t&, midi_ch_event_t);  // 0xE0u
-mtrk_event_t make_channel_mode(const int32_t&, midi_ch_event_t);  // 0xB0u
-
+mtrk_event_t make_note_off90(int32_t, midi_ch_event_t);
+mtrk_event_t make_key_pressure(int32_t, midi_ch_event_t);  // 0xA0u
+mtrk_event_t make_key_pressure(int32_t, int, int, int);
+mtrk_event_t make_control_change(int32_t, midi_ch_event_t);  // 0xB0u
+mtrk_event_t make_control_change(int32_t, int, int, int);
+mtrk_event_t make_program_change(int32_t, midi_ch_event_t);  // 0xC0u
+mtrk_event_t make_program_change(int32_t, int, int);
+mtrk_event_t make_channel_pressure(int32_t, midi_ch_event_t);  // 0xD0u
+mtrk_event_t make_channel_pressure(int32_t, int, int);
+mtrk_event_t make_pitch_bend(int32_t, midi_ch_event_t);  // 0xE0u
+mtrk_event_t make_pitch_bend(int32_t, int, int, int);
+mtrk_event_t make_channel_mode(int32_t, midi_ch_event_t);  // 0xB0u
+mtrk_event_t make_channel_mode(int32_t, int, int, int);
 
 
 

@@ -458,13 +458,13 @@ bool is_onoff_pair(int on_ch, int on_note, int off_ch, int off_note) {
 mtrk_event_t make_ch_event_generic_unsafe(int32_t dt, const midi_ch_event_t& md) {
 	mtrk_event_t_internal::small_bytevec_t sbv;
 	unsigned char s = md.status_nybble|md.ch;
-	auto n = channel_status_byte_n_data_bytes(s);
+	auto n = channel_status_byte_n_data_bytes(s)+1;  // +1 for the status byte
 	sbv.resize(n + delta_time_field_size(dt));
 	auto it = sbv.begin();
 	it = write_delta_time(dt,it);
 	*it++ = s;
 	*it++ = md.p1;
-	if (n==2) {
+	if (n==3) {
 		*it++ = md.p2;
 	}
 	return mtrk_event_t(std::move(sbv));
@@ -472,49 +472,72 @@ mtrk_event_t make_ch_event_generic_unsafe(int32_t dt, const midi_ch_event_t& md)
 mtrk_event_t make_ch_event(int32_t dt, const midi_ch_event_t& md) {
 	return make_ch_event_generic_unsafe(to_nearest_valid_delta_time(dt),normalize(md));
 }
-mtrk_event_t make_note_on(const int32_t& dt, midi_ch_event_t md) {
+mtrk_event_t make_note_on(int32_t dt, midi_ch_event_t md) {
 	md.status_nybble = 0x90u;
 	md.p2 = md.p2 > 0 ? md.p2 : 1;  // A note-on event must have a velocity > 0
 	return make_ch_event(dt,md);
 }
-mtrk_event_t make_note_off(const int32_t& dt, midi_ch_event_t md) {
+mtrk_event_t make_note_on(int32_t dt, int ch, int p1, int p2) {
+	return make_note_on(dt,make_midi_ch_event_data(0,ch,p1,p2));
+}
+mtrk_event_t make_note_off(int32_t dt, midi_ch_event_t md) {
 	md.status_nybble = 0x80u;
 	return make_ch_event(dt,md);
 }
-mtrk_event_t make_note_off90(const int32_t& dt, midi_ch_event_t md) {
+mtrk_event_t make_note_off(int32_t dt, int ch, int p1, int p2) {
+	return make_note_off(dt,make_midi_ch_event_data(0,ch,p1,p2));
+}
+mtrk_event_t make_note_off90(int32_t dt, midi_ch_event_t md) {
 	md.status_nybble = 0x90u;
 	md.p2 = 0;
 	return make_ch_event(dt,md);
 }
-mtrk_event_t make_key_pressure(const int32_t& dt, midi_ch_event_t md) {
+mtrk_event_t make_key_pressure(int32_t dt, midi_ch_event_t md) {
 	md.status_nybble = 0xA0u;
 	return make_ch_event(dt,md);
 }
-mtrk_event_t make_control_change(const int32_t& dt, midi_ch_event_t md) {
+mtrk_event_t make_key_pressure(int32_t dt, int ch, int p1, int p2) {
+	return make_key_pressure(dt,make_midi_ch_event_data(0,ch,p1,p2));
+}
+mtrk_event_t make_control_change(int32_t dt, midi_ch_event_t md) {
 	md.status_nybble = 0xB0u;
 	md.p1 >= 120 ? 119 : md.p1;  // p1 >=120 (==0b01111000) => select_ch_mode
 	return make_ch_event(dt,md);
 }
-mtrk_event_t make_program_change(const int32_t& dt, midi_ch_event_t md) {
+mtrk_event_t make_control_change(int32_t dt, int ch, int p1, int p2) {
+	return make_control_change(dt,make_midi_ch_event_data(0,ch,p1,p2));
+}
+mtrk_event_t make_program_change(int32_t dt, midi_ch_event_t md) {
 	md.status_nybble = 0xC0u;
 	md.p2 = 0x00u;
 	return make_ch_event(dt,md);
 }
-mtrk_event_t make_channel_pressure(const int32_t& dt, midi_ch_event_t md) {
+mtrk_event_t make_program_change(int32_t dt, int ch, int p1) {
+	return make_program_change(dt,make_midi_ch_event_data(0,ch,p1,0));
+}
+mtrk_event_t make_channel_pressure(int32_t dt, midi_ch_event_t md) {
 	md.status_nybble = 0xD0u;
 	md.p2 = 0x00u;
 	return make_ch_event(dt,md);
 }
-mtrk_event_t make_pitch_bend(const int32_t& dt, midi_ch_event_t md) {
+mtrk_event_t make_channel_pressure(int32_t dt, int ch, int p1) {
+	return make_channel_pressure(dt,make_midi_ch_event_data(0,ch,p1,0));
+}
+mtrk_event_t make_pitch_bend(int32_t dt, midi_ch_event_t md) {
 	md.status_nybble = 0xE0u;
 	return make_ch_event(dt,md);
 }
-mtrk_event_t make_channel_mode(const int32_t& dt, midi_ch_event_t md) {
+mtrk_event_t make_pitch_bend(int32_t dt, int ch, int p1, int p2) {
+	return make_pitch_bend(dt,make_midi_ch_event_data(0,ch,p1,p2));
+}
+mtrk_event_t make_channel_mode(int32_t dt, midi_ch_event_t md) {
 	md.status_nybble = 0xB0u;
 	md.p1 < 120 ? 120 : md.p1;  // p1 <120 (==0b01111000) => control_change
 	return make_ch_event(dt,md);
 }
-
+mtrk_event_t make_channel_mode(int32_t dt, int ch, int p1, int p2) {
+	return make_channel_mode(dt,make_midi_ch_event_data(0,ch,p1,p2));
+}
 
 bool is_sysex(const mtrk_event_t& ev) {
 	return (is_sysex_f0(ev) || is_sysex_f7(ev));
