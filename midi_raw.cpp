@@ -54,11 +54,16 @@ bool verify(const midi_ch_event_t& md) {
 midi_ch_event_t normalize(midi_ch_event_t md) {
 	md.status_nybble &= 0xF0u;
 	md.status_nybble = std::clamp(md.status_nybble,
-		static_cast<uint8_t>(0x80u),static_cast<uint8_t>(0xE0u));
+		uint8_t{0x80},uint8_t{0xE0u});
 	md.status_nybble = 0xF0u&(0x80u|(md.status_nybble));
-	md.ch &= 0x0Fu; // std::max(md.ch,15);
-	md.p1 &= 0x7Fu; 
-	md.p2 &= 0x7Fu; 
+	// std::clamp() over std::max() b/c i may want to make these data 
+	// members signed at some point.  
+	md.ch = std::clamp(md.ch,uint8_t{0},uint8_t{15});
+	md.p1 = std::clamp(md.p1,uint8_t{0},uint8_t{0x7F});
+	md.p2 = std::clamp(md.p2,uint8_t{0},uint8_t{0x7F});
+	//md.ch &= 0x0Fu; // std::max(md.ch,15);
+	//md.p1 &= 0x7Fu; 
+	//md.p2 &= 0x7Fu; 
 	return md;
 }
 bool is_note_on(const midi_ch_event_t& md) {

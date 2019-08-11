@@ -154,6 +154,7 @@ private:
 	// 63 is ~1/2 way between 0 and the max velocity of 127 (0x7F)
 	// {0x00u,0x90u,0x3Cu,0x3Fu}
 	void default_init(int32_t=0);
+	mtrk_event_t(mtrk_event_t_internal::small_bytevec_t&&);
 
 	unsigned char *push_back(unsigned char);
 	iterator_range_t<const_iterator> payload_range_impl() const;
@@ -163,6 +164,8 @@ private:
 	unsigned char flags() const;
 	bool is_big() const;
 	bool is_small() const;
+
+	friend mtrk_event_t make_ch_event_generic_unsafe(int32_t, const midi_ch_event_t&);
 
 	// delta-time, type (0x{FF,F0,F7}), meta-type, length, payload beg, payload end, 
 	// add_f7_cap.  length must be consistent w/ end-beg && add_f7_cap.  

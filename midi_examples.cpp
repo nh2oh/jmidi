@@ -72,6 +72,12 @@ int midi_example() {
 	//event_sizes_benchmark();
 
 
+	mtrk_event_t ev1;
+	//mtrk_event_t ev2(123);
+	mtrk_event_t ev3;
+	mtrk_event_t ev4;
+	mtrk_event_t ev5;
+
 	auto d = get_midi_test_dirs("write");
 	auto smf_out_path = make_midifile(d.outp,true);
 

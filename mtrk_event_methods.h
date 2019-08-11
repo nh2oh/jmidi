@@ -139,9 +139,7 @@ mtrk_event_t make_meta_generic_text(const int32_t&, const meta_event_t&,
 // in the event the mtrk_event_t is a non-channel event.  
 midi_ch_event_t get_channel_event(const mtrk_event_t&, midi_ch_event_t={});
 // Copies at most the first 3 bytes of the range [payload_begin(),
-// payoad_end()) into the appropriate fields of a midi_ch_data_t.  Performs
-// no checks on the validity or type() of the input event beforehand, and
-// performs no validity checks on the result.  
+// payoad_end()) into the appropriate fields of a midi_ch_data_t.  
 midi_ch_event_t get_channel_event_impl(const mtrk_event_t&);
 //
 // Channel event classification
@@ -199,35 +197,22 @@ bool is_onoff_pair(int, int, int, int);
 // == 0x90u, even if the status_nybble of the midi_ch_event_t passed in is
 // == 0xA0u.  
 //
-// Events w/ only one data byte (program_change and channel_pressure) have
-// md.p2 set to 0x00u.  
-//
-
-// TODO:  This is not really needed given the "unsafe" ctor
-// midi_event_t(const uint32_t& dt, const midi_ch_event_t& md)
-mtrk_event_t make_ch_event_generic_unsafe(const uint32_t&, const midi_ch_event_t&);
-// The make_*() functions below call normalize(midi_ch_event_t) on the input
-// and thus silently convert invalid values for the data & status bytes into
-// valid values.  These values may be unexpected; users should ensure they
-// are passing valid data.  This is in keeping w/ the practice that the 
-// factory functions can not be used to create an invalid mtrk_event_t.  
-//
+mtrk_event_t make_ch_event_generic_unsafe(int32_t, const midi_ch_event_t&);
+mtrk_event_t make_ch_event(int32_t, const midi_ch_event_t&);
 // Sets the status nybble to 0x90u and p2 to be the greater of the value
 // passed in or 1 (a note-on event can not have a velocity of 0).  
-mtrk_event_t make_note_on(const uint32_t&, midi_ch_event_t);
+mtrk_event_t make_note_on(const int32_t&, midi_ch_event_t);
 // Makes a channel event w/ status nybble == 0x80u
-mtrk_event_t make_note_off(const uint32_t&, midi_ch_event_t);
+mtrk_event_t make_note_off(const int32_t&, midi_ch_event_t);
 // Makes a channel event w/ status nybble == 0x90u (normally => note on),
 // but w/a p2 of 0.  
-mtrk_event_t make_note_off90(const uint32_t&, midi_ch_event_t);
-mtrk_event_t make_key_pressure(const uint32_t&, midi_ch_event_t);  // 0xA0u
-mtrk_event_t make_control_change(const uint32_t&, midi_ch_event_t);  // 0xB0u
-mtrk_event_t make_program_change(const uint32_t&, midi_ch_event_t);  // 0xC0u
-mtrk_event_t make_channel_pressure(const uint32_t&, midi_ch_event_t);  // 0xD0u
-mtrk_event_t make_pitch_bend(const uint32_t&, midi_ch_event_t);  // 0xE0u
-mtrk_event_t make_channel_mode(const uint32_t&, midi_ch_event_t);  // 0xB0u
-
-
+mtrk_event_t make_note_off90(const int32_t&, midi_ch_event_t);
+mtrk_event_t make_key_pressure(const int32_t&, midi_ch_event_t);  // 0xA0u
+mtrk_event_t make_control_change(const int32_t&, midi_ch_event_t);  // 0xB0u
+mtrk_event_t make_program_change(const int32_t&, midi_ch_event_t);  // 0xC0u
+mtrk_event_t make_channel_pressure(const int32_t&, midi_ch_event_t);  // 0xD0u
+mtrk_event_t make_pitch_bend(const int32_t&, midi_ch_event_t);  // 0xE0u
+mtrk_event_t make_channel_mode(const int32_t&, midi_ch_event_t);  // 0xB0u
 
 
 
