@@ -119,7 +119,7 @@ iterator_range_t<mtrk_event_t::const_iterator> mtrk_event_t::payload_range() con
 iterator_range_t<mtrk_event_t::const_iterator> mtrk_event_t::payload_range() {
 	return this->payload_range_impl();
 }
-const unsigned char mtrk_event_t::operator[](mtrk_event_t::size_type i) const {
+unsigned char mtrk_event_t::operator[](mtrk_event_t::size_type i) const {
 	return *(this->d_.begin()+i);
 };
 unsigned char mtrk_event_t::operator[](mtrk_event_t::size_type i) {

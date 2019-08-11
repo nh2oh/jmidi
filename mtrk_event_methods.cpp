@@ -369,7 +369,8 @@ midi_ch_event_t get_channel_event_impl(const mtrk_event_t& ev) {
 	// in deciding whether to return the result of get_channel_event_impl()
 	// or the default midi_ch_event_t.  Hence it is important that non- 
 	// channel events fill result w/ invalid data.  
-	midi_ch_event_t result;
+	midi_ch_event_t result;  
+	result.status_nybble=0x00u;  // an invalid status nybble
 	auto its = ev.payload_range();
 	if (its.begin == its.end) {
 		return result;
@@ -389,51 +390,50 @@ midi_ch_event_t get_channel_event_impl(const mtrk_event_t& ev) {
 	return result;
 }
 bool is_channel(const mtrk_event_t& ev) {  // voice or mode
-	return verify(get_channel_event_impl(ev));
+	return is_channel_status_byte(ev.status_byte());
 }
 bool is_channel_voice(const mtrk_event_t& ev) {
-	auto md = get_channel_event_impl(ev);
-	if (!verify(md)) {
+	auto s = ev.status_byte();
+	if (!is_channel_status_byte(s)) {
 		return false;
 	}
-	if ((md.status_nybble==0xB0u) && ((md.p1&0x78u)==0x78u)) {
-		// => ev is a channel_mode, not channel_voice event
-		// 0x78u  == 0b01111000u; see Table I of the MIDI std
-		return false;
+	if ((s&0xF0u)!=0xB0u) {
+		return true;
 	}
-	return true;
+	auto it = ev.event_begin();
+	auto p1 = *(++it);
+	return (p1>>3)!=0b00001111u;
 }
 bool is_channel_mode(const mtrk_event_t& ev) {
-	auto md = get_channel_event_impl(ev);
-	if (!verify(md)) {
-		return false;
-	}
-	if ((md.status_nybble!=0xB0u) || ((md.p1&0x78u)!=0x78u)) {
-		// 0x78u  == 0b01111000u; see Table I of the MIDI std
-		return false;
-	}
-	return true;
+	auto it = ev.event_begin();
+	auto s = *it++;
+	auto p1 = *it++;
+	return (((s&0xF0u)==0xB0u) && ((p1>>3)==0b00001111u));
 }
 bool is_note_on(const mtrk_event_t& ev) {
-	return is_note_on(get_channel_event_impl(ev));
+	auto md = get_channel_event_impl(ev);
+	return (md.status_nybble==0x90u && (md.p2 > 0));
 }
 bool is_note_off(const mtrk_event_t& ev) {
-	return is_note_off(get_channel_event_impl(ev));
+	auto md = get_channel_event_impl(ev);
+	return ((md.status_nybble==0x80u)
+			|| (md.status_nybble==0x90u && (md.p2==0)));
 }
 bool is_key_pressure(const mtrk_event_t& ev) {
-	return is_key_pressure(get_channel_event_impl(ev));
+	return ((ev.status_byte()&0xF0u)==0xA0u);
 }
 bool is_control_change(const mtrk_event_t& ev) {
-	return is_control_change(get_channel_event_impl(ev));
+	auto md = get_channel_event_impl(ev);
+	return ((md.status_nybble==0xB0u) && (md.p1 < 120));
 }
 bool is_program_change(const mtrk_event_t& ev) {
-	return is_program_change(get_channel_event_impl(ev));
+	return ((ev.status_byte()&0xF0u)==0xC0u);
 }
 bool is_channel_pressure(const mtrk_event_t& ev) {
-	return is_channel_pressure(get_channel_event_impl(ev));
+	return ((ev.status_byte()&0xF0u)==0xD0u);
 }
 bool is_pitch_bend(const mtrk_event_t& ev) {
-	return ((ev.status_byte() & 0xF0u) == 0xE0u);
+	return ((ev.status_byte()&0xF0u)==0xE0u);
 }
 bool is_onoff_pair(const mtrk_event_t& on, const mtrk_event_t& off) {
 	auto on_md = get_channel_event_impl(on);

@@ -75,12 +75,12 @@ int midi_example() {
 	auto d = get_midi_test_dirs("write");
 	auto smf_out_path = make_midifile(d.outp,true);
 
-	smf_error_t smf_read_err;
+	/*smf_error_t smf_read_err;
 	auto smf_in = read_smf(smf_out_path,&smf_read_err);
 
 	auto smf_out2_path 
 		= smf_out_path.replace_filename(smf_out_path.stem()+="_again.midi");
-	write_smf(smf_in.smf,smf_out2_path);
+	write_smf(smf_in.smf,smf_out2_path);*/
 	
 
 	return 0;

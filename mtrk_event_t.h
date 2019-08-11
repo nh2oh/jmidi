@@ -96,7 +96,7 @@ public:
 
 	// Default ctor creates Middle C (note-num==60) Note-on event
 	// on channel "1" w/ velocity 60 and delta-time == 0.  
-	mtrk_event_t();
+	explicit mtrk_event_t();
 	// Default-constructed value w/ the given delta-time.  
 	explicit mtrk_event_t(int32_t);
 	mtrk_event_t(int32_t, midi_ch_event_t);
@@ -130,7 +130,7 @@ public:
 	const_iterator payload_begin() const;
 	iterator_range_t<const_iterator> payload_range() const;
 	iterator_range_t<const_iterator> payload_range();
-	const unsigned char operator[](size_type) const;
+	unsigned char operator[](size_type) const;
 	unsigned char operator[](size_type);
 
 	// Getters

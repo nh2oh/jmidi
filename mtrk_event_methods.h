@@ -132,39 +132,32 @@ mtrk_event_t make_meta_generic_text(const int32_t&, const meta_event_t&,
 									const std::string&);
 
 //
-// Channel event classification
+// Channel event data access
 //
-// The is_*(const mtrk_event_t&) wrap the corresponding 
-// is_*(const midi_ch_event_t&) functions in midi_raw.h.  This is so because
-// the validation methods are ultimately needed to for the 
-// make_*(const midi_ch_event_t) functions.  
-//
-// Note that for many events, the status byte, as well as p1 and p2 are
-// needed to classify the event in a useful way.  For example, where 
-// s&0xF0u==0x90u, (nominally a note-on status byte), p2 has to be > 0 
-// for the event to qualify as a note-on (otherwise it is a note-off).  
-// Where s&0xF0u==0xB0u, p1 distinguishes a channel_voice from a channel_mode
-// event.  
-// For the purpose of creating an enum class to hold the channel_event types,
-// an underlying type of uint8_t, or even uint16_t may be insufficient.  
-// See also the enum class for meta event types where i included the leading 
-// 0xFFu to allow for ::invalid and ::unrecognized events.  One important
-// difference between here and the case of the meta events, however, is that
-// the meta event enum class can be static_cast to a uint16_t to obtain the
-// first two bytes of the meta event; this is not possible for channel events
-// because of the nature of the equality conditions, which involve shifting
-// and masking s, p1, p2, in different ways for each type.  
-//
-// In the future, this set of functions may be expanded to things like 
-// is_bank_select(), is_pan(), is_foot_controller(), etc.  These require 
-// reading p1.  
-//
+// For non-channel events, returns the midi_ch_event_t specified by arg2.  
+// If arg2 is empty, returns a midi_ch_event_t containing invalid values
+// in the event the mtrk_event_t is a non-channel event.  
 midi_ch_event_t get_channel_event(const mtrk_event_t&, midi_ch_event_t={});
 // Copies at most the first 3 bytes of the range [payload_begin(),
 // payoad_end()) into the appropriate fields of a midi_ch_data_t.  Performs
 // no checks on the validity or type() of the input event beforehand, and
 // performs no validity checks on the result.  
 midi_ch_event_t get_channel_event_impl(const mtrk_event_t&);
+//
+// Channel event classification
+//
+// The is_*(const mtrk_event_t&) duplicate functionality in the 
+// corresponding is_*(const midi_ch_event_t&) functions in midi_raw.h.  
+// Since mtrk_event_t's are always valid, the is_*(const mtrk_event_t&)
+// is often much more effecient than its is_*(const midi_ch_event_t&)
+// partner.  
+// is_*(const midi_ch_event_t&) functions are needed for input validation
+// in the make_*(const midi_ch_event_t) family.  
+//
+// In the future, this set of functions may be expanded to things like 
+// is_bank_select(), is_pan(), is_foot_controller(), etc.  These require 
+// reading p1.  
+//
 bool is_channel(const mtrk_event_t&);
 bool is_channel_voice(const mtrk_event_t&);
 bool is_channel_mode(const mtrk_event_t&);
