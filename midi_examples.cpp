@@ -72,12 +72,17 @@ int midi_example() {
 	//event_sizes_benchmark();
 
 	auto d = get_midi_test_dirs("write");
-	auto smf_out_path = make_midifile(d.outp,true);
+	auto smf_out_path = make_midifile(d.outp,false);
 
-	/*smf_error_t smf_read_err;
+	smf_error_t smf_read_err;
 	auto smf_in = read_smf(smf_out_path,&smf_read_err);
+	if (!smf_in) {
+		std::cout << "shit";
+	}
+	std::cout << print(smf_in.smf) << std::endl;
 
-	auto smf_out2_path 
+
+	/*auto smf_out2_path 
 		= smf_out_path.replace_filename(smf_out_path.stem()+="_again.midi");
 	write_smf(smf_in.smf,smf_out2_path);*/
 	
@@ -93,15 +98,15 @@ std::filesystem::path make_midifile(std::filesystem::path smf_path,
 	auto mthd = mthd_t();
 	mthd.set_format(0);
 	mthd.set_ntrks(1);
-	mthd.set_division(time_division_t(25));
-
+	mthd.set_division(time_division_t(0x7FFF));
+	
 	auto mtrk1 = mtrk_t();
 	mtrk1.push_back(make_seqn(0,0));
 	mtrk1.push_back(make_copyright(0,"Ben Knowles 2019"));
 	mtrk1.push_back(make_trackname(0,"Track 1 (0)"));
 	mtrk1.push_back(make_instname(0,"Harpsichord"));
 	mtrk1.push_back(make_timesig(0,{4,2,24,8}));
-	mtrk1.push_back(make_tempo(0,250000)); // 0.5 seconds/qnt
+	mtrk1.push_back(make_tempo(0,1));
 	mtrk1.push_back(make_program_change(0,
 		ch_event_data_t{0xC0u,0x00u,0x06u,0x00u}));
 	// 0 => Acoustic Grand; 6 => Harpsichord
@@ -122,6 +127,8 @@ std::filesystem::path make_midifile(std::filesystem::path smf_path,
 	
 	if (random_fname) {
 		smf_path.replace_filename(randfn()+".midi");
+	} else {
+		smf_path.replace_filename("tdiv0x7FFF_tempo1.midi");
 	}
 	smf_path = write_smf(smf,smf_path);
 
