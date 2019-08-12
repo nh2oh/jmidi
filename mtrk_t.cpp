@@ -444,29 +444,21 @@ bool is_equivalent_permutation(mtrk_t::const_iterator beg1,
 	return true;
 }
 
-double duration(const mtrk_t& mtrk, const midi_time_t& t) {
+double duration(const mtrk_t& mtrk, const time_division_t& tdiv,
+				int32_t tempo) {
 	auto beg = mtrk.begin();
 	auto end = mtrk.end();
-	return duration(beg,end,t);
+	return duration(beg,end,tdiv,tempo);
 }
-
-double duration(mtrk_t::const_iterator& beg, mtrk_t::const_iterator& end,
-				const midi_time_t& t) {
-	if (t.tpq == 0) {
-		return -1.0;
-	}
-	auto curr_uspq = t.uspq;
-	double curr_usptk = (1.0/t.tpq)*curr_uspq;
-	double cum_us = 0.0;  // "cumulative usec"
+double duration(mtrk_t::const_iterator beg, mtrk_t::const_iterator end,
+				const time_division_t& tdiv, int32_t tempo) {
+	double s = 0.0;  // cumulative number of seconds
 	for (auto it=beg; it!=end; ++it) {
-		cum_us += curr_usptk*(it->delta_time());
-		// A tempo meta event updates the current value for us-per-q-note;
-		// the value for ticks-per-q-note is constant for the track and is
-		// set in the MThd chunk for the corresponding smf_t.  
-		curr_uspq = get_tempo(*it,curr_uspq);
-		curr_usptk = (1.0/t.tpq)*curr_uspq;
+		s += ticks2sec(it->delta_time(),tdiv,tempo);
+		// A tempo meta event can change the tempo:
+		tempo = get_tempo(*it,tempo);
 	}
-	return cum_us/1000000.0;  // usec->sec
+	return s;
 }
 
 maybe_mtrk_t::operator bool() const {

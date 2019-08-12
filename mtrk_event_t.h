@@ -23,11 +23,7 @@ enum class mtrk_sbo_print_opts {
 
 
 
-template<typename It>
-struct iterator_range_t {
-	It begin;
-	It end;
-};
+
 
 
 //
@@ -79,6 +75,10 @@ struct mtrk_event_container_types_t {
 	using pointer = value_type*;
 	using const_pointer = const value_type*;
 };
+struct mtrk_event_iterator_range_t {
+	generic_ra_const_iterator<mtrk_event_container_types_t> begin;
+	generic_ra_const_iterator<mtrk_event_container_types_t> end;
+};
 class mtrk_event_t {
 public:
 	using value_type = mtrk_event_container_types_t::value_type;
@@ -128,8 +128,8 @@ public:
 	const_iterator dt_end();
 	const_iterator event_begin();
 	const_iterator payload_begin() const;
-	iterator_range_t<const_iterator> payload_range() const;
-	iterator_range_t<const_iterator> payload_range();
+	mtrk_event_iterator_range_t payload_range() const;
+	mtrk_event_iterator_range_t payload_range();
 	unsigned char operator[](size_type) const;
 	unsigned char operator[](size_type);
 
@@ -158,7 +158,7 @@ private:
 	mtrk_event_t(init_small_w_size_0_t) noexcept;
 
 	unsigned char *push_back(unsigned char);
-	iterator_range_t<const_iterator> payload_range_impl() const;
+	mtrk_event_iterator_range_t payload_range_impl() const;
 
 	const unsigned char *raw_begin() const;
 	const unsigned char *raw_end() const;

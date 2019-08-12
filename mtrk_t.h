@@ -49,7 +49,6 @@ struct mtrk_container_types_t {
 	using pointer = value_type*;
 	using const_pointer = const value_type*;
 };
-
 class mtrk_t {
 public:
 	using value_type = mtrk_container_types_t::value_type;
@@ -192,13 +191,17 @@ bool is_equivalent_permutation_ignore_dt(mtrk_t::const_iterator,
 bool is_equivalent_permutation(mtrk_t::const_iterator,mtrk_t::const_iterator,
 	mtrk_t::const_iterator,mtrk_t::const_iterator);
 
-// Get the duration in seconds.  A midi_time_t _must_ be provided, since
-// a naked MTrk object does not inherit the tpq field from the MThd chunk
-// of an smf_t, and there is no standardized default value for this 
-// quantity.  The value midi_time_t.uspq is updated as meta tempo events 
-// are encountered in the mtrk_t.  
-double duration(const mtrk_t&, const midi_time_t&);
-double duration(mtrk_t::const_iterator&, mtrk_t::const_iterator&, const midi_time_t&);
+// Get the duration in seconds.  The time_division_t argument represents
+// what the MTrk would inherit from its associated MThd; the MIDI std does
+// not specify any sort of default value for this quantity.  Argument 3
+// is the tempo in us/midi-q-nt; the default value of 500000 => 120 q nts/min.  
+// The tk->seconds conversion is made by:
+// double ticks2sec(const int32_t&, const time_division_t&, int32_t=500000);
+//
+double duration(const mtrk_t&, const time_division_t&, int32_t=500000);
+double duration(mtrk_t::const_iterator, mtrk_t::const_iterator,
+	const time_division_t&, int32_t=500000);
+
 
 // maybe_mtrk_t make_mtrk(const unsigned char*, uint32_t);
 // maybe_mtrk_t make_mtrk(const unsigned char*, const unsigned char*);

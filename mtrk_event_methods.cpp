@@ -241,12 +241,14 @@ std::string meta_generic_gettext(const mtrk_event_t& ev) {
 	return s;
 }
 
-uint32_t get_tempo(const mtrk_event_t& ev, uint32_t def) {
+int32_t get_tempo(const mtrk_event_t& ev, int32_t def) {
 	if (!is_tempo(ev)) {
 		return def;
 	}
 	auto its = ev.payload_range();
-	return read_be<uint32_t>(its.begin,its.end);
+	// Note that a tempo is a 24-bit value (its.end-its.begin == 3), so the
+	// value can not possibly overflow an int32_t
+	return static_cast<int32_t>(read_be<uint32_t>(its.begin,its.end));
 }
 
 midi_timesig_t get_timesig(const mtrk_event_t& ev, midi_timesig_t def) {

@@ -120,6 +120,12 @@ public:
 	// If 'big' and the new size is <= small_bytevec_t::capacity_small, 
 	// will cause a big->small transition.  
 	int32_t resize(int32_t);
+	template<typename T>
+	int32_t resize(T sz) {
+		int32_t szi32 = static_cast<int32_t>(std::clamp(sz,T(0),
+			static_cast<T>(small_bytevec_t::size_max)));
+		return this->resize(szi32);
+	};
 	// If resizing causes either allocation of a new buffer or a 
 	// big->small transition, the present object's data is not copied into
 	// the new buffer.  Otherwise the effect is the same as a call to 

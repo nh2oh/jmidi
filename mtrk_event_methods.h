@@ -85,7 +85,7 @@ std::string meta_generic_gettext(const mtrk_event_t&);
 
 // Value returned represents "usec/midi-q-nt"
 // 500000 => 120 q nts/min
-uint32_t get_tempo(const mtrk_event_t&, uint32_t=500000);
+int32_t get_tempo(const mtrk_event_t&, int32_t=500000);
 // A default {}-constructed midi_timesig_t contains the defaults as
 // stipulated by the MIDI std.  
 midi_timesig_t get_timesig(const mtrk_event_t&, midi_timesig_t={});

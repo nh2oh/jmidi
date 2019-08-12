@@ -7,14 +7,6 @@
 #include <algorithm>  // std::clamp() in time_division_t
 
 
-double ticks2sec(const uint32_t& tks, const midi_time_t& t) {
-	return tks*(1.0/t.tpq)*(t.uspq)*(1.0/1000000.0);
-}
-uint32_t sec2ticks(const double& sec, const midi_time_t& t) {
-	// s = tks*(1.0/t.tpq)*(t.uspq)*(1.0/1000000.0);
-	return static_cast<uint32_t>(std::round(sec*(t.tpq)*(1.0/t.uspq)*1000000.0));
-}
-
 bool operator==(const midi_timesig_t& rhs, const midi_timesig_t& lhs) {
 	return((rhs.clckspclk == lhs.clckspclk)
 		&& (rhs.log2denom == lhs.log2denom)
@@ -261,7 +253,7 @@ int32_t get_tpq(time_division_t tdiv, int32_t def) {
 }
 
 
-double ticks2sec(const uint32_t& tks, const time_division_t& tdiv,
+double ticks2sec(const int32_t& tks, const time_division_t& tdiv,
 					int32_t tempo) {
 	if (is_tpq(tdiv)) {
 		auto tpq = static_cast<double>(tdiv.get_tpq());
@@ -380,7 +372,7 @@ unsigned char get_running_status_byte(unsigned char s, unsigned char rs) {
 
 
 
-uint8_t channel_status_byte_n_data_bytes(unsigned char s) {
+int32_t channel_status_byte_n_data_bytes(unsigned char s) {
 	if (is_channel_status_byte(s)) {
 		if ((s&0xF0u)==0xC0u || (s&0xF0u)==0xD0u) {
 			return 1;

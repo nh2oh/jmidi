@@ -116,10 +116,10 @@ mtrk_event_t::const_iterator mtrk_event_t::payload_begin() const {
 mtrk_event_t::const_iterator mtrk_event_t::payload_begin() {
 	return this->payload_range_impl().begin;
 }
-iterator_range_t<mtrk_event_t::const_iterator> mtrk_event_t::payload_range() const {
+mtrk_event_iterator_range_t mtrk_event_t::payload_range() const {
 	return this->payload_range_impl();
 }
-iterator_range_t<mtrk_event_t::const_iterator> mtrk_event_t::payload_range() {
+mtrk_event_iterator_range_t mtrk_event_t::payload_range() {
 	return this->payload_range_impl();
 }
 unsigned char mtrk_event_t::operator[](mtrk_event_t::size_type i) const {
@@ -131,7 +131,7 @@ unsigned char mtrk_event_t::operator[](mtrk_event_t::size_type i) {
 unsigned char *mtrk_event_t::push_back(unsigned char c) {  // Private
 	return this->d_.push_back(c);
 }
-iterator_range_t<mtrk_event_t::const_iterator> mtrk_event_t::payload_range_impl() const {
+mtrk_event_iterator_range_t mtrk_event_t::payload_range_impl() const {
 	auto it_end = this->d_.end();
 	auto it = advance_to_dt_end(this->d_.begin(),it_end);
 	auto t = classify_status_byte(*it);
