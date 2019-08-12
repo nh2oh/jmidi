@@ -10,8 +10,8 @@
 mtrk_event_t::mtrk_event_t() {
 	this->default_init(0);
 }
-mtrk_event_t::mtrk_event_t(mtrk_event_t_internal::small_bytevec_t&& sbv) {  // private
-	this->d_ = sbv;
+mtrk_event_t::mtrk_event_t(mtrk_event_t::init_small_w_size_0_t) noexcept {  // private
+	this->d_ = mtrk_event_t_internal::small_bytevec_t();
 }
 mtrk_event_t::mtrk_event_t(int32_t dt) {
 	this->default_init(dt);

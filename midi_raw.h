@@ -69,7 +69,6 @@ midi_ch_event_t make_midi_ch_event_data(int, int, int, int);
 bool verify(const midi_ch_event_t&);
 // "Forcefully" sets bits in the fields of the input midi_ch_event_t such
 // that they are valid values.  
-// TODO:  Change behavior to act more like "clamp" ?
 midi_ch_event_t normalize(midi_ch_event_t);
 bool is_note_on(const midi_ch_event_t&);
 bool is_note_off(const midi_ch_event_t&);

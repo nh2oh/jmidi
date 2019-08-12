@@ -327,6 +327,9 @@ int32_t small_bytevec_t::resize_nocopy(int32_t new_sz) {
 	}
 	return new_sz;
 }
+int32_t small_bytevec_t::resize_small2small_nocopy(int32_t new_sz) noexcept {
+	return this->u_.s_.resize(new_sz);
+}
 int32_t small_bytevec_t::reserve(int32_t new_cap) {
 	new_cap = std::clamp(new_cap,this->capacity(),small_bytevec_t::size_max);
 	if (this->is_big()) {

@@ -13,45 +13,6 @@
 #include <sstream>
 
 
-mtrk_t::mtrk_t(const unsigned char *p, int32_t max_sz) {
-	//auto chunk_detect = validate_chunk_header(p,max_sz);
-	auto chunk_detect = read_chunk_header(p,p+max_sz);
-	if (chunk_detect.id != chunk_id::mtrk) {
-		return;
-	}
-	if (chunk_detect.length > max_sz) {
-		return;
-	}
-	int32_t sz = chunk_detect.length+8;
-
-	// From experience with thousands of midi files encountered in the wild,
-	// the average number of bytes per MTrk event is about 3.  
-	auto approx_nevents = static_cast<double>(chunk_detect.length)/3.0;
-	this->evnts_.reserve(static_cast<int32_t>(approx_nevents));
-	
-	// Loop continues until o==sz (==chunk_detect.size) or a invalid 
-	// smf_event_type is encountered.  Note that it does _not_ break 
-	// upon encountering an EOT meta event.  If an invalid event is
-	// hit before o==sz, the actual data_size of the track (==o-8) is
-	// written for this->data_size_.  
-	std::ptrdiff_t o = 8;  // offset; skip "MTrk" & the 4-byte length
-	unsigned char rs {0};  // value of the running-status
-	int64_t cumtk = 0;  // Cumulative delta-time
-	validate_mtrk_event_result_t curr_event;
-	while (o<sz) {
-		const unsigned char *curr_p = p+o;  // ptr to start of present event
-		std::ptrdiff_t curr_max_sz = sz-o;
-		
-		auto curr_event = make_mtrk_event(curr_p,curr_p+curr_max_sz,rs,nullptr);
-		if (!curr_event) {
-			break;
-		}
-		rs = curr_event.event.running_status();
-		this->evnts_.push_back(curr_event.event);
-		//o += curr_event.size;
-		o += curr_event.nbytes_read;
-	}
-}
 mtrk_t::mtrk_t(mtrk_t::const_iterator beg, mtrk_t::const_iterator end) {
 	for (auto it=beg; it!=end; ++it) {
 		this->push_back(*it);
@@ -77,8 +38,8 @@ mtrk_t::size_type mtrk_t::nbytes() const {
 mtrk_t::size_type mtrk_t::data_nbytes() const {
 	return (this->nbytes()-8);
 }
-int64_t mtrk_t::nticks() const {
-	int64_t cumtk = 0;
+int32_t mtrk_t::nticks() const {
+	int32_t cumtk = 0;
 	for (const auto& e : this->evnts_) {
 		cumtk += e.delta_time();
 	}
@@ -120,10 +81,10 @@ mtrk_t::const_iterator mtrk_t::end() const {
 	}
 	return mtrk_t::const_iterator(&(this->evnts_[0]) + this->evnts_.size());
 }
-mtrk_event_t& mtrk_t::operator[](uint32_t idx) {
+mtrk_event_t& mtrk_t::operator[](int32_t idx) {
 	return this->evnts_[idx];
 }
-const mtrk_event_t& mtrk_t::operator[](uint32_t idx) const {
+const mtrk_event_t& mtrk_t::operator[](int32_t idx) const {
 	return this->evnts_[idx];
 }
 mtrk_event_t& mtrk_t::back() {
@@ -138,7 +99,7 @@ mtrk_event_t& mtrk_t::front() {
 const mtrk_event_t& mtrk_t::front() const {
 	return this->evnts_.front();
 }
-event_tk_t<mtrk_t::iterator> mtrk_t::at_cumtk(int64_t cumtk_on) {
+event_tk_t<mtrk_t::iterator> mtrk_t::at_cumtk(int32_t cumtk_on) {
 	event_tk_t<mtrk_t::iterator> res {this->begin(),0};
 	while (res.it!=this->end() && res.tk<cumtk_on) {
 		res.tk += res.it->delta_time();
@@ -147,7 +108,7 @@ event_tk_t<mtrk_t::iterator> mtrk_t::at_cumtk(int64_t cumtk_on) {
 	return res;
 }
 event_tk_t<mtrk_t::const_iterator>
-						mtrk_t::at_cumtk(int64_t cumtk_on) const {
+						mtrk_t::at_cumtk(int32_t cumtk_on) const {
 	event_tk_t<mtrk_t::const_iterator> res {this->begin(),0};
 	while (res.it!=this->end() && res.tk<cumtk_on) {
 		res.tk += res.it->delta_time();
@@ -155,7 +116,7 @@ event_tk_t<mtrk_t::const_iterator>
 	}
 	return res;
 }
-event_tk_t<mtrk_t::iterator> mtrk_t::at_tkonset(int64_t tk_on) {
+event_tk_t<mtrk_t::iterator> mtrk_t::at_tkonset(int32_t tk_on) {
 	event_tk_t<mtrk_t::iterator> 
 		res {this->begin(),0};
 	while (res.it!=this->end()) {
@@ -167,7 +128,7 @@ event_tk_t<mtrk_t::iterator> mtrk_t::at_tkonset(int64_t tk_on) {
 	}
 	return res;
 }
-event_tk_t<mtrk_t::const_iterator> mtrk_t::at_tkonset(int64_t tk_on) const {
+event_tk_t<mtrk_t::const_iterator> mtrk_t::at_tkonset(int32_t tk_on) const {
 	event_tk_t<mtrk_t::const_iterator> 
 		res {this->begin(),this->begin()->delta_time()};
 	while (res.it!=this->end()) {
@@ -206,7 +167,7 @@ mtrk_t::iterator mtrk_t::insert_no_tkshift(mtrk_t::iterator it, mtrk_event_t ev)
 }
 // Insert the provided event into the sequence such that its onset tick
 // is == arg1 + arg2.delta_time()
-mtrk_t::iterator mtrk_t::insert(int64_t cumtk_pos, mtrk_event_t ev) {
+mtrk_t::iterator mtrk_t::insert(int32_t cumtk_pos, mtrk_event_t ev) {
 	auto new_tk_onset = cumtk_pos+ev.delta_time();
 	auto where = this->at_tkonset(cumtk_pos);
 	// Insertion before where.it guarantees insertion at cumtk < cumtk_pos
@@ -280,7 +241,7 @@ mtrk_t::validate_t mtrk_t::validate() const {
 	// event, or after t=0.  found_ch_event is set to true once a ch event 
 	// has been encountered.  
 	bool found_ch_ev = false;
-	uint64_t cumtk = 0;  // Cumulative delta-time
+	int32_t cumtk = 0;  // Cumulative delta-time
 	for (int i=0; i<this->evnts_.size(); ++i) {
 		auto curr_event_type = this->evnts_[i].type();
 		if (curr_event_type == smf_event_type::invalid) {
@@ -381,7 +342,7 @@ std::string print_event_arrays(mtrk_t::const_iterator beg, mtrk_t::const_iterato
 	sep.byte_sfx = "u";
 	sep.elem_sep = ",";
 
-	uint64_t cumtk = 0;
+	int32_t cumtk = 0;
 	for (auto it=beg; it!=end; ++it) { //(const auto& e : mtrk) {
 		s += "{{";
 		print_hexascii(it->begin(),it->end(),std::back_inserter(s),sep);
@@ -399,7 +360,7 @@ std::string print_event_arrays(const mtrk_t& mtrk) {
 	sep.byte_sfx = "u";
 	sep.elem_sep = ",";
 
-	uint64_t cumtk = 0;
+	int32_t cumtk = 0;
 	for (const auto& e : mtrk) {
 		s += "{{";
 		print_hexascii(e.begin(),e.end(),std::back_inserter(s),sep);
@@ -460,8 +421,8 @@ bool is_equivalent_permutation(mtrk_t::const_iterator beg1,
 	if ((end1-beg1) != (end2-beg2)) {
 		return false;
 	}
-	auto it1 = beg1;  uint64_t ontk1 = 0;
-	auto it2 = beg2;  uint64_t ontk2 = 0;
+	auto it1 = beg1;  int32_t ontk1 = 0;
+	auto it2 = beg2;  int32_t ontk2 = 0;
 	while ((it1!=end1) && (it2!=end2)) {
 		ontk1 += it1->delta_time();
 		ontk2 += it2->delta_time();
@@ -822,7 +783,7 @@ std::vector<linked_onoff_pair_t>
 							mtrk_t::const_iterator end) {
 	std::vector<linked_onoff_pair_t> result;
 
-	uint32_t tkonset = 0;
+	int32_t tkonset = 0;
 	for (auto curr=beg; curr!=end; ++curr) {
 		tkonset += curr->delta_time();
 		if (!is_note_on(*curr)) {
@@ -866,7 +827,7 @@ std::string print_linked_onoff_pairs(const mtrk_t& mtrk) {
 	ss << std::setw(w.def) << "Duration";
 	ss << "\n";
 
-	auto print_half = [&ss,&w](uint32_t cumtk, const mtrk_event_t& onoff)->void {
+	auto print_half = [&ss,&w](int32_t cumtk, const mtrk_event_t& onoff)->void {
 		auto md = get_channel_event(onoff); //.midi_data();
 		//ss << std::setw(w.ch) << std::to_string(md.ch);
 		ss << std::setw(w.p1p2) << std::to_string(md.p1);

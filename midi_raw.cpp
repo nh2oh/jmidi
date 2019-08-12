@@ -37,7 +37,7 @@ bool is_minor(const midi_keysig_t& ks) {
 // TODO:  Dumb, gross, etc
 midi_ch_event_t make_midi_ch_event_data(int sn, int ch, int p1, int p2) {
 	midi_ch_event_t md;
-	md.status_nybble = 0xF0u & std::clamp(sn,0x80,0xF0);
+	md.status_nybble = 0xF0u & static_cast<uint8_t>(std::clamp(sn,0x80,0xF0));
 	md.ch = std::clamp(ch,0,15);
 	md.p1 = std::clamp(p1,0,0x7F);
 	md.p2 = std::clamp(p2,0,0x7F);

@@ -23,7 +23,7 @@ struct event_tk_t {
 	static_assert(std::is_same<It,typename mtrk_t::iterator>::value
 		|| std::is_same<It,typename mtrk_t::const_iterator>::value);
 	It it;
-	int64_t tk;
+	int32_t tk;
 };
 
 //
@@ -71,22 +71,6 @@ public:
 	// This will classify as invalid (!.validate()), because an MTrk 
 	// sequence must terminate w/ an EOT meta event.  
 	mtrk_t()=default;
-	// Calls validate_chunk_header(p,max_sz) on the input, then iterates 
-	// through the array building mtrk_event_t's by calling 
-	// validate_mtrk_event_dtstart(curr_p,rs,curr_max_sz) and 
-	// the ctor mtrk_event_t(const unsigned char*, unsigned char, uint32_t)
-	// Iteration stops when the number of bytes reported in the chunk
-	// header (required to be <= max_size) have been processed or when an 
-	// invalid smf event is encountered.  No error checking other than
-	// that provided by validate_mtrk_event_dtstart() is implemented.  
-	// The resulting mtrk_t may be invalid as an MTrk event sequence.  For
-	// example, it may contain multiple internal EOT events, orphan 
-	// note-on events, etc.  Note that the sequence may be only partially
-	// read-in if an error is encountered before the number of bytes 
-	// indicated by the chunk header have been read.  
-	//
-	// TODO:  This should be deprecated
-	mtrk_t(const unsigned char*, int32_t);
 	mtrk_t(const_iterator,const_iterator);
 
 	// The number of events in the track
@@ -99,7 +83,7 @@ public:
 	// Same as .nbytes(), but excluding the chunk header
 	size_type data_nbytes() const;
 	// Cumulative number of midi ticks occupied by the entire sequence
-	int64_t nticks() const;
+	int32_t nticks() const;
 
 	// Writes out the literal chunk header:
 	// {'M','T','r','k',_,_,_,_}
@@ -109,8 +93,8 @@ public:
 	iterator end();
 	const_iterator begin() const;
 	const_iterator end() const;
-	mtrk_event_t& operator[](uint32_t);
-	const mtrk_event_t& operator[](uint32_t) const;
+	mtrk_event_t& operator[](int32_t);
+	const mtrk_event_t& operator[](int32_t) const;
 	mtrk_event_t& back();
 	const mtrk_event_t& back() const;
 	mtrk_event_t& front();
@@ -119,14 +103,14 @@ public:
 	// cumtk >= the number provided, and the exact cumtk for that event.  
 	// The onset tk for the event pointed to by .it is:
 	// .tk + .it->delta_time();
-	event_tk_t<iterator> at_cumtk(int64_t);
-	event_tk_t<const_iterator> at_cumtk(int64_t) const;
+	event_tk_t<iterator> at_cumtk(int32_t);
+	event_tk_t<const_iterator> at_cumtk(int32_t) const;
 	// at_tkonset() returns an iterator to the first event with onset
 	// tk >= the number provided, and the exact onset tk for that event.  
 	// The cumtk for the event pointed to by .it is:
 	// .tk - .it->delta_time();
-	event_tk_t<iterator> at_tkonset(int64_t);
-	event_tk_t<const_iterator> at_tkonset(int64_t) const;
+	event_tk_t<iterator> at_tkonset(int32_t);
+	event_tk_t<const_iterator> at_tkonset(int32_t) const;
 
 	// Returns a ref to the event just added
 	mtrk_event_t& push_back(const mtrk_event_t&);
@@ -148,7 +132,7 @@ public:
 	// Insert the provided event into the sequence such that its onset tick
 	// is == arg1 + arg2.delta_time()
 	// TODO:  Unit tests
-	iterator insert(int64_t, mtrk_event_t);	
+	iterator insert(int32_t, mtrk_event_t);	
 	
 	// Erase the event pointed to by the iterator.  Returns an iterator to 
 	// the event immediately following the erased event.  
@@ -432,7 +416,7 @@ event_tk_t<mtrk_t::const_iterator> find_linked_off(mtrk_t::const_iterator,
 // the onset tick for the on event is p.on.cumtk + p.on.ev->delta_time(),
 // and similarly for the onset tick of the off event.  The duration of
 // the note is:
-// uint32_t duration = (p.on.cumtk+p.on.ev->delta_time()) 
+// int32_t duration = (p.on.cumtk+p.on.ev->delta_time()) 
 //                     - (p.off.cumtk+p.off.ev->delta_time());
 //
 // Orphan note-on events are not included in the results.  
@@ -463,8 +447,8 @@ std::string print_linked_onoff_pairs(const mtrk_t&);
 //
 template<typename InIt, typename OIt, typename UPred>
 OIt split_copy_if(InIt beg, InIt end, OIt dest, UPred pred) {
-	uint64_t cumtk_src = 0;
-	uint64_t cumtk_dest = 0;
+	int32_t cumtk_src = 0;
+	int32_t cumtk_dest = 0;
 	for (auto curr=beg; curr!=end; ++curr) {
 		if (pred(*curr)) {
 			auto curr_cpy = *curr;
@@ -499,8 +483,8 @@ mtrk_t split_copy_if(const mtrk_t& mtrk, UPred pred) {
 //
 template<typename FwIt, typename UPred>
 FwIt split_if(FwIt beg, FwIt end, UPred pred) {
-	uint64_t cumtk_src = 0;
-	uint64_t cumtk_dest = 0;
+	int32_t cumtk_src = 0;
+	int32_t cumtk_dest = 0;
 	for (auto curr=beg; curr!=end; ++curr) {
 		auto curr_dt = curr->delta_time();
 		if (pred(*curr)) {
@@ -545,17 +529,17 @@ mtrk_t split_if(mtrk_t& mtrk, UPred pred) {
 //
 template<typename InIt, typename OIt>
 OIt merge(InIt beg1, InIt end1, InIt beg2, InIt end2, OIt dest) {
-	uint64_t ontk_1 = 0;
+	int32_t ontk_1 = 0;
 	if (beg1 != end1) {
 		ontk_1 = beg1->delta_time();
 	}
-	uint64_t ontk_2 = 0;
+	int32_t ontk_2 = 0;
 	if (beg2 != end2) {
 		ontk_2 = beg2->delta_time();
 	}
-	uint64_t cumtk_dest = 0;
+	int32_t cumtk_dest = 0;
 	auto curr1 = beg1;  auto curr2 = beg2;
-	uint64_t ontk_curr = 0;
+	int32_t ontk_curr = 0;
 	InIt curr_beg = beg1;  InIt curr_end = beg1;
 	while ((curr1!=end1) || (curr2!=end2)) {
 		// Set curr_beg, curr_end, ontk_curr to the appropriate values for

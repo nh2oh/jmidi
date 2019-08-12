@@ -112,11 +112,6 @@ std::filesystem::path make_midifile(std::filesystem::path smf_path,
 	for (int i=0; i<12; ++i) {
 		auto curr_ntnum = i+60;
 		auto curr_notespacing = i==0 ? 0 : note_spacing;
-		//midi_ch_event_t note_on {0x90u,0x00u,curr_ntnum,127/2};
-		//midi_ch_event_t note_off {0x80u,0x00u,curr_ntnum,127/2};
-		//mtrk1.push_back(make_note_on(curr_notespacing,note_on));
-		//mtrk1.push_back(make_note_off(note_duration,note_off));
-
 		mtrk1.push_back(make_note_on(curr_notespacing,0,curr_ntnum,127/2));
 		mtrk1.push_back(make_note_off(note_duration,0,curr_ntnum,127/2));
 		cumtk += curr_notespacing + note_duration;

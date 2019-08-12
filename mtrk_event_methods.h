@@ -199,6 +199,8 @@ bool is_onoff_pair(int, int, int, int);
 //
 mtrk_event_t make_ch_event_generic_unsafe(int32_t, const midi_ch_event_t&);
 mtrk_event_t make_ch_event(int32_t, const midi_ch_event_t&);
+// status nybble, channel, p1, p2
+mtrk_event_t make_ch_event(int32_t, int, int, int, int);
 // Sets the status nybble to 0x90u and p2 to be the greater of the value
 // passed in or 1 (a note-on event can not have a velocity of 0).  
 mtrk_event_t make_note_on(int32_t, midi_ch_event_t);

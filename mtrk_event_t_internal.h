@@ -114,6 +114,8 @@ public:
 	// the new buffer.  Otherwise the effect is the same as a call to 
 	// resize().  
 	int32_t resize_nocopy(int32_t);
+	// small->small => no allocation => can be noexcept
+	int32_t resize_small2small_nocopy(int32_t) noexcept;
 	// int32_t reserve(int32_t new_cap);
 	// Will cause big->small, but never small->big transitions.  
 	int32_t reserve(int32_t);

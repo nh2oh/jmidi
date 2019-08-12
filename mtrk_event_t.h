@@ -154,7 +154,8 @@ private:
 	// 63 is ~1/2 way between 0 and the max velocity of 127 (0x7F)
 	// {0x00u,0x90u,0x3Cu,0x3Fu}
 	void default_init(int32_t=0);
-	mtrk_event_t(mtrk_event_t_internal::small_bytevec_t&&);
+	struct init_small_w_size_0_t {};
+	mtrk_event_t(init_small_w_size_0_t) noexcept;
 
 	unsigned char *push_back(unsigned char);
 	iterator_range_t<const_iterator> payload_range_impl() const;

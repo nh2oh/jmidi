@@ -456,21 +456,26 @@ bool is_onoff_pair(int on_ch, int on_note, int off_ch, int off_note) {
 
 
 mtrk_event_t make_ch_event_generic_unsafe(int32_t dt, const midi_ch_event_t& md) {
-	mtrk_event_t_internal::small_bytevec_t sbv;
+	mtrk_event_t result = mtrk_event_t(mtrk_event_t::init_small_w_size_0_t());
+
 	unsigned char s = md.status_nybble|md.ch;
-	auto n = channel_status_byte_n_data_bytes(s)+1;  // +1 for the status byte
-	sbv.resize(n + delta_time_field_size(dt));
-	auto it = sbv.begin();
+	auto n = channel_status_byte_n_data_bytes(s);
+	result.d_.resize_small2small_nocopy(delta_time_field_size(dt) + 1 + n);  // +1 for the status byte
+	auto it = result.d_.begin();
 	it = write_delta_time(dt,it);
 	*it++ = s;
 	*it++ = md.p1;
-	if (n==3) {
+	if (n==2) {
 		*it++ = md.p2;
 	}
-	return mtrk_event_t(std::move(sbv));
+	return result;
 }
 mtrk_event_t make_ch_event(int32_t dt, const midi_ch_event_t& md) {
 	return make_ch_event_generic_unsafe(to_nearest_valid_delta_time(dt),normalize(md));
+}
+mtrk_event_t make_ch_event(int32_t dt, int sn, int ch, int p1, int p2) {
+	return make_ch_event_generic_unsafe(to_nearest_valid_delta_time(dt),
+		make_midi_ch_event_data(sn,ch,p1,p2));
 }
 mtrk_event_t make_note_on(int32_t dt, midi_ch_event_t md) {
 	md.status_nybble = 0x90u;
