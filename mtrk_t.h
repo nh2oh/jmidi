@@ -343,38 +343,6 @@ OIt write_mtrk(const mtrk_t& mtrk, OIt it) {
 };
 
 
-
-/*
-maybe_mtrk_t make_mtrk_permissive(const unsigned char*, const unsigned char*,
-									mtrk_error_t*);
-maybe_mtrk_t make_mtrk_permissive(const unsigned char*, const unsigned char*);
-*/
-
-
-//
-// mtrk_from_event_seq_result_t
-// make_mtrk_from_event_seq_array(const unsigned char *beg, 
-//						const unsigned char *end, mtrk_t *dest);
-// beg points at the first byte of an mtrk event (_not_ at the first byte
-// of an MTrk chunk header) and end points one byte past the end of the last
-// event in the sequence.  Returns p pointing one byte past the end of the
-// last byte pushed_back() into dest, along w/ the value of the 
-// running-status byte.  
-// Calls curr_event = make_mtrk_event(p,...) on each event.  
-// If no error is indicated, calls 
-// dest->push_back(mtrk_event_t(p,curr_event));
-// Terminates when any one of the following occurs:
-// -> if validate_mtrk_event_dtstart() indicates an error
-// -> when the end of the input range has been reached
-// -> immediately after an EOT event is pushed_back()
-//
-struct mtrk_from_event_seq_result_t {
-	const unsigned char *p {nullptr};
-	unsigned char rs {0x00u};
-};
-mtrk_from_event_seq_result_t make_mtrk_from_event_seq_array(const unsigned char*, 
-						const unsigned char*,mtrk_t*);
-
 //
 // get_simultaneous_events(mtrk_const_iterator_t beg,
 //							mtrk_const_iterator_tend);
