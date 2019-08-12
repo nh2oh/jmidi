@@ -16,7 +16,7 @@ mtrk_event_t::mtrk_event_t(mtrk_event_t::init_small_w_size_0_t) noexcept {  // p
 mtrk_event_t::mtrk_event_t(int32_t dt) {
 	this->default_init(dt);
 }
-mtrk_event_t::mtrk_event_t(int32_t dt, midi_ch_event_t md) {
+mtrk_event_t::mtrk_event_t(int32_t dt, ch_event_data_t md) {
 	this->d_ = mtrk_event_t_internal::small_bytevec_t();
 	md = normalize(md);
 	unsigned char s = (md.status_nybble)|(md.ch);

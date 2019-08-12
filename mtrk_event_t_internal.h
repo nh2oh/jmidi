@@ -5,6 +5,14 @@
 
 namespace mtrk_event_t_internal {
 
+class small_size_t {
+public:
+	explicit small_size_t(int32_t) noexcept;
+	operator int32_t() const noexcept;
+private:
+	int32_t v_;
+};
+
 //
 // Class small_t
 // Invariants:  
@@ -23,6 +31,10 @@ struct small_t {
 	constexpr int32_t capacity() const noexcept;
 	// Can only resize to a value on [0,small_t::size_max]
 	int32_t resize(int32_t) noexcept;
+	int32_t resize(small_size_t) noexcept;
+	// Does not std::clamp(sz,0,this->capacity());
+	int32_t resize_unchecked(int32_t) noexcept;
+
 	void abort_if_not_active() const noexcept;
 
 	unsigned char *begin() noexcept;
@@ -82,9 +94,10 @@ public:
 	static constexpr int32_t size_max = big_t::size_max;
 	static constexpr int32_t capacity_small = small_t::size_max;
 
+	// small_bytevec_t() noexcept;
 	// Constructs a 'small' object w/ size()==0
-	//small_bytevec_t() = default;
 	small_bytevec_t() noexcept;
+	// Constructs a 'small' or 'big' object w/ size() as specified
 	small_bytevec_t(int32_t);
 	// Copy ctor, copy assign; the new/destination object does not necessarily
 	// inherit the same size-type as the the source.  If the source is 'big'
@@ -106,15 +119,14 @@ public:
 	// int32_t resize(int32_t new_sz);
 	// If 'big' and the new size is <= small_bytevec_t::capacity_small, 
 	// will cause a big->small transition.  
-	int32_t resize(int64_t);
-	int32_t resize(uint64_t);
 	int32_t resize(int32_t);
 	// If resizing causes either allocation of a new buffer or a 
 	// big->small transition, the present object's data is not copied into
 	// the new buffer.  Otherwise the effect is the same as a call to 
 	// resize().  
 	int32_t resize_nocopy(int32_t);
-	// small->small => no allocation => can be noexcept
+	// A wrapper for this->u_.s_.resize(new_sz); For a small->small resize
+	// there is no allocation, thus the method can be noexcept
 	int32_t resize_small2small_nocopy(int32_t) noexcept;
 	// int32_t reserve(int32_t new_cap);
 	// Will cause big->small, but never small->big transitions.  

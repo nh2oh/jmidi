@@ -99,7 +99,7 @@ public:
 	explicit mtrk_event_t();
 	// Default-constructed value w/ the given delta-time.  
 	explicit mtrk_event_t(int32_t);
-	mtrk_event_t(int32_t, midi_ch_event_t);
+	mtrk_event_t(int32_t, ch_event_data_t);
 	mtrk_event_t(const mtrk_event_t&);
 	mtrk_event_t& operator=(const mtrk_event_t&);
 	mtrk_event_t(mtrk_event_t&&) noexcept;
@@ -166,7 +166,7 @@ private:
 	bool is_big() const;
 	bool is_small() const;
 
-	friend mtrk_event_t make_ch_event_generic_unsafe(int32_t, const midi_ch_event_t&);
+	friend mtrk_event_t make_ch_event_generic_unsafe(int32_t, const ch_event_data_t&);
 
 	// delta-time, type (0x{FF,F0,F7}), meta-type, length, payload beg, payload end, 
 	// add_f7_cap.  length must be consistent w/ end-beg && add_f7_cap.  
@@ -221,7 +221,7 @@ struct maybe_mtrk_event_t {
 
 
 struct validate_channel_event_result_t {
-	midi_ch_event_t data;
+	ch_event_data_t data;
 	int32_t size;
 	mtrk_event_error_t::errc error {mtrk_event_error_t::errc::other};
 	operator bool() const;

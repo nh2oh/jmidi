@@ -230,7 +230,7 @@ mtrk_t::validate_t mtrk_t::validate() const {
 	};
 	std::vector<sounding_notes_t> sounding;
 	sounding.reserve(10);  // Expect <= 10 simultaneously sounding notes???
-	midi_ch_event_t curr_chev_data;  //mtrk_event_t::channel_event_data_t curr_chev_data;
+	ch_event_data_t curr_chev_data;  //mtrk_event_t::channel_event_data_t curr_chev_data;
 	auto is_matching_onoff 
 		= [&curr_chev_data](const sounding_notes_t& sev) -> bool {
 		return is_onoff_pair(sev.ch,sev.note,
@@ -501,7 +501,7 @@ maybe_mtrk_t::operator bool() const {
 	};
 	std::vector<sounding_notes_t> sounding;
 	sounding.reserve(10);  // Expect <= 10 simultaneously-sounding notes ???
-	midi_ch_event_t curr_chev_data;
+	ch_event_data_t curr_chev_data;
 	auto is_matching_off = [&curr_chev_data](const sounding_notes_t& sev)->bool {
 		return is_onoff_pair(sev.ch,sev.note,curr_chev_data.ch,curr_chev_data.p1);
 	};

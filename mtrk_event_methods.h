@@ -134,23 +134,23 @@ mtrk_event_t make_meta_generic_text(const int32_t&, const meta_event_t&,
 //
 // Channel event data access
 //
-// For non-channel events, returns the midi_ch_event_t specified by arg2.  
-// If arg2 is empty, returns a midi_ch_event_t containing invalid values
+// For non-channel events, returns the ch_event_data_t specified by arg2.  
+// If arg2 is empty, returns a ch_event_data_t containing invalid values
 // in the event the mtrk_event_t is a non-channel event.  
-midi_ch_event_t get_channel_event(const mtrk_event_t&, midi_ch_event_t={});
+ch_event_data_t get_channel_event(const mtrk_event_t&, ch_event_data_t={});
 // Copies at most the first 3 bytes of the range [payload_begin(),
 // payoad_end()) into the appropriate fields of a midi_ch_data_t.  
-midi_ch_event_t get_channel_event_impl(const mtrk_event_t&);
+ch_event_data_t get_channel_event_impl(const mtrk_event_t&);
 //
 // Channel event classification
 //
 // The is_*(const mtrk_event_t&) duplicate functionality in the 
-// corresponding is_*(const midi_ch_event_t&) functions in midi_raw.h.  
+// corresponding is_*(const ch_event_data_t&) functions in midi_raw.h.  
 // Since mtrk_event_t's are always valid, the is_*(const mtrk_event_t&)
-// is often much more effecient than its is_*(const midi_ch_event_t&)
+// is often much more effecient than its is_*(const ch_event_data_t&)
 // partner.  
-// is_*(const midi_ch_event_t&) functions are needed for input validation
-// in the make_*(const midi_ch_event_t) family.  
+// is_*(const ch_event_data_t&) functions are needed for input validation
+// in the make_*(const ch_event_data_t) family.  
 //
 // In the future, this set of functions may be expanded to things like 
 // is_bank_select(), is_pan(), is_foot_controller(), etc.  These require 
@@ -188,40 +188,40 @@ bool is_onoff_pair(int, int, int, int);
 //
 // "Safe" factory functions, which create mtrk_event_t objects encoding midi
 // channel events with payloads corresponding to the given delta-time and 
-// the event data in the midi_ch_event_t argument.  These functions overwrite
-// the value of the status nybble and other fields in the midi_ch_event_t   
+// the event data in the ch_event_data_t argument.  These functions overwrite
+// the value of the status nybble and other fields in the ch_event_data_t   
 // argument as necessary so that the event that is returned always has the
 // intended type (where "intent" is inferred by the particular factory 
-// function and not necessarily the fields of the midi_ch_event_t input).  
+// function and not necessarily the fields of the ch_event_data_t input).  
 // For example, make_note_on() will return an mtrk_event_t w/ status nybble
-// == 0x90u, even if the status_nybble of the midi_ch_event_t passed in is
+// == 0x90u, even if the status_nybble of the ch_event_data_t passed in is
 // == 0xA0u.  
 //
-mtrk_event_t make_ch_event_generic_unsafe(int32_t, const midi_ch_event_t&);
-mtrk_event_t make_ch_event(int32_t, const midi_ch_event_t&);
+mtrk_event_t make_ch_event_generic_unsafe(int32_t, const ch_event_data_t&);
+mtrk_event_t make_ch_event(int32_t, const ch_event_data_t&);
 // status nybble, channel, p1, p2
 mtrk_event_t make_ch_event(int32_t, int, int, int, int);
 // Sets the status nybble to 0x90u and p2 to be the greater of the value
 // passed in or 1 (a note-on event can not have a velocity of 0).  
-mtrk_event_t make_note_on(int32_t, midi_ch_event_t);
+mtrk_event_t make_note_on(int32_t, ch_event_data_t);
 mtrk_event_t make_note_on(int32_t, int, int, int);
 // Makes a channel event w/ status nybble == 0x80u
-mtrk_event_t make_note_off(int32_t, midi_ch_event_t);
+mtrk_event_t make_note_off(int32_t, ch_event_data_t);
 mtrk_event_t make_note_off(int32_t, int, int, int);
 // Makes a channel event w/ status nybble == 0x90u (normally => note on),
 // but w/a p2 of 0.  
-mtrk_event_t make_note_off90(int32_t, midi_ch_event_t);
-mtrk_event_t make_key_pressure(int32_t, midi_ch_event_t);  // 0xA0u
+mtrk_event_t make_note_off90(int32_t, ch_event_data_t);
+mtrk_event_t make_key_pressure(int32_t, ch_event_data_t);  // 0xA0u
 mtrk_event_t make_key_pressure(int32_t, int, int, int);
-mtrk_event_t make_control_change(int32_t, midi_ch_event_t);  // 0xB0u
+mtrk_event_t make_control_change(int32_t, ch_event_data_t);  // 0xB0u
 mtrk_event_t make_control_change(int32_t, int, int, int);
-mtrk_event_t make_program_change(int32_t, midi_ch_event_t);  // 0xC0u
+mtrk_event_t make_program_change(int32_t, ch_event_data_t);  // 0xC0u
 mtrk_event_t make_program_change(int32_t, int, int);
-mtrk_event_t make_channel_pressure(int32_t, midi_ch_event_t);  // 0xD0u
+mtrk_event_t make_channel_pressure(int32_t, ch_event_data_t);  // 0xD0u
 mtrk_event_t make_channel_pressure(int32_t, int, int);
-mtrk_event_t make_pitch_bend(int32_t, midi_ch_event_t);  // 0xE0u
+mtrk_event_t make_pitch_bend(int32_t, ch_event_data_t);  // 0xE0u
 mtrk_event_t make_pitch_bend(int32_t, int, int, int);
-mtrk_event_t make_channel_mode(int32_t, midi_ch_event_t);  // 0xB0u
+mtrk_event_t make_channel_mode(int32_t, ch_event_data_t);  // 0xB0u
 mtrk_event_t make_channel_mode(int32_t, int, int, int);
 
 

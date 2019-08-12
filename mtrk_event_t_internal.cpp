@@ -7,6 +7,13 @@
 
 namespace mtrk_event_t_internal {
 
+small_size_t::small_size_t(int32_t sz) noexcept {
+	this->v_ = sz = std::clamp(sz,0,small_t::size_max);
+}
+small_size_t::operator int32_t() const noexcept {
+	return this->v_;
+}
+
 void small_t::init() noexcept {
 	this->flags_ = 0x80u;
 	//this->d_.fill(0x00u);
@@ -21,6 +28,16 @@ constexpr int32_t small_t::capacity() const noexcept {
 int32_t small_t::resize(int32_t sz) noexcept {
 	this->abort_if_not_active();
 	sz = std::clamp(sz,0,this->capacity());
+	this->flags_ = (static_cast<unsigned char>(sz)|0x80u);
+	return ((this->flags_)&0x7Fu);
+}
+int32_t small_t::resize(small_size_t sz) noexcept {
+	this->abort_if_not_active();
+	this->flags_ = (static_cast<unsigned char>(sz)|0x80u);
+	return ((this->flags_)&0x7Fu);
+}
+int32_t small_t::resize_unchecked(int32_t sz) noexcept {
+	this->abort_if_not_active();
 	this->flags_ = (static_cast<unsigned char>(sz)|0x80u);
 	return ((this->flags_)&0x7Fu);
 }
@@ -256,20 +273,6 @@ int32_t small_bytevec_t::capacity() const noexcept {
 	} else {
 		return this->u_.b_.capacity();
 	}
-}
-int32_t small_bytevec_t::resize(int64_t new_sz) {
-	if (new_sz < 0) {
-		new_sz = 0;
-	} else if (new_sz > small_bytevec_t::size_max) {
-		new_sz = small_bytevec_t::size_max;
-	}
-	return this->resize(static_cast<int32_t>(new_sz));
-}
-int32_t small_bytevec_t::resize(uint64_t new_sz) {
-	if (new_sz > small_bytevec_t::size_max) {
-		return this->resize(small_bytevec_t::size_max);
-	}
-	return this->resize(static_cast<int32_t>(new_sz));
 }
 int32_t small_bytevec_t::resize(int32_t new_sz) {
 	new_sz = std::clamp(new_sz,0,small_bytevec_t::size_max);

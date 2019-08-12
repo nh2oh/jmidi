@@ -58,26 +58,29 @@ enum : uint8_t {
 	ch_pressure = 0xD0u,  // 1 data byte
 	pitch_bend = 0xE0u
 };
-struct midi_ch_event_t {
+struct ch_event_data_t {
 	uint8_t status_nybble {0x00u};  // most-significant nybble of the status byte
 	uint8_t ch {0x00u};  // least-significant nybble of the status byte
 	uint8_t p1 {0x00u};
 	uint8_t p2 {0x00u};
+	operator bool() const;
 };
-midi_ch_event_t make_midi_ch_event_data(int, int, int, int);
+bool verify(const ch_event_data_t&);
+ch_event_data_t make_midi_ch_event_data(int, int, int, int);
 
-bool verify(const midi_ch_event_t&);
-// "Forcefully" sets bits in the fields of the input midi_ch_event_t such
+
+// "Forcefully" sets bits in the fields of the input ch_event_data_t such
 // that they are valid values.  
-midi_ch_event_t normalize(midi_ch_event_t);
-bool is_note_on(const midi_ch_event_t&);
-bool is_note_off(const midi_ch_event_t&);
-bool is_key_pressure(const midi_ch_event_t&);  // 0xAnu
-bool is_control_change(const midi_ch_event_t&);
-bool is_program_change(const midi_ch_event_t&);
-bool is_channel_pressure(const midi_ch_event_t&);  // 0xDnu
-bool is_pitch_bend(const midi_ch_event_t&); 
-bool is_channel_mode(const midi_ch_event_t&);
+// "to_nearest_valid_value()" ?
+ch_event_data_t normalize(ch_event_data_t);
+bool is_note_on(const ch_event_data_t&);
+bool is_note_off(const ch_event_data_t&);
+bool is_key_pressure(const ch_event_data_t&);  // 0xAnu
+bool is_control_change(const ch_event_data_t&);
+bool is_program_change(const ch_event_data_t&);
+bool is_channel_pressure(const ch_event_data_t&);  // 0xDnu
+bool is_pitch_bend(const ch_event_data_t&); 
+bool is_channel_mode(const ch_event_data_t&);
 
 
 

@@ -103,7 +103,7 @@ std::filesystem::path make_midifile(std::filesystem::path smf_path,
 	mtrk1.push_back(make_timesig(0,{4,2,24,8}));
 	mtrk1.push_back(make_tempo(0,250000)); // 0.5 seconds/qnt
 	mtrk1.push_back(make_program_change(0,
-		midi_ch_event_t{0xC0u,0x00u,0x06u,0x00u}));
+		ch_event_data_t{0xC0u,0x00u,0x06u,0x00u}));
 	// 0 => Acoustic Grand; 6 => Harpsichord
 
 	int32_t cumtk = 0;
