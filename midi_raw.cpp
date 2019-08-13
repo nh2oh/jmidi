@@ -256,11 +256,10 @@ int32_t get_tpq(time_division_t tdiv, int32_t def) {
 double ticks2sec(int32_t tks, const time_division_t& tdiv,
 					int32_t tempo) {
 	if (is_tpq(tdiv)) {
-		auto tpq = static_cast<double>(tdiv.get_tpq());
-		//auto uspq = static_cast<double>(tempo);
-		auto secpq = static_cast<double>(tempo)/1000000.0;
-		//return static_cast<double>(tks)*(secpq/tpq);
-		return (secpq*tks)/tpq;
+
+		double n = static_cast<double>(tempo)*static_cast<double>(tks);  // (tk*us)/q
+		double d = (tdiv.get_tpq())*1000000.0;  // (tk*us)/(q*s)
+		return n/d;
 	} else {
 		auto smpte = tdiv.get_smpte();
 		auto frames_sec = static_cast<double>(-1*smpte.time_code);
@@ -271,12 +270,11 @@ double ticks2sec(int32_t tks, const time_division_t& tdiv,
 int32_t sec2ticks(const double& sec, const time_division_t& tdiv,
 					int32_t tempo) {
 	if (is_tpq(tdiv)) {
-		if (tempo==0) {
-			return 0;
+		if (tempo==0  || sec<=0.0) {
+			return 0.0;
 		}
-		auto tpq = static_cast<double>(tdiv.get_tpq());
-		auto secpq = static_cast<double>(tempo)*(1.0/1000000.0);
-		return static_cast<int32_t>(sec*(tpq/secpq));
+		double n = sec*1000000.0*static_cast<double>(tdiv.get_tpq());
+		return n/static_cast<double>(tempo);
 	} else {
 		auto smpte = tdiv.get_smpte();
 		auto frames_sec = static_cast<double>(-1*smpte.time_code);
