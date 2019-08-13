@@ -96,56 +96,56 @@ public:
 
 	// Default ctor creates Middle C (note-num==60) Note-on event
 	// on channel "1" w/ velocity 60 and delta-time == 0.  
-	explicit mtrk_event_t();
+	explicit mtrk_event_t() noexcept;
 	// Default-constructed value w/ the given delta-time.  
-	explicit mtrk_event_t(int32_t);
-	mtrk_event_t(int32_t, ch_event_data_t);
+	explicit mtrk_event_t(int32_t) noexcept;
+	mtrk_event_t(int32_t, ch_event_data_t) noexcept;
 	mtrk_event_t(const mtrk_event_t&);
 	mtrk_event_t& operator=(const mtrk_event_t&);
 	mtrk_event_t(mtrk_event_t&&) noexcept;
 	mtrk_event_t& operator=(mtrk_event_t&&) noexcept;
 	~mtrk_event_t() noexcept;
 
-	size_type size() const;
-	size_type capacity() const;
+	size_type size() const noexcept;
+	size_type capacity() const noexcept;
 	size_type reserve(size_type);
 
-	const unsigned char *data() const;
-	const unsigned char *data();
-	const_iterator begin() const;
-	const_iterator end() const;
-	const_iterator begin();
-	const_iterator end();
-	const_iterator cbegin();
-	const_iterator cend();
-	const_iterator cbegin() const;
-	const_iterator cend() const;
-	const_iterator dt_begin() const;
-	const_iterator dt_end() const;
-	const_iterator event_begin() const;
-	const_iterator payload_begin();
-	const_iterator dt_begin();
-	const_iterator dt_end();
-	const_iterator event_begin();
-	const_iterator payload_begin() const;
-	mtrk_event_iterator_range_t payload_range() const;
-	mtrk_event_iterator_range_t payload_range();
-	unsigned char operator[](size_type) const;
-	unsigned char operator[](size_type);
+	const unsigned char *data() const noexcept;
+	const unsigned char *data() noexcept;
+	const_iterator begin() const noexcept;
+	const_iterator end() const noexcept;
+	const_iterator begin() noexcept;
+	const_iterator end() noexcept;
+	const_iterator cbegin() noexcept;
+	const_iterator cend() noexcept;
+	const_iterator cbegin() const noexcept;
+	const_iterator cend() const noexcept;
+	const_iterator dt_begin() const noexcept;
+	const_iterator dt_end() const noexcept;
+	const_iterator event_begin() const noexcept;
+	const_iterator payload_begin() noexcept;
+	const_iterator dt_begin() noexcept;
+	const_iterator dt_end() noexcept;
+	const_iterator event_begin() noexcept;
+	const_iterator payload_begin() const noexcept;
+	mtrk_event_iterator_range_t payload_range() const noexcept;
+	mtrk_event_iterator_range_t payload_range() noexcept;
+	unsigned char operator[](size_type) const noexcept;
+	unsigned char operator[](size_type) noexcept;
 
 	// Getters
-	smf_event_type type() const;
-	int32_t delta_time() const;
-	unsigned char status_byte() const;
+	smf_event_type type() const noexcept;
+	int32_t delta_time() const noexcept;
+	unsigned char status_byte() const noexcept;
 	// The value of the running-status _after_ this event has passed
-	unsigned char running_status() const;
-	size_type data_size() const;  // Not including the delta-t
+	unsigned char running_status() const noexcept;
+	size_type data_size() const noexcept;  // Not including the delta-t
 
 	// Setters
 	int32_t set_delta_time(int32_t);
 
-	bool operator==(const mtrk_event_t&) const;
-	bool operator!=(const mtrk_event_t&) const;
+	bool operator==(const mtrk_event_t&) const noexcept;
+	bool operator!=(const mtrk_event_t&) const noexcept;
 private:
 	mtrk_event_t_internal::small_bytevec_t d_;
 	
@@ -153,12 +153,12 @@ private:
 	// velocity==63 (0x3F).  
 	// 63 is ~1/2 way between 0 and the max velocity of 127 (0x7F)
 	// {0x00u,0x90u,0x3Cu,0x3Fu}
-	void default_init(int32_t=0);
+	void default_init(int32_t=0) noexcept;
 	struct init_small_w_size_0_t {};
 	mtrk_event_t(init_small_w_size_0_t) noexcept;
 
 	unsigned char *push_back(unsigned char);
-	mtrk_event_iterator_range_t payload_range_impl() const;
+	mtrk_event_iterator_range_t payload_range_impl() const noexcept;
 
 	const unsigned char *raw_begin() const;
 	const unsigned char *raw_end() const;
@@ -166,12 +166,14 @@ private:
 	bool is_big() const;
 	bool is_small() const;
 
-	friend mtrk_event_t make_ch_event_generic_unsafe(int32_t, const ch_event_data_t&);
+	friend mtrk_event_t make_ch_event_generic_unsafe(int32_t, 
+								const ch_event_data_t&) noexcept;
 
 	// delta-time, type (0x{FF,F0,F7}), meta-type, length, payload beg, payload end, 
 	// add_f7_cap.  length must be consistent w/ end-beg && add_f7_cap.  
 	friend mtrk_event_t make_meta_sysex_generic_unsafe(int32_t, unsigned char, 
-		unsigned char, int32_t, const unsigned char *, const unsigned char *, bool);
+		unsigned char, int32_t, const unsigned char *, 
+		const unsigned char *, bool);
 
 	template <typename InIt>
 	friend InIt make_mtrk_event(InIt, InIt, int32_t, 

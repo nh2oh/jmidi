@@ -154,7 +154,7 @@ std::string randfn() {
 
 
 int event_sizes_benchmark() {
-	int mode = 1;  // 0 => batch, 1=>istreambuf_iterator
+	int mode = 0;  // 0 => batch, 1=>istreambuf_iterator
 	int Nth = 4;
 	if (Nth!=4) { Nth=4; };
 	auto tstart = std::chrono::high_resolution_clock::now();

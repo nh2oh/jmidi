@@ -197,7 +197,7 @@ bool is_onoff_pair(int, int, int, int);
 // == 0x90u, even if the status_nybble of the ch_event_data_t passed in is
 // == 0xA0u.  
 //
-mtrk_event_t make_ch_event_generic_unsafe(int32_t, const ch_event_data_t&);
+mtrk_event_t make_ch_event_generic_unsafe(int32_t, const ch_event_data_t&) noexcept;
 mtrk_event_t make_ch_event(int32_t, const ch_event_data_t&);
 // status nybble, channel, p1, p2
 mtrk_event_t make_ch_event(int32_t, int, int, int, int);

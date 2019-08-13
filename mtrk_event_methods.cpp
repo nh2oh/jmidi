@@ -457,7 +457,7 @@ bool is_onoff_pair(int on_ch, int on_note, int off_ch, int off_note) {
 }
 
 
-mtrk_event_t make_ch_event_generic_unsafe(int32_t dt, const ch_event_data_t& md) {
+mtrk_event_t make_ch_event_generic_unsafe(int32_t dt, const ch_event_data_t& md) noexcept {
 	mtrk_event_t result = mtrk_event_t(mtrk_event_t::init_small_w_size_0_t());
 
 	unsigned char s = md.status_nybble|md.ch;
