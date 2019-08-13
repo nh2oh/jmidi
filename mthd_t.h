@@ -1,12 +1,12 @@
 #pragma once
 #include "generic_chunk_low_level.h"
 #include "..\..\generic_iterator.h"
+#include "mtrk_event_t_internal.h"
 #include "midi_raw.h"  // time_division_t
 #include "midi_vlq.h"
 #include <cstdint>
 #include <cstddef>  // std::ptrdiff_t
 #include <string>
-#include <vector>
 #include <limits> 
 #include <array>
 #include <algorithm>  // std::copy() to set mtrk_err_t in make_mtrk(...
@@ -41,7 +41,7 @@
 //
 // For a default-constructed mthd_t: format==1, ntrks==0, division==120 tpq.  
 //
-// mthd_t is a container adapter around std::vector<unsigned char>.  
+// mthd_t is a container adapter around small_bytevec_t.  
 // Although every MThd chunk in existence is 14 bytes, the MIDI std 
 // stipulates that in the future it may be enlarged to contain addnl 
 // fields, hence i can not simply use a std::array<,14>.  
@@ -76,59 +76,58 @@ public:
 	static constexpr size_type size_max = std::numeric_limits<size_type>::max();
 
 	// size()==14, length()==4; Format 1, 0 tracks, 120 tpq
-	mthd_t()=default;
+	mthd_t() noexcept;
 	// mthd_t(int32_t fmt, int32_t ntrks, time_division_t tdf);
-	explicit mthd_t(int32_t, int32_t, time_division_t);
+	explicit mthd_t(int32_t, int32_t, time_division_t) noexcept;
 	// mthd_t(int32_t fmt, int32_t ntrks, int32_t division (tpq));
 	// the value for division is silently clamped to [1,32767].  
-	explicit mthd_t(int32_t, int32_t, int32_t);
+	explicit mthd_t(int32_t, int32_t, int32_t) noexcept;
 	// mthd_t(int32_t fmt, int32_t ntrks, int32_t SMPTE-tcf, SMPTE-subdivs);
-	explicit mthd_t(int32_t, int32_t, int32_t, int32_t);
+	explicit mthd_t(int32_t, int32_t, int32_t, int32_t) noexcept;
 
 	// size() and nbytes() are synonyms
-	size_type size() const;
-	size_type nbytes() const;
-	const_pointer data() const;
-	const_pointer data();
-	const_reference operator[](size_type) const;
-	const_iterator begin() const;
-	const_iterator end() const;
-	const_iterator begin();
-	const_iterator end();
-	const_iterator cbegin() const;
-	const_iterator cend() const;
+	size_type size() const noexcept;
+	size_type nbytes() const noexcept;
+	const_pointer data() const noexcept;
+	const_pointer data() noexcept;
+	value_type operator[](size_type) const noexcept;
+	value_type operator[](size_type) noexcept;
+	const_iterator begin() const noexcept;
+	const_iterator end() const noexcept;
+	const_iterator begin() noexcept;
+	const_iterator end() noexcept;
+	const_iterator cbegin() const noexcept;
+	const_iterator cend() const noexcept;
 
 	// Getters
-	int32_t length() const;
-	int32_t format() const;
+	int32_t length() const noexcept;
+	int32_t format() const noexcept;
 	// Note:  Number of MTrks, not the number of "chunks"
-	int32_t ntrks() const;
-	time_division_t division() const;
+	int32_t ntrks() const noexcept;
+	time_division_t division() const noexcept;
 
 	// Setters
 	// Illegal values are _silently_ set to legal values.  
 	// If ntrks > 1, the allowed range is [1,0xFFFF]
 	// If ntrks <= 1, the allowed range is [0,0xFFFF]
-	int32_t set_format(int32_t);
-	// Note:  Number of MTrks, not the number of "chunks"
+	int32_t set_format(int32_t) noexcept;
+	// Number of MTrks, not the number of "chunks"
 	// If format() == 0, the allowed range is [0,1].  
 	// If format() > 0, the allowed range is [0,0xFFFF].  
-	int32_t set_ntrks(int32_t);
-	time_division_t set_division(time_division_t);
-	// Silently clamps the input to [1,0x7FFF] (==32767)
-	int32_t set_division_tpq(int32_t);
+	int32_t set_ntrks(int32_t) noexcept;
+	time_division_t set_division(time_division_t) noexcept;
+	// set_division_tpq/smpte() pass the input to the time_division_t ctors,
+	// which silently correct invalid values.  
+	int32_t set_division_tpq(int32_t) noexcept;
 	// smpte_t set_division_smpte(int32_t tcf, int32_t subdivs);
-	smpte_t set_division_smpte(int32_t,int32_t);
-	smpte_t set_division_smpte(smpte_t);
+	smpte_t set_division_smpte(int32_t,int32_t) noexcept;
+	smpte_t set_division_smpte(smpte_t) noexcept;
 	// Sets the length field and resizes the array if necessary
 	// The input length is first clamped to 
 	// [mthd::length_min,mthd_t::length_max].  If the new length is < the 
 	// present length, the array will be truncated and data may be lost.  
 	int32_t set_length(int32_t);
 private:
-	using vec_szt = std::vector<unsigned char>::size_type;
-	//static_assert(std::numeric_limits<vec_szt>::min()<=std::numeric_limits<size_type>::min());
-	//static_assert(std::numeric_limits<vec_szt>::max()>=std::numeric_limits<size_type>::max());
 	static constexpr int32_t format_min = 0;
 	static constexpr int32_t format_max = 0xFFFF;
 	static_assert(format_min >= std::numeric_limits<uint16_t>::min());
@@ -139,14 +138,13 @@ private:
 	static_assert(ntrks_min >= std::numeric_limits<uint16_t>::min());
 	static_assert(ntrks_max_fmt_gt0 <= std::numeric_limits<uint16_t>::max());
 
-	reference operator[](size_type);
+	static const std::array<unsigned char,14> def_;
 
-	std::vector<unsigned char> d_ {
-		// MThd                   chunk length == 6
-		0x4Du,0x54u,0x68u,0x64u,  0x00u,0x00u,0x00u,0x06u,
-		// Fmt 1      ntrks         time-div == 120 tpq
-		0x00u,0x01u,  0x00u,0x00u,  0x00u,0x78u
-	};
+	struct init_small_w_size_0_t {};
+	mthd_t(init_small_w_size_0_t) noexcept;
+	void default_init() noexcept;
+
+	mtrk_event_t_internal::small_bytevec_t d_;
 
 	template <typename InIt>
 	friend InIt make_mthd(InIt, InIt, maybe_mthd_t*, mthd_error_t*);
@@ -209,8 +207,11 @@ template <typename InIt>
 InIt make_mthd(InIt it, InIt end, maybe_mthd_t *result, mthd_error_t *err) {
 	// <Header Chunk> = <chunk type> <length> <format> <ntrks> <division> 
 	//                   MThd uint32_t uint16_t uint16_t uint16_t
-	result->mthd.d_.resize(14);
+
+	result->mthd = mthd_t(mthd_t::init_small_w_size_0_t {}); 
+	result->mthd.d_.resize_small2small_nocopy(14);
 	auto dest = result->mthd.d_.begin();
+	auto dest_beg = dest;
 	std::ptrdiff_t i=0;  // The number of bytes read from the input stream
 
 	auto set_error = [&err,&result,&dest,&i](mthd_error_t::errc ec)->void {
@@ -220,7 +221,7 @@ InIt make_mthd(InIt it, InIt end, maybe_mthd_t *result, mthd_error_t *err) {
 			auto n = std::min(err->header.end()-err->header.begin(),
 				result->mthd.d_.end()-result->mthd.d_.begin());
 			err->header.fill(0x00u);
-			std::copy(result->mthd.d_.data(),result->mthd.d_.data()+n,
+			std::copy(result->mthd.d_.begin(),result->mthd.d_.begin()+n,
 				err->header.data());
 			err->code = ec;
 		}
@@ -235,12 +236,11 @@ InIt make_mthd(InIt it, InIt end, maybe_mthd_t *result, mthd_error_t *err) {
 		set_error(mthd_error_t::errc::header_overflow);
 		return it;
 	}
-	if (!is_mthd_header_id(result->mthd.d_.data(),result->mthd.d_.data()+4)) {
+	if (!is_mthd_header_id(dest_beg,dest)) {
 		set_error(mthd_error_t::errc::non_mthd_id);
 		return it;
 	}
-	auto length = read_be<uint32_t>(result->mthd.d_.data()+4,
-		result->mthd.d_.data()+8);
+	auto length = read_be<uint32_t>(dest_beg+4,dest);
 	if ((length < 6) || (length > mthd_t::length_max)) {
 		set_error(mthd_error_t::errc::invalid_length);
 		return it;
@@ -257,9 +257,9 @@ InIt make_mthd(InIt it, InIt end, maybe_mthd_t *result, mthd_error_t *err) {
 		set_error(mthd_error_t::errc::overflow_in_data_section);
 		return it;
 	}
-	auto format = read_be<uint16_t>(result->mthd.d_.data()+8,result->mthd.d_.data()+10);
-	auto ntrks = read_be<uint16_t>(result->mthd.d_.data()+10,result->mthd.d_.data()+12);
-	auto division = read_be<uint16_t>(result->mthd.d_.data()+12,result->mthd.d_.data()+14);
+	auto format = read_be<uint16_t>(dest_beg+8,dest_beg+10);
+	auto ntrks = read_be<uint16_t>(dest_beg+10,dest_beg+12);
+	auto division = read_be<uint16_t>(dest_beg+12,dest_beg+14);
 	if ((format==0) && (ntrks >1)) {
 		set_error(mthd_error_t::errc::inconsistent_format_ntrks);
 		return it;
@@ -271,8 +271,9 @@ InIt make_mthd(InIt it, InIt end, maybe_mthd_t *result, mthd_error_t *err) {
 
 	// Data beyond the std-specified format-ntrks-division fields
 	if (slength > 6) {
-		result->mthd.d_.resize(8+slength);  // NB:  invalidates dest
+		result->mthd.d_.resize(8+slength);  // NB:  invalidates dest, dest_beg
 		dest = result->mthd.d_.begin()+14;
+		dest_beg = dest;
 		auto len = slength - 6;
 		j=0;
 		while ((it!=end) && (j<len)) {
