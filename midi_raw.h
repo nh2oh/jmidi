@@ -175,7 +175,7 @@ int32_t get_tpq(time_division_t, int32_t=0);
 // seconds = ticks/(smpte.time_code*smpte_subframes)
 // For a tpq tdiv, 
 // seconds = ticks*(tempo/tpq)
-double ticks2sec(const int32_t&, const time_division_t&, int32_t=500000);
+double ticks2sec(int32_t, const time_division_t&, int32_t=500000);
 // int32_t sec2ticks(const double& sec, const time_division_t& tdiv,
 //						int32_t tempo=500000);
 // For a smpte tdiv, the tempo argument is ignored, and 

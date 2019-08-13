@@ -22,6 +22,7 @@
 #include <cstddef>
 #include <sstream>
 #include <random>
+#include <cfenv>
 
 
 const std::vector<midi_test_stuff_t> midi_test_dirs {
@@ -67,10 +68,14 @@ inout_dirs_t get_midi_test_dirs(const std::string& name) {
 
 
 int midi_example() {
-	//auto d = get_midi_test_dirs("all");
-	//classify_smf_errors(d.inp,d.outp.parent_path()/"errors_all.txt");
-	//event_sizes_benchmark();
+	//ratiosfp();
+	//conversions();
 
+	auto d = get_midi_test_dirs("all");
+	//classify_smf_errors(d.inp,d.outp.parent_path()/"errors_all.txt");
+	event_sizes_benchmark();
+
+	/*
 	auto d = get_midi_test_dirs("write");
 	auto smf_out_path = make_midifile(d.outp,false);
 
@@ -80,7 +85,7 @@ int midi_example() {
 		std::cout << "shit";
 	}
 	std::cout << print(smf_in.smf) << std::endl;
-
+	*/
 
 	/*auto smf_out2_path 
 		= smf_out_path.replace_filename(smf_out_path.stem()+="_again.midi");
@@ -149,9 +154,9 @@ std::string randfn() {
 
 
 int event_sizes_benchmark() {
-	int mode = 0;  // 0 => batch, 1=>istreambuf_iterator
-	int Nth = 2;
-	if (Nth!=4) { Nth=2; };
+	int mode = 1;  // 0 => batch, 1=>istreambuf_iterator
+	int Nth = 4;
+	if (Nth!=4) { Nth=4; };
 	auto tstart = std::chrono::high_resolution_clock::now();
 	std::cout << "avg_and_max_event_sizes() benchmark\n"
 		<< "Starting " << Nth << "-thread version in mode " << mode 
@@ -476,3 +481,151 @@ int inspect_mthds(const std::filesystem::path& bp,
 	return 0;
 }
 
+
+int conversions() {
+
+	auto dbl_is_aprx_eq = [](double a, double b, int nulp)->bool {
+		auto e = std::numeric_limits<double>::epsilon();
+		auto m = std::numeric_limits<double>::min();
+		auto d = std::abs(a-b);
+		auto s = std::abs(a+b);
+		return (d <= e*s*nulp || d < m);
+	};
+
+	std::random_device rdev;
+	std::default_random_engine re(rdev());
+	std::uniform_int_distribution<int32_t> rdtk(0x0,0x0FFFFFFF);
+	std::uniform_int_distribution<int32_t> rdtpo(1,0xFFFFFF);
+	std::uniform_int_distribution<int32_t> rdtdiv(1,0x7FFF);
+	std::uniform_int_distribution<int32_t> rdtpotdiv(1,512);
+
+	std::fesetround(FE_TONEAREST);
+
+	int nulps_eq = 1;
+	int n_trials = 100000;
+	double usps = 1000000.0;
+	std::array<double,4> errs {0.0,0.0,0.0,0.0};
+	std::array<double,4> nfails {0,0,0,0};
+	double m1_err = 0.0;  double m2_err = 0.0;  double m3_err = 0.0;  double m4_err = 0.0;
+	int m1_nfails = 0;  int m2_nfails = 0;  int m3_nfails = 0;  int m4_nfails = 0;
+	int m1_ninexact = 0;  int m2_ninexact = 0;  int m3_ninexact = 0;  int m4_ninexact = 0;
+	for (int i=0; i<n_trials; ++i) {
+		double tpo = static_cast<double>(rdtpo(re));
+		double tdiv = static_cast<double>(rdtdiv(re));
+		//double rtpotdiv = rdtpotdiv(re);
+		//tpo = rtpotdiv*tdiv;
+		double tk = static_cast<double>(rdtk(re));
+		double z = (usps*tdiv)/tpo;
+
+		// method 1
+		std::feclearexcept(FE_ALL_EXCEPT);
+		double m1_n = tpo*tk;  // (us/q)*tk
+		if (std::fetestexcept(FE_INEXACT)) { ++m1_ninexact; }
+		std::feclearexcept(FE_ALL_EXCEPT);
+		double m1_d = tdiv*usps;  // (tk/q) * (us/s)
+		if (std::fetestexcept(FE_INEXACT)) { ++m1_ninexact; }
+		std::feclearexcept(FE_ALL_EXCEPT);
+		double m1_s = m1_n/m1_d;  // (us/q)*tk*(q/tk)*(s/us)
+		if (std::fetestexcept(FE_INEXACT)) { ++m1_ninexact; }
+		std::feclearexcept(FE_ALL_EXCEPT);
+		double m1_tk_back = m1_s*z;
+		m1_err += std::abs(tk - m1_tk_back);
+		m1_nfails += !dbl_is_aprx_eq(tk,m1_tk_back,nulps_eq);
+
+		// method 2
+		std::feclearexcept(FE_ALL_EXCEPT);
+		double m2_spq = tpo/usps;  // us/q * s/us = s/q
+		if (std::fetestexcept(FE_INEXACT)) { ++m2_ninexact; }
+		std::feclearexcept(FE_ALL_EXCEPT);
+		double m2_b = m2_spq*tk;  // s/q * tk = (s*tk)/q
+		if (std::fetestexcept(FE_INEXACT)) { ++m2_ninexact; }
+		std::feclearexcept(FE_ALL_EXCEPT);
+		double m2_s = m2_b/tdiv;  // (s*tk)/q * q/tk = s
+		if (std::fetestexcept(FE_INEXACT)) { ++m2_ninexact; }
+		std::feclearexcept(FE_ALL_EXCEPT);
+		double m2_tk_back = m2_s*z;
+		m2_err += std::abs(tk - m2_tk_back);  // s*(tk/q) * (us/s)/(us/q) = s*(tk/q)*(us/s)*(q/us) = tk
+		// m2_s*tdiv == m2_b == m2_a*tk == (tpo/usps)*tk
+		m2_nfails += !dbl_is_aprx_eq(tk,m2_tk_back,nulps_eq);
+
+		// method 3
+		std::feclearexcept(FE_ALL_EXCEPT);
+		double m3_tkspus = tk/usps;  // (tk*s)/us
+		if (std::fetestexcept(FE_INEXACT)) { ++m3_ninexact; }
+		std::feclearexcept(FE_ALL_EXCEPT);
+		double m3_usptk = tpo/tdiv;  // 
+		if (std::fetestexcept(FE_INEXACT)) { ++m3_ninexact; }
+		std::feclearexcept(FE_ALL_EXCEPT);
+		double m3_s = m3_tkspus*m3_usptk;  // s
+		if (std::fetestexcept(FE_INEXACT)) { ++m3_ninexact; }
+		std::feclearexcept(FE_ALL_EXCEPT);
+		double m3_tk_back = m3_s*z;
+		m3_err += std::abs(tk - m3_tk_back);
+		m3_nfails += !dbl_is_aprx_eq(tk,m3_tk_back,nulps_eq);
+
+		// method 4
+		std::feclearexcept(FE_ALL_EXCEPT);
+		double m4_a = tk*(1.0/usps);  // 
+		if (std::fetestexcept(FE_INEXACT)) { ++m4_ninexact; }
+		std::feclearexcept(FE_ALL_EXCEPT);
+		double m4_b = tpo*(1.0/tdiv);  // 
+		if (std::fetestexcept(FE_INEXACT)) { ++m4_ninexact; }
+		std::feclearexcept(FE_ALL_EXCEPT);
+		double m4_s = m4_a*m4_b;  // s
+		if (std::fetestexcept(FE_INEXACT)) { ++m4_ninexact; }
+		std::feclearexcept(FE_ALL_EXCEPT);
+		double m4_tk_back = m4_s*z;
+		m4_err += std::abs(tk - m4_tk_back);
+		m4_nfails += !dbl_is_aprx_eq(tk,m4_tk_back,nulps_eq);
+	}
+	std::cout 
+		<< "\nm1_nfails== " << m1_nfails << "\tm1_ninexact== " << m1_ninexact << "\tm1_err== " << m1_err
+		<< "\nm2_nfails== " << m2_nfails << "\tm2_ninexact== " << m2_ninexact << "\tm2_err== " << m2_err
+		<< "\nm3_nfails== " << m3_nfails << "\tm3_ninexact== " << m3_ninexact << "\tm3_err== " << m3_err
+		<< "\nm4_nfails== " << m4_nfails << "\tm4_ninexact== " << m4_ninexact << "\tm4_err== " << m4_err
+		<< std::endl;
+	
+	return 0;
+}
+
+int ratiosfp() {
+
+	/*auto dbl_is_aprx_eq = [](double a, double b, int nulp)->bool {
+		auto e = std::numeric_limits<double>::epsilon();
+		auto m = std::numeric_limits<double>::min();
+		auto d = std::abs(a-b);
+		auto s = std::abs(a+b);
+		return (d <= e*s*nulp || d < m);
+	};*/
+
+	std::random_device rdev;
+	std::default_random_engine re(rdev());
+	std::uniform_int_distribution<int32_t> rdn(0x0,0xFFFFFF);
+	std::uniform_int_distribution<int32_t> rdd(1,0x7FFF);
+
+	std::fesetround(FE_TONEAREST);
+
+	int n_trials = 1'000'000;
+	int n_inexact = 0;
+	double err = 0.0;
+	for (int i=0; i<n_trials; ++i) {
+		double n = static_cast<double>(rdn(re));
+		double d = static_cast<double>(rdd(re));
+
+		std::feclearexcept(FE_ALL_EXCEPT);
+		double r = n/d;
+		if (std::fetestexcept(FE_INEXACT)) {
+			++n_inexact;
+			//std::cout << n_inexact;
+		} else {
+			std::cout << "n=="<<n<<";d=="<<d<<"\n";
+		}
+		double n_back = r*d;
+		err += std::abs(n_back-n);
+	}
+	double p_inexact = static_cast<double>(n_inexact)/static_cast<double>(n_trials);
+	std::cout << "100*p_inexact == " << 100*p_inexact 
+		<< "\terr == " << err << std::endl;
+
+	return n_inexact;
+}

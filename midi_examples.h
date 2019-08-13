@@ -28,6 +28,9 @@ int avg_and_max_event_sizes(const std::filesystem::path&,
 int classify_smf_errors(const std::filesystem::path&,
 	const std::filesystem::path&);
 
+int conversions();
+int ratiosfp();
+
 std::filesystem::path make_midifile(std::filesystem::path, bool);
 
 std::string randfn();
