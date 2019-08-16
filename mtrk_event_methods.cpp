@@ -296,6 +296,9 @@ std::vector<unsigned char> get_seqspecific(const mtrk_event_t& ev,
 }
 mtrk_event_t make_seqn(const int32_t& dt, const uint16_t& seqn) {
 	uint16_t pyld = to_be_byte_order(seqn);
+	// TODO:  write_be()
+	//std::array<unsigned char,2> pyld {0x00u,0x00u};
+	//write_be(
 	auto p = static_cast<unsigned char*>(static_cast<void*>(&pyld));
 	return make_meta_sysex_generic_impl(dt,0xFFu,0x00u,false,p,p+2);
 }
