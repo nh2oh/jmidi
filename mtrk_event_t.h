@@ -5,7 +5,6 @@
 #include "midi_delta_time.h"
 #include <string>  // For declaration of print()
 #include <cstdint>
-#include <utility>  // std::pair
 
 
 

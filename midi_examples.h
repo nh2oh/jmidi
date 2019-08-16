@@ -28,6 +28,7 @@ int avg_and_max_event_sizes(const std::filesystem::path&,
 int classify_smf_errors(const std::filesystem::path&,
 	const std::filesystem::path&);
 
+int benchmark_vlqs();
 int conversions();
 int ratiosfp();
 

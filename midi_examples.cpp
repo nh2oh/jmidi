@@ -68,12 +68,14 @@ inout_dirs_t get_midi_test_dirs(const std::string& name) {
 
 
 int midi_example() {
-	//ratiosfp();
-	//conversions();
 
-	auto d = get_midi_test_dirs("all");
-	//classify_smf_errors(d.inp,d.outp.parent_path()/"errors_all.txt");
-	event_sizes_benchmark();
+	benchmark_vlqs();
+
+	//auto yay = mtrk_event_t();
+
+	//auto d = get_midi_test_dirs("random_collection");
+	//classify_smf_errors(d.inp,d.outp.parent_path()/"errors.txt");//  "random_collection"
+	//event_sizes_benchmark();
 
 	/*
 	auto d = get_midi_test_dirs("write");
@@ -204,6 +206,7 @@ int avg_and_max_event_sizes(const std::filesystem::path& bp,
 			f.seekg(0,std::ios::beg);
 			fdata.resize(fsize);
 			f.read(fdata.data(),fsize);
+			//auto n = std::min(fdata.size(),std::size_t{25});
 			make_smf(fdata.data(),fdata.data()+fdata.size(),
 				&maybe_smf,&smf_error);
 		} else if (mode == 1) {  // iostreams
@@ -629,3 +632,56 @@ int ratiosfp() {
 
 	return n_inexact;
 }
+
+int benchmark_vlqs() {
+	std::random_device rdev;
+	std::default_random_engine re(rdev());
+	std::uniform_int_distribution<uint32_t> rd(0u,0xFFFFFFFFu);
+	
+	const size_t N = 1'000'000'00;
+	std::vector<uint32_t> rints(N);
+	for (size_t i=0; i<rints.size(); ++i) {
+		rints[i] = rd(re);
+	};
+
+	std::array<unsigned char,8> dest;
+	uint64_t result_sum=0;
+	int j=0;
+	std::cout << "benchmark_vlqs() benchmark\n";
+	while (j<25) {
+		if (rd(re)%2==0) {
+			std::cout << "Starting write_vlq():  ";
+			auto tstart = std::chrono::high_resolution_clock::now();
+			for (size_t i=0; i<N; ++i) {
+				write_vlq(rints[i],dest.data());
+				result_sum += dest[2];
+			}
+			auto tend = std::chrono::high_resolution_clock::now();
+			auto tdelta = std::chrono::duration_cast<std::chrono::milliseconds>(tend-tstart);
+			std::cout << "Took " << tdelta.count() << " milliseconds." << std::endl;
+			++j;
+		} else {
+			std::cout << "Starting write_vlq_old():  ";
+			auto tstart = std::chrono::high_resolution_clock::now();
+			for (size_t i=0; i<N; ++i) {
+				write_vlq_old(rints[i],dest.data());
+				result_sum += dest[2];
+			}
+			auto tend = std::chrono::high_resolution_clock::now();
+			auto tdelta = std::chrono::duration_cast<std::chrono::milliseconds>(tend-tstart);
+			std::cout << "Took  " << tdelta.count() << " milliseconds." << std::endl;
+			++j;
+		}
+
+		std::cout << "------------------------------------" << std::endl;
+	}
+
+	std::cout << result_sum << std::endl;
+
+	return 0;
+}
+
+
+
+
+

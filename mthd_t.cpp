@@ -46,6 +46,26 @@ mthd_t::mthd_t(int32_t fmt, int32_t ntrks, int32_t tcf, int32_t subdivs) noexcep
 	this->set_ntrks(ntrks);
 	this->set_division(time_division_t(tcf,subdivs));
 }
+mthd_t::mthd_t(const mthd_t& rhs) {
+	this->d_=rhs.d_;
+}
+mthd_t& mthd_t::operator=(const mthd_t& rhs) {
+	this->d_ = rhs.d_;
+	return *this;
+}
+mthd_t::mthd_t(mthd_t&& rhs) noexcept {
+	this->d_ = std::move(rhs.d_);
+	rhs.default_init();
+}
+mthd_t& mthd_t::operator=(mthd_t&& rhs) noexcept {
+	this->d_ = std::move(rhs.d_);
+	rhs.default_init();
+	return *this;
+}
+mthd_t::~mthd_t() noexcept {  // dtor
+	//...
+}
+
 mthd_t::size_type mthd_t::size() const noexcept {
 	return this->d_.size();
 }

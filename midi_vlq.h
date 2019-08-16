@@ -117,7 +117,7 @@ constexpr int vlq_field_size(T val) {
 // TODO:  This should clamp the input between 0x0FFFFFFF and 0.  
 //
 template<typename T, typename OIt>
-OIt write_vlq(T val, OIt it) {
+OIt write_vlq_old(T val, OIt it) {
 	static_assert(CHAR_BIT == 8);
 	//static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value);
 	auto vlval = vlq_field_literal_value(val);  // requires integral, unsigned
@@ -141,6 +141,26 @@ OIt write_vlq(T val, OIt it) {
 	return it;
 };
 
+//
+template<typename T, typename OIt>
+OIt write_vlq(T val, OIt it) {
+	static_assert(CHAR_BIT == 8);
+
+	auto s = 21u;
+	uint32_t mask = (0b01111111u<<21);
+	while (((val&mask)==0u) && (mask>0u)) {
+		mask>>=7u;
+		s-=7u;
+	}
+	while (mask>0b01111111u) {
+		*it++ = 0x80u|((val&mask)>>(s));
+		mask>>=7u;
+		s-=7u;
+	}
+	*it++ = val&mask;
+
+	return it;
+};
 
 //
 // template<typename T> 

@@ -85,6 +85,13 @@ public:
 	// mthd_t(int32_t fmt, int32_t ntrks, int32_t SMPTE-tcf, SMPTE-subdivs);
 	explicit mthd_t(int32_t, int32_t, int32_t, int32_t) noexcept;
 
+	mthd_t(const mthd_t&);
+	mthd_t(mthd_t&&) noexcept;
+
+	mthd_t& operator=(const mthd_t&);
+	mthd_t& operator=(mthd_t&&) noexcept;
+	~mthd_t() noexcept;
+
 	// size() and nbytes() are synonyms
 	size_type size() const noexcept;
 	size_type nbytes() const noexcept;
