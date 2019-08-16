@@ -1,4 +1,5 @@
 #pragma once
+#include "midi_vlq.h"
 #include <filesystem>
 #include <string>
 #include <vector>

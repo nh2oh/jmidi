@@ -49,6 +49,40 @@ constexpr uint32_t vlq_field_literal_value(T val) {
 
 
 
+
+
+//
+template<typename T, typename OIt>
+OIt write_vlq_old1(T val, OIt it) {
+	static_assert(CHAR_BIT == 8);
+
+	uint32_t uval;
+	if (val < 0) {
+		uval = 0;
+	} else if (val > 0x0FFFFFFF) {
+		uval = 0x0FFFFFFF;
+	} else {
+		uval = static_cast<uint32_t>(val);
+	}
+
+	auto s = 21u;
+	uint32_t mask = (0b01111111u<<21);
+	while (((uval&mask)==0u) && (mask>0u)) {
+		mask>>=7u;
+		s-=7u;
+	}
+	while (mask>0b01111111u) {
+		*it++ = 0x80u|((uval&mask)>>(s));
+		mask>>=7u;
+		s-=7u;
+	}
+	*it++ = uval&mask;
+
+	return it;
+};
+
+
+
 //
 // TODO:  This should clamp the input between 0x0FFFFFFF and 0.  
 //

@@ -5,6 +5,9 @@
 #include <cstring>
 
 
+// TODO:  Need to clarify behavior for iterators w/ value-type char
+// vs unsigned char.  
+
 // 
 // The max size of a vlq field is 4 bytes, and the largest value it may 
 // encode is 0x0FFFFFFFu (BE-encoded as: FF FF FF 7F) => 268,435,455, 
@@ -73,33 +76,37 @@ constexpr int vlq_field_size(T val) {
 };
 
 
-//
+
 template<typename T, typename OIt>
 OIt write_vlq(T val, OIt it) {
-	static_assert(CHAR_BIT == 8);
-
-	uint32_t uval;
 	if (val < 0) {
-		uval = 0;
-	} else if (val > 0x0FFFFFFF) {
-		uval = 0x0FFFFFFF;
+		uint32_t uval = 0;
+		*it++ = static_cast<unsigned char>(0x7Fu&uval);
+	} else if (val <= 0x7Fu) {
+		uint32_t uval = static_cast<uint32_t>(val);
+		*it++ = static_cast<unsigned char>(0x7Fu&uval);
+	} else if (val <= (0x3F'FFu)) {
+		uint32_t uval = static_cast<uint32_t>(val);
+		*it++ = static_cast<unsigned char>((0x80u)|(0xFFu&(uval>>7)));
+		*it++ = static_cast<unsigned char>((0x7Fu)&uval);
+	} else if (val <= (0x1F'FF'FF)) {
+		uint32_t uval = static_cast<uint32_t>(val);
+		*it++ = static_cast<unsigned char>((0x80u)|(0xFFu&(uval>>14)));
+		*it++ = static_cast<unsigned char>((0x80u)|(0xFFu&(uval>>7)));
+		*it++ = static_cast<unsigned char>((0x7Fu)&uval);
+	} else if (val <= (0x0F'FF'FF'FFu)) {
+		uint32_t uval = static_cast<uint32_t>(val);
+		*it++ = static_cast<unsigned char>((0x80u)|(0xFFu&(uval>>21)));
+		*it++ = static_cast<unsigned char>((0x80u)|(0xFFu&(uval>>14)));
+		*it++ = static_cast<unsigned char>((0x80u)|(0xFFu&(uval>>7)));
+		*it++ = static_cast<unsigned char>((0x7Fu)&uval);
 	} else {
-		uval = static_cast<uint32_t>(val);
+		uint32_t uval = 0x0F'FF'FF'FF;
+		*it++ = static_cast<unsigned char>((0x80u)|(0xFFu&(uval>>21)));
+		*it++ = static_cast<unsigned char>((0x80u)|(0xFFu&(uval>>14)));
+		*it++ = static_cast<unsigned char>((0x80u)|(0xFFu&(uval>>7)));
+		*it++ = static_cast<unsigned char>((0x7Fu)&uval);
 	}
-
-	auto s = 21u;
-	uint32_t mask = (0b01111111u<<21);
-	while (((uval&mask)==0u) && (mask>0u)) {
-		mask>>=7u;
-		s-=7u;
-	}
-	while (mask>0b01111111u) {
-		*it++ = 0x80u|((uval&mask)>>(s));
-		mask>>=7u;
-		s-=7u;
-	}
-	*it++ = uval&mask;
-
 	return it;
 };
 
