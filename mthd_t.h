@@ -9,7 +9,7 @@
 #include <string>
 #include <limits> 
 #include <array>
-#include <algorithm>  // std::copy() to set mtrk_err_t in make_mtrk(...
+#include <algorithm>
 
 //
 // Class mthd_t
@@ -19,8 +19,8 @@
 //    <chunk id> <length>  <format>  <ntrks>   <division> 
 //    MThd       uint32_t  uint16_t  uint16_t  uint16_t
 //
-// The minimum size of an MThd is 14 bytes (with length field == 6), 
-// and the smallest value allowed in the lengh field is therefore 6.  
+// Default-ctor:  format==1, ntrks==0, division==120 tpq.  
+//
 //
 // Invariants:
 // It is impossible for this container to represent MThd data that 
@@ -39,7 +39,13 @@
 // -> 0 >= ntrks() <= std::numeric_limits<uint16_t>::max()
 //    If format == 0, ntrks <= 1
 //
-// For a default-constructed mthd_t: format==1, ntrks==0, division==120 tpq.  
+// The format <-> ntrks invariant is maintained under calls to set_format() 
+// and set_ntrks() by altering the value of format.  An attempt to call 
+// set_format(0) on an object with ntrks > 1 results in no change to the 
+// value for format.  If the value for ntrks is set to something > 1 on
+// an object with format==0, the value of format is set to 1.  That is, 
+// calls to set_ntrks() always "succeed" unconditionally, bur format() may
+// change out from under you.  
 //
 // mthd_t is a container adapter around small_bytevec_t.  
 // Although every MThd chunk in existence is 14 bytes, the MIDI std 

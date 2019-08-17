@@ -17,6 +17,39 @@
 #include <iterator>
 
 
+smf_t::smf_t() noexcept {
+	//...
+}
+smf_t::smf_t(const smf_t& rhs) {
+	this->mthd_ = rhs.mthd_;
+	this->mtrks_ = rhs.mtrks_;
+	this->uchks_ = rhs.uchks_;
+	this->chunkorder_ = rhs.chunkorder_;
+}
+smf_t::smf_t(smf_t&& rhs) noexcept {
+	this->mthd_ = std::move(rhs.mthd_);
+	this->mtrks_ = std::move(rhs.mtrks_);
+	this->uchks_ = std::move(rhs.uchks_);
+	this->chunkorder_ = std::move(rhs.chunkorder_);
+}
+smf_t& smf_t::operator=(const smf_t& rhs) {
+	this->mthd_ = rhs.mthd_;
+	this->mtrks_ = rhs.mtrks_;
+	this->uchks_ = rhs.uchks_;
+	this->chunkorder_ = rhs.chunkorder_;
+	return *this;
+}
+smf_t& smf_t::operator=(smf_t&& rhs) noexcept {
+	this->mthd_ = std::move(rhs.mthd_);
+	this->mtrks_ = std::move(rhs.mtrks_);
+	this->uchks_ = std::move(rhs.uchks_);
+	this->chunkorder_ = std::move(rhs.chunkorder_);
+	return *this;
+}
+smf_t::~smf_t() noexcept {
+	//...
+}
+
 smf_t::size_type smf_t::size() const {
 	return this->ntrks();
 }
@@ -74,30 +107,35 @@ smf_t::const_iterator smf_t::end() const {
 smf_t::reference smf_t::push_back(smf_t::const_reference mtrk) {
 	this->mtrks_.push_back(mtrk);
 	this->chunkorder_.push_back(0);
+	this->mthd_.set_ntrks(this->mtrks_.size());
 	return this->mtrks_.back();
 }
 smf_t::iterator smf_t::insert(smf_t::iterator it, smf_t::const_reference mtrk) {
 	auto n = it-this->begin();
 	this->mtrks_.insert((this->mtrks_.begin()+n),mtrk);
 	this->chunkorder_.insert((this->chunkorder_.begin()+n),0);
+	this->mthd_.set_ntrks(this->mtrks_.size());
 	return it;
 }
 smf_t::const_iterator smf_t::insert(smf_t::const_iterator it, smf_t::const_reference mtrk) {
 	auto n = it-this->begin();
 	this->mtrks_.insert((this->mtrks_.begin()+n),mtrk);
 	this->chunkorder_.insert((this->chunkorder_.begin()+n),0);
+	this->mthd_.set_ntrks(this->mtrks_.size());
 	return it;
 }
 smf_t::iterator smf_t::erase(smf_t::iterator it) {
 	auto n = it-this->begin();
 	this->mtrks_.erase((this->mtrks_.begin()+n));
 	this->chunkorder_.erase((this->chunkorder_.begin()+n));
+	this->mthd_.set_ntrks(this->mtrks_.size());
 	return this->begin()+n;
 }
 smf_t::const_iterator smf_t::erase(smf_t::const_iterator it) {
 	auto n = it-this->begin();
 	this->mtrks_.erase((this->mtrks_.begin()+n));
 	this->chunkorder_.erase((this->chunkorder_.begin()+n));
+	this->mthd_.set_ntrks(this->mtrks_.size());
 	return this->begin()+n;
 }
 const smf_t::uchk_value_type& smf_t::push_back(const smf_t::uchk_value_type& uchk) {
@@ -162,9 +200,11 @@ void smf_t::set_mthd(const maybe_mthd_t& mthd) {
 	if (mthd) {
 		this->mthd_ = mthd.mthd;
 	}
+	this->mthd_.set_ntrks(this->mtrks_.size());
 }
 void smf_t::set_mthd(const mthd_t& mthd) {
 	this->mthd_ = mthd;
+	this->mthd_.set_ntrks(this->mtrks_.size());
 }
 
 // TODO:  The call to nbytes() is v. expensive

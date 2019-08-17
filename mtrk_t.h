@@ -1,6 +1,6 @@
 #pragma once
 #include "midi_raw.h"  // midi_time_t
-#include "generic_chunk_low_level.h"
+#include "generic_chunk_low_level.h"  // is_mtrk_header_id()
 #include "mtrk_event_t.h"
 #include "mtrk_event_methods.h"  // is_eot()
 #include "..\..\generic_iterator.h"
@@ -69,7 +69,7 @@ public:
 	// nbytes() == 8, data_nbytes() == 0;
 	// This will classify as invalid (!.validate()), because an MTrk 
 	// sequence must terminate w/ an EOT meta event.  
-	mtrk_t()=default;
+	mtrk_t() noexcept;
 	explicit mtrk_t(const_iterator,const_iterator);
 	mtrk_t(const mtrk_t&);
 	mtrk_t(mtrk_t&&) noexcept;

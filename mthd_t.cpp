@@ -30,14 +30,14 @@ mthd_t::mthd_t(mthd_t::init_small_w_size_0_t) noexcept {
 }
 mthd_t::mthd_t(int32_t fmt, int32_t ntrks, time_division_t tdf) noexcept {
 	this->default_init();
-	this->set_format(fmt);
 	this->set_ntrks(ntrks);
+	this->set_format(fmt);
 	this->set_division(tdf);
 }
 mthd_t::mthd_t(int32_t fmt, int32_t ntrks, int32_t tpq) noexcept {
 	this->default_init();
-	this->set_format(fmt);
 	this->set_ntrks(ntrks);
+	this->set_format(fmt);
 	this->set_division(time_division_t(tpq));
 }
 mthd_t::mthd_t(int32_t fmt, int32_t ntrks, int32_t tcf, int32_t subdivs) noexcept {
@@ -119,24 +119,24 @@ time_division_t mthd_t::division() const noexcept {
 	return make_time_division_from_raw(raw_val).value;
 }
 int32_t mthd_t::set_format(int32_t f) noexcept {
-	if (this->ntrks() > 1) {
-		f = std::clamp(f,1,mthd_t::format_max);
-	} else {
-		f = std::clamp(f,mthd_t::format_min,mthd_t::format_max);
+	f = std::clamp(f,mthd_t::format_min,mthd_t::format_max);
+	if (f==0) {
+		if (this->ntrks() > 1) {
+			return this->format();
+		}
 	}
 	write_16bit_be(static_cast<uint16_t>(f),this->d_.begin()+8);
 	return f;
 }
 int32_t mthd_t::set_ntrks(int32_t ntrks) noexcept {
-	auto f = this->format();
-	if (f==0) {
-		ntrks = std::clamp(ntrks,mthd_t::ntrks_min,
-			mthd_t::ntrks_max_fmt_0);
-	} else {
-		ntrks = std::clamp(ntrks,mthd_t::ntrks_min,
-			mthd_t::ntrks_max_fmt_gt0);
-	}
+	ntrks = std::clamp(ntrks,0,mthd_t::ntrks_max_fmt_gt0);
 	write_16bit_be(static_cast<uint16_t>(ntrks),this->d_.begin()+10);
+	if (ntrks > 1) {
+		auto f = this->format();
+		if (f==0) {
+			this->set_format(1);
+		}
+	}
 	return ntrks;
 }
 time_division_t mthd_t::set_division(time_division_t tdf) noexcept {

@@ -70,8 +70,6 @@ inout_dirs_t get_midi_test_dirs(const std::string& name) {
 
 int midi_example() {
 
-	std::common_type<uint8_t,int8_t>::type x {};
-
 	//benchmark_vlqs();
 
 	//auto yay = mtrk_event_t();

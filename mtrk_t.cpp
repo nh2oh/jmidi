@@ -13,7 +13,9 @@
 #include <ios>  // std::left
 #include <sstream>
 
-
+mtrk_t::mtrk_t() noexcept {
+	//...
+}
 mtrk_t::mtrk_t(mtrk_t::const_iterator beg, mtrk_t::const_iterator end) {
 	this->evnts_.resize(end-beg);
 	std::copy(beg,end,this->evnts_.begin());

@@ -1,5 +1,5 @@
 #pragma once
-#include "generic_chunk_low_level.h"  // chunk_header_error_t in smf_error_t
+#include "generic_chunk_low_level.h"  // is_mthd_header_id()
 #include "mthd_t.h"
 #include "mtrk_t.h"
 #include "..\..\generic_iterator.h"
@@ -16,7 +16,7 @@
 // ("uchk"s as a std::vector<std::vector<unsigned char>>.  The relative 
 // order of the MTrk and uchks as they appeared in the file is preserved.  
 //
-// Although both MTrk and  "unknown" are stored in an smf_t, the STL 
+// Although both MTrk and "unknown" are stored in an smf_t, the STL 
 // container-inspired methods size(), operator[], begin(), end(), etc, 
 // only report on and return accessors to the MTrk chunks.  Thus, a 
 // range-for loop over an smf_t, ex:
@@ -28,25 +28,19 @@
 // std::vector<std::vector<unsigned char>>::[const_]iterator and provide
 // access to the uchks.  
 //
-//
-//
 // Invariants:
-// Values of the MThd chunk parameters and the number of MTrk and Uchk 
-// chunks (ex mthd_.format()==0 => .ntrks()==1) is maintained.  
+// The num-tracks field in the member MThd chunk is kept consistent with 
+// the number of MTrks held by the container.  
 // 
 // TODO:  verify()
 // TODO:  Ctors
-// TODO:  insert(), erase() etc should edit the MThd
-// TODO:  Does not really need to hold an mthd_t; can just hold 3 
-// uint16_t's representing the data fields.  Saves 24-3*2 == 18
-// bytes...
 // TODO:  No nticks() (see mtrk_t)
 //
 
 struct smf_container_types_t {
 	using value_type = mtrk_t;
 	using size_type = int64_t;
-	using difference_type = std::ptrdiff_t;
+	using difference_type = int32_t; //std::ptrdiff_t;
 	using reference = value_type&;
 	using const_reference = const value_type&;
 	using pointer = value_type*;
@@ -68,6 +62,13 @@ public:
 	using uchk_iterator = std::vector<std::vector<unsigned char>>::iterator;
 	using uchk_const_iterator = std::vector<std::vector<unsigned char>>::const_iterator;
 	using uchk_value_type = std::vector<unsigned char>;
+
+	smf_t() noexcept;
+	smf_t(const smf_t&);
+	smf_t(smf_t&&) noexcept;
+	smf_t& operator=(const smf_t&);
+	smf_t& operator=(smf_t&&) noexcept;
+	~smf_t() noexcept;
 
 	size_type size() const;  // Number of mtrk chunks
 	size_type nchunks() const;  // Number of MTrk + Unkn chunks
@@ -110,8 +111,8 @@ public:
 	void set_mthd(const maybe_mthd_t&);
 	void set_mthd(const mthd_t&);
 private:
-	mthd_t mthd_ {};
-	std::vector<value_type> mtrks_ {};
+	mthd_t mthd_;
+	std::vector<value_type> mtrks_;
 	std::vector<std::vector<unsigned char>> uchks_ {};
 	// Since MTrk and unknown chunks are split into mtrks_ and uchks_,
 	// respectively, the order in which these chunks occured in the file
