@@ -8,14 +8,19 @@
 #include <utility>  // std::move()
 
 
+//mtrk_event_call_count_t mtrk_event_t::call_counts {0,0,0,0,0,0,0};
+
 mtrk_event_t::mtrk_event_t() noexcept {
 	this->default_init(0);
+	//mtrk_event_t::call_counts.def_ctor++;
 }
 mtrk_event_t::mtrk_event_t(mtrk_event_t::init_small_w_size_0_t) noexcept {  // private
 	this->d_ = mtrk_event_t_internal::small_bytevec_t();
+	//mtrk_event_t::call_counts.smallsz_ctor++;
 }
 mtrk_event_t::mtrk_event_t(int32_t dt) noexcept {
 	this->default_init(dt);
+	//mtrk_event_t::call_counts.dt_ctor++;
 }
 mtrk_event_t::mtrk_event_t(int32_t dt, ch_event_data_t md) noexcept {
 	this->d_ = mtrk_event_t_internal::small_bytevec_t();
@@ -34,18 +39,22 @@ mtrk_event_t::mtrk_event_t(int32_t dt, ch_event_data_t md) noexcept {
 }
 mtrk_event_t::mtrk_event_t(const mtrk_event_t& rhs) {
 	this->d_=rhs.d_;
+	//mtrk_event_t::call_counts.cpy_ctor++;
 }
 mtrk_event_t& mtrk_event_t::operator=(const mtrk_event_t& rhs) {
 	this->d_ = rhs.d_;
+	//mtrk_event_t::call_counts.cpy_assn++;
 	return *this;
 }
 mtrk_event_t::mtrk_event_t(mtrk_event_t&& rhs) noexcept {
 	this->d_ = std::move(rhs.d_);
 	rhs.default_init(0);
+	//mtrk_event_t::call_counts.mv_ctor++;
 }
 mtrk_event_t& mtrk_event_t::operator=(mtrk_event_t&& rhs) noexcept {
 	this->d_ = std::move(rhs.d_);
 	rhs.default_init(0);
+	//mtrk_event_t::call_counts.mv_assn++;
 	return *this;
 }
 mtrk_event_t::~mtrk_event_t() noexcept {  // dtor
@@ -207,7 +216,7 @@ bool mtrk_event_t::operator!=(const mtrk_event_t& rhs) const noexcept {
 }
 
 void mtrk_event_t::default_init(int32_t dt) noexcept {
-	this->d_ = mtrk_event_t_internal::small_bytevec_t();
+	//this->d_ = mtrk_event_t_internal::small_bytevec_t();
 	this->d_.resize_small2small_nocopy(delta_time_field_size(dt)+3);
 	auto it = write_delta_time(dt,this->d_.begin());
 	*it++ = 0x90u;  // Note-on, channel "1"

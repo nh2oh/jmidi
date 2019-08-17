@@ -7,6 +7,8 @@
 
 namespace mtrk_event_t_internal {
 
+//small_bytevec_call_count_t small_bytevec_t::call_counts {0,0,0,0,0,0,0,0};
+
 small_size_t::small_size_t(int32_t sz) noexcept {
 	this->v_ = sz = std::clamp(sz,0,small_t::size_max);
 }
@@ -74,6 +76,7 @@ void big_t::free_and_reinit() noexcept {
 	this->abort_if_not_active();
 	if (this->p_) {
 		delete [] this->p_;
+		//small_bytevec_t::call_counts.calls_delete++;
 	}
 	this->init();
 }
@@ -102,6 +105,7 @@ void big_t::adopt(const big_t::pad_t& pad, unsigned char *ptr,
 	this->pad_ = pad;
 	if (this->p_) {
 		delete [] this->p_;
+		//small_bytevec_t::call_counts.calls_delete++;
 	}
 	this->p_ = ptr;
 	this->sz_ = static_cast<uint32_t>(sz);
@@ -116,6 +120,7 @@ int32_t big_t::resize(int32_t new_sz) {
 		auto new_cap = new_sz;
 		// For a freshly init()'d object, p_==nullptr, but sz_==cap_==0
 		unsigned char *pdest = new unsigned char[static_cast<uint32_t>(new_cap)];
+		//small_bytevec_t::call_counts.calls_new++;
 		std::copy(this->begin(),this->end(),pdest);
 		this->adopt(this->pad_,pdest,new_sz,new_cap);  // Frees the current p_
 	}
@@ -129,6 +134,7 @@ int32_t big_t::resize_nocopy(int32_t new_sz) {
 	} else {  // resize to new_size > present capacity
 		auto new_cap = new_sz;
 		unsigned char *pdest = new unsigned char[static_cast<uint32_t>(new_cap)];
+		//small_bytevec_t::call_counts.calls_new++;
 		this->adopt(this->pad_,pdest,new_sz,new_cap);  // Frees the current p_
 	}
 	return this->size();
@@ -140,6 +146,7 @@ int32_t big_t::reserve(int32_t new_cap) {
 		// For a freshly init()'d object, p_==nullptr, but sz_==cap_==0
 		auto psrc = this->p_;
 		unsigned char *pdest = new unsigned char[static_cast<uint32_t>(new_cap)];
+		//small_bytevec_t::call_counts.calls_new++;
 		std::copy(this->begin(),this->end(),pdest);
 		this->adopt(this->pad_,pdest,this->size(),new_cap);
 	}
@@ -164,6 +171,7 @@ const unsigned char *big_t::end() const noexcept {
 //-----------------------------------------------------------------------------
 small_bytevec_t::small_bytevec_t() noexcept {
 	this->init_small();
+	//small_bytevec_t::call_counts.def_ctor++;
 }
 small_bytevec_t::small_bytevec_t(int32_t sz) {
 	sz = std::clamp(sz,0,small_bytevec_t::size_max);
@@ -174,6 +182,7 @@ small_bytevec_t::small_bytevec_t(int32_t sz) {
 		this->init_big();
 		this->u_.b_.resize_nocopy(sz);
 	}
+	//small_bytevec_t::call_counts.anysz_ctor++;
 }
 void small_bytevec_t::init_small() noexcept {
 	this->u_.s_.init();
@@ -182,6 +191,7 @@ void small_bytevec_t::init_big() noexcept {
 	this->u_.b_.init();
 }
 small_bytevec_t::small_bytevec_t(const small_bytevec_t& rhs) {  // Copy ctor
+	//small_bytevec_t::call_counts.cpy_ctor++;
 	// This is a ctor; *this is in an uninitialized state
 	if (rhs.is_big()) {
 		// I *probably* need a big object, but rhs may be a small amount of
@@ -201,11 +211,13 @@ small_bytevec_t::small_bytevec_t(const small_bytevec_t& rhs) {  // Copy ctor
 	}
 }
 small_bytevec_t& small_bytevec_t::operator=(const small_bytevec_t& rhs) {  // Copy assign
+	//small_bytevec_t::call_counts.cpy_assn++;
 	this->resize_nocopy(rhs.size());
 	std::copy(rhs.begin(),rhs.end(),this->begin());
 	return *this;
 }
 small_bytevec_t::small_bytevec_t(small_bytevec_t&& rhs) noexcept {  // Move ctor
+	//small_bytevec_t::call_counts.mv_ctor++;
 	// This is a ctor; *this is in an uninitialized state
 	//std::memcpy(&(this->u_.raw_[0]),&(rhs.u_.raw_[0]),sizeof(small_t));
 	//rhs.init_small();
@@ -230,7 +242,7 @@ small_bytevec_t& small_bytevec_t::operator=(small_bytevec_t&& rhs) noexcept {  /
 	//std::memcpy(&(this->u_.raw_[0]),&(rhs.u_.raw_[0]),sizeof(small_t));
 	//rhs.init_small();
 	//return *this;
-
+	//small_bytevec_t::call_counts.mv_assn++;
 	if (rhs.is_big()) {
 		if (this->is_small()) {
 			this->init_big();
@@ -289,6 +301,7 @@ int32_t small_bytevec_t::resize(int32_t new_sz) {
 			std::copy(psrc,psrc+n_bytes2copy,this->u_.s_.begin());
 			if (psrc) {
 				delete [] psrc;
+				//small_bytevec_t::call_counts.calls_delete++;
 			}
 		} else {  // new_sz > small_t::size_max;  keep object big
 			return this->u_.b_.resize(new_sz);
@@ -299,6 +312,7 @@ int32_t small_bytevec_t::resize(int32_t new_sz) {
 		} else {  // new_sz > small_t::size_max; Resize small->big
 			auto new_cap = new_sz;
 			unsigned char *pdest = new unsigned char[static_cast<uint32_t>(new_cap)];
+			//small_bytevec_t::call_counts.calls_new++;
 			std::copy(this->u_.s_.begin(),this->u_.s_.end(),pdest);
 			this->init_big();
 			this->u_.b_.adopt(this->u_.b_.pad_,pdest,new_sz,new_cap);
@@ -312,6 +326,7 @@ int32_t small_bytevec_t::resize_nocopy(int32_t new_sz) {
 		if (new_sz <= small_t::size_max) {  // Resize big->small
 			if (this->u_.b_.p_) {
 				delete [] this->u_.b_.p_;
+				//small_bytevec_t::call_counts.calls_delete++;
 			}
 			this->init_small();  // Does not try to delete [] b_.p_
 			return this->u_.s_.resize(new_sz);
@@ -324,6 +339,7 @@ int32_t small_bytevec_t::resize_nocopy(int32_t new_sz) {
 		} else {  // new_sz > small_t::size_max; Resize small->big
 			auto new_cap = new_sz;
 			unsigned char *p = new unsigned char[static_cast<uint32_t>(new_cap)];
+			//small_bytevec_t::call_counts.calls_new++;
 			this->init_big();
 			this->u_.b_.adopt(this->u_.b_.pad_,p,new_sz,new_cap);
 		}
@@ -341,6 +357,7 @@ int32_t small_bytevec_t::reserve(int32_t new_cap) {
 		if (new_cap > small_t::size_max) {  // Resize small->big
 			auto new_sz = this->u_.s_.size();
 			unsigned char *pdest = new unsigned char[static_cast<uint32_t>(new_cap)];
+			//small_bytevec_t::call_counts.calls_new++;
 			std::copy(this->u_.s_.begin(),this->u_.s_.end(),pdest);
 			
 			this->init_big();

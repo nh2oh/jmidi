@@ -110,6 +110,12 @@ smf_t::reference smf_t::push_back(smf_t::const_reference mtrk) {
 	this->mthd_.set_ntrks(this->mtrks_.size());
 	return this->mtrks_.back();
 }
+smf_t::reference smf_t::push_back(mtrk_t&& mtrk) {
+	this->mtrks_.push_back(std::move(mtrk));
+	this->chunkorder_.push_back(0);
+	this->mthd_.set_ntrks(this->mtrks_.size());
+	return this->mtrks_.back();
+}
 smf_t::iterator smf_t::insert(smf_t::iterator it, smf_t::const_reference mtrk) {
 	auto n = it-this->begin();
 	this->mtrks_.insert((this->mtrks_.begin()+n),mtrk);
@@ -204,6 +210,10 @@ void smf_t::set_mthd(const maybe_mthd_t& mthd) {
 }
 void smf_t::set_mthd(const mthd_t& mthd) {
 	this->mthd_ = mthd;
+	this->mthd_.set_ntrks(this->mtrks_.size());
+}
+void smf_t::set_mthd(mthd_t&& mthd) noexcept {
+	this->mthd_ = std::move(mthd);
 	this->mthd_.set_ntrks(this->mtrks_.size());
 }
 

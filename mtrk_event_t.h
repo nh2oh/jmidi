@@ -78,8 +78,20 @@ struct mtrk_event_iterator_range_t {
 	generic_ra_const_iterator<mtrk_event_container_types_t> begin;
 	generic_ra_const_iterator<mtrk_event_container_types_t> end;
 };
+/*struct mtrk_event_call_count_t {
+	int def_ctor {0};
+	int smallsz_ctor {0};
+	int dt_ctor {0};
+	int cpy_ctor {0};
+	int mv_ctor {0};
+	int mv_assn {0};
+	int cpy_assn {0};
+};*/
 class mtrk_event_t {
 public:
+
+	//static mtrk_event_call_count_t call_counts;
+
 	using value_type = mtrk_event_container_types_t::value_type;
 	using size_type = mtrk_event_container_types_t::size_type;
 	using difference_type = mtrk_event_container_types_t::difference_type;  // TODO:  Inconsistent
@@ -153,6 +165,9 @@ private:
 	// 63 is ~1/2 way between 0 and the max velocity of 127 (0x7F)
 	// {0x00u,0x90u,0x3Cu,0x3Fu}
 	void default_init(int32_t=0) noexcept;
+
+	// This ctor avoids calling default_init(), thus the newly ctor'd object
+	// is in an invalid state (it's not a valid mtrk event).   
 	struct init_small_w_size_0_t {};
 	mtrk_event_t(init_small_w_size_0_t) noexcept;
 

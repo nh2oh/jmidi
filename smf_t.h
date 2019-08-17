@@ -84,6 +84,7 @@ public:
 	const_iterator end() const;
 	
 	reference push_back(const_reference);
+	reference push_back(mtrk_t&&);
 	iterator insert(iterator, const_reference);
 	const_iterator insert(const_iterator, const_reference);
 	iterator erase(iterator);
@@ -110,6 +111,7 @@ public:
 	int32_t mthd_size() const;  // mthd alias
 	void set_mthd(const maybe_mthd_t&);
 	void set_mthd(const mthd_t&);
+	void set_mthd(mthd_t&&) noexcept;
 private:
 	mthd_t mthd_;
 	std::vector<value_type> mtrks_;
@@ -197,9 +199,13 @@ InIt make_smf(InIt it, InIt end, maybe_smf_t *result, smf_error_t *err) {
 		set_error(smf_error_t::errc::mthd_error,0,0,0);
 		return it;
 	}
-	result->smf.set_mthd(maybe_mthd);
-	
-	auto expect_ntrks = result->smf.mthd().ntrks();
+	auto expect_ntrks = maybe_mthd.mthd.ntrks();
+	// When set_mthd() is called, the smf_t object will modify the 
+	// ntrks field in the mthd_t to match its member mtrks_.size(),
+	// which is presently 0.  
+	result->smf.set_mthd(std::move(maybe_mthd.mthd));
+	// auto expect_ntrks = result->smf.mthd().ntrks();
+
 	int n_mtrks_read = 0;
 	int n_uchks_read = 0;
 	maybe_mtrk_t curr_mtrk;  

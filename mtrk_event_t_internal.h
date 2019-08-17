@@ -89,8 +89,20 @@ struct big_t {
 // Very simple "'small' std::vector"-like class for managing an array 
 // of unsigned char.  
 //
+/*struct small_bytevec_call_count_t {
+	int def_ctor {0};
+	int anysz_ctor {0};
+	int cpy_ctor {0};
+	int mv_ctor {0};
+	int cpy_assn {0};
+	int mv_assn {0};
+
+	int calls_new {0};
+	int calls_delete {0};
+};*/
 class small_bytevec_t {
 public:
+	//static small_bytevec_call_count_t call_counts;
 	static constexpr int32_t size_max = big_t::size_max;
 	static constexpr int32_t capacity_small = small_t::size_max;
 

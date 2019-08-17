@@ -70,13 +70,17 @@ inout_dirs_t get_midi_test_dirs(const std::string& name) {
 
 int midi_example() {
 
+	//function_counts();
+
+
 	//benchmark_vlqs();
-
-	//auto yay = mtrk_event_t();
-
 	//auto d = get_midi_test_dirs("random_collection");
 	//classify_smf_errors(d.inp,d.outp.parent_path()/"errors.txt");//  "random_collection"
 	event_sizes_benchmark();
+	
+	//auto d = get_midi_test_dirs("4th1");
+	//avg_and_max_event_sizes(d.inp,d.outp,0);
+
 
 	/*
 	auto d = get_midi_test_dirs("write");
@@ -94,6 +98,15 @@ int midi_example() {
 		= smf_out_path.replace_filename(smf_out_path.stem()+="_again.midi");
 	write_smf(smf_in.smf,smf_out2_path);*/
 	
+
+	return 0;
+}
+
+int function_counts() {
+	std::filesystem::path pth 
+		= "D:\\cpp\\nh2oh\\au\\au\\gt_aulib\\test_data\\tempo_duration\\tdiv25_tempo250k.midi";
+	//std::filesystem::path pth = R"(C:\Users\ben\Desktop\hallelujah_joy_to_the_world.mid)";
+	maybe_smf_t maybe_smf = read_smf(pth,nullptr);
 
 	return 0;
 }
