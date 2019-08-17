@@ -69,13 +69,16 @@ inout_dirs_t get_midi_test_dirs(const std::string& name) {
 
 
 int midi_example() {
-	benchmark_vlqs();
+
+	std::common_type<uint8_t,int8_t>::type x {};
+
+	//benchmark_vlqs();
 
 	//auto yay = mtrk_event_t();
 
 	//auto d = get_midi_test_dirs("random_collection");
 	//classify_smf_errors(d.inp,d.outp.parent_path()/"errors.txt");//  "random_collection"
-	//event_sizes_benchmark();
+	event_sizes_benchmark();
 
 	/*
 	auto d = get_midi_test_dirs("write");
@@ -156,7 +159,7 @@ std::string randfn() {
 
 
 int event_sizes_benchmark() {
-	int mode = 1;  // 0 => batch, 1=>istreambuf_iterator
+	int mode = 0;  // 0 => batch, 1=>istreambuf_iterator
 	int Nth = 4;
 	if (Nth!=4) { Nth=4; };
 	auto tstart = std::chrono::high_resolution_clock::now();

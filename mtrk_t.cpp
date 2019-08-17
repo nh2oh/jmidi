@@ -5,6 +5,7 @@
 #include "print_hexascii.h"
 #include <string>
 #include <cstdint>
+#include <utility>
 #include <vector>
 #include <array>  // get_header()
 #include <algorithm>  // std::find_if() in linked-pair finding functions
@@ -18,6 +19,24 @@ mtrk_t::mtrk_t(mtrk_t::const_iterator beg, mtrk_t::const_iterator end) {
 		this->push_back(*it);
 	}
 }
+mtrk_t::mtrk_t(const mtrk_t& rhs) {
+	this->evnts_ = rhs.evnts_;
+}
+mtrk_t::mtrk_t(mtrk_t&& rhs) noexcept {
+	this->evnts_ = std::move(rhs.evnts_);
+}
+mtrk_t& mtrk_t::operator=(const mtrk_t& rhs) {
+	this->evnts_ = rhs.evnts_;
+	return *this;
+}
+mtrk_t& mtrk_t::operator=(mtrk_t&& rhs) noexcept {
+	this->evnts_ = std::move(rhs.evnts_);
+	return *this;
+}
+mtrk_t::~mtrk_t() noexcept {
+	//...
+}
+
 mtrk_t::size_type mtrk_t::size() const {
 	return static_cast<mtrk_t::size_type>(this->evnts_.size());
 }

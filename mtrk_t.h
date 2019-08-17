@@ -70,7 +70,13 @@ public:
 	// This will classify as invalid (!.validate()), because an MTrk 
 	// sequence must terminate w/ an EOT meta event.  
 	mtrk_t()=default;
-	mtrk_t(const_iterator,const_iterator);
+	explicit mtrk_t(const_iterator,const_iterator);
+
+	mtrk_t(const mtrk_t&);
+	mtrk_t(mtrk_t&&) noexcept;
+	mtrk_t& operator=(const mtrk_t&);
+	mtrk_t& operator=(mtrk_t&&) noexcept;
+	~mtrk_t() noexcept;
 
 	// The number of events in the track
 	size_type size() const;
@@ -164,7 +170,7 @@ private:
 	// something like length_max/4, not what i have here...
 	static constexpr size_type capacity_max = 0x0FFFFFFF;
 
-	std::vector<mtrk_event_t> evnts_ {};
+	std::vector<mtrk_event_t> evnts_;
 
 	template <typename InIt>
 	friend InIt make_mtrk(InIt, InIt, maybe_mtrk_t*, mtrk_error_t*);
