@@ -20,8 +20,6 @@ struct maybe_mtrk_t;
 // tk of the event(s) prior to .it is tk.  
 template <typename It>
 struct event_tk_t {
-	static_assert(std::is_same<It,typename mtrk_t::iterator>::value
-		|| std::is_same<It,typename mtrk_t::const_iterator>::value);
 	It it;
 	int32_t tk;
 };
@@ -30,15 +28,12 @@ struct event_tk_t {
 // mtrk_t
 // Container adapter around std::vector<mtrk_event_t>
 //
-// Holds a sequence of mtrk_event_t's as a std::vector<mtrk_event_t>; owns 
-// the underlying data.  Provides certain convienience functions for 
-// obtaining iterators into the sequence (at a specific tick number, etc).  
+// Holds a sequence of mtrk_event_t's as a std::vector<mtrk_event_t>.  
+// Provides certain convienience functions for obtaining iterators into 
+// the sequence (at a specific tick number, etc).  
 //
-// TODO:  Check for max_size() type of overflow?  Maximum data_size
+// TODO:  Check for max_size() type of overflow.  Maximum data_size
 // == 0xFFFFFFFFu (?)
-//
-// TODO:  Use the internal type aliases for member function arg, return
-// types
 //
 struct mtrk_container_types_t {
 	using value_type = mtrk_event_t;
@@ -61,9 +56,14 @@ public:
 	using iterator = generic_ra_iterator<mtrk_container_types_t>;
 	using const_iterator = generic_ra_const_iterator<mtrk_container_types_t>;
 
-	// The max. allowed value of the 'length' field in the chunk header;
+	// The max. allowed value of the 'length' field in the chunk header.  
 	// _not_ the same as the max allowed number of events.  
 	static constexpr size_type length_max = std::numeric_limits<size_type>::max()-8;
+	// The maximum number of events allowed.  Since the max length is 
+	// ~ 0xFFFFFFFF bytes, and the smallest meaningful channel event is 4
+	// bytes, there can be a maximum of:
+	// 0xFFFFFFFF/4 == 0x3FFFFFFF == 1073741823 such events.  
+	static constexpr size_type capacity_max = 0x0FFFFFFF;
 
 	// Creates an empty MTrk event sequence:
 	// nbytes() == 8, data_nbytes() == 0;
@@ -71,7 +71,6 @@ public:
 	// sequence must terminate w/ an EOT meta event.  
 	mtrk_t()=default;
 	explicit mtrk_t(const_iterator,const_iterator);
-
 	mtrk_t(const mtrk_t&);
 	mtrk_t(mtrk_t&&) noexcept;
 	mtrk_t& operator=(const mtrk_t&);
@@ -90,16 +89,12 @@ public:
 	// Cumulative number of midi ticks occupied by the entire sequence
 	int32_t nticks() const;
 
-	// Writes out the literal chunk header:
-	// {'M','T','r','k',_,_,_,_}
-	std::array<unsigned char,8> get_header() const;
-
 	iterator begin();
 	iterator end();
 	const_iterator begin() const;
 	const_iterator end() const;
-	mtrk_event_t& operator[](int32_t);
-	const mtrk_event_t& operator[](int32_t) const;
+	mtrk_event_t& operator[](size_type);
+	const mtrk_event_t& operator[](size_type) const;
 	mtrk_event_t& back();
 	const mtrk_event_t& back() const;
 	mtrk_event_t& front();
@@ -148,7 +143,6 @@ public:
 	// event.  
 	iterator erase_no_tkshift(iterator);
 
-
 	// Note that calling clear will cause !this.validate(), since there is
 	// no longer an EOT meta event at the end of the sequence.  
 	void clear();
@@ -166,15 +160,10 @@ public:
 	};
 	validate_t validate() const;
 private:
-	// The maximum number of events allowed... should probably be 
-	// something like length_max/4, not what i have here...
-	static constexpr size_type capacity_max = 0x0FFFFFFF;
-
 	std::vector<mtrk_event_t> evnts_;
 
 	template <typename InIt>
 	friend InIt make_mtrk(InIt, InIt, maybe_mtrk_t*, mtrk_error_t*);
-
 };
 std::string print(const mtrk_t&);
 // Prints each mtrk event as hexascii (using dbk::print_hexascii()) along

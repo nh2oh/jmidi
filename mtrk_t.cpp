@@ -8,16 +8,15 @@
 #include <utility>
 #include <vector>
 #include <array>  // get_header()
-#include <algorithm>  // std::find_if() in linked-pair finding functions
+#include <algorithm>  // std::copy(), std::find_if() in linked-pair finding functions
 #include <iomanip>  // std::setw()
 #include <ios>  // std::left
 #include <sstream>
 
 
 mtrk_t::mtrk_t(mtrk_t::const_iterator beg, mtrk_t::const_iterator end) {
-	for (auto it=beg; it!=end; ++it) {
-		this->push_back(*it);
-	}
+	this->evnts_.resize(end-beg);
+	std::copy(beg,end,this->evnts_.begin());
 }
 mtrk_t::mtrk_t(const mtrk_t& rhs) {
 	this->evnts_ = rhs.evnts_;
@@ -64,18 +63,6 @@ int32_t mtrk_t::nticks() const {
 	}
 	return cumtk;
 }
-std::array<unsigned char,8> mtrk_t::get_header() const {
-	std::array<unsigned char,8> r {'M','T','r','k',0,0,0,0};
-	unsigned char *p_dest = &(r[4]);
-	uint32_t src = this->data_nbytes();
-	uint32_t mask = 0xFF000000u;
-	for (int i=3; i>=0; --i) {
-		*p_dest = static_cast<unsigned char>((mask&src)>>(i*8));
-		mask>>=8;
-		++p_dest;
-	}
-	return r;
-}
 mtrk_t::iterator mtrk_t::begin() {
 	if (this->evnts_.size()==0) {
 		return mtrk_t::iterator(nullptr);
@@ -100,10 +87,10 @@ mtrk_t::const_iterator mtrk_t::end() const {
 	}
 	return mtrk_t::const_iterator(&(this->evnts_[0]) + this->evnts_.size());
 }
-mtrk_event_t& mtrk_t::operator[](int32_t idx) {
+mtrk_event_t& mtrk_t::operator[](mtrk_t::size_type idx) {
 	return this->evnts_[idx];
 }
-const mtrk_event_t& mtrk_t::operator[](int32_t idx) const {
+const mtrk_event_t& mtrk_t::operator[](mtrk_t::size_type idx) const {
 	return this->evnts_[idx];
 }
 mtrk_event_t& mtrk_t::back() {
@@ -169,6 +156,9 @@ void mtrk_t::pop_back() {
 	this->evnts_.pop_back();
 }
 mtrk_t::iterator mtrk_t::insert(mtrk_t::iterator it, const mtrk_event_t& ev) {
+	if (this->evnts_.size() >= mtrk_t::capacity_max) {
+		return it;
+	}
 	auto vit = this->evnts_.insert(this->evnts_.begin()+(it-this->begin()),ev);
 	return this->begin() + static_cast<mtrk_t::size_type>(vit-this->evnts_.begin());
 }
@@ -221,6 +211,7 @@ void mtrk_t::clear() {
 	this->evnts_.clear();
 }
 void mtrk_t::resize(mtrk_t::size_type n) {
+	n = std::clamp(n,0,mtrk_t::capacity_max);
 	this->evnts_.resize(n);
 }
 void mtrk_t::reserve(mtrk_t::size_type n) {
