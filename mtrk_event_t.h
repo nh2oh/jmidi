@@ -145,7 +145,7 @@ public:
 	unsigned char operator[](size_type) noexcept;
 
 	// Getters
-	smf_event_type type() const noexcept;
+	//smf_event_type type() const noexcept;
 	int32_t delta_time() const noexcept;
 	unsigned char status_byte() const noexcept;
 	// The value of the running-status _after_ this event has passed

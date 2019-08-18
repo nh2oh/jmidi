@@ -187,40 +187,26 @@ int32_t sec2ticks(const double&, const time_division_t&, int32_t=500000);
 
 
 // 
-// SMF event-types, status bytes, data bytes, and running-status
+// Status byte/data byte classification, running-status calculation
 //
-enum class smf_event_type : uint8_t {  // MTrk events
+enum class status_byte_type : uint8_t {
 	channel,
 	sysex_f0,
 	sysex_f7,
 	meta,
-	// !is_status_byte() 
-	invalid, 
-	// is_status_byte() 
-	//     && (!is_channel_status_byte() && !is_meta_or_sysex_status_byte())
-	// Also, is_unrecognized_status_byte()
-	// Ex, s==0xF1u
-	unrecognized
+	invalid,  // !is_status_byte() 
+	unrecognized  // is_unrecognized_status_byte()
 };
-// About "invalid":
-// "invalid" is clearly not a member of the class of things that are "SMF
-// events."  
-// Supporting:  Because users switch behavior on functions that return a 
-// value of this type, for example, while parsing raw a MIDI bytestream and
-// it's convienient to include this error case.  
-// Opposing:  Users doing that should use a maybe-type.  Also, the 
-// mtrk_event_t container can not hold 'invalid' values, so there is an 
-// inconsistency here.  
-std::string print(const smf_event_type&);
-
-// The most lightweight status-byte classifiers in the lib
-smf_event_type classify_status_byte(unsigned char);
-smf_event_type classify_status_byte(unsigned char,unsigned char);
+std::string print(const status_byte_type&);
+status_byte_type classify_status_byte(unsigned char);
+status_byte_type classify_status_byte(unsigned char,unsigned char);
 // _any_ "status" byte, including sysex, meta, or channel_{voice,mode}.  
 // Returns true even for things like 0xF1u that are invalid in an smf.  
 // Same as !is_data_byte()
 bool is_status_byte(const unsigned char);
 // True for status bytes invalid in an smf, ex, 0xF1u
+// == (is_status_byte() 
+//     && (!is_channel_status_byte() && !is_meta_or_sysex_status_byte()))
 bool is_unrecognized_status_byte(const unsigned char);
 bool is_channel_status_byte(const unsigned char);
 bool is_sysex_status_byte(const unsigned char);

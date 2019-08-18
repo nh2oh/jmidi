@@ -283,42 +283,40 @@ int32_t sec2ticks(const double& sec, const time_division_t& tdiv,
 	}
 }
 
-std::string print(const smf_event_type& et) {
-	if (et == smf_event_type::meta) {
+std::string print(const status_byte_type& et) {
+	if (et == status_byte_type::meta) {
 		return "meta";
-	} else if (et == smf_event_type::channel) {
+	} else if (et == status_byte_type::channel) {
 		return "channel";
-	} else if (et == smf_event_type::sysex_f0) {
+	} else if (et == status_byte_type::sysex_f0) {
 		return "sysex_f0";
-	} else if (et == smf_event_type::sysex_f7) {
+	} else if (et == status_byte_type::sysex_f7) {
 		return "sysex_f7";
-	} else if (et == smf_event_type::invalid) {
+	} else if (et == status_byte_type::invalid) {
 		return "invalid";
-	} else if (et == smf_event_type::unrecognized) {
+	} else if (et == status_byte_type::unrecognized) {
 		return "unrecognized";
 	} else {
-		return "? smf_event_type";
+		return "? status_byte_type";
 	}
 }
-
-
-smf_event_type classify_status_byte(unsigned char s) {
+status_byte_type classify_status_byte(unsigned char s) {
 	if (is_channel_status_byte(s)) {
-		return smf_event_type::channel;
+		return status_byte_type::channel;
 	} else if (is_meta_status_byte(s)) {
-		return smf_event_type::meta;
+		return status_byte_type::meta;
 	} else if (is_sysex_status_byte(s)) {
 		if (s==0xF0u) {
-			return smf_event_type::sysex_f0;
+			return status_byte_type::sysex_f0;
 		} else if (s==0xF7u) {
-			return smf_event_type::sysex_f7;
+			return status_byte_type::sysex_f7;
 		}
 	} else if (is_unrecognized_status_byte(s)) {
-		return smf_event_type::unrecognized;
+		return status_byte_type::unrecognized;
 	}
-	return smf_event_type::invalid;
+	return status_byte_type::invalid;
 }
-smf_event_type classify_status_byte(unsigned char s, unsigned char rs) {
+status_byte_type classify_status_byte(unsigned char s, unsigned char rs) {
 	s = get_status_byte(s,rs);
 	return classify_status_byte(s);
 }
@@ -371,10 +369,6 @@ unsigned char get_running_status_byte(unsigned char s, unsigned char rs) {
 	}
 	return 0x00u;  // An invalid status byte
 }
-
-
-
-
 int32_t channel_status_byte_n_data_bytes(unsigned char s) {
 	if (is_channel_status_byte(s)) {
 		if ((s&0xF0u)==0xC0u || (s&0xF0u)==0xD0u) {

@@ -16,7 +16,7 @@
 std::string print(const mtrk_event_t& evnt, mtrk_sbo_print_opts opts) {
 	std::string s {};
 	s += ("delta-time = " + std::to_string(evnt.delta_time()) + ", ");
-	s += ("type = " + print(evnt.type()) + ", ");
+	s += "type = " + print(classify_status_byte(evnt.status_byte())) + ", ";
 	s += ("size = " + std::to_string(evnt.size()) + ", ");
 	s += ("data_size = " + std::to_string(evnt.data_size()) + "\n");
 	
@@ -26,7 +26,7 @@ std::string print(const mtrk_event_t& evnt, mtrk_sbo_print_opts opts) {
 	print_hexascii(evnt.event_begin(),evnt.end(),std::back_inserter(s),'\0',' ');
 	
 	if (opts == mtrk_sbo_print_opts::detail || opts == mtrk_sbo_print_opts::debug) {
-		if (evnt.type()==smf_event_type::meta) {
+		if (is_meta(evnt)) {
 			s += "\n";
 			s += ("\tmeta type: " + print(classify_meta_event(evnt)) + "; ");
 			if (meta_has_text(evnt)) {
@@ -163,21 +163,21 @@ std::string print(const meta_event_t& mt) {
 }
 
 meta_event_t classify_meta_event(const mtrk_event_t& ev) {
-	if (ev.type()!=smf_event_type::meta) {
+	if (!is_meta(ev)) {
 		return meta_event_t::invalid;
 	}
-	uint16_t d16 = read_be<uint16_t>(ev.event_begin(),ev.end()); //read_be<uint16_t>(&*it); // (p);
+	uint16_t d16 = read_be<uint16_t>(ev.event_begin(),ev.end());
 	return classify_meta_event_impl(d16);
 }
 bool is_meta(const mtrk_event_t& ev) {
-	return ev.type()==smf_event_type::meta;
+	auto s = ev.status_byte();
+	return is_meta_status_byte(s);
 }
 bool is_meta(const mtrk_event_t& ev, const meta_event_t& mtype) {
-	if (ev.type()==smf_event_type::meta) {
-		return classify_meta_event_impl(read_be<uint16_t>(ev.event_begin(),ev.end()))==mtype;
-		//return classify_meta_event_impl(dbk::be_2_native<uint16_t>(&*it))==mtype;
+	if (!is_meta(ev)) {
+		return false;
 	}
-	return false;
+	return classify_meta_event_impl(read_be<uint16_t>(ev.event_begin(),ev.end()))==mtype;
 }
 bool is_seqn(const mtrk_event_t& ev) {
 	return is_meta(ev, meta_event_t::seqn);
@@ -550,13 +550,15 @@ mtrk_event_t make_channel_mode(int32_t dt, int ch, int p1, int p2) {
 }
 
 bool is_sysex(const mtrk_event_t& ev) {
-	return (is_sysex_f0(ev) || is_sysex_f7(ev));
+	return is_sysex_status_byte(ev.status_byte());
 }
 bool is_sysex_f0(const mtrk_event_t& ev) {
-	return ev.type()==smf_event_type::sysex_f0;
+	auto s = ev.status_byte();
+	return (s==0xF0u);
 }
 bool is_sysex_f7(const mtrk_event_t& ev) {
-	return ev.type()==smf_event_type::sysex_f7;
+	auto s = ev.status_byte();
+	return (s==0xF7u);
 }
 
 // Delegates to make_meta_sysex_generic_unsafe() after checking the input.  

@@ -255,18 +255,18 @@ mtrk_t::validate_t mtrk_t::validate() const {
 	bool found_ch_ev = false;
 	int32_t cumtk = 0;  // Cumulative delta-time
 	for (int i=0; i<this->evnts_.size(); ++i) {
-		auto curr_event_type = this->evnts_[i].type();
-		if (curr_event_type == smf_event_type::invalid) {
-			r.error = ("this->evnts_[i].type() == smf_event_type::invalid; i = "
-				+ std::to_string(i) + "\n\t");
+		auto s = this->evnts_[i].status_byte();
+		if (!is_status_byte(s) || is_unrecognized_status_byte(s)) {
+			r.error = "this->evnts_[i].status_byte() == " + std::to_string(s)
+				+ " is invalid\n\t";
 			return r;
 		}
 		
 		cumtk += this->evnts_[i].delta_time();
-		found_ch_ev = (found_ch_ev || (curr_event_type == smf_event_type::channel));
+		found_ch_ev = (found_ch_ev || is_channel_status_byte(s));
 		
 		if (is_note_on(this->evnts_[i])) {
-			curr_chev_data = get_channel_event(this->evnts_[i]);  //curr_chev_data = this->evnts_[i].midi_data();
+			curr_chev_data = get_channel_event(this->evnts_[i]);
 			auto it = std::find_if(sounding.begin(),sounding.end(),
 				is_matching_onoff);
 			if (it!=sounding.end()) {
@@ -384,7 +384,7 @@ std::string print_event_arrays(const mtrk_t& mtrk) {
 }
 bool is_tempo_map(const mtrk_t& trk) {
 	auto found_not_allowed = [](const mtrk_event_t& ev) -> bool {
-		if (ev.type()!=smf_event_type::meta) {
+		if (!is_meta(ev)) {
 			return true;
 		}
 		auto mt_type = classify_meta_event(ev);

@@ -1,5 +1,5 @@
 #pragma once
-#include "midi_raw.h"  // Declares smf_event_type
+#include "midi_raw.h"  // midi_timesig_t,_keysig_t, ....
 #include "mtrk_event_t.h"
 #include <string>
 #include <cstdint>

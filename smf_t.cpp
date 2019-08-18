@@ -426,7 +426,8 @@ std::string print(const std::vector<all_smf_events_dt_ordered_t>& evs) {
 	
 	for (const auto& e : evs) {
 		ss << std::setw(w.tick) << std::to_string(e.cumtk);
-		ss << std::setw(w.type) << print(e.ev.type());
+		//ss << std::setw(w.type) << print(e.ev.type());
+		ss << std::setw(w.type) << print(classify_status_byte(e.ev.status_byte()));
 		ss << std::setw(w.dat_sz) << std::to_string(e.ev.data_size());
 		ss << std::setw(w.trk) << std::to_string(e.trackn);
 		//ss << dbk::print_hexascii(e.ev.data(), e.ev.size(), ' ');

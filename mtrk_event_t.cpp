@@ -144,20 +144,15 @@ unsigned char *mtrk_event_t::push_back(unsigned char c) {  // Private
 mtrk_event_iterator_range_t mtrk_event_t::payload_range_impl() const noexcept {
 	auto it_end = this->d_.end();
 	auto it = advance_to_dt_end(this->d_.begin(),it_end);
-	auto t = classify_status_byte(*it);
-	if (t==smf_event_type::meta) {
+	auto s = *it;
+	if (is_meta_status_byte(s)) {
 		it += 2;  // 0xFFu, type-byte
 		it = advance_to_vlq_end(it,it_end);
-	} else if (t==smf_event_type::sysex_f0
-					|| t==smf_event_type::sysex_f7) {
+	} else if (is_sysex_status_byte(s)) {
 		it += 1;  // 0xF0u or 0xF7u
 		it = advance_to_vlq_end(it,it_end);
-	} // else { smf_event_type::channel_voice, _mode, unknown, invalid...
+	}
 	return {it,it_end};
-}
-smf_event_type mtrk_event_t::type() const noexcept {
-	auto p = advance_to_dt_end(this->d_.begin(),this->d_.end());
-	return classify_status_byte(*p);
 }
 int32_t mtrk_event_t::delta_time() const noexcept {
 	return read_delta_time(this->d_.begin(),this->d_.end()).val;
