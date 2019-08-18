@@ -6,6 +6,8 @@
 // 
 // Status byte/data byte classification, running-status calculation
 //
+
+
 enum class status_byte_type : uint8_t {
 	channel,
 	sysex_f0,
@@ -31,7 +33,7 @@ bool is_meta_status_byte(const unsigned char);
 bool is_sysex_or_meta_status_byte(const unsigned char);
 bool is_data_byte(const unsigned char);
 // unsigned char get_status_byte(unsigned char s, unsigned char rs);
-// The status byte applicible to an event w/ "maybe-a-status-byte" s
+// The status byte applicable to an event w/ "maybe-a-status-byte" s
 // and an "inherited" running status byte rs.  Where is_status_byte(s)
 // => true, returns s.  Otherwise, if is_channel_status_byte(rs) =>
 // true, returns rs.  Otherwise, returns 0x00u.  
