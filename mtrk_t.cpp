@@ -1,6 +1,7 @@
 #include "mtrk_t.h"
 #include "mtrk_event_t.h"
 #include "mtrk_event_methods.h"
+#include "midi_status_byte.h"
 #include "midi_vlq.h"
 #include "print_hexascii.h"
 #include <string>
