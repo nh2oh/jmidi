@@ -30,7 +30,6 @@ int classify_smf_errors(const std::filesystem::path&,
 	const std::filesystem::path&);
 
 int function_counts();
-int benchmark_vlqs();
 int conversions();
 int ratiosfp();
 
