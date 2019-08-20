@@ -2,7 +2,7 @@
 #include "generic_chunk_low_level.h"  // is_mthd_header_id()
 #include "mthd_t.h"
 #include "mtrk_t.h"
-#include "..\..\generic_iterator.h"
+#include "generic_iterator.h"
 #include <string>
 #include <cstdint>
 #include <vector>

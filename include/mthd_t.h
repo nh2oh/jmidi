@@ -1,6 +1,6 @@
 #pragma once
 #include "generic_chunk_low_level.h"
-#include "..\..\generic_iterator.h"
+#include "generic_iterator.h"
 #include "mtrk_event_t_internal.h"
 #include "midi_raw.h"  // time_division_t
 #include "midi_vlq.h"

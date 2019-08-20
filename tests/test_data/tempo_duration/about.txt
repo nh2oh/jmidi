@@ -1,0 +1,7 @@
+Each file has 12 notes.  For each on/off pair, the off-event is seperated from the on-event by 50 ticks (all off-events have delta-time == 50 tks).  For all other events, delta-times are 0.  
+
+The max allowable tempo os 0x00FFFFFF, and the min is 0
+The max tdiv is 0x7FFF, and the min is 1
+
+All have the same timesig == {FF 58 04 04 02 18 08} 
+=> value = 4/4, 24 MIDI clocks/click, 8 notated 32'nd nts / MIDI q nt;

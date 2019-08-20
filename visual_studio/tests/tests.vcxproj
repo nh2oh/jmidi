@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\tests\delta_time_test_data.cpp" />
+    <ClCompile Include="..\..\tests\make_mtrk_event_tests.cpp" />
+    <ClCompile Include="..\..\tests\midi_chunk_low_level_tests.cpp" />
+    <ClCompile Include="..\..\tests\midi_dt_tests.cpp" />
+    <ClCompile Include="..\..\tests\midi_raw_test_data.cpp" />
+    <ClCompile Include="..\..\tests\midi_sb_classification_funcs.cpp" />
+    <ClCompile Include="..\..\tests\midi_tempo_and_timediv_tests.cpp" />
+    <ClCompile Include="..\..\tests\midi_testdata_status_bytes.cpp" />
+    <ClCompile Include="..\..\tests\midi_vlq_tests.cpp" />
+    <ClCompile Include="..\..\tests\mthd_test_data.cpp" />
+    <ClCompile Include="..\..\tests\mthd_t_test.cpp" />
+    <ClCompile Include="..\..\tests\mtrk_duration_tests.cpp" />
+    <ClCompile Include="..\..\tests\mtrk_event_class_method_tests.cpp" />
+    <ClCompile Include="..\..\tests\mtrk_event_ctor_tests.cpp" />
+    <ClCompile Include="..\..\tests\mtrk_event_internal.cpp" />
+    <ClCompile Include="..\..\tests\mtrk_event_interrogation_ch_events.cpp" />
+    <ClCompile Include="..\..\tests\mtrk_event_sysex_factory_funcs.cpp" />
+    <ClCompile Include="..\..\tests\mtrk_event_t_meta_factory_funcs_tests.cpp" />
+    <ClCompile Include="..\..\tests\mtrk_event_t_tests.cpp" />
+    <ClCompile Include="..\..\tests\mtrk_special_member_function_tests.cpp" />
+    <ClCompile Include="..\..\tests\mtrk_test_data.cpp" />
+    <ClCompile Include="..\..\tests\mtrk_t_split_merge_test.cpp" />
+    <ClCompile Include="..\..\tests\mtrk_t_test.cpp" />
+    <ClCompile Include="..\..\tests\smf_chrono_iterator_test.cpp" />
+    <ClCompile Include="..\..\tests\sysex_factory_test_data.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\tests\delta_time_test_data.h" />
+    <ClInclude Include="..\..\tests\midi_raw_test_data.h" />
+    <ClInclude Include="..\..\tests\midi_testdata_status_bytes.h" />
+    <ClInclude Include="..\..\tests\mthd_test_data.h" />
+    <ClInclude Include="..\..\tests\mtrk_test_data.h" />
+    <ClInclude Include="..\..\tests\sysex_factory_test_data.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\jmidi\jmidi.vcxproj">
+      <Project>{2d5f43cc-a421-4482-855d-496461e189c8}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>16.0</VCProjectVersion>
+    <ProjectGuid>{77099c38-70d4-4c90-a2eb-4690918ef9f7}</ProjectGuid>
+    <RootNamespace>tests</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <AdditionalIncludeDirectories>..\..\tests\;..\..\include\;D:\cpp\include\</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <AdditionalDependencies>D:\cpp\lib\gtest\$(Platform)\$(Configuration)\gtest_maind.lib;D:\cpp\lib\gtest\$(Platform)\$(Configuration)\gtestd.lib;D:\cpp\lib\gtest\$(Platform)\$(Configuration)\gtestd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <AdditionalIncludeDirectories>..\..\tests\;..\..\include\;D:\cpp\include\</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>D:\cpp\lib\gtest\$(Platform)\$(Configuration)\gtest_main.lib;D:\cpp\lib\gtest\$(Platform)\$(Configuration)\gtest.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

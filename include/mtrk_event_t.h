@@ -1,6 +1,6 @@
 #pragma once
 #include "mtrk_event_t_internal.h"
-#include "..\..\generic_iterator.h"
+#include "generic_iterator.h"
 #include "midi_status_byte.h"
 #include "midi_raw.h"
 #include "midi_delta_time.h"

@@ -3,7 +3,7 @@
 #include "generic_chunk_low_level.h"  // is_mtrk_header_id()
 #include "mtrk_event_t.h"
 #include "mtrk_event_methods.h"  // is_eot()
-#include "..\..\generic_iterator.h"
+#include "generic_iterator.h"
 #include <string>
 #include <cstdint>
 #include <vector>
