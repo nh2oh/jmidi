@@ -1,10 +1,8 @@
+#include "mthd_t.h"
 #include "smf_t.h"
 #include <iostream>
 #include <filesystem>
 #include <string>
-#include <fstream>
-#include <vector>
-
 
 
 int main(int argc, char *argv[]) {
@@ -41,6 +39,3 @@ int main(int argc, char *argv[]) {
 
 	return 0;
 }
-
-
-

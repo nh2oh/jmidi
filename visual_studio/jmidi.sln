@@ -11,6 +11,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tests", "tests\tests.vcxpro
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "smfprint", "smfprint\smfprint.vcxproj", "{CBB6268E-8AF8-4917-9CDA-62CDCB959BAC}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "event_sizes_benchmark", "event_sizes_benchmark\event_sizes_benchmark.vcxproj", "{A6B60659-2EFF-489D-A9D8-66931A4234F9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -51,6 +53,14 @@ Global
 		{CBB6268E-8AF8-4917-9CDA-62CDCB959BAC}.Release|x64.Build.0 = Release|x64
 		{CBB6268E-8AF8-4917-9CDA-62CDCB959BAC}.RelWithDebInfo|x64.ActiveCfg = Release|x64
 		{CBB6268E-8AF8-4917-9CDA-62CDCB959BAC}.RelWithDebInfo|x64.Build.0 = Release|x64
+		{A6B60659-2EFF-489D-A9D8-66931A4234F9}.Debug|x64.ActiveCfg = Debug|x64
+		{A6B60659-2EFF-489D-A9D8-66931A4234F9}.Debug|x64.Build.0 = Debug|x64
+		{A6B60659-2EFF-489D-A9D8-66931A4234F9}.MinSizeRel|x64.ActiveCfg = Release|x64
+		{A6B60659-2EFF-489D-A9D8-66931A4234F9}.MinSizeRel|x64.Build.0 = Release|x64
+		{A6B60659-2EFF-489D-A9D8-66931A4234F9}.Release|x64.ActiveCfg = Release|x64
+		{A6B60659-2EFF-489D-A9D8-66931A4234F9}.Release|x64.Build.0 = Release|x64
+		{A6B60659-2EFF-489D-A9D8-66931A4234F9}.RelWithDebInfo|x64.ActiveCfg = Release|x64
+		{A6B60659-2EFF-489D-A9D8-66931A4234F9}.RelWithDebInfo|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

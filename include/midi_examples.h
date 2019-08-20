@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+
 struct midi_test_stuff_t {
 	std::string name;
 	std::filesystem::path inp;
@@ -22,9 +23,6 @@ int midi_example();
 int read_midi_directory(const std::filesystem::path&);
 int inspect_mthds(const std::filesystem::path&, const std::filesystem::path&);
 
-int event_sizes_benchmark();
-int avg_and_max_event_sizes(const std::filesystem::path&,
-	const std::filesystem::path&, const int);
 
 int classify_smf_errors(const std::filesystem::path&,
 	const std::filesystem::path&);

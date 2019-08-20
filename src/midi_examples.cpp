@@ -76,7 +76,7 @@ int midi_example() {
 	//benchmark_vlqs();
 	//auto d = get_midi_test_dirs("random_collection");
 	//classify_smf_errors(d.inp,d.outp.parent_path()/"errors.txt");//  "random_collection"
-	event_sizes_benchmark();
+	//event_sizes_benchmark();
 	
 	//auto d = get_midi_test_dirs("4th1");
 	//avg_and_max_event_sizes(d.inp,d.outp,0);
@@ -166,118 +166,6 @@ std::string randfn() {
 		s.push_back('A' + rd(re));
 	}
 	return s;
-}
-
-
-int event_sizes_benchmark() {
-	int mode = 0;  // 0 => batch, 1=>istreambuf_iterator
-	int Nth = 4;
-	if (Nth!=4) { Nth=4; };
-	auto tstart = std::chrono::high_resolution_clock::now();
-	std::cout << "avg_and_max_event_sizes() benchmark\n"
-		<< "Starting " << Nth << "-thread version in mode " << mode 
-		<< ":  " << std::endl;
-	std::vector<std::thread> vth;
-	for (int i=0; i<Nth; ++i) {
-		std::string name = std::to_string(Nth) + "th" + std::to_string(i+1);
-		auto dirs = get_midi_test_dirs(name);
-		vth.emplace_back(std::thread(avg_and_max_event_sizes,
-			dirs.inp,dirs.outp,mode));
-	}
-	for (auto& t : vth) { t.join(); }
-	auto tend = std::chrono::high_resolution_clock::now();
-	auto tdelta = std::chrono::duration_cast<std::chrono::milliseconds>(tend-tstart);;
-	std::cout << Nth << "-thread version finished in d == " 
-		<< tdelta.count() << " milliseconds." << std::endl << std::endl;
-
-	return 0;
-}
-
-int avg_and_max_event_sizes(const std::filesystem::path& bp,
-				const std::filesystem::path& of, const int mode) {
-	std::ofstream outfile(of);
-	std::vector<char> fdata;  // Used if mode == 0
-	auto rdi = std::filesystem::recursive_directory_iterator(bp.parent_path());
-	int n_midi_files = 0;
-	for (const auto& dir_ent : rdi) {
-		auto curr_path = dir_ent.path();
-		if (!has_midifile_extension(curr_path)) {
-			continue;
-		}
-		std::basic_ifstream<char> f(curr_path,
-				std::ios_base::in|std::ios_base::binary);
-		if (!f.is_open() || !f.good()) {
-			continue;
-		}
-		++n_midi_files;
-
-		maybe_smf_t maybe_smf;
-		smf_error_t smf_error;
-		if (mode == 0) {  // Batch
-			// Read the file into fdata, close the file
-			f.seekg(0,std::ios::end);
-			auto fsize = f.tellg();
-			f.seekg(0,std::ios::beg);
-			fdata.resize(fsize);
-			f.read(fdata.data(),fsize);
-			//auto n = std::min(fdata.size(),std::size_t{25});
-			make_smf(fdata.data(),fdata.data()+fdata.size(),
-				&maybe_smf,&smf_error);
-		} else if (mode == 1) {  // iostreams
-			std::istreambuf_iterator<char> it(f);
-			auto end = std::istreambuf_iterator<char>();
-			make_smf(it,end,&maybe_smf,&smf_error);
-		}
-		f.close();
-
-		outfile << "File " << std::to_string(n_midi_files) << ")  " 
-			<< curr_path.string() << '\n';
-		if (!maybe_smf) {
-			outfile << "\t!maybe_smf:  " << explain(smf_error) 
-				<< "\nskipping...\n"; 
-			continue;
-		}
-		
-		int32_t cum_nbytes = 0;
-		int32_t n_events = 0;
-		int32_t n_events_gt31bytes = 0;
-		int32_t n_events_2431bytes = 0;
-		int32_t n_events_leq23bytes = 0;
-		int32_t max_sz = 0;
-		auto biggest_event = mtrk_event_t();
-		for (const auto& trk : maybe_smf.smf) {
-			for (const auto& ev : trk) {
-				auto sz = ev.size();
-				if (sz > 31) {
-					++n_events_gt31bytes;
-				} else if ((sz>=24)&&(sz<=31)) {
-					++n_events_2431bytes;
-				} else if (sz<=23) {
-					++n_events_leq23bytes;
-				}
-				if (sz > max_sz) {
-					max_sz = ev.size();
-					biggest_event = ev;
-				}
-				cum_nbytes += ev.size();
-				++n_events;
-			}  // To next event in track
-		}  // To next track in smf
-		outfile << "n_events == " << std::to_string(n_events) 
-			<< "; avg event size == " 
-			<< std::to_string((1.0*cum_nbytes)/(1.0*n_events))
-			<< '\n'
-			<< "n <= 23 bytes == " << std::to_string(n_events_leq23bytes)
-			<< "; n >= 24 && <= 31 bytes == " << std::to_string(n_events_2431bytes)
-			<< "; n > 31 bytes == " << std::to_string(n_events_gt31bytes)
-			<< ";\n";
-		outfile << print(biggest_event,mtrk_sbo_print_opts::detail) << '\n';
-		outfile << "==============================================="
-				"=================================\n\n";
-	}
-	outfile << n_midi_files << " Midi files\n";
-	outfile.close();
-	return 0;
 }
 
 int classify_smf_errors(const std::filesystem::path& inp,
