@@ -2,10 +2,8 @@
 #include <limits>  // CHAR_BIT
 #include <type_traits>  // std::enable_if<>, is_integral<>, is_unsigned<>
 #include <cstdint>
-#include <cstring>
-
-
-
+#include <cstring>  // std::memcpy()
+#include <cstddef>  // std::size_t
 
 //
 // Returns an integer with the bit representation of the input encoded 
@@ -24,8 +22,8 @@
 //
 template<typename T>
 constexpr uint32_t vlq_field_literal_value(T val) {
-	//static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value,
-	//	"MIDI VL fields only encode unsigned integral values");
+	static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value,
+		"MIDI VL fields only encode unsigned integral values");
 	
 	uint32_t uval;
 	if (val < 0) {
@@ -48,12 +46,37 @@ constexpr uint32_t vlq_field_literal_value(T val) {
 };
 
 
-
-
-
+//
+// ... write_vlq_old_{a,b}(...)
+// Deprecated routines used for writing vlq's used in the past.  Kept for
+// use by the vlq_benchmark example app.  
 //
 template<typename T, typename OIt>
-OIt write_vlq_old1(T val, OIt it) {
+OIt write_vlq_old_a(T val, OIt it) {
+	static_assert(CHAR_BIT == 8);
+	static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value);
+	auto vlval = vlq_field_literal_value(val);  // requires integral, unsigned
+	
+	uint8_t bytepos = 3;
+	uint32_t mask = 0xFF000000;
+	while (((vlval&mask)==0) && (mask>0)) {
+		mask>>=8;  --bytepos;
+	}
+
+	if (mask==0) {  // Means vlval==0; still necessary to write an 0x00u
+		*it=0x00u;
+		++it;
+	} else {
+		while (mask>0) {
+			*it = (vlval&mask)>>(8*bytepos);
+			mask>>=8;  --bytepos;
+			++it;
+		}
+	}
+	return it;
+};
+template<typename T, typename OIt>
+OIt write_vlq_old_b(T val, OIt it) {
 	static_assert(CHAR_BIT == 8);
 
 	uint32_t uval;
@@ -84,41 +107,12 @@ OIt write_vlq_old1(T val, OIt it) {
 
 
 //
-// TODO:  This should clamp the input between 0x0FFFFFFF and 0.  
+// (1) OIt write_bytes(T val, OIt dest)
+// (2) OIt write_bytes(T val, std::size_t n, OIt dest)
 //
-template<typename T, typename OIt>
-OIt write_vlq_old(T val, OIt it) {
-	static_assert(CHAR_BIT == 8);
-	//static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value);
-	auto vlval = vlq_field_literal_value(val);  // requires integral, unsigned
-	
-	uint8_t bytepos = 3;
-	uint32_t mask = 0xFF000000;
-	while (((vlval&mask)==0) && (mask>0)) {
-		mask>>=8;  --bytepos;
-	}
-
-	if (mask==0) {  // Means vlval==0; still necessary to write an 0x00u
-		*it=0x00u;
-		++it;
-	} else {
-		while (mask>0) {
-			*it = (vlval&mask)>>(8*bytepos);
-			mask>>=8;  --bytepos;
-			++it;
-		}
-	}
-	return it;
-};
-
-
-
-//
-// OIt write_bytes(T val, OIt dest)
-//
-// Writes sizeof(T) bytes into the output iterator dest.  Returns an 
-// iterator pointing to into the destination range one past the last 
-// element copied.  
+// Writes sizeof(T) (1), or min(sizeof(T),n) (2) bytes into the output
+// iterator dest.  Returns an iterator pointing to into the destination 
+// range one past the last element copied.  
 //
 template<typename T, typename OIt>
 OIt write_bytes(T val, OIt dest) {
@@ -135,14 +129,6 @@ OIt write_bytes(T val, OIt dest) {
 	//std::memcpy(dest,src,sizeof(T));
 	// However, memcpy() returns a void* (?)
 };
-
-// 
-// OIt write_bytes(T val, std::size_t n, OIt dest)
-//
-// Writes min(sizeof(T), n) bytes into the output iterator dest.  Returns 
-// an iterator pointing to into the destination range one past the last 
-// element copied.  
-//
 template<typename T, typename OIt>
 OIt write_bytes(T val, std::size_t n, OIt dest) {
 	static_assert(std::is_same<
@@ -155,8 +141,4 @@ OIt write_bytes(T val, std::size_t n, OIt dest) {
 	}
 	return dest;
 };
-
-
-
-
 

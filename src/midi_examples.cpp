@@ -679,7 +679,7 @@ int benchmark_vlqs() {
 			std::cout << "Starting write_vlq_old1():  ";
 			auto tstart = std::chrono::high_resolution_clock::now();
 			for (size_t i=0; i<N; ++i) {
-				write_vlq_old1(rints[i],dest.data());
+				write_vlq_old_a(rints[i],dest.data());
 				result_sum += dest[2];
 			}
 			auto tend = std::chrono::high_resolution_clock::now();
@@ -691,7 +691,7 @@ int benchmark_vlqs() {
 			std::cout << "Starting write_vlq_old():  ";
 			auto tstart = std::chrono::high_resolution_clock::now();
 			for (size_t i=0; i<N; ++i) {
-				write_vlq_old(rints[i],dest.data());
+				write_vlq_old_b(rints[i],dest.data());
 				result_sum += dest[2];
 			}
 			auto tend = std::chrono::high_resolution_clock::now();
