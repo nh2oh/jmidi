@@ -1,5 +1,5 @@
 #pragma once
-#include "midi_raw.h"  // midi_time_t
+#include "midi_time.h"  // midi_time_t
 #include "generic_chunk_low_level.h"  // is_mtrk_header_id()
 #include "mtrk_event_t.h"
 #include "mtrk_event_methods.h"  // is_eot()
@@ -186,16 +186,16 @@ bool is_equivalent_permutation_ignore_dt(mtrk_t::const_iterator,
 bool is_equivalent_permutation(mtrk_t::const_iterator,mtrk_t::const_iterator,
 	mtrk_t::const_iterator,mtrk_t::const_iterator);
 
-// Get the duration in seconds.  The time_division_t argument represents
+// Get the duration in seconds.  The jmid::time_division_t argument represents
 // what the MTrk would inherit from its associated MThd; the MIDI std does
 // not specify any sort of default value for this quantity.  Argument 3
 // is the tempo in us/midi-q-nt; the default value of 500000 => 120 q nts/min.  
 // The tk->seconds conversion is made by:
-// double ticks2sec(const int32_t&, const time_division_t&, int32_t=500000);
+// double ticks2sec(const int32_t&, const jmid::time_division_t&, int32_t=500000);
 //
-double duration(const mtrk_t&, const time_division_t&, int32_t=500000);
+double duration(const mtrk_t&, const jmid::time_division_t&, int32_t=500000);
 double duration(mtrk_t::const_iterator, mtrk_t::const_iterator,
-	const time_division_t&, int32_t=500000);
+	const jmid::time_division_t&, int32_t=500000);
 
 
 // maybe_mtrk_t make_mtrk(const unsigned char*, uint32_t);

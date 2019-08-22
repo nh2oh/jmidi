@@ -191,7 +191,7 @@ smf_t::uchk_value_type& smf_t::get_uchk(smf_t::size_type n) {
 int32_t smf_t::format() const {
 	return this->mthd_.format();
 }
-time_division_t smf_t::division() const {
+jmid::time_division_t smf_t::division() const {
 	return this->mthd_.division();
 }
 int32_t smf_t::mthd_size() const {

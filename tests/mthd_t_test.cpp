@@ -18,7 +18,7 @@ TEST(mthd_tests, defaultCtor) {
 		0x4Du,0x54u,0x68u,0x64u, 0x00u,0x00u,0x00u,0x06u,
 		0x00u,0x01u, 0x00u,0x00u, 0x00u,0x78u
 	};
-	auto tdiv_ans = time_division_t(120);
+	auto tdiv_ans = jmid::time_division_t(120);
 
 	auto mthd = mthd_t();
 	EXPECT_EQ(mthd.size(), ans.size());
@@ -52,7 +52,7 @@ TEST(mthd_tests, setLength) {
 		{-1,6},{0,6},{1,6},{2,6},{3,6},{5,6},  // Invalid
 		{6,6},{7,7},{16,16},{24,24},{1000,1000}  // Valid
 	}};
-	auto tdiv_ans = time_division_t(120);
+	auto tdiv_ans = jmid::time_division_t(120);
 	int ntrks_ans = 0;
 	int format_ans = 1;
 	
@@ -87,7 +87,7 @@ TEST(mthd_tests, repeatedlyChangeLength) {
 		{-1,6},{1000,1000},{0,6},{16,16},{1,6},{2,6},{5,6},{3,6},
 		{6,6},{71,71},{16,16},{24,24},{241,241},{-1,6}
 	}};
-	auto tdiv_ans = time_division_t(150);
+	auto tdiv_ans = jmid::time_division_t(150);
 	int ntrks_ans = 73;
 	int format_ans = 2;
 	
@@ -111,7 +111,7 @@ TEST(mthd_tests, repeatedlyChangeLength) {
 
 //
 // Tests for:
-// explicit mthd_t(int32_t fmt, int32_t ntrks, time_division_t div);
+// explicit mthd_t(int32_t fmt, int32_t ntrks, jmid::time_division_t div);
 //
 // With valid input combinations.  
 //
@@ -132,7 +132,7 @@ TEST(mthd_tests, fieldValueCtorWithValidValues) {
 
 //
 // Tests for:
-// explicit mthd_t(int32_t fmt, int32_t ntrks, time_division_t div);
+// explicit mthd_t(int32_t fmt, int32_t ntrks, jmid::time_division_t div);
 //
 // With _invalid_ input combinations.  
 //

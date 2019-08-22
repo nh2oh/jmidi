@@ -8,7 +8,7 @@
 
 // 
 // Tests of:
-// double duration(const mtrk_t&, const time_division_t&, int32_t=500000);
+// double duration(const mtrk_t&, const jmid::time_division_t&, int32_t=500000);
 //
 // test_data\tempo_duration\...
 // Each file has 12 notes.  For each on/off pair, the off-event is 
@@ -19,27 +19,27 @@
 TEST(mtrk_duration_tests, cchromSingleTempoEvent) {
 	std::filesystem::path basepath = "..\\..\\..\\tests\\test_data\\tempo_duration\\";
 	struct test_t {
-		time_division_t tdiv;
+		jmid::time_division_t tdiv;
 		int32_t tempo;  // us/q-nt
 		std::filesystem::path file;
 	};
 
 	std::array<test_t,12> tests {
-		test_t {time_division_t(25), 0, "tdiv25_tempo0.midi"},
-		test_t {time_division_t(25), 1, "tdiv25_tempo1.midi"},
-		test_t {time_division_t(25), 250000, "tdiv25_tempo250k.midi"},
-		test_t {time_division_t(25), 500000, "tdiv25_tempo500k.midi"},
-		test_t {time_division_t(25), 750000, "tdiv25_tempo750k.midi"},
-		test_t {time_division_t(25), 0xFFFFFF, "tdiv25_tempo0x0FFFFFFF.midi"},
+		test_t {jmid::time_division_t(25), 0, "tdiv25_tempo0.midi"},
+		test_t {jmid::time_division_t(25), 1, "tdiv25_tempo1.midi"},
+		test_t {jmid::time_division_t(25), 250000, "tdiv25_tempo250k.midi"},
+		test_t {jmid::time_division_t(25), 500000, "tdiv25_tempo500k.midi"},
+		test_t {jmid::time_division_t(25), 750000, "tdiv25_tempo750k.midi"},
+		test_t {jmid::time_division_t(25), 0xFFFFFF, "tdiv25_tempo0x0FFFFFFF.midi"},
 		// Minimum permitted time-div value
-		test_t {time_division_t(1), 1, "tdiv1_tempo1.midi"},
-		test_t {time_division_t(1), 1234567, "tdiv1_tempo1234567.midi"},
+		test_t {jmid::time_division_t(1), 1, "tdiv1_tempo1.midi"},
+		test_t {jmid::time_division_t(1), 1234567, "tdiv1_tempo1234567.midi"},
 
-		test_t {time_division_t(152), 500000, "tdiv152_tempo500k.midi"},
+		test_t {jmid::time_division_t(152), 500000, "tdiv152_tempo500k.midi"},
 		// Max permitted time-div value
-		test_t {time_division_t(0x7FFF), 1, "tdiv0x7FFF_tempo1.midi"},
-		test_t {time_division_t(0x7FFF), 500000, "tdiv0x7FFF_tempo500k.midi"},
-		test_t {time_division_t(0x7FFF), 0x00FFFFFF, "tdiv0x7FFF_tempo0x00FFFFFF.midi"}
+		test_t {jmid::time_division_t(0x7FFF), 1, "tdiv0x7FFF_tempo1.midi"},
+		test_t {jmid::time_division_t(0x7FFF), 500000, "tdiv0x7FFF_tempo500k.midi"},
+		test_t {jmid::time_division_t(0x7FFF), 0x00FFFFFF, "tdiv0x7FFF_tempo0x00FFFFFF.midi"}
 	};
 	
 	double permissible_err_s = 1.0/1000000000.0;  // 1 ns

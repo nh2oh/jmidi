@@ -1,4 +1,5 @@
 #include "mtrk_t.h"
+#include "midi_time.h"
 #include "mtrk_event_t.h"
 #include "mtrk_event_methods.h"
 #include "midi_status_byte.h"
@@ -457,14 +458,14 @@ bool is_equivalent_permutation(mtrk_t::const_iterator beg1,
 	return true;
 }
 
-double duration(const mtrk_t& mtrk, const time_division_t& tdiv,
+double duration(const mtrk_t& mtrk, const jmid::time_division_t& tdiv,
 				int32_t tempo) {
 	auto beg = mtrk.begin();
 	auto end = mtrk.end();
 	return duration(beg,end,tdiv,tempo);
 }
 double duration(mtrk_t::const_iterator beg, mtrk_t::const_iterator end,
-				const time_division_t& tdiv, int32_t tempo) {
+				const jmid::time_division_t& tdiv, int32_t tempo) {
 	double s = 0.0;  // cumulative number of seconds
 	for (auto it=beg; it!=end; ++it) {
 		s += ticks2sec(it->delta_time(),tdiv,tempo);

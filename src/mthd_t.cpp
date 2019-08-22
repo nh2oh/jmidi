@@ -1,7 +1,7 @@
 #include "mthd_t.h"
 #include "mtrk_event_t_internal.h"
 #include "generic_chunk_low_level.h"
-#include "midi_raw.h"
+#include "midi_time.h"
 #include "midi_vlq.h"
 #include "print_hexascii.h"
 #include <cstdint>
@@ -28,7 +28,7 @@ mthd_t::mthd_t() noexcept {
 mthd_t::mthd_t(mthd_t::init_small_w_size_0_t) noexcept {
 	this->d_ = mtrk_event_t_internal::small_bytevec_t();
 }
-mthd_t::mthd_t(int32_t fmt, int32_t ntrks, time_division_t tdf) noexcept {
+mthd_t::mthd_t(int32_t fmt, int32_t ntrks, jmid::time_division_t tdf) noexcept {
 	this->default_init();
 	this->set_ntrks(ntrks);
 	this->set_format(fmt);
@@ -38,13 +38,13 @@ mthd_t::mthd_t(int32_t fmt, int32_t ntrks, int32_t tpq) noexcept {
 	this->default_init();
 	this->set_ntrks(ntrks);
 	this->set_format(fmt);
-	this->set_division(time_division_t(tpq));
+	this->set_division(jmid::time_division_t(tpq));
 }
 mthd_t::mthd_t(int32_t fmt, int32_t ntrks, int32_t tcf, int32_t subdivs) noexcept {
 	this->default_init();
 	this->set_format(fmt);
 	this->set_ntrks(ntrks);
-	this->set_division(time_division_t(tcf,subdivs));
+	this->set_division(jmid::time_division_t(tcf,subdivs));
 }
 mthd_t::mthd_t(const mthd_t& rhs) {
 	this->d_=rhs.d_;
@@ -114,9 +114,9 @@ int32_t mthd_t::format() const noexcept {
 int32_t mthd_t::ntrks() const noexcept {
 	return read_be<uint16_t>(this->d_.begin()+8+2,this->d_.end());
 }
-time_division_t mthd_t::division() const noexcept {
+jmid::time_division_t mthd_t::division() const noexcept {
 	auto raw_val = read_be<uint16_t>(this->d_.begin()+12,this->d_.end());
-	return make_time_division_from_raw(raw_val).value;
+	return jmid::make_time_division_from_raw(raw_val).value;
 }
 int32_t mthd_t::set_format(int32_t f) noexcept {
 	f = std::clamp(f,mthd_t::format_min,mthd_t::format_max);
@@ -139,21 +139,21 @@ int32_t mthd_t::set_ntrks(int32_t ntrks) noexcept {
 	}
 	return ntrks;
 }
-time_division_t mthd_t::set_division(time_division_t tdf) noexcept {
+jmid::time_division_t mthd_t::set_division(jmid::time_division_t tdf) noexcept {
 	write_16bit_be(tdf.get_raw_value(),this->d_.begin()+12);
 	return tdf;
 }
 int32_t mthd_t::set_division_tpq(int32_t tpq) noexcept {
-	auto tdiv = time_division_t(tpq);
+	auto tdiv = jmid::time_division_t(tpq);
 	write_16bit_be(tdiv.get_raw_value(),this->d_.begin()+12);
 	return tdiv.get_tpq();
 }
-smpte_t mthd_t::set_division_smpte(int32_t tcf, int32_t subdivs) noexcept {
-	auto tdiv = time_division_t(tcf,subdivs);
+jmid::smpte_t mthd_t::set_division_smpte(int32_t tcf, int32_t subdivs) noexcept {
+	auto tdiv = jmid::time_division_t(tcf,subdivs);
 	write_16bit_be(tdiv.get_raw_value(),this->d_.begin()+12);
 	return tdiv.get_smpte();
 }
-smpte_t mthd_t::set_division_smpte(smpte_t smpte) noexcept {
+jmid::smpte_t mthd_t::set_division_smpte(jmid::smpte_t smpte) noexcept {
 	return this->set_division_smpte(smpte.time_code,smpte.subframes);
 }
 int32_t mthd_t::set_length(int32_t new_len) {
@@ -234,9 +234,9 @@ std::string& print(const mthd_t& mthd, std::string& s) {
 	s += ("Num Tracks = " + std::to_string(mthd.ntrks()) + ", ");
 	s += "Time Division = ";
 	auto timediv_type = mthd.division().get_type();
-	if (timediv_type == time_division_t::type::smpte) {
+	if (timediv_type == jmid::time_division_t::type::smpte) {
 		s += "SMPTE";
-	} else if (timediv_type == time_division_t::type::ticks_per_quarter) {
+	} else if (timediv_type == jmid::time_division_t::type::ticks_per_quarter) {
 		s += std::to_string(get_tpq(mthd.division()));
 		s += " ticks-per-quarter-note ";
 	}

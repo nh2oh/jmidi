@@ -1,4 +1,4 @@
-#include "midi_raw.h"
+#include "midi_time.h"
 #include <cfenv>
 #include <vector>
 #include <string>
@@ -16,15 +16,15 @@ int main(int argc, char *argv[]) {
 
 
 int err_duration() {
-	std::vector<time_division_t> tdivs {
+	std::vector<jmid::time_division_t> tdivs {
 		// Small values
-		//time_division_t(1),time_division_t(2),time_division_t(3),
-		//time_division_t(20),time_division_t(24),time_division_t(25),
+		//jmid::time_division_t(1),jmid::time_division_t(2),jmid::time_division_t(3),
+		//jmid::time_division_t(20),jmid::time_division_t(24),jmid::time_division_t(25),
 		// "Normal" values
-		time_division_t(48),time_division_t(96),time_division_t(120),
-		time_division_t(152),time_division_t(960),
+		jmid::time_division_t(48),jmid::time_division_t(96),jmid::time_division_t(120),
+		jmid::time_division_t(152),jmid::time_division_t(960),
 		// Max allowed value for ticks-per-qnt
-		time_division_t(0x7FFF)
+		jmid::time_division_t(0x7FFF)
 	};
 
 	int n_dotmod=0;

@@ -107,7 +107,7 @@ public:
 	const mthd_t& mthd() const;
 	mthd_t& mthd();
 	int32_t format() const;  // mthd alias
-	time_division_t division() const;  // mthd alias
+	jmid::time_division_t division() const;  // mthd alias
 	int32_t mthd_size() const;  // mthd alias
 	void set_mthd(const maybe_mthd_t&);
 	void set_mthd(const mthd_t&);

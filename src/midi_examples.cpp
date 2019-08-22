@@ -119,7 +119,7 @@ std::filesystem::path make_midifile(std::filesystem::path smf_path,
 	auto mthd = mthd_t();
 	mthd.set_format(0);
 	mthd.set_ntrks(1);
-	mthd.set_division(time_division_t(0x7FFF));
+	mthd.set_division(jmid::time_division_t(0x7FFF));
 	
 	auto mtrk1 = mtrk_t();
 	mtrk1.push_back(make_seqn(0,0));

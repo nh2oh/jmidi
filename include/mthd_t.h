@@ -2,7 +2,7 @@
 #include "generic_chunk_low_level.h"
 #include "generic_iterator.h"
 #include "mtrk_event_t_internal.h"
-#include "midi_raw.h"  // time_division_t
+#include "midi_time.h"  // jmid::time_division_t
 #include "midi_vlq.h"
 #include <cstdint>
 #include <cstddef>  // std::ptrdiff_t
@@ -83,8 +83,8 @@ public:
 
 	// size()==14, length()==4; Format 1, 0 tracks, 120 tpq
 	mthd_t() noexcept;
-	// mthd_t(int32_t fmt, int32_t ntrks, time_division_t tdf);
-	explicit mthd_t(int32_t, int32_t, time_division_t) noexcept;
+	// mthd_t(int32_t fmt, int32_t ntrks, jmid::time_division_t tdf);
+	explicit mthd_t(int32_t, int32_t, jmid::time_division_t) noexcept;
 	// mthd_t(int32_t fmt, int32_t ntrks, int32_t division (tpq));
 	// the value for division is silently clamped to [1,32767].  
 	explicit mthd_t(int32_t, int32_t, int32_t) noexcept;
@@ -117,7 +117,7 @@ public:
 	int32_t format() const noexcept;
 	// Note:  Number of MTrks, not the number of "chunks"
 	int32_t ntrks() const noexcept;
-	time_division_t division() const noexcept;
+	jmid::time_division_t division() const noexcept;
 
 	// Setters
 	// Illegal values are _silently_ set to legal values.  
@@ -128,13 +128,13 @@ public:
 	// If format() == 0, the allowed range is [0,1].  
 	// If format() > 0, the allowed range is [0,0xFFFF].  
 	int32_t set_ntrks(int32_t) noexcept;
-	time_division_t set_division(time_division_t) noexcept;
-	// set_division_tpq/smpte() pass the input to the time_division_t ctors,
+	jmid::time_division_t set_division(jmid::time_division_t) noexcept;
+	// set_division_tpq/smpte() pass the input to the jmid::time_division_t ctors,
 	// which silently correct invalid values.  
 	int32_t set_division_tpq(int32_t) noexcept;
 	// smpte_t set_division_smpte(int32_t tcf, int32_t subdivs);
-	smpte_t set_division_smpte(int32_t,int32_t) noexcept;
-	smpte_t set_division_smpte(smpte_t) noexcept;
+	jmid::smpte_t set_division_smpte(int32_t,int32_t) noexcept;
+	jmid::smpte_t set_division_smpte(jmid::smpte_t) noexcept;
 	// Sets the length field and resizes the array if necessary
 	// The input length is first clamped to 
 	// [mthd::length_min,mthd_t::length_max].  If the new length is < the 
@@ -277,7 +277,7 @@ InIt make_mthd(InIt it, InIt end, maybe_mthd_t *result, mthd_error_t *err) {
 		set_error(mthd_error_t::errc::inconsistent_format_ntrks);
 		return it;
 	}
-	if (!is_valid_time_division_raw_value(division)) {
+	if (!jmid::is_valid_time_division_raw_value(division)) {
 		set_error(mthd_error_t::errc::invalid_time_division);
 		return it;
 	}

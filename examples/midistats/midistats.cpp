@@ -18,7 +18,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	struct tdiv_counts_t {
-		time_division_t tdiv;
+		jmid::time_division_t tdiv;
 		int count {0};
 	};
 	std::vector<tdiv_counts_t> tdiv_counts;
