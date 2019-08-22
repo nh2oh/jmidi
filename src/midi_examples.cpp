@@ -5,7 +5,6 @@
 #include "mtrk_event_methods.h"
 #include "smf_t.h"
 #include "midi_vlq.h"
-#include "midi_vlq_deprecated.h"
 #include "midi_delta_time.h"
 #include <iostream>
 #include <filesystem>
@@ -145,27 +144,17 @@ std::filesystem::path make_midifile(std::filesystem::path smf_path,
 	smf.set_mthd(mthd);
 	smf.push_back(mtrk1);
 	
-	if (random_fname) {
+	/*if (random_fname) {
 		smf_path.replace_filename(randfn()+".midi");
 	} else {
 		smf_path.replace_filename("tdiv0x7FFF_tempo1.midi");
-	}
+	}*/
 	smf_path = write_smf(smf,smf_path);
 
 	return smf_path;
 }
 
-std::string randfn() {
-	std::random_device rdev;
-	std::default_random_engine re(rdev());
-	std::uniform_int_distribution<int> rd(0,24);
 
-	std::string s;
-	for (int i=0; i<4; ++i) {
-		s.push_back('A' + rd(re));
-	}
-	return s;
-}
 
 int classify_smf_errors(const std::filesystem::path& inp,
 						const std::filesystem::path& outf) {

@@ -238,7 +238,20 @@ mtrk_event_t make_pitch_bend(int32_t, int, int, int);
 mtrk_event_t make_channel_mode(int32_t, ch_event_data_t);  // 0xB0u
 mtrk_event_t make_channel_mode(int32_t, int, int, int);
 
-
+// On/off event pairs
+// onoff_pair_t make_onoff_pair(int32_t duration int channel, int note, 
+//								int velocity_on, int velocity_off);
+// Returns a pair of mtrk_event_t such that the "on" event has a delta 
+// time == 0 ticks and the off event has a delta-time == duration.  
+// mtrk_event_t make_matching_off(int32_t delta-time, 
+//									const mtrk_event_t& note_on);
+struct onoff_pair_t {
+	mtrk_event_t on;
+	mtrk_event_t off;
+};
+onoff_pair_t make_onoff_pair(int32_t, int, int, int, int);
+mtrk_event_t make_matching_off(int32_t, const mtrk_event_t&);
+mtrk_event_t make_matching_off90(int32_t, const mtrk_event_t&);
 
 //
 // Sysex event classification

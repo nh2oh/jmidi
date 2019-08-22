@@ -1,6 +1,5 @@
 #include "vlq_benchmark.h"
 #include "midi_vlq.h"
-#include "midi_vlq_deprecated.h"
 #include <iostream>
 #include <random>
 #include <chrono>

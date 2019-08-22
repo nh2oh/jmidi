@@ -551,6 +551,16 @@ mtrk_event_t make_channel_mode(int32_t dt, int ch, int p1, int p2) {
 	return make_channel_mode(dt,make_midi_ch_event_data(0,ch,p1,p2));
 }
 
+onoff_pair_t make_onoff_pair(int32_t duration, int ch, int nt, int vel_on, int vel_off) {
+	return {make_note_on(0,ch,nt,vel_on),make_note_off(duration,ch,nt,vel_off)};
+}
+mtrk_event_t make_matching_off(int32_t dt, const mtrk_event_t& on_ev) {
+	return make_note_off(dt,get_channel_event(on_ev));
+}
+mtrk_event_t make_matching_off90(int32_t dt, const mtrk_event_t& on_ev) {
+	return make_note_off90(dt,get_channel_event(on_ev));
+}
+
 bool is_sysex(const mtrk_event_t& ev) {
 	return is_sysex_status_byte(ev.status_byte());
 }

@@ -92,9 +92,6 @@
     <ClInclude Include="..\..\include\midi_vlq.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\midi_vlq_deprecated.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\include\mthd_t.h">
       <Filter>Header Files</Filter>
     </ClInclude>

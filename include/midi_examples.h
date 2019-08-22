@@ -34,6 +34,6 @@ int ratiosfp();
 
 std::filesystem::path make_midifile(std::filesystem::path, bool);
 
-std::string randfn();
+
 
 

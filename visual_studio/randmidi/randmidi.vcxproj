@@ -11,61 +11,28 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\src\aux_types.cpp" />
-    <ClCompile Include="..\..\src\generic_chunk_low_level.cpp" />
-    <ClCompile Include="..\..\src\generic_iterator.cpp" />
-    <ClCompile Include="..\..\src\midi_delta_time.cpp" />
-    <ClCompile Include="..\..\src\midi_examples.cpp" />
-    <ClCompile Include="..\..\src\midi_raw_test_parts.cpp" />
-    <ClCompile Include="..\..\src\midi_status_byte.cpp" />
-    <ClCompile Include="..\..\src\midi_time.cpp" />
-    <ClCompile Include="..\..\src\midi_vlq.cpp" />
-    <ClCompile Include="..\..\src\mthd_t.cpp" />
-    <ClCompile Include="..\..\src\mtrk_event_methods.cpp" />
-    <ClCompile Include="..\..\src\mtrk_event_t.cpp" />
-    <ClCompile Include="..\..\src\mtrk_event_t_internal.cpp" />
-    <ClCompile Include="..\..\src\mtrk_integrators.cpp" />
-    <ClCompile Include="..\..\src\mtrk_t.cpp" />
-    <ClCompile Include="..\..\src\print_hexascii.cpp" />
-    <ClCompile Include="..\..\src\smf_t.cpp" />
-    <ClCompile Include="..\..\src\util.cpp" />
+    <ClCompile Include="..\..\examples\randmidi\randmidi.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\include\aux_types.h" />
-    <ClInclude Include="..\..\include\generic_chunk_low_level.h" />
-    <ClInclude Include="..\..\include\generic_iterator.h" />
-    <ClInclude Include="..\..\include\midi_data.h" />
-    <ClInclude Include="..\..\include\midi_delta_time.h" />
-    <ClInclude Include="..\..\include\midi_examples.h" />
-    <ClInclude Include="..\..\include\midi_raw_test_parts.h" />
-    <ClInclude Include="..\..\include\midi_status_byte.h" />
-    <ClInclude Include="..\..\include\midi_time.h" />
-    <ClInclude Include="..\..\include\midi_vlq.h" />
-    <ClInclude Include="..\..\include\mthd_t.h" />
-    <ClInclude Include="..\..\include\mtrk_event_methods.h" />
-    <ClInclude Include="..\..\include\mtrk_event_t.h" />
-    <ClInclude Include="..\..\include\mtrk_event_t_internal.h" />
-    <ClInclude Include="..\..\include\mtrk_integrators.h" />
-    <ClInclude Include="..\..\include\mtrk_t.h" />
-    <ClInclude Include="..\..\include\print_hexascii.h" />
-    <ClInclude Include="..\..\include\smf_t.h" />
-    <ClInclude Include="..\..\include\util.h" />
+    <ProjectReference Include="..\jmidi\jmidi.vcxproj">
+      <Project>{2d5f43cc-a421-4482-855d-496461e189c8}</Project>
+    </ProjectReference>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
-    <ProjectGuid>{2d5f43cc-a421-4482-855d-496461e189c8}</ProjectGuid>
-    <RootNamespace>jmidi</RootNamespace>
+    <ProjectGuid>{9888805d-0c7b-402f-9b2f-7e7156edc70f}</ProjectGuid>
+    <RootNamespace>randmidi</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -91,9 +58,7 @@
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
-      <AdditionalIncludeDirectories>..\..\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <BrowseInformation>false</BrowseInformation>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../../include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -108,8 +73,7 @@
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
-      <AdditionalIncludeDirectories>..\..\include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../../include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
