@@ -1,8 +1,11 @@
-#include "midi_raw.h"
+#include "aux_types.h"
 #include "midi_status_byte.h"
 #include <string>
 #include <cstdint>
-#include <algorithm>  // std::clamp() in jmid::time_division_t
+#include <algorithm>
+
+
+
 
 bool operator==(const midi_timesig_t& rhs, const midi_timesig_t& lhs) {
 	return((rhs.clckspclk == lhs.clckspclk)
@@ -107,4 +110,5 @@ bool is_channel_mode(const ch_event_data_t& md) {
 	// The final condition verifies md is not a control_change event.  
 	// 120  == 0b01111000u
 }
+
 

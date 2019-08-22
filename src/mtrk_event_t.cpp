@@ -3,6 +3,7 @@
 #include "midi_status_byte.h"
 #include "midi_vlq.h"
 #include "midi_delta_time.h"
+#include "aux_types.h"
 #include <cstdint>
 #include <algorithm>
 #include <utility>  // std::move()

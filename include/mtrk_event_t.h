@@ -2,24 +2,13 @@
 #include "mtrk_event_t_internal.h"
 #include "generic_iterator.h"
 #include "midi_status_byte.h"
-#include "midi_raw.h"
 #include "midi_delta_time.h"
+#include "aux_types.h"
 #include <string>  // For declaration of print()
 #include <cstdint>
 
 
 
-// Needed for the friend dcln of 
-// print(const mtrk_event_t&, mtrk_sbo_print_opts).  
-// See mtrk_event_methods.h,.cpp
-enum class mtrk_sbo_print_opts {
-	normal,
-	detail,
-	// Prints the value of flags_, midi_status_.  If big, prints the byte 
-	// array d_ for the local container in addition to the heap-allocated
-	// data.  
-	debug  
-};
 
 
 

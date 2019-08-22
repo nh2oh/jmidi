@@ -3,6 +3,10 @@
 #include <cstdint>
 
 
+//
+// aux types
+//
+
 // P.134:  
 // All MIDI Files should specify tempo and time signature.  If they don't,
 // the time signature is assumed to be 4/4, and the tempo 120 beats per 
@@ -25,7 +29,6 @@ uint8_t nsharps(const midi_keysig_t&);
 uint8_t nflats(const midi_keysig_t&);
 bool is_major(const midi_keysig_t&);
 bool is_minor(const midi_keysig_t&);
-
 // TODO:  Missing 'select channel mode'
 enum : uint8_t {
 	note_off = 0x80u,
@@ -45,8 +48,6 @@ struct ch_event_data_t {
 };
 bool verify(const ch_event_data_t&);
 ch_event_data_t make_midi_ch_event_data(int, int, int, int);
-
-
 // "Forcefully" sets bits in the fields of the input ch_event_data_t such
 // that they are valid values.  
 // "to_nearest_valid_value()" ?
@@ -59,5 +60,4 @@ bool is_program_change(const ch_event_data_t&);
 bool is_channel_pressure(const ch_event_data_t&);  // 0xDnu
 bool is_pitch_bend(const ch_event_data_t&); 
 bool is_channel_mode(const ch_event_data_t&);
-
 

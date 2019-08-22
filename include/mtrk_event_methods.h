@@ -1,9 +1,23 @@
 #pragma once
-#include "midi_raw.h"  // midi_timesig_t,_keysig_t, ....
 #include "mtrk_event_t.h"
 #include <string>
 #include <cstdint>
 #include <vector>
+
+
+
+
+// Needed for the friend dcln of 
+// print(const mtrk_event_t&, mtrk_sbo_print_opts).  
+// See mtrk_event_methods.h,.cpp
+enum class mtrk_sbo_print_opts {
+	normal,
+	detail,
+	// Prints the value of flags_, midi_status_.  If big, prints the byte 
+	// array d_ for the local container in addition to the heap-allocated
+	// data.  
+	debug  
+};
 
 std::string print(const mtrk_event_t&,
 			mtrk_sbo_print_opts=mtrk_sbo_print_opts::normal);

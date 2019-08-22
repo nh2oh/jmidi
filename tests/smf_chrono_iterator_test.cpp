@@ -1,5 +1,4 @@
 #include "gtest/gtest.h"
-#include "midi_raw.h"
 #include "mtrk_t.h"
 #include "mthd_t.h"
 #include "smf_t.h"

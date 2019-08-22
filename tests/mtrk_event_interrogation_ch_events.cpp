@@ -1,5 +1,4 @@
 #include "gtest/gtest.h"
-#include "midi_raw.h"  // Declares smf_event_type
 #include "mtrk_event_t.h"
 #include "mtrk_event_methods.h"
 #include "midi_raw_test_data.h"

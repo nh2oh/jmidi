@@ -1,6 +1,5 @@
 #include "gtest/gtest.h"
 #include "delta_time_test_data.h"
-#include "midi_raw.h"
 #include "midi_vlq.h"
 #include "midi_delta_time.h"
 #include "mtrk_event_t.h"
