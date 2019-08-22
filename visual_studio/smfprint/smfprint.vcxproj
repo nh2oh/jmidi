@@ -74,12 +74,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="smfprint.cpp" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\jmidi\jmidi.vcxproj">
       <Project>{2d5f43cc-a421-4482-855d-496461e189c8}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\examples\smfprint\smfprint.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

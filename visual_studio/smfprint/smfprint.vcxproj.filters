@@ -15,7 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="smfprint.cpp">
+    <ClCompile Include="..\..\examples\smfprint\smfprint.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

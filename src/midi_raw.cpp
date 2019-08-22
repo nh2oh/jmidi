@@ -7,7 +7,6 @@
 #include <cmath>  // std::round()
 #include <algorithm>  // std::clamp() in time_division_t
 
-
 bool operator==(const midi_timesig_t& rhs, const midi_timesig_t& lhs) {
 	return((rhs.clckspclk == lhs.clckspclk)
 		&& (rhs.log2denom == lhs.log2denom)
@@ -284,3 +283,77 @@ int32_t sec2ticks(const double& sec, const time_division_t& tdiv,
 	}
 }
 
+int32_t note2ticks(int32_t pow2, int32_t ndots, 
+					const time_division_t& tdiv) {
+	if ((!is_tpq(tdiv)) || (ndots<0)) {
+		return 0;
+	}
+
+	double dot_mod = 1.0+((std::exp2(ndots)-1.0)/std::exp2(ndots));
+	double nw = std::exp2(-pow2)*dot_mod;  // number-of-whole-notes
+	double nq = 4*nw;  // number-of-quarter-notes
+	return static_cast<int32_t>(nq*(tdiv.get_tpq()));
+}
+note_value_t ticks2note(int32_t nticks, const time_division_t& tdiv) {
+	if ((!is_tpq(tdiv)) || (nticks<0)) {
+		return {11,0};  // 2^11==2048; a 2048'th note
+	}
+	// TODO:  Appalling
+	// In addition to the obvious, note that the outter loop moves from
+	// _large_ towards _small_ note-values, but the inner loop moves from
+	// _small_ to _large_ ...
+	note_value_t best {-3,0};
+	int32_t err_best = 0x0FFFFFFF;
+	for (int bexp=-3; bexp<10; ++bexp) {
+		for (int ndot=0; ndot<4; ++ndot) {
+			note_value_t curr {bexp,ndot};
+			auto calc_ntk = note2ticks(bexp,ndot,tdiv);
+			auto err_curr = std::abs(nticks-calc_ntk);
+			if (err_curr < err_best) {
+				best = curr;
+				err_best = err_curr;
+			} else if (err_curr == err_best) {
+				if (curr.ndot < best.ndot) {
+					best = curr;
+					err_best = err_curr;
+				}
+			}
+		}
+	}
+	return best;
+}
+std::string print(const note_value_t& nv) {
+	std::string s;
+	switch (nv.exp) {
+		case -3:  s = "ow";  // octuple-whole
+			break;
+		case -2:  s = "qw";
+			break;
+		case -1:  s = "dw";
+			break;
+		case 0:  s = "w";
+			break;
+		case 1:  s = "h";
+			break;
+		case 2:  s = "q";
+			break;
+		case 3:  s = "e";
+			break;
+		case 4:  s = "sx";
+			break;
+		case 5:  s = "ths";  // 32'nd
+			break;
+		case 6:  s = "sxf";
+			break;
+		case 7:  s = "ote";  // 128'th
+			break;
+		default:  s = "?";
+			break;
+	};
+
+	for (int i=0; i<nv.ndot; ++i) {
+		s += '.';
+	}
+
+	return s;
+}

@@ -184,5 +184,23 @@ double ticks2sec(int32_t, const time_division_t&, int32_t=500000);
 // ticks = sec*(tpq/tempo)
 int32_t sec2ticks(const double&, const time_division_t&, int32_t=500000);
 
-
+//
+// int32_t note2ticks(int32_t pow2, int32_t ndots, 
+//						const time_division_t& tdiv);
+// pow2 == -1 => double-whole note
+// pow2 ==  0 => whole note
+// pow2 ==  1 => half note
+// pow2 ==  2 => quarter note
+// pow2 ==  3 => eighth note
+// pow2 ==  4 => sixteenth note
+//
+int32_t note2ticks(int32_t, int32_t, const time_division_t&);
+struct note_value_t {
+	int32_t exp;
+	int32_t ndot;
+};
+note_value_t ticks2note(int32_t, const time_division_t&);
+std::string print(const note_value_t&);
+// TODO:  Under what circumstances are these calcs inexact?  What 
+// kind of error guarantees can i make?
 

@@ -1,5 +1,6 @@
 #include "gtest/gtest.h"
 #include "midi_raw.h"
+#include "midi_examples.h"
 #include <cstdint>
 #include <cmath>
 #include <vector>
@@ -78,4 +79,41 @@ TEST(midi_tempo_and_timediv_tests, maxErrorTickSecondInterconversion) {
 }
 
 
+// 
+// Tests of note2ticks(...)
+// 
+TEST(midi_tempo_and_timediv_tests, noteValueToNumTicks) {
+	std::vector<time_division_t> tdivs {
+		// Small values
+		//time_division_t(1),time_division_t(2),time_division_t(3),
+		//time_division_t(20),time_division_t(24),time_division_t(25),
+		// "Normal" values
+		time_division_t(48),time_division_t(96),time_division_t(120),
+		time_division_t(152),time_division_t(960),
+		// Max allowed value for ticks-per-qnt
+		time_division_t(0x7FFF)
+	};
+	std::vector<int32_t> base_exp {
+		-3,-2,-1,  // -3 => 8 whole notes, -1 => double-whole
+		0,  // whole note
+		1,2,3,4,5  // 1 => half note, 5=>32'nd note
+	};
+	std::vector<int32_t> ndots {
+		0,1,2,3
+	};
 
+	for (const auto& tdiv: tdivs) {
+		for (const auto& exp: base_exp) {
+			for (const auto& ndot : ndots) {
+				auto nticks = note2ticks(exp,ndot,tdiv);
+				auto note_backcalc = ticks2note(nticks,tdiv);
+
+				bool bexp = (note_backcalc.exp==exp);
+				bool bdot = (note_backcalc.ndot==ndot);
+
+				EXPECT_EQ(note_backcalc.exp,exp);
+				EXPECT_EQ(note_backcalc.ndot,ndot);
+			}  // to next ndot
+		}  // to next pow2
+	}  // to next tdiv
+}

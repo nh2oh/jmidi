@@ -1,5 +1,6 @@
 #include "event_sizes_benchmark.h"
 #include "smf_t.h"
+#include "util.h"
 #include <chrono>
 #include <filesystem>
 #include <thread>
@@ -19,6 +20,8 @@ int main(int argc, char *argv[]) {
 		<< std::endl;
 
 	std::filesystem::path basedir 
+		//= "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\0_to_I\\cl_to_I\\";
+		//= "C:\\Users\\ben\\Desktop\\midi_random_collection\\";
 		= "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\";
 	event_sizes_benchmark(opts.mode,opts.Nth,basedir);
 
@@ -56,7 +59,7 @@ opts_t get_options(int argc, char **argv) {
 		result.Nth = opts[0].def_val;
 	}
 	result.mode = opts[1].val;
-	if ((opts[1].val != 0) && (opts[1].val != 1)) {
+	if ((opts[1].val != 0) && (opts[1].val != 1) && (opts[1].val != 2)) {
 		result.mode = opts[1].def_val;
 	}
 	return result;
@@ -65,14 +68,14 @@ opts_t get_options(int argc, char **argv) {
 
 int event_sizes_benchmark(int mode, int Nth,
 							const std::filesystem::path& basedir) {
-	if ((mode != 0) && (mode != 1)) {
+	if ((mode != 0) && (mode != 1) && (mode != 2)) {
 		mode = 0;  // 0 => batch, 1=>istreambuf_iterator
 	}
 	if (Nth <= 0) {
 		Nth = 1;
 	}
 
-	auto rdi = std::filesystem::recursive_directory_iterator(basedir.parent_path());
+	auto rdi = std::filesystem::recursive_directory_iterator(basedir);//.parent_path());
 	std::vector<std::vector<std::filesystem::path>> thread_files(Nth);
 	int i=0;
 	for (const auto& dir_ent : rdi) {
@@ -98,7 +101,7 @@ int event_sizes_benchmark(int mode, int Nth,
 	}
 	for (auto& t : vth) { t.join(); }
 	auto tend = std::chrono::high_resolution_clock::now();
-	auto tdelta = std::chrono::duration_cast<std::chrono::milliseconds>(tend-tstart);;
+	auto tdelta = std::chrono::duration_cast<std::chrono::milliseconds>(tend-tstart);
 	std::cout << Nth << "-thread version finished in d == " 
 		<< tdelta.count() << " milliseconds." << std::endl << std::endl;
 
@@ -114,16 +117,16 @@ int avg_and_max_event_sizes(const std::vector<std::filesystem::path>& files,
 		if (!has_midifile_extension(curr_path)) {
 			continue;
 		}
-		std::basic_ifstream<char> f(curr_path,
-				std::ios_base::in|std::ios_base::binary);
-		if (!f.is_open() || !f.good()) {
-			continue;
-		}
-		++n_midi_files;
 
 		maybe_smf_t maybe_smf;
 		smf_error_t smf_error;
 		if (mode == 0) {  // Batch
+			std::basic_ifstream<char> f(curr_path,
+				std::ios_base::in|std::ios_base::binary);
+			if (!f.is_open() || !f.good()) {
+				continue;
+			}
+			++n_midi_files;
 			// Read the file into fdata, close the file
 			f.seekg(0,std::ios::end);
 			auto fsize = f.tellg();
@@ -133,12 +136,28 @@ int avg_and_max_event_sizes(const std::vector<std::filesystem::path>& files,
 			//auto n = std::min(fdata.size(),std::size_t{25});
 			make_smf(fdata.data(),fdata.data()+fdata.size(),
 				&maybe_smf,&smf_error);
+			f.close();
 		} else if (mode == 1) {  // iostreams
+			std::basic_ifstream<char> f(curr_path,
+				std::ios_base::in|std::ios_base::binary);
+			if (!f.is_open() || !f.good()) {
+				continue;
+			}
+			++n_midi_files;
 			std::istreambuf_iterator<char> it(f);
 			auto end = std::istreambuf_iterator<char>();
 			make_smf(it,end,&maybe_smf,&smf_error);
+			f.close();
+		} else if (mode == 2) {  // csio
+			auto nbytes = std::filesystem::file_size(curr_path);
+			fdata.resize(nbytes);
+			auto b = read_binary_csio(curr_path,fdata);
+			if (!b) { continue; }
+			++n_midi_files;
+			make_smf(fdata.data(),fdata.data()+fdata.size(),
+				&maybe_smf,&smf_error);
 		}
-		f.close();
+		
 
 		outfile << "File " << std::to_string(n_midi_files) << ")  " 
 			<< curr_path.string() << '\n';
