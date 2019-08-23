@@ -258,14 +258,14 @@ mtrk_t::validate_t mtrk_t::validate() const {
 	int32_t cumtk = 0;  // Cumulative delta-time
 	for (int i=0; i<this->evnts_.size(); ++i) {
 		auto s = this->evnts_[i].status_byte();
-		if (!is_status_byte(s) || is_unrecognized_status_byte(s)) {
+		if (!jmid::is_status_byte(s) || jmid::is_unrecognized_status_byte(s)) {
 			r.error = "this->evnts_[i].status_byte() == " + std::to_string(s)
 				+ " is invalid\n\t";
 			return r;
 		}
 		
 		cumtk += this->evnts_[i].delta_time();
-		found_ch_ev = (found_ch_ev || is_channel_status_byte(s));
+		found_ch_ev = (found_ch_ev || jmid::is_channel_status_byte(s));
 		
 		if (is_note_on(this->evnts_[i])) {
 			curr_chev_data = get_channel_event(this->evnts_[i]);

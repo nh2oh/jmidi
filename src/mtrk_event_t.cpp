@@ -27,7 +27,7 @@ mtrk_event_t::mtrk_event_t(int32_t dt, ch_event_data_t md) noexcept {
 	this->d_ = mtrk_event_t_internal::small_bytevec_t();
 	md = normalize(md);
 	unsigned char s = (md.status_nybble)|(md.ch);
-	auto n = channel_status_byte_n_data_bytes(s);
+	auto n = jmid::channel_status_byte_n_data_bytes(s);
 	// NB:  n==0 if s is invalid, but this is impossible after a call
 	// to normalize().  
 	this->d_.resize_small2small_nocopy(delta_time_field_size(dt)+1+n);  // +1=>s
@@ -122,7 +122,6 @@ mtrk_event_t::const_iterator mtrk_event_t::event_begin() noexcept {
 }
 mtrk_event_t::const_iterator mtrk_event_t::payload_begin() const noexcept {
 	return this->payload_range_impl().begin;
-	return this->payload_range_impl().begin;
 }
 mtrk_event_t::const_iterator mtrk_event_t::payload_begin() noexcept {
 	return this->payload_range_impl().begin;
@@ -146,10 +145,10 @@ mtrk_event_iterator_range_t mtrk_event_t::payload_range_impl() const noexcept {
 	auto it_end = this->d_.end();
 	auto it = advance_to_dt_end(this->d_.begin(),it_end);
 	auto s = *it;
-	if (is_meta_status_byte(s)) {
+	if (jmid::is_meta_status_byte(s)) {
 		it += 2;  // 0xFFu, type-byte
 		it = advance_to_vlq_end(it,it_end);
-	} else if (is_sysex_status_byte(s)) {
+	} else if (jmid::is_sysex_status_byte(s)) {
 		it += 1;  // 0xF0u or 0xF7u
 		it = advance_to_vlq_end(it,it_end);
 	}
@@ -163,7 +162,7 @@ unsigned char mtrk_event_t::status_byte() const noexcept {
 }
 unsigned char mtrk_event_t::running_status() const noexcept {
 	auto p = advance_to_dt_end(this->d_.begin(),this->d_.end());
-	return get_running_status_byte(*p,0x00u);
+	return jmid::get_running_status_byte(*p,0x00u);
 }
 mtrk_event_t::size_type mtrk_event_t::data_size() const noexcept {  // Not including delta-t
 	auto end = this->d_.end();
@@ -336,14 +335,14 @@ validate_channel_event(const unsigned char *beg, const unsigned char *end,
 		return result;
 	}
 	auto p = beg;
-	auto s = get_status_byte(*p,rs);
-	if (!is_channel_status_byte(s)) {
+	auto s = jmid::get_status_byte(*p,rs);
+	if (!jmid::is_channel_status_byte(s)) {
 		result.error = mtrk_event_error_t::errc::invalid_status_byte;
 		return result;
 	}
 	result.data.status_nybble = s&0xF0u;
 	result.data.ch = s&0x0Fu;
-	int expect_n_data_bytes = channel_status_byte_n_data_bytes(s);
+	int expect_n_data_bytes = jmid::channel_status_byte_n_data_bytes(s);
 	if (*p==s) {
 		++p;  // The event has a local status-byte
 	}
@@ -353,13 +352,13 @@ validate_channel_event(const unsigned char *beg, const unsigned char *end,
 	}
 
 	result.data.p1 = *p++;
-	if (!is_data_byte(result.data.p1)) {
+	if (!jmid::is_data_byte(result.data.p1)) {
 		result.error = mtrk_event_error_t::errc::channel_invalid_data_byte;
 		return result;
 	}
 	if (expect_n_data_bytes==2) {
 		result.data.p2 = *p++;
-		if (!is_data_byte(result.data.p2)) {
+		if (!jmid::is_data_byte(result.data.p2)) {
 			result.error = mtrk_event_error_t::errc::channel_invalid_data_byte;
 			return result;
 		}
@@ -377,7 +376,7 @@ validate_meta_event(const unsigned char *beg, const unsigned char *end) {
 		result.error = mtrk_event_error_t::errc::sysex_or_meta_overflow_in_header;
 		return result;
 	}
-	if (!is_meta_status_byte(*beg)) {
+	if (!jmid::is_meta_status_byte(*beg)) {
 		result.error = mtrk_event_error_t::errc::invalid_status_byte;
 		return result;
 	}
@@ -407,7 +406,7 @@ validate_sysex_event(const unsigned char *beg, const unsigned char *end) {
 		result.error = mtrk_event_error_t::errc::sysex_or_meta_overflow_in_header;
 		return result;
 	}
-	if (!is_sysex_status_byte(*beg)) {
+	if (!jmid::is_sysex_status_byte(*beg)) {
 		result.error = mtrk_event_error_t::errc::invalid_status_byte;
 		return result;
 	}

@@ -18,6 +18,7 @@ struct midi_timesig_t {
 	uint8_t ntd32pq {8};  // "Number of notated 32'nd notes per MIDI q nt"; "bb"
 };
 bool operator==(const midi_timesig_t&, const midi_timesig_t&);
+bool operator!=(const midi_timesig_t&, const midi_timesig_t&);
 
 // P.139
 // The default-constructed values of si==0, mi==0 => C-major
@@ -30,7 +31,8 @@ uint8_t nflats(const midi_keysig_t&);
 bool is_major(const midi_keysig_t&);
 bool is_minor(const midi_keysig_t&);
 // TODO:  Missing 'select channel mode'
-enum : uint8_t {
+// TODO:  These are unused
+/*enum : uint8_t {
 	note_off = 0x80u,
 	note_on = 0x90u,
 	key_pressure = 0xA0u,
@@ -38,7 +40,7 @@ enum : uint8_t {
 	prog_change = 0xC0u,  // 1 data byte
 	ch_pressure = 0xD0u,  // 1 data byte
 	pitch_bend = 0xE0u
-};
+};*/
 struct ch_event_data_t {
 	uint8_t status_nybble {0x00u};  // most-significant nybble of the status byte
 	uint8_t ch {0x00u};  // least-significant nybble of the status byte

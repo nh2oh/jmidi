@@ -8,10 +8,13 @@
 
 
 bool operator==(const midi_timesig_t& rhs, const midi_timesig_t& lhs) {
-	return((rhs.clckspclk == lhs.clckspclk)
+	return ((rhs.clckspclk == lhs.clckspclk)
 		&& (rhs.log2denom == lhs.log2denom)
 		&& (rhs.ntd32pq == lhs.ntd32pq)
 		&& (rhs.num == lhs.num));
+}
+bool operator!=(const midi_timesig_t& rhs, const midi_timesig_t& lhs) {
+	return !(rhs==lhs);
 }
 
 uint8_t nsharps(const midi_keysig_t& ks) {
@@ -37,16 +40,16 @@ ch_event_data_t make_midi_ch_event_data(int sn, int ch, int p1, int p2) {
 }
 bool verify(const ch_event_data_t& md) {
 	auto s = ((md.status_nybble & 0xF0u) + (md.ch & 0x0Fu));
-	if (!is_channel_status_byte(s)) {
+	if (!jmid::is_channel_status_byte(s)) {
 		return false;
 	}
 	if (md.ch > 0x0Fu) {
 		return false;
 	}
-	if (!is_data_byte(md.p1)) {
+	if (!jmid::is_data_byte(md.p1)) {
 		return false;
 	}
-	if ((channel_status_byte_n_data_bytes(s)==2) && !is_data_byte(md.p2)) {
+	if ((jmid::channel_status_byte_n_data_bytes(s)==2) && !jmid::is_data_byte(md.p2)) {
 		return false;
 	}
 	return true;

@@ -4,6 +4,7 @@
 #include "midi_delta_time.h"
 #include "mtrk_event_t.h"
 #include "mtrk_event_methods.h"
+#include "midi_status_byte.h"  // channel_status_byte_n_data_bytes()
 #include <vector>
 #include <cstdint>
 #include <array>
@@ -84,14 +85,14 @@ TEST(mtrk_event_ctor_tests, MidiChEventStructCtorValidInputData) {
 	// ch_event_data_t {status, ch, p1, p2}
 	std::vector<test_t> tests {
 		// Events w/ 2 data bytes:
-		{0, {note_on,0,57,32}, 3},
-		{23, {note_off,1,57,32}, 3},
-		{12354, {key_pressure,0,57,32}, 3},
-		{0, {ctrl_change,15,72,100}, 3},
-		{45541, {pitch_bend,0,127,127}, 3},
+		{0, {0x90,0,57,32}, 3},
+		{23, {0x80,1,57,32}, 3},
+		{12354, {0xA0u,0,57,32}, 3},
+		{0, {0xB0u,15,72,100}, 3},
+		{45541, {0xE0u,0,127,127}, 3},
 		// Events w/ 1 data byte:
-		{785, {prog_change,14,127,0x00u}, 2},
-		{2, {ch_pressure,2,0,0x00u}, 2}
+		{785, {0xC0u,14,127,0x00u}, 2},
+		{2, {0xD0u,2,0,0x00u}, 2}
 	};
 	
 	for (const auto& tc : tests) {
@@ -139,34 +140,34 @@ TEST(mtrk_event_ctor_tests, MidiChEventStructCtorInvalidInputData) {
 	};
 	// ch_event_data_t {status, ch, p1, p2}
 	std::vector<test_t> tests {
-		{0, {note_on,16,57,32}},  // Invalid channel (>15)
-		{1, {note_on,127,57,32}},  // Invalid channel (>15)
-		{128, {note_on,14,128,32}},  // Invalid p1
-		{256, {note_on,14,129,32}},  // Invalid p1
-		{512, {note_on,14,7,130}},  // Invalid p2
-		{1024, {note_on,14,57,255}},  // Invalid p2
+		{0, {0x90,16,57,32}},  // Invalid channel (>15)
+		{1, {0x90,127,57,32}},  // Invalid channel (>15)
+		{128, {0x90,14,128,32}},  // Invalid p1
+		{256, {0x90,14,129,32}},  // Invalid p1
+		{512, {0x90,14,7,130}},  // Invalid p2
+		{1024, {0x90,14,57,255}},  // Invalid p2
 
 		// Exactly the same as the set above, but w/a 1-data-byte msg type
-		{0, {prog_change,16,57,32}},  // Invalid channel
-		{1, {prog_change,127,57,32}},  // Invalid channel
-		{128, {prog_change,14,128,32}},  // Invalid p1
-		{256, {prog_change,14,129,32}},  // Invalid p1
-		{512, {prog_change,14,7,130}},  // Invalid p2
-		{1024, {prog_change,14,57,255}},  // Invalid p2
+		{0, {0xC0u,16,57,32}},  // Invalid channel
+		{1, {0xC0u,127,57,32}},  // Invalid channel
+		{128, {0xC0u,14,128,32}},  // Invalid p1
+		{256, {0xC0u,14,129,32}},  // Invalid p1
+		{512, {0xC0u,14,7,130}},  // Invalid p2
+		{1024, {0xC0u,14,57,255}},  // Invalid p2
 
 		// Exactly the same as the set above, but w/an invalid status-nybble
-		{0, {note_on&0x7Fu,16,57,32}},  // Invalid channel
-		{1, {note_on&0x7Fu,127,57,32}},  // Invalid channel
-		{128, {note_on&0x7Fu,14,128,32}},  // Invalid p1
-		{256, {note_on&0x7Fu,14,129,32}},  // Invalid p1
-		{512, {note_on&0x7Fu,14,7,130}},  // Invalid p2
-		{1024, {note_on&0x7Fu,14,57,255}}  // Invalid p2
+		{0, {0x90u&0x7Fu,16,57,32}},  // Invalid channel
+		{1, {0x90u&0x7Fu,127,57,32}},  // Invalid channel
+		{128, {0x90u&0x7Fu,14,128,32}},  // Invalid p1
+		{256, {0x90u&0x7Fu,14,129,32}},  // Invalid p1
+		{512, {0x90u&0x7Fu,14,7,130}},  // Invalid p2
+		{1024, {0x90u&0x7Fu,14,57,255}}  // Invalid p2
 	};
 	
 	for (const auto& tc : tests) {
 		auto expect_ans = normalize(tc.md_input);
 		auto expect_s = expect_ans.status_nybble|expect_ans.ch;
-		auto expect_n_data = channel_status_byte_n_data_bytes(expect_s);
+		auto expect_n_data = jmid::channel_status_byte_n_data_bytes(expect_s);
 		int curr_dt_size = vlq_field_size(tc.dt_input);
 		int expect_size = curr_dt_size + 1 
 			+ expect_n_data;

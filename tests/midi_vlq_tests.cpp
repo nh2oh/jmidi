@@ -1,6 +1,5 @@
 #include "gtest/gtest.h"
 #include "midi_vlq.h"
-#include "midi_vlq_deprecated.h"
 #include <array>
 #include <cstdint>
 #include <limits>
@@ -527,7 +526,7 @@ TEST(midi_vlq_tests, WriteVLFieldInvalidInput) {
 
 
 
-
+/*
 // vlq_field_literal_value() is in midi_vlq_deprecated.h
 TEST(midi_vlq_tests, VlqLiteralValue) {
 	uint32_t a {137};
@@ -546,6 +545,6 @@ TEST(midi_vlq_tests, VlqLiteralValue) {
 	uint32_t d_ans = 0x817F; 
 	EXPECT_EQ(d_ans,vlq_field_literal_value(d));
 }
-
+*/
 
 

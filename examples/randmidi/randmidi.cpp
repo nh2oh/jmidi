@@ -2,13 +2,11 @@
 #include "util.h"
 #include "smf_t.h"
 #include "midi_time.h"
-#include <vector>
 #include <string>
 #include <iostream>
 #include <random>
 #include <array>
 #include <filesystem>
-
 
 int main(int argc, char *argv[]) {
 	if (argc < 2) {

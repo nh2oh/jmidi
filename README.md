@@ -11,13 +11,11 @@ Example:  Generate a random MIDI file
 #include "util.h"
 #include "smf_t.h"
 #include "midi_time.h"
-#include <vector>
 #include <string>
 #include <iostream>
 #include <random>
 #include <array>
 #include <filesystem>
-
 
 int main(int argc, char *argv[]) {
 	if (argc < 2) {
@@ -44,8 +42,7 @@ int main(int argc, char *argv[]) {
 		1.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0,
 		1.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0
 	};
-	std::discrete_distribution<int> rd_nt(major_weights.begin(),
-											major_weights.end());
+	std::discrete_distribution<int> rd_nt(major_weights.begin(),major_weights.end());
 
 	auto mthd = mthd_t();
 	mthd.set_format(0);

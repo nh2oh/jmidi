@@ -8,13 +8,6 @@
 #include <cstdint>
 
 
-
-
-
-
-
-
-
 //
 // class mtrk_event_t
 // A container for MTrk events.  
@@ -401,12 +394,12 @@ InIt make_mtrk_event(InIt it, InIt end, int32_t dt,
 		return it;
 	}
 	uc = static_cast<unsigned char>(*it++);  ++i;
-	auto s = get_status_byte(uc,rs);
+	auto s = jmid::get_status_byte(uc,rs);
 	*dest++ = s;
 
-	if (is_channel_status_byte(s)) {
-		auto n = channel_status_byte_n_data_bytes(s);
-		if (is_data_byte(uc)) {
+	if (jmid::is_channel_status_byte(s)) {
+		auto n = jmid::channel_status_byte_n_data_bytes(s);
+		if (jmid::is_data_byte(uc)) {
 			*dest++ = uc;
 			n-=1;
 		}
@@ -416,16 +409,16 @@ InIt make_mtrk_event(InIt it, InIt end, int32_t dt,
 				return it;
 			}
 			uc = static_cast<unsigned char>(*it++);  ++i;
-			if (!is_data_byte(uc)) {
+			if (!jmid::is_data_byte(uc)) {
 				set_error(mtrk_event_error_t::errc::channel_invalid_data_byte);
 				return it;
 			}
 			*dest++ = uc;
 		}
 		result->event.d_.resize(dest-result->event.d_.begin());
-	} else if (is_sysex_or_meta_status_byte(s)) {
+	} else if (jmid::is_sysex_or_meta_status_byte(s)) {
 		// s == 0xFF || 0xF7 || 0xF0
-		if (is_meta_status_byte(s)) {
+		if (jmid::is_meta_status_byte(s)) {
 			if (it==end) {
 				set_error(mtrk_event_error_t::errc::sysex_or_meta_overflow_in_header);
 				return it;
@@ -455,7 +448,7 @@ InIt make_mtrk_event(InIt it, InIt end, int32_t dt,
 			uc = static_cast<unsigned char>(*it++);  ++i;
 			*dest++ = uc;
 		}
-	} else if (is_unrecognized_status_byte(s) || !is_status_byte(s)) {
+	} else if (jmid::is_unrecognized_status_byte(s) || !jmid::is_status_byte(s)) {
 		set_error(mtrk_event_error_t::errc::invalid_status_byte);
 		return it;
 	}

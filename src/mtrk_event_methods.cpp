@@ -18,7 +18,7 @@
 std::string print(const mtrk_event_t& evnt, mtrk_sbo_print_opts opts) {
 	std::string s {};
 	s += ("delta-time = " + std::to_string(evnt.delta_time()) + ", ");
-	s += "type = " + print(classify_status_byte(evnt.status_byte())) + ", ";
+	s += "type = " + print(jmid::classify_status_byte(evnt.status_byte())) + ", ";
 	s += ("size = " + std::to_string(evnt.size()) + ", ");
 	s += ("data_size = " + std::to_string(evnt.data_size()) + "\n");
 	
@@ -173,7 +173,7 @@ meta_event_t classify_meta_event(const mtrk_event_t& ev) {
 }
 bool is_meta(const mtrk_event_t& ev) {
 	auto s = ev.status_byte();
-	return is_meta_status_byte(s);
+	return jmid::is_meta_status_byte(s);
 }
 bool is_meta(const mtrk_event_t& ev, const meta_event_t& mtype) {
 	if (!is_meta(ev)) {
@@ -397,11 +397,11 @@ ch_event_data_t get_channel_event_impl(const mtrk_event_t& ev) {
 	return result;
 }
 bool is_channel(const mtrk_event_t& ev) {  // voice or mode
-	return is_channel_status_byte(ev.status_byte());
+	return jmid::is_channel_status_byte(ev.status_byte());
 }
 bool is_channel_voice(const mtrk_event_t& ev) {
 	auto s = ev.status_byte();
-	if (!is_channel_status_byte(s)) {
+	if (!jmid::is_channel_status_byte(s)) {
 		return false;
 	}
 	if ((s&0xF0u)!=0xB0u) {
@@ -466,7 +466,7 @@ mtrk_event_t make_ch_event_generic_unsafe(int32_t dt, const ch_event_data_t& md)
 	mtrk_event_t result = mtrk_event_t(mtrk_event_t::init_small_w_size_0_t());
 
 	unsigned char s = md.status_nybble|md.ch;
-	auto n = channel_status_byte_n_data_bytes(s);
+	auto n = jmid::channel_status_byte_n_data_bytes(s);
 	result.d_.resize_small2small_nocopy(delta_time_field_size(dt) + 1 + n);  // +1 for the status byte
 	auto it = result.d_.begin();
 	it = write_delta_time(dt,it);
@@ -562,7 +562,7 @@ mtrk_event_t make_matching_off90(int32_t dt, const mtrk_event_t& on_ev) {
 }
 
 bool is_sysex(const mtrk_event_t& ev) {
-	return is_sysex_status_byte(ev.status_byte());
+	return jmid::is_sysex_status_byte(ev.status_byte());
 }
 bool is_sysex_f0(const mtrk_event_t& ev) {
 	auto s = ev.status_byte();

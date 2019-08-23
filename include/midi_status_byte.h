@@ -3,12 +3,12 @@
 #include <cstdint>
 
 
-// 
+namespace jmid {
+
+//
 // Status byte/data byte classification, running-status calculation
 //
-
-
-enum class status_byte_type : uint8_t {
+enum class status_byte_type : std::uint8_t {
 	channel,
 	sysex_f0,
 	sysex_f7,
@@ -46,4 +46,7 @@ unsigned char get_status_byte(unsigned char, unsigned char);
 // Otherwise, returns 0x00u.  
 unsigned char get_running_status_byte(unsigned char, unsigned char);
 // Implements table I of the midi std
-int32_t channel_status_byte_n_data_bytes(unsigned char);
+std::int32_t channel_status_byte_n_data_bytes(unsigned char);
+
+}  // namespace jmid
+

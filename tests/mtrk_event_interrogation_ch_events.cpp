@@ -35,14 +35,14 @@ TEST(mtrk_event_channel_interrogators, isChannelVoiceModeAssortedEvents) {
 	};	
 	std::vector<test_t> tests {
 		// Events w/ 2 data bytes:
-		{0, {note_on,0,57,32}, 3},
-		{23, {note_off,1,57,32}, 3},
-		{12354, {key_pressure,0,57,32}, 3},
-		{0, {ctrl_change,15,72,100}, 3},
-		{45541, {pitch_bend,0,127,127}, 3},
+		{0, {0x90,0,57,32}, 3},
+		{23, {0x80,1,57,32}, 3},
+		{12354, {0xA0,0,57,32}, 3},
+		{0, {0xB0,15,72,100}, 3},
+		{45541, {0xE0,0,127,127}, 3},
 		// Events w/ 1 data byte:
-		{785, {prog_change,14,127,0x00u}, 2},
-		{2, {ch_pressure,2,0,0x00u}, 2}
+		{785, {0xC0,14,127,0x00u}, 2},
+		{2, {0xD0,2,0,0x00u}, 2}
 	};
 	
 	for (const auto& tc : tests) {
