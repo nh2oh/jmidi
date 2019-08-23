@@ -102,10 +102,10 @@ std::string meta_generic_gettext(const mtrk_event_t&);
 int32_t get_tempo(const mtrk_event_t&, int32_t=500000);
 // A default {}-constructed midi_timesig_t contains the defaults as
 // stipulated by the MIDI std.  
-midi_timesig_t get_timesig(const mtrk_event_t&, midi_timesig_t={});
+jmid::midi_timesig_t get_timesig(const mtrk_event_t&, jmid::midi_timesig_t={});
 // A default {}-constructed midi_keysig_t contains defaults corresponding
 // to C-major.  
-midi_keysig_t get_keysig(const mtrk_event_t&, midi_keysig_t={});
+jmid::midi_keysig_t get_keysig(const mtrk_event_t&, jmid::midi_keysig_t={});
 // Gets the payload for a sequencer-specific meta-event into a vector of
 // unsigned char.  For the first (sing e argument) overload, if the event is
 // not a meta_event_t::seqspecific, an empty vector is returned.  Callers can 
@@ -130,7 +130,7 @@ mtrk_event_t make_chprefix(const int32_t&, const uint8_t&);
 mtrk_event_t make_tempo(const int32_t&, const uint32_t&);
 mtrk_event_t make_eot(const int32_t&);
 // TODO:  Are there bounds on the values of the ts params?
-mtrk_event_t make_timesig(const int32_t&, const midi_timesig_t&);
+mtrk_event_t make_timesig(const int32_t&, const jmid::midi_timesig_t&);
 mtrk_event_t make_instname(const int32_t&, const std::string&);
 mtrk_event_t make_trackname(const int32_t&, const std::string&);
 mtrk_event_t make_lyric(const int32_t&, const std::string&);
@@ -151,10 +151,10 @@ mtrk_event_t make_meta_generic_text(const int32_t&, const meta_event_t&,
 // For non-channel events, returns the ch_event_data_t specified by arg2.  
 // If arg2 is empty, returns a ch_event_data_t containing invalid values
 // in the event the mtrk_event_t is a non-channel event.  
-ch_event_data_t get_channel_event(const mtrk_event_t&, ch_event_data_t={});
+jmid::ch_event_data_t get_channel_event(const mtrk_event_t&, jmid::ch_event_data_t={});
 // Copies at most the first 3 bytes of the range [payload_begin(),
 // payoad_end()) into the appropriate fields of a midi_ch_data_t.  
-ch_event_data_t get_channel_event_impl(const mtrk_event_t&);
+jmid::ch_event_data_t get_channel_event_impl(const mtrk_event_t&);
 //
 // Channel event classification
 //
@@ -211,31 +211,31 @@ bool is_onoff_pair(int, int, int, int);
 // == 0x90u, even if the status_nybble of the ch_event_data_t passed in is
 // == 0xA0u.  
 //
-mtrk_event_t make_ch_event_generic_unsafe(int32_t, const ch_event_data_t&) noexcept;
-mtrk_event_t make_ch_event(int32_t, const ch_event_data_t&);
+mtrk_event_t make_ch_event_generic_unsafe(int32_t, const jmid::ch_event_data_t&) noexcept;
+mtrk_event_t make_ch_event(int32_t, const jmid::ch_event_data_t&);
 // status nybble, channel, p1, p2
 mtrk_event_t make_ch_event(int32_t, int, int, int, int);
 // Sets the status nybble to 0x90u and p2 to be the greater of the value
 // passed in or 1 (a note-on event can not have a velocity of 0).  
-mtrk_event_t make_note_on(int32_t, ch_event_data_t);
+mtrk_event_t make_note_on(int32_t, jmid::ch_event_data_t);
 mtrk_event_t make_note_on(int32_t, int, int, int);
 // Makes a channel event w/ status nybble == 0x80u
-mtrk_event_t make_note_off(int32_t, ch_event_data_t);
+mtrk_event_t make_note_off(int32_t, jmid::ch_event_data_t);
 mtrk_event_t make_note_off(int32_t, int, int, int);
 // Makes a channel event w/ status nybble == 0x90u (normally => note on),
 // but w/a p2 of 0.  
-mtrk_event_t make_note_off90(int32_t, ch_event_data_t);
-mtrk_event_t make_key_pressure(int32_t, ch_event_data_t);  // 0xA0u
+mtrk_event_t make_note_off90(int32_t, jmid::ch_event_data_t);
+mtrk_event_t make_key_pressure(int32_t, jmid::ch_event_data_t);  // 0xA0u
 mtrk_event_t make_key_pressure(int32_t, int, int, int);
-mtrk_event_t make_control_change(int32_t, ch_event_data_t);  // 0xB0u
+mtrk_event_t make_control_change(int32_t, jmid::ch_event_data_t);  // 0xB0u
 mtrk_event_t make_control_change(int32_t, int, int, int);
-mtrk_event_t make_program_change(int32_t, ch_event_data_t);  // 0xC0u
+mtrk_event_t make_program_change(int32_t, jmid::ch_event_data_t);  // 0xC0u
 mtrk_event_t make_program_change(int32_t, int, int);
-mtrk_event_t make_channel_pressure(int32_t, ch_event_data_t);  // 0xD0u
+mtrk_event_t make_channel_pressure(int32_t, jmid::ch_event_data_t);  // 0xD0u
 mtrk_event_t make_channel_pressure(int32_t, int, int);
-mtrk_event_t make_pitch_bend(int32_t, ch_event_data_t);  // 0xE0u
+mtrk_event_t make_pitch_bend(int32_t, jmid::ch_event_data_t);  // 0xE0u
 mtrk_event_t make_pitch_bend(int32_t, int, int, int);
-mtrk_event_t make_channel_mode(int32_t, ch_event_data_t);  // 0xB0u
+mtrk_event_t make_channel_mode(int32_t, jmid::ch_event_data_t);  // 0xB0u
 mtrk_event_t make_channel_mode(int32_t, int, int, int);
 
 // On/off event pairs

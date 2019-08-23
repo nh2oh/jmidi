@@ -1,4 +1,5 @@
 #include "gtest/gtest.h"
+#include "aux_types.h"
 #include "mtrk_event_t.h"
 #include "mtrk_event_methods.h"
 #include "midi_raw_test_data.h"
@@ -30,7 +31,7 @@ TEST(mtrk_event_channel_interrogators, isChannelVoiceModeTestSetCEvents) {
 TEST(mtrk_event_channel_interrogators, isChannelVoiceModeAssortedEvents) {
 	struct test_t {
 		int32_t dt_input {0};
-		ch_event_data_t md_input {};  // ch_event_data_t {status, ch, p1, p2}
+		jmid::ch_event_data_t md_input {};  // ch_event_data_t {status, ch, p1, p2}
 		int32_t data_size {0};
 	};	
 	std::vector<test_t> tests {

@@ -23,9 +23,9 @@ mtrk_event_t::mtrk_event_t(int32_t dt) noexcept {
 	this->default_init(dt);
 	//mtrk_event_t::call_counts.dt_ctor++;
 }
-mtrk_event_t::mtrk_event_t(int32_t dt, ch_event_data_t md) noexcept {
+mtrk_event_t::mtrk_event_t(int32_t dt, jmid::ch_event_data_t md) noexcept {
 	this->d_ = mtrk_event_t_internal::small_bytevec_t();
-	md = normalize(md);
+	md = jmid::normalize(md);
 	unsigned char s = (md.status_nybble)|(md.ch);
 	auto n = jmid::channel_status_byte_n_data_bytes(s);
 	// NB:  n==0 if s is invalid, but this is impossible after a call

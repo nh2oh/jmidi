@@ -2,6 +2,7 @@
 #include "mtrk_event_t.h"
 #include "mtrk_event_methods.h"
 #include "midi_delta_time.h"
+#include "aux_types.h"
 #include <vector>
 #include <cstdint>
 #include <string>
@@ -89,7 +90,7 @@ TEST(mtrk_event_t_meta_factories, makeEOT) {
 TEST(mtrk_event_t_meta_factories, makeTimesig) {
 	struct test_t {
 		int32_t dt {0};
-		midi_timesig_t ts {0,0,0,0};
+		jmid::midi_timesig_t ts {0,0,0,0};
 	};
 
 	std::vector<test_t> tests {

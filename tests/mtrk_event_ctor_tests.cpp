@@ -2,6 +2,7 @@
 #include "delta_time_test_data.h"
 #include "midi_vlq.h"
 #include "midi_delta_time.h"
+#include "aux_types.h"
 #include "mtrk_event_t.h"
 #include "mtrk_event_methods.h"
 #include "midi_status_byte.h"  // channel_status_byte_n_data_bytes()
@@ -79,7 +80,7 @@ TEST(mtrk_event_ctor_tests, dtOnlyCtor) {
 TEST(mtrk_event_ctor_tests, MidiChEventStructCtorValidInputData) {
 	struct test_t {
 		uint32_t dt_input {0};
-		ch_event_data_t md_input {};
+		jmid::ch_event_data_t md_input {};
 		uint32_t data_size {0};
 	};
 	// ch_event_data_t {status, ch, p1, p2}
@@ -136,7 +137,7 @@ TEST(mtrk_event_ctor_tests, MidiChEventStructCtorValidInputData) {
 TEST(mtrk_event_ctor_tests, MidiChEventStructCtorInvalidInputData) {
 	struct test_t {
 		uint32_t dt_input;
-		ch_event_data_t md_input;
+		jmid::ch_event_data_t md_input;
 	};
 	// ch_event_data_t {status, ch, p1, p2}
 	std::vector<test_t> tests {

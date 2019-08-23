@@ -244,7 +244,7 @@ mtrk_t::validate_t mtrk_t::validate() const {
 	};
 	std::vector<sounding_notes_t> sounding;
 	sounding.reserve(10);  // Expect <= 10 simultaneously sounding notes???
-	ch_event_data_t curr_chev_data;  //mtrk_event_t::channel_event_data_t curr_chev_data;
+	jmid::ch_event_data_t curr_chev_data;  //mtrk_event_t::channel_event_data_t curr_chev_data;
 	auto is_matching_onoff 
 		= [&curr_chev_data](const sounding_notes_t& sev) -> bool {
 		return is_onoff_pair(sev.ch,sev.note,
