@@ -6,8 +6,15 @@
 
 
 
+jmid::meta_header_t::operator bool() const {
+	return jmid::is_meta_status_byte(this->s);
+}
+jmid::sysex_header_t::operator bool() const {
+	return jmid::is_sysex_status_byte(this->s);
+}
 
-bool jmid::operator==(const jmid::midi_timesig_t& rhs, const jmid::midi_timesig_t& lhs) {
+bool jmid::operator==(const jmid::midi_timesig_t& rhs, 
+						const jmid::midi_timesig_t& lhs) {
 	return ((rhs.clckspclk == lhs.clckspclk)
 		&& (rhs.log2denom == lhs.log2denom)
 		&& (rhs.ntd32pq == lhs.ntd32pq)

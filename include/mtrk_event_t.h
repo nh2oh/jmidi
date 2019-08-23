@@ -135,6 +135,11 @@ public:
 	unsigned char running_status() const noexcept;
 	size_type data_size() const noexcept;  // Not including the delta-t
 
+	// If the object is not a channel event, the value that is returned 
+	// will test invalid.  The exact value is unspecified.  
+	jmid::ch_event_data_t get_channel_event_data() const noexcept;
+	jmid::meta_header_t get_meta() const noexcept;
+
 	// Setters
 	int32_t set_delta_time(int32_t);
 

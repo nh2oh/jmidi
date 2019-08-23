@@ -110,50 +110,6 @@ int function_counts() {
 }
 
 
-std::filesystem::path make_midifile(std::filesystem::path smf_path, 
-									bool random_fname) {
-	auto smf = smf_t();
-	
-	auto mthd = mthd_t();
-	mthd.set_format(0);
-	mthd.set_ntrks(1);
-	mthd.set_division(jmid::time_division_t(0x7FFF));
-	
-	auto mtrk1 = mtrk_t();
-	mtrk1.push_back(make_seqn(0,0));
-	mtrk1.push_back(make_copyright(0,"Ben Knowles 2019"));
-	mtrk1.push_back(make_trackname(0,"Track 1 (0)"));
-	mtrk1.push_back(make_instname(0,"Harpsichord"));
-	mtrk1.push_back(make_timesig(0,{4,2,24,8}));
-	mtrk1.push_back(make_tempo(0,1));
-	mtrk1.push_back(make_program_change(0,
-		jmid::ch_event_data_t{0xC0u,0x00u,0x06u,0x00u}));
-	// 0 => Acoustic Grand; 6 => Harpsichord
-
-	int32_t cumtk = 0;
-	int32_t note_duration = 50;  // 2 q notes == 1 h note
-	int32_t note_spacing = 0;  // 1 q note apart
-	for (int i=0; i<12; ++i) {
-		auto curr_ntnum = i+60;
-		auto curr_notespacing = i==0 ? 0 : note_spacing;
-		mtrk1.push_back(make_note_on(curr_notespacing,0,curr_ntnum,127/2));
-		mtrk1.push_back(make_note_off(note_duration,0,curr_ntnum,127/2));
-		cumtk += curr_notespacing + note_duration;
-	}
-	mtrk1.push_back(make_eot(0));
-	smf.set_mthd(mthd);
-	smf.push_back(mtrk1);
-	
-	/*if (random_fname) {
-		smf_path.replace_filename(randfn()+".midi");
-	} else {
-		smf_path.replace_filename("tdiv0x7FFF_tempo1.midi");
-	}*/
-	smf_path = write_smf(smf,smf_path);
-
-	return smf_path;
-}
-
 
 
 int classify_smf_errors(const std::filesystem::path& inp,

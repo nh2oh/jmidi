@@ -170,6 +170,46 @@ mtrk_event_t::size_type mtrk_event_t::data_size() const noexcept {  // Not inclu
 	return end-p;
 }
 
+jmid::ch_event_data_t mtrk_event_t::get_channel_event_data() const noexcept {
+	// TODO:
+	// The reason this is most efficiently implemented as a member function
+	// is that if big, it can safely read d_.u_.b_.pad_ directly, skipping
+	// the its.end-its.begin checks.  The present implementation is no
+	// better than the free function impl.  
+	auto its = this->payload_range();
+	jmid::ch_event_data_t result;
+	result.status_nybble = 0x00u;  // Causes result to test invalid
+	if (its.end-its.begin <= 2) {
+		return result;
+	}
+	auto s = (*its.begin);
+	if (!jmid::is_channel_status_byte(s)) {
+		return result;
+	}
+	result.status_nybble = s&0xF0u;
+	result.ch = s&0x0Fu;
+	++(its.begin);
+	result.p1 = *(its.begin);
+	++(its.begin);
+	if (its.begin == its.end) {
+		return result;
+	}
+	result.p2 = *its.begin;
+	return result;
+}
+jmid::meta_header_t mtrk_event_t::get_meta() const noexcept {
+	// TODO:
+	// The reason this is most efficiently implemented as a member function
+	// is that if big, it can safely read d_.u_.b_.pad_ directly, skipping
+	// the its.end-its.begin checks and the pointer-chasing into the 
+	// remote buffer.  
+	jmid::meta_header_t result;  result.s = 0x00u;  // Invalid
+	
+
+
+	return result;
+}
+
 int32_t mtrk_event_t::set_delta_time(int32_t dt) {
 	auto new_dt_size = delta_time_field_size(dt);
 	auto beg = this->d_.begin();  auto end = this->d_.end();

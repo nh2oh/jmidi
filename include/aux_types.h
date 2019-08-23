@@ -8,6 +8,19 @@ namespace jmid {
 // aux types
 //
 
+struct meta_header_t  {
+	std::uint8_t s;  // 0xFFu
+	std::uint8_t mt;  // meta-type byte
+	std::int32_t size;  // vlq length
+	operator bool() const;
+};
+
+struct sysex_header_t  {
+	std::uint8_t s;  // 0xF0u or 0xF7u
+	std::int32_t size;  // vlq length
+	operator bool() const;
+};
+
 // P.134:  
 // All MIDI Files should specify tempo and time signature.  If they don't,
 // the time signature is assumed to be 4/4, and the tempo 120 beats per 

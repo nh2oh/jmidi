@@ -31,9 +31,3 @@ int function_counts();
 int conversions();
 int ratiosfp();
 
-
-std::filesystem::path make_midifile(std::filesystem::path, bool);
-
-
-
-
