@@ -110,7 +110,7 @@ smf_t::reference smf_t::push_back(smf_t::const_reference mtrk) {
 	this->mthd_.set_ntrks(this->mtrks_.size());
 	return this->mtrks_.back();
 }
-smf_t::reference smf_t::push_back(mtrk_t&& mtrk) {
+smf_t::reference smf_t::push_back(jmid::mtrk_t&& mtrk) {
 	this->mtrks_.push_back(std::move(mtrk));
 	this->chunkorder_.push_back(0);
 	this->mthd_.set_ntrks(this->mtrks_.size());
@@ -231,7 +231,7 @@ std::string print(const smf_t& smf) {
 	s += "\n\n";
 
 	for (int i=0; i<smf.ntrks(); ++i) {
-		const mtrk_t& curr_trk = smf[i];
+		const jmid::mtrk_t& curr_trk = smf[i];
 		s += ("Track (MTrk) " + std::to_string(i) 
 				+ ":\tsize = " + std::to_string(curr_trk.size()) + " events, "
 				+ "nbytes = " + std::to_string(curr_trk.nbytes()) + " "

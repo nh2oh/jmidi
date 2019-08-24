@@ -10,8 +10,8 @@
 
 using namespace mtrk_tests;
 
-mtrk_t make_mtrk_tsb(const std::vector<tsb_t>& v) {
-	auto mtrk_tsb = mtrk_t();  // auto to avoid MVP
+jmid::mtrk_t make_mtrk_tsb(const std::vector<tsb_t>& v) {
+	auto mtrk_tsb = jmid::mtrk_t();  // auto to avoid MVP
 	for (const auto& e : v) {
 		auto curr_ev = make_mtrk_event(e.d.data(),e.d.data()+e.d.size(),
 			0,nullptr).event;
@@ -33,8 +33,8 @@ TEST(mtrk_t_tests, SplitCopyIfForNoteNum67WithTSB) {
 		return (jmid::is_channel_voice(ev) && (md.p1==67));  // 67 == 0x43u
 	};
 
-	auto new_mtrk = mtrk_t();
-	auto it = split_copy_if(mtrk_b.begin(),mtrk_b.end(),
+	auto new_mtrk = jmid::mtrk_t();
+	auto it = jmid::split_copy_if(mtrk_b.begin(),mtrk_b.end(),
 		std::back_inserter(new_mtrk),isntnum43);
 
 	int32_t tk_onset = 0;
@@ -68,7 +68,7 @@ TEST(mtrk_t_tests, SplitCopyIfForMetaEventsWithTSB) {
 		return jmid::is_meta(ev);
 	};
 
-	auto new_mtrk = mtrk_t();
+	auto new_mtrk = jmid::mtrk_t();
 	auto it = split_copy_if(mtrk_b.begin(),mtrk_b.end(),
 		std::back_inserter(new_mtrk),ismeta);
 
@@ -102,9 +102,9 @@ TEST(mtrk_t_tests, SplitIfForNoteNum67WithTSB) {
 		return (jmid::is_channel_voice(ev) && (md.p1==67));  // 67 == 0x43u
 	};
 
-	auto it = split_if(mtrk_b.begin(),mtrk_b.end(),isntnum43);
-	auto mtrk_first = mtrk_t(mtrk_b.begin(),it);
-	auto mtrk_second = mtrk_t(it,mtrk_b.end());
+	auto it = jmid::split_if(mtrk_b.begin(),mtrk_b.end(),isntnum43);
+	auto mtrk_first = jmid::mtrk_t(mtrk_b.begin(),it);
+	auto mtrk_second = jmid::mtrk_t(it,mtrk_b.end());
 	
 	int32_t tk_onset = 0;
 	EXPECT_EQ(mtrk_first.size(),tsb_note_67_events.size());
@@ -183,7 +183,7 @@ TEST(mtrk_t_tests, MergeMtrkTSBNote67SplitProducts) {
 		mtrk_67[i].set_delta_time(tsb_note_67_events[i].tkonset - cumtk);
 		cumtk += mtrk_67[i].delta_time();
 	}
-	auto mtrk_merged = mtrk_t();
+	auto mtrk_merged = jmid::mtrk_t();
 	auto it = merge(mtrk_non67.begin(),mtrk_non67.end(),
 		mtrk_67.begin(),mtrk_67.end(),std::back_inserter(mtrk_merged));
 	
@@ -212,7 +212,7 @@ TEST(mtrk_t_tests, MergeMtrkTSBMetaEventsSplitProducts) {
 		mtrk_meta[i].set_delta_time(tsb_meta_events[i].tkonset - cumtk);
 		cumtk += mtrk_meta[i].delta_time();
 	}
-	auto mtrk_merged = mtrk_t();
+	auto mtrk_merged = jmid::mtrk_t();
 	auto it = merge(mtrk_nonmeta.begin(),mtrk_nonmeta.end(),
 		mtrk_meta.begin(),mtrk_meta.end(),std::back_inserter(mtrk_merged));
 	

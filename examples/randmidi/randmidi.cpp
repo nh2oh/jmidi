@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
 	};
 	std::uniform_int_distribution<size_t> rd_nv(0,nt2tks.size()-1);
 	
-	auto mtrk = mtrk_t();
+	auto mtrk = jmid::mtrk_t();
 	mtrk.push_back(jmid::make_seqn(0,0));
 	mtrk.push_back(jmid::make_copyright(0,"Ben Knowles 2019"));
 	mtrk.push_back(jmid::make_trackname(0,"Track 1 (0)"));

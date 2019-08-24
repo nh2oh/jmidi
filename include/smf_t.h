@@ -38,7 +38,7 @@
 //
 
 struct smf_container_types_t {
-	using value_type = mtrk_t;
+	using value_type = jmid::mtrk_t;
 	using size_type = int64_t;
 	using difference_type = int32_t; //std::ptrdiff_t;
 	using reference = value_type&;
@@ -84,7 +84,7 @@ public:
 	const_iterator end() const;
 	
 	reference push_back(const_reference);
-	reference push_back(mtrk_t&&);
+	reference push_back(jmid::mtrk_t&&);
 	iterator insert(iterator, const_reference);
 	const_iterator insert(const_iterator, const_reference);
 	iterator erase(iterator);
@@ -136,7 +136,7 @@ struct smf_error_t {
 		other
 	};
 	jmid::mthd_error_t mthd_err_obj;
-	mtrk_error_t mtrk_err_obj;
+	jmid::mtrk_error_t mtrk_err_obj;
 	uint16_t expect_num_mtrks;
 	uint16_t num_mtrks_read;
 	uint16_t num_uchks_read;
@@ -171,7 +171,7 @@ std::string explain(const smf_error_t&);
 
 template<typename InIt>
 InIt make_smf(InIt it, InIt end, maybe_smf_t *result, smf_error_t *err) {
-	mtrk_error_t curr_mtrk_error;
+	jmid::mtrk_error_t curr_mtrk_error;
 	jmid::mthd_error_t* p_mthd_error = nullptr;
 	if (err) {
 		p_mthd_error = &(err->mthd_err_obj);
@@ -208,13 +208,13 @@ InIt make_smf(InIt it, InIt end, maybe_smf_t *result, smf_error_t *err) {
 
 	int n_mtrks_read = 0;
 	int n_uchks_read = 0;
-	maybe_mtrk_t curr_mtrk;  
+	jmid::maybe_mtrk_t curr_mtrk;  
 	while ((it!=end) && (n_mtrks_read<expect_ntrks)) {
-		it = make_mtrk(it,end,&curr_mtrk,&curr_mtrk_error);
+		it = jmid::make_mtrk(it,end,&curr_mtrk,&curr_mtrk_error);
 		i += curr_mtrk.nbytes_read;
 
 		// If it was pointing at the first byte of a UChk header...
-		if (!curr_mtrk && (curr_mtrk.error == mtrk_error_t::errc::valid_but_non_mtrk_id)) {
+		if (!curr_mtrk && (curr_mtrk.error == jmid::mtrk_error_t::errc::valid_but_non_mtrk_id)) {
 			auto ph = curr_mtrk_error.header.data();
 			auto hsz = curr_mtrk_error.header.size();
 			if (!is_mthd_header_id(ph,ph+hsz)) {

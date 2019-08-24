@@ -12,6 +12,10 @@
 #include <algorithm>  // std::rotate()
 #include <iterator>  // std::back_inserter
 
+
+namespace jmid {
+
+
 struct mtrk_error_t;
 struct maybe_mtrk_t;
 
@@ -37,8 +41,8 @@ struct event_tk_t {
 //
 struct mtrk_container_types_t {
 	using value_type = mtrk_event_t;
-	using size_type = int32_t;
-	using difference_type = int32_t;
+	using size_type = std::int32_t;
+	using difference_type = std::int32_t;
 	using reference = value_type&;
 	using const_reference = const value_type&;
 	using pointer = value_type*;
@@ -132,7 +136,7 @@ public:
 	// Insert the provided event into the sequence such that its onset tick
 	// is == arg1 + arg2.delta_time()
 	// TODO:  Unit tests
-	iterator insert(int32_t, mtrk_event_t);	
+	iterator insert(std::int32_t, mtrk_event_t);	
 	
 	// Erase the event pointed to by the iterator.  Returns an iterator to 
 	// the event immediately following the erased event.  
@@ -205,7 +209,7 @@ double duration(mtrk_t::const_iterator, mtrk_t::const_iterator,
 // contain a partial MTrk, probably lacking an end-of-track meta event,
 // containing orphan note-on events, etc.  
 struct mtrk_error_t {
-	enum class errc : uint8_t {
+	enum class errc : std::uint8_t {
 		header_overflow,
 		valid_but_non_mtrk_id,
 		invalid_id,
@@ -286,7 +290,7 @@ InIt make_mtrk(InIt it, InIt end, maybe_mtrk_t *result, mtrk_error_t *err) {
 		set_error(mtrk_error_t::errc::length_gt_mtrk_max,0x00u);
 		return it;
 	}
-	auto len = static_cast<int32_t>(ulen);
+	auto len = static_cast<std::int32_t>(ulen);
 
 	// From experience with thousands of midi files encountered in the wild,
 	// the average number of bytes per MTrk event is about 3.  
@@ -413,8 +417,8 @@ std::string print_linked_onoff_pairs(const mtrk_t&);
 //
 template<typename InIt, typename OIt, typename UPred>
 OIt split_copy_if(InIt beg, InIt end, OIt dest, UPred pred) {
-	int32_t cumtk_src = 0;
-	int32_t cumtk_dest = 0;
+	std::int32_t cumtk_src = 0;
+	std::int32_t cumtk_dest = 0;
 	for (auto curr=beg; curr!=end; ++curr) {
 		if (pred(*curr)) {
 			auto curr_cpy = *curr;
@@ -449,8 +453,8 @@ mtrk_t split_copy_if(const mtrk_t& mtrk, UPred pred) {
 //
 template<typename FwIt, typename UPred>
 FwIt split_if(FwIt beg, FwIt end, UPred pred) {
-	int32_t cumtk_src = 0;
-	int32_t cumtk_dest = 0;
+	std::int32_t cumtk_src = 0;
+	std::int32_t cumtk_dest = 0;
 	for (auto curr=beg; curr!=end; ++curr) {
 		auto curr_dt = curr->delta_time();
 		if (pred(*curr)) {
@@ -495,17 +499,17 @@ mtrk_t split_if(mtrk_t& mtrk, UPred pred) {
 //
 template<typename InIt, typename OIt>
 OIt merge(InIt beg1, InIt end1, InIt beg2, InIt end2, OIt dest) {
-	int32_t ontk_1 = 0;
+	std::int32_t ontk_1 = 0;
 	if (beg1 != end1) {
 		ontk_1 = beg1->delta_time();
 	}
-	int32_t ontk_2 = 0;
+	std::int32_t ontk_2 = 0;
 	if (beg2 != end2) {
 		ontk_2 = beg2->delta_time();
 	}
-	int32_t cumtk_dest = 0;
+	std::int32_t cumtk_dest = 0;
 	auto curr1 = beg1;  auto curr2 = beg2;
-	int32_t ontk_curr = 0;
+	std::int32_t ontk_curr = 0;
 	InIt curr_beg = beg1;  InIt curr_end = beg1;
 	while ((curr1!=end1) || (curr2!=end2)) {
 		// Set curr_beg, curr_end, ontk_curr to the appropriate values for
@@ -553,4 +557,5 @@ OIt merge(InIt beg1, InIt end1, InIt beg2, InIt end2, OIt dest) {
 };
 
 
+}  // namespace jmid
 

@@ -174,25 +174,25 @@ int classify_smf_errors(const std::filesystem::path& inp,
 		if (smf_error.code==smf_error_t::errc::mtrk_error) {
 			outfile << '\t';
 			switch (smf_error.mtrk_err_obj.code) {
-			case mtrk_error_t::errc::header_overflow:
+			case jmid::mtrk_error_t::errc::header_overflow:
 				outfile << "mtrk_error_t::errc::header_overflow";
 				break;
-			case mtrk_error_t::errc::valid_but_non_mtrk_id:
+			case jmid::mtrk_error_t::errc::valid_but_non_mtrk_id:
 				outfile << "mtrk_error_t::errc::valid_but_non_mtrk_id";
 				break;
-			case mtrk_error_t::errc::invalid_id:
+			case jmid::mtrk_error_t::errc::invalid_id:
 				outfile << "mtrk_error_t::errc::invalid_id";
 				break;
-			case mtrk_error_t::errc::length_gt_mtrk_max:
+			case jmid::mtrk_error_t::errc::length_gt_mtrk_max:
 				outfile << "mtrk_error_t::errc::length_gt_mtrk_max";
 				break;
-			case mtrk_error_t::errc::invalid_event:
+			case jmid::mtrk_error_t::errc::invalid_event:
 				outfile << "mtrk_error_t::errc::invalid_event";
 				break;
-			case mtrk_error_t::errc::no_eot_event:
+			case jmid::mtrk_error_t::errc::no_eot_event:
 				outfile << "mtrk_error_t::errc::no_eot_event";
 				break;
-			case mtrk_error_t::errc::other:
+			case jmid::mtrk_error_t::errc::other:
 				outfile << "mtrk_error_t::errc::other";
 				break;
 			default:
@@ -202,7 +202,7 @@ int classify_smf_errors(const std::filesystem::path& inp,
 		}
 
 		if (smf_error.code==smf_error_t::errc::mtrk_error
-				&& smf_error.mtrk_err_obj.code==mtrk_error_t::errc::invalid_event) {
+				&& smf_error.mtrk_err_obj.code==jmid::mtrk_error_t::errc::invalid_event) {
 			outfile << '\t';
 			switch (smf_error.mtrk_err_obj.event_error.code) {
 			case mtrk_event_error_t::errc::invalid_delta_time:

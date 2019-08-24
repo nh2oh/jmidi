@@ -8,8 +8,8 @@
 
 using namespace mtrk_tests;
 
-mtrk_t make_tsa() {
-	auto mtrk_tsa = mtrk_t();  // auto to avoid MVP
+jmid::mtrk_t make_tsa() {
+	auto mtrk_tsa = jmid::mtrk_t();  // auto to avoid MVP
 	for (const auto& e : tsa) {
 		auto curr_ev = make_mtrk_event(e.d.data(),e.d.data()+e.d.size(),
 			0,nullptr).event;
@@ -254,7 +254,7 @@ TEST(mtrk_t_tests, InsertWithZeroDtIntoTSAMethodInsertNoTkShift) {
 
 	for (const auto& currtest : tests) {
 		auto new_mtrk_tsa = mtrk_tsa;
-		auto it_insert = mtrk_t::iterator(&(new_mtrk_tsa[currtest.insert_at_idx]));
+		auto it_insert = jmid::mtrk_t::iterator(&(new_mtrk_tsa[currtest.insert_at_idx]));
 
 		auto it_new = new_mtrk_tsa.insert_no_tkshift(it_insert,e_on);
 
