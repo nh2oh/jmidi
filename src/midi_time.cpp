@@ -52,7 +52,7 @@ jmid::smpte_t jmid::time_division_t::get_smpte() const {
 }
 std::int32_t jmid::time_division_t::get_tpq() const {
 	auto p = &(this->d_[0]);
-	auto tpq_u16 = read_be<std::uint16_t>(p,p+this->d_.size());
+	auto tpq_u16 = jmid::read_be<std::uint16_t>(p,p+this->d_.size());
 	auto result = static_cast<int32_t>(tpq_u16);
 	result = std::clamp(result,1,0x7FFF);
 	return result;

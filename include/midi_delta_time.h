@@ -3,15 +3,19 @@
 #include <cstdint>
 #include <type_traits>
 
+namespace jmid {
+
+
 // True if the input value falls within [0,0x0FFFFFFF] == [0,268,435,455]
-bool is_valid_delta_time(int32_t);
+bool is_valid_delta_time(std::int32_t);
+
 // Clamps the input value to [0,0x0FFFFFFF] == [0,268,435,455]
-int32_t to_nearest_valid_delta_time(int32_t);
-int32_t delta_time_field_size(int32_t);
+std::int32_t to_nearest_valid_delta_time(std::int32_t);
+std::int32_t delta_time_field_size(std::int32_t);
 
 struct dt_field_interpreted {
-	int32_t val {0};
-	int8_t N {0};
+	std::int32_t val {0};
+	std::int8_t N {0};
 	bool is_valid {false};
 };
 template<typename InIt>
@@ -20,7 +24,7 @@ dt_field_interpreted read_delta_time(InIt beg, InIt end) {
 	//	const unsigned char>::value);
 
 	dt_field_interpreted result {0,0,false};
-	uint32_t uval = 0;
+	std::uint32_t uval = 0;
 	unsigned char uc = 0;
 	while (beg!=end) {
 		uc = *beg++;
@@ -32,7 +36,7 @@ dt_field_interpreted read_delta_time(InIt beg, InIt end) {
 			break;
 		}
 	}
-	result.val = static_cast<int32_t>(uval);
+	result.val = static_cast<std::int32_t>(uval);
 	result.is_valid = !(uc & 0x80u);
 	return result;
 };
@@ -50,11 +54,12 @@ InIt advance_to_dt_end(InIt beg, InIt end) {
 };
 
 template<typename OIt>
-OIt write_delta_time(int32_t val, OIt it) {
-	val = to_nearest_valid_delta_time(val);
-	uint32_t uval = static_cast<uint32_t>(val);
-	return write_vlq(uval,it);
+OIt write_delta_time(std::int32_t val, OIt it) {
+	val = jmid::to_nearest_valid_delta_time(val);
+	std::uint32_t uval = static_cast<std::uint32_t>(val);
+	return jmid::write_vlq(uval,it);
 };
 
 
+}  // namespace jmid
 

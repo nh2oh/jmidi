@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
 	smf.push_back(mtrk);
 	
 	if (std::filesystem::is_directory(outfile)) {
-		outfile /= (randstr(4)+"_randmidi.midi");
+		outfile /= (jmid::randstr(4)+"_randmidi.midi");
 	}
 	std::cout << "Output == " << outfile << std::endl;
 	auto smf_path_result = jmid::write_smf(smf,outfile);

@@ -321,7 +321,7 @@ InIt make_mtrk_event(InIt it, InIt end, unsigned char rs,
 	};
 
 	// The delta-time field
-	// make_mtrk_event_evstart() checks is_valid_delta_time(dt)
+	// make_mtrk_event_evstart() checks jmid::is_valid_delta_time(dt)
 	auto dt = inl_read_vlq();
 	if (uc&0x80u) {
 		set_error(mtrk_event_error_t::errc::invalid_delta_time);
@@ -393,11 +393,11 @@ InIt make_mtrk_event(InIt it, InIt end, int32_t dt,
 	};
 
 	// The delta-time field
-	if (!is_valid_delta_time(dt)) {
+	if (!jmid::is_valid_delta_time(dt)) {
 		set_error(mtrk_event_error_t::errc::invalid_delta_time);
 		return it;
 	}
-	dest = write_delta_time(dt,dest);
+	dest = jmid::write_delta_time(dt,dest);
 
 	// The status byte
 	if (it==end) {
@@ -446,7 +446,7 @@ InIt make_mtrk_event(InIt it, InIt end, int32_t dt,
 			set_error(mtrk_event_error_t::errc::sysex_or_meta_invalid_vlq_length);
 			return it;
 		}
-		dest = write_vlq(static_cast<uint32_t>(len),dest);
+		dest = jmid::write_vlq(static_cast<uint32_t>(len),dest);
 		auto n_written = (dest-result->event.d_.begin());
 		result->event.d_.resize(n_written+len);  // Resize may invalidate dest
 		dest = result->event.d_.begin()+n_written;

@@ -46,7 +46,7 @@ TEST(mtrk_event_ctor_tests, dtOnlyCtor) {
 	auto ans_data_size = 3;  // For a default-ctor'd mtrk_event
 	for (const auto& tc : dt_test_set_a) {
 		ans_dt_encoded.fill(0x00u);
-		write_delta_time(tc.ans_value,ans_dt_encoded.begin());
+		jmid::write_delta_time(tc.ans_value,ans_dt_encoded.begin());
 		auto ans_size = ans_data_size + tc.ans_n_bytes;
 
 		const mtrk_event_t ev(tc.dt_input);
@@ -98,7 +98,7 @@ TEST(mtrk_event_ctor_tests, MidiChEventStructCtorValidInputData) {
 	
 	for (const auto& tc : tests) {
 		unsigned char curr_s = (tc.md_input.status_nybble + tc.md_input.ch);
-		int curr_dt_size = vlq_field_size(tc.dt_input);
+		int curr_dt_size = jmid::vlq_field_size(tc.dt_input);
 		int curr_size = curr_dt_size+tc.data_size;
 		const mtrk_event_t ev(tc.dt_input,tc.md_input);
 
@@ -169,7 +169,7 @@ TEST(mtrk_event_ctor_tests, MidiChEventStructCtorInvalidInputData) {
 		auto expect_ans = normalize(tc.md_input);
 		auto expect_s = expect_ans.status_nybble|expect_ans.ch;
 		auto expect_n_data = jmid::channel_status_byte_n_data_bytes(expect_s);
-		int curr_dt_size = vlq_field_size(tc.dt_input);
+		int curr_dt_size = jmid::vlq_field_size(tc.dt_input);
 		int expect_size = curr_dt_size + 1 
 			+ expect_n_data;
 		const mtrk_event_t ev(tc.dt_input,tc.md_input);

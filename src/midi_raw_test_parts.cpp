@@ -45,7 +45,7 @@ vlq_testcase_t make_vlq_testcase() {
 	}
 	tc.input_value =  vlq.val;
 	tc.ans_value = ((vlq.val)&0x0FFFFFFFu);
-	write_delta_time(tc.ans_value,tc.normalized_encoded.begin());
+	jmid::write_delta_time(tc.ans_value,tc.normalized_encoded.begin());
 	if (read_vlq_max64(tc.normalized_encoded.begin()).val != tc.ans_value) {
 		std::abort();
 	}
@@ -155,7 +155,7 @@ meta_events_t random_meta_event(uint8_t type_byte, int len) {
 		len = rd200(re);
 	}
 	std::array<unsigned char,4> temp_len_field {};
-	auto len_field_end = write_vlq(static_cast<uint8_t>(len),
+	auto len_field_end = jmid::write_vlq(static_cast<uint8_t>(len),
 		temp_len_field.begin());
 	std::copy(temp_len_field.begin(),len_field_end,std::back_inserter(result.data));
 	result.payload_size = len;
@@ -226,7 +226,7 @@ std::vector<midi_tests_t> make_random_midi_tests() {
 
 		// delta-time
 		auto curr_dt_field = random_dt_field();
-		auto curr_dt = read_delta_time(curr_dt_field.begin(),curr_dt_field.end());
+		auto curr_dt = jmid::read_delta_time(curr_dt_field.begin(),curr_dt_field.end());
 		curr.dt_value = curr_dt.val;
 		curr.dt_field_size = curr_dt.N;
 		std::copy(curr_dt_field.begin(),curr_dt_field.begin()+curr.dt_field_size,
@@ -274,7 +274,7 @@ void print_midi_test_cases() {
 		for (int i=0; i<tc.data.size(); ++i) {
 			std::string temp_s;
 			std::cout << "0x";
-			print_hexascii(&(tc.data[i]),&(tc.data[i])+1,std::back_inserter(temp_s));
+			jmid::print_hexascii(&(tc.data[i]),&(tc.data[i])+1,std::back_inserter(temp_s));
 			std::cout << temp_s;
 			if (i!=(tc.data.size()-1)) {
 				std::cout << ",";
@@ -283,10 +283,10 @@ void print_midi_test_cases() {
 		std::cout << "},";
 		std::cout << "0x";
 		std::string temp_s;
-		print_hexascii(&(tc.midisb_prev_event),&(tc.midisb_prev_event)+1,
+		jmid::print_hexascii(&(tc.midisb_prev_event),&(tc.midisb_prev_event)+1,
 			std::back_inserter(temp_s));
 		temp_s += ",0x";
-		print_hexascii(&(tc.applic_midi_status),&(tc.applic_midi_status)+1,
+		jmid::print_hexascii(&(tc.applic_midi_status),&(tc.applic_midi_status)+1,
 			std::back_inserter(temp_s));
 		temp_s += ",";
 		std::cout << temp_s;
@@ -427,7 +427,7 @@ std::vector<meta_test_t> make_random_meta_tests(int n) {
 	auto make_rand_dtval = [&re]()->uint32_t {
 		std::uniform_int_distribution rd_dt_size(0,4);
 		auto fld = random_dt_field(rd_dt_size(re));
-		return read_vlq(fld.begin(),fld.end()).val;
+		return jmid::read_vlq(fld.begin(),fld.end()).val;
 
 		/*
 		std::uniform_int_distribution<uint32_t> rd_rand_dt(0x00u,0xFFFFFFFFu);
@@ -445,7 +445,7 @@ std::vector<meta_test_t> make_random_meta_tests(int n) {
 		meta_test_t curr;
 
 		curr.dt_value = make_rand_dtval();
-		write_vlq(curr.dt_value,std::back_inserter(curr.data));
+		jmid::write_vlq(curr.dt_value,std::back_inserter(curr.data));
 
 		curr.data.push_back(0xFFu);
 
@@ -464,7 +464,7 @@ std::vector<meta_test_t> make_random_meta_tests(int n) {
 			curr.payload_length = make_random_size();
 		}
 		curr.data.push_back(curr.type_byte);
-		write_vlq(curr.payload_length,std::back_inserter(curr.data));
+		jmid::write_vlq(curr.payload_length,std::back_inserter(curr.data));
 		
 		//
 		// Random payload
@@ -478,7 +478,7 @@ std::vector<meta_test_t> make_random_meta_tests(int n) {
 				std::back_inserter(curr.data));
 		}
 
-		curr.data_size = curr.data.size()-vlq_field_size(curr.dt_value);
+		curr.data_size = curr.data.size()-jmid::vlq_field_size(curr.dt_value);
 
 		result.push_back(curr);
 	}
@@ -494,7 +494,7 @@ void print_meta_tests(const std::vector<meta_test_t>& tests) {
 		for (int i=0; i<tc.data.size(); ++i) {
 			std::string temp_s;
 			std::cout << "0x";
-			print_hexascii(&(tc.data[i]),&(tc.data[i])+1,std::back_inserter(temp_s));
+			jmid::print_hexascii(&(tc.data[i]),&(tc.data[i])+1,std::back_inserter(temp_s));
 			std::cout << temp_s;
 			if (i!=(tc.data.size()-1)) {
 				std::cout << ",";
@@ -507,7 +507,7 @@ void print_meta_tests(const std::vector<meta_test_t>& tests) {
 		std::cout << std::to_string(tc.dt_value) << ",";
 		std::cout << "0x";
 		std::string temp_s;
-		print_hexascii(&(tc.type_byte),&(tc.type_byte)+1,std::back_inserter(temp_s));
+		jmid::print_hexascii(&(tc.type_byte),&(tc.type_byte)+1,std::back_inserter(temp_s));
 		std::cout << temp_s;
 		std::cout << "u,";
 		std::cout << std::to_string(tc.payload_length) << ",";

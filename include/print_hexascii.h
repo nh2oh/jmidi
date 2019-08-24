@@ -2,6 +2,9 @@
 #include <string>
 #include <array>
 
+
+namespace jmid {
+
 //
 // For some array (of any type) on [beg,end), writes the underlying byte
 // representation as hex ASCII into OIt out.  For each element, the ASCII
@@ -97,3 +100,6 @@ OIt print_hexascii(InIt beg, InIt end, OIt out, const sep_t& sep) {
 	}
 	return out;
 };
+
+
+}  // namespace jmid

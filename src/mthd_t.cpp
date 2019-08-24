@@ -104,18 +104,18 @@ jmid::mthd_t::const_iterator jmid::mthd_t::cend() const noexcept {
 }
 
 std::int32_t jmid::mthd_t::length() const noexcept {
-	auto l = read_be<std::uint32_t>(this->d_.begin()+4,this->d_.end());
+	auto l = jmid::read_be<std::uint32_t>(this->d_.begin()+4,this->d_.end());
 	return static_cast<std::int32_t>(l);
 }
 std::int32_t jmid::mthd_t::format() const noexcept {
-	std::int32_t f = read_be<std::uint16_t>(this->d_.begin()+8,this->d_.end());
+	std::int32_t f = jmid::read_be<std::uint16_t>(this->d_.begin()+8,this->d_.end());
 	return f;
 }
 std::int32_t jmid::mthd_t::ntrks() const noexcept {
-	return read_be<std::uint16_t>(this->d_.begin()+8+2,this->d_.end());
+	return jmid::read_be<std::uint16_t>(this->d_.begin()+8+2,this->d_.end());
 }
 jmid::time_division_t jmid::mthd_t::division() const noexcept {
-	auto raw_val = read_be<std::uint16_t>(this->d_.begin()+12,this->d_.end());
+	auto raw_val = jmid::read_be<std::uint16_t>(this->d_.begin()+12,this->d_.end());
 	return jmid::make_time_division_from_raw(raw_val).value;
 }
 std::int32_t jmid::mthd_t::set_format(std::int32_t f) noexcept {
@@ -125,12 +125,12 @@ std::int32_t jmid::mthd_t::set_format(std::int32_t f) noexcept {
 			return this->format();
 		}
 	}
-	write_16bit_be(static_cast<std::uint16_t>(f),this->d_.begin()+8);
+	jmid::write_16bit_be(static_cast<std::uint16_t>(f),this->d_.begin()+8);
 	return f;
 }
 std::int32_t jmid::mthd_t::set_ntrks(std::int32_t ntrks) noexcept {
 	ntrks = std::clamp(ntrks,0,jmid::mthd_t::ntrks_max_fmt_gt0);
-	write_16bit_be(static_cast<std::uint16_t>(ntrks),this->d_.begin()+10);
+	jmid::write_16bit_be(static_cast<std::uint16_t>(ntrks),this->d_.begin()+10);
 	if (ntrks > 1) {
 		auto f = this->format();
 		if (f==0) {
@@ -140,17 +140,17 @@ std::int32_t jmid::mthd_t::set_ntrks(std::int32_t ntrks) noexcept {
 	return ntrks;
 }
 jmid::time_division_t jmid::mthd_t::set_division(jmid::time_division_t tdf) noexcept {
-	write_16bit_be(tdf.get_raw_value(),this->d_.begin()+12);
+	jmid::write_16bit_be(tdf.get_raw_value(),this->d_.begin()+12);
 	return tdf;
 }
 std::int32_t jmid::mthd_t::set_division_tpq(std::int32_t tpq) noexcept {
 	auto tdiv = jmid::time_division_t(tpq);
-	write_16bit_be(tdiv.get_raw_value(),this->d_.begin()+12);
+	jmid::write_16bit_be(tdiv.get_raw_value(),this->d_.begin()+12);
 	return tdiv.get_tpq();
 }
 jmid::smpte_t jmid::mthd_t::set_division_smpte(std::int32_t tcf, std::int32_t subdivs) noexcept {
 	auto tdiv = jmid::time_division_t(tcf,subdivs);
-	write_16bit_be(tdiv.get_raw_value(),this->d_.begin()+12);
+	jmid::write_16bit_be(tdiv.get_raw_value(),this->d_.begin()+12);
 	return tdiv.get_smpte();
 }
 jmid::smpte_t jmid::mthd_t::set_division_smpte(jmid::smpte_t smpte) noexcept {
@@ -161,7 +161,7 @@ std::int32_t jmid::mthd_t::set_length(std::int32_t new_len) {
 	int32_t l = this->length();
 	if (new_len != l) {
 		l = this->d_.resize(new_len+8)-8;
-		write_32bit_be(static_cast<std::uint32_t>(l),this->d_.begin()+4);
+		jmid::write_32bit_be(static_cast<std::uint32_t>(l),this->d_.begin()+4);
 	}
 	return l;
 }
@@ -181,7 +181,7 @@ std::string jmid::explain(const jmid::mthd_error_t& err) {
 			"'MThd' (0x4D,54,68,64).  ";
 	} else if (err.code==jmid::mthd_error_t::errc::invalid_length) {
 		s += "The length field in the chunk header \nencodes the value ";
-		s += std::to_string(read_be<std::uint32_t>(err.header.data()+4,err.header.data()+8));
+		s += std::to_string(jmid::read_be<std::uint32_t>(err.header.data()+4,err.header.data()+8));
 		s += ".  This library requires that MThd chunks have \nlength >= 6 && <= "
 			"mthd_t::length_max == ";
 		s += std::to_string(jmid::mthd_t::length_max);
@@ -189,11 +189,11 @@ std::string jmid::explain(const jmid::mthd_error_t& err) {
 	} else if (err.code==jmid::mthd_error_t::errc::overflow_in_data_section) {
 		auto p = err.header.data();
 		s += "Encountered end-of-input after reading \n< 'length' bytes; "
-			"length == " + std::to_string(read_be<std::uint32_t>(p+4,p+8))
+			"length == " + std::to_string(jmid::read_be<std::uint32_t>(p+4,p+8))
 			+ ".  ";
 	} else if (err.code==jmid::mthd_error_t::errc::invalid_time_division) {
 		std::int8_t time_code = 0;
-		std::uint16_t division = read_be<uint16_t>(err.header.data()+12,err.header.data()+14);
+		std::uint16_t division = jmid::read_be<uint16_t>(err.header.data()+12,err.header.data()+14);
 		std::uint8_t subframes = (division&0x00FFu);
 		std::uint8_t high = (division>>8);
 		auto psrc = static_cast<const unsigned char*>(static_cast<const void*>(&high));
@@ -209,8 +209,8 @@ std::string jmid::explain(const jmid::mthd_error_t& err) {
 		s += std::to_string(subframes);
 		s += ".  ";
 	} else if (err.code==jmid::mthd_error_t::errc::inconsistent_format_ntrks) {
-		std::uint16_t format = read_be<std::uint16_t>(err.header.data()+8,err.header.data()+10);
-		std::uint16_t ntrks = read_be<std::uint16_t>(err.header.data()+10,err.header.data()+12);
+		std::uint16_t format = jmid::read_be<std::uint16_t>(err.header.data()+8,err.header.data()+10);
+		std::uint16_t ntrks = jmid::read_be<std::uint16_t>(err.header.data()+10,err.header.data()+12);
 		s += "The values encoded by 'format' 'division' are \ninconsistent.  "
 			"In a format==0 SMF, ntrks must be <= 1.  \nformat == ";
 		s += std::to_string(format);
@@ -241,7 +241,7 @@ std::string& jmid::print(const jmid::mthd_t& mthd, std::string& s) {
 		s += " ticks-per-quarter-note ";
 	}
 	s += "\n\t";
-	print_hexascii(mthd.cbegin(), mthd.cend(), std::back_inserter(s), '\0',' ');
+	jmid::print_hexascii(mthd.cbegin(), mthd.cend(), std::back_inserter(s), '\0',' ');
 
 	return s;
 }

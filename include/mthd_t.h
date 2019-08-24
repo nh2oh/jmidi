@@ -251,11 +251,11 @@ InIt make_mthd(InIt it, InIt end, maybe_mthd_t *result, mthd_error_t *err) {
 		set_error(mthd_error_t::errc::header_overflow);
 		return it;
 	}
-	if (!is_mthd_header_id(dest_beg,dest)) {
+	if (!jmid::is_mthd_header_id(dest_beg,dest)) {
 		set_error(mthd_error_t::errc::non_mthd_id);
 		return it;
 	}
-	auto length = read_be<std::uint32_t>(dest_beg+4,dest);
+	auto length = jmid::read_be<std::uint32_t>(dest_beg+4,dest);
 	if ((length < 6) || (length > mthd_t::length_max)) {
 		set_error(mthd_error_t::errc::invalid_length);
 		return it;
@@ -272,9 +272,9 @@ InIt make_mthd(InIt it, InIt end, maybe_mthd_t *result, mthd_error_t *err) {
 		set_error(mthd_error_t::errc::overflow_in_data_section);
 		return it;
 	}
-	auto format = read_be<std::uint16_t>(dest_beg+8,dest_beg+10);
-	auto ntrks = read_be<std::uint16_t>(dest_beg+10,dest_beg+12);
-	auto division = read_be<std::uint16_t>(dest_beg+12,dest_beg+14);
+	auto format = jmid::read_be<std::uint16_t>(dest_beg+8,dest_beg+10);
+	auto ntrks = jmid::read_be<std::uint16_t>(dest_beg+10,dest_beg+12);
+	auto division = jmid::read_be<std::uint16_t>(dest_beg+12,dest_beg+14);
 	if ((format==0) && (ntrks >1)) {
 		set_error(mthd_error_t::errc::inconsistent_format_ntrks);
 		return it;

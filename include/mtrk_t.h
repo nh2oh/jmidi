@@ -285,7 +285,7 @@ InIt make_mtrk(InIt it, InIt end, maybe_mtrk_t *result, mtrk_error_t *err) {
 		}
 		return it;
 	}
-	auto ulen = read_be<uint32_t>(header.data()+4,header.data()+header.size());
+	auto ulen = jmid::read_be<uint32_t>(header.data()+4,header.data()+header.size());
 	if (ulen > mtrk_t::length_max) {
 		set_error(mtrk_error_t::errc::length_gt_mtrk_max,0x00u);
 		return it;
@@ -335,7 +335,7 @@ template<typename OIt>
 OIt write_mtrk(const mtrk_t& mtrk, OIt it) {
 	std::array<char,4> h {'M','T','r','k'};
 	it = std::copy(h.begin(),h.end(),it);
-	it = write_32bit_be(static_cast<uint32_t>(mtrk.data_nbytes()), it);
+	it = jmid::write_32bit_be(static_cast<uint32_t>(mtrk.data_nbytes()), it);
 	for (const auto& ev : mtrk) {
 		for (const auto& b : ev) {
 			*it++ = b;

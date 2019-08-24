@@ -151,7 +151,7 @@ int avg_and_max_event_sizes(const std::vector<std::filesystem::path>& files,
 		} else if (mode == 2) {  // csio
 			auto nbytes = std::filesystem::file_size(curr_path);
 			fdata.resize(nbytes);
-			auto b = read_binary_csio(curr_path,fdata);
+			auto b = jmid::read_binary_csio(curr_path,fdata);
 			if (!b) { continue; }
 			++n_midi_files;
 			jmid::make_smf(fdata.data(),fdata.data()+fdata.size(),

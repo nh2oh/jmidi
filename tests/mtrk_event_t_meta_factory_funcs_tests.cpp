@@ -33,7 +33,7 @@ TEST(mtrk_event_t_meta_factories, makeTempo) {
 	};
 	for (const auto& e : tests) {
 		const auto ev = jmid::make_tempo(e.dt_in,e.tempo_in);
-		auto dt_size = delta_time_field_size(e.dt_ans);
+		auto dt_size = jmid::delta_time_field_size(e.dt_ans);
 		auto pyld_size = 3;
 		auto dat_size = 3+pyld_size;
 		auto tot_size = dt_size+dat_size;
@@ -63,7 +63,7 @@ TEST(mtrk_event_t_meta_factories, makeEOT) {
 	std::vector<int32_t> tests {0,1,128,125428};
 	for (const auto& e : tests) {
 		const auto ev = jmid::make_eot(e);
-		auto dt_size = delta_time_field_size(e);
+		auto dt_size = jmid::delta_time_field_size(e);
 		auto pyld_size = 0;
 		auto dat_size = 3+pyld_size;
 		auto tot_size = dt_size+dat_size;
@@ -108,7 +108,7 @@ TEST(mtrk_event_t_meta_factories, makeTimesig) {
 	};
 	for (const auto& e : tests) {
 		const auto ev = make_timesig(e.dt,e.ts);
-		auto dt_size = delta_time_field_size(e.dt);
+		auto dt_size = jmid::delta_time_field_size(e.dt);
 		auto pyld_size = 4;
 		auto dat_size = 3+pyld_size;
 		auto tot_size = dt_size+dat_size;

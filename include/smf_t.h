@@ -221,11 +221,11 @@ InIt make_smf(InIt it, InIt end, maybe_smf_t *result, smf_error_t *err) {
 		if (!curr_mtrk && (curr_mtrk.error == jmid::mtrk_error_t::errc::valid_but_non_mtrk_id)) {
 			auto ph = curr_mtrk_error.header.data();
 			auto hsz = curr_mtrk_error.header.size();
-			if (!is_mthd_header_id(ph,ph+hsz)) {
+			if (!jmid::is_mthd_header_id(ph,ph+hsz)) {
 				std::vector<unsigned char> curr_uchk;
 				auto bi_uchk = std::back_inserter(curr_uchk);
 				std::copy(ph,ph+hsz,bi_uchk);
-				auto uchk_sz = read_be<uint32_t>(ph+4,ph+hsz);
+				auto uchk_sz = jmid::read_be<uint32_t>(ph+4,ph+hsz);
 				std::uint32_t j=0;
 				for (j=0; (it!=end && j<uchk_sz); ++j) {
 					*bi_uchk++ = static_cast<unsigned char>(*it++);  ++i;

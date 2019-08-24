@@ -6,6 +6,8 @@
 #include <cstring>
 
 
+namespace jmid {
+
 // TODO:  Need to clarify behavior for iterators w/ value-type char
 // vs unsigned char.  
 
@@ -16,8 +18,8 @@
 // std::numeric_limits<int32_t>::max() == 2,147,483,647;
 //
 struct vlq_field_interpreted {
-	int32_t val {0};
-	int8_t N {0};
+	std::int32_t val {0};
+	std::int8_t N {0};
 	bool is_valid {false};
 };
 template<typename InIt>
@@ -26,7 +28,7 @@ vlq_field_interpreted read_vlq(InIt beg, InIt end) {
 	//	const unsigned char>::value);
 
 	vlq_field_interpreted result {0,0,false};
-	uint32_t uval = 0;
+	std::uint32_t uval = 0;
 	unsigned char uc = 0;
 	while (beg!=end) {
 		uc = *beg++;
@@ -38,7 +40,7 @@ vlq_field_interpreted read_vlq(InIt beg, InIt end) {
 			break;
 		}
 	}
-	result.val = static_cast<int32_t>(uval);
+	result.val = static_cast<std::int32_t>(uval);
 	result.is_valid = !(uc & 0x80u);
 	return result;
 };
@@ -60,13 +62,13 @@ InIt advance_to_vlq_end(InIt beg, InIt end) {
 //
 template<typename T>
 constexpr int vlq_field_size(T val) {
-	uint32_t uval = 0;
+	std::uint32_t uval = 0;
 	if (val < 0) {
 		uval = 0;
 	} else if (val > 0x0FFFFFFF) {
 		uval = 0x0FFFFFFF;
 	} else {
-		uval = static_cast<uint32_t>(val);
+		uval = static_cast<std::uint32_t>(val);
 	}
 	int n = 0;
 	do {
@@ -81,28 +83,28 @@ constexpr int vlq_field_size(T val) {
 template<typename T, typename OIt>
 OIt write_vlq(T val, OIt it) {
 	if (val < 0) {
-		uint32_t uval = 0;
+		std::uint32_t uval = 0;
 		*it++ = static_cast<unsigned char>(0x7Fu&uval);
 	} else if (val <= 0x7Fu) {
-		uint32_t uval = static_cast<uint32_t>(val);
+		std::uint32_t uval = static_cast<std::uint32_t>(val);
 		*it++ = static_cast<unsigned char>(0x7Fu&uval);
 	} else if (val <= (0x3F'FFu)) {
-		uint32_t uval = static_cast<uint32_t>(val);
+		std::uint32_t uval = static_cast<std::uint32_t>(val);
 		*it++ = static_cast<unsigned char>((0x80u)|(0xFFu&(uval>>7)));
 		*it++ = static_cast<unsigned char>((0x7Fu)&uval);
 	} else if (val <= (0x1F'FF'FF)) {
-		uint32_t uval = static_cast<uint32_t>(val);
+		std::uint32_t uval = static_cast<std::uint32_t>(val);
 		*it++ = static_cast<unsigned char>((0x80u)|(0xFFu&(uval>>14)));
 		*it++ = static_cast<unsigned char>((0x80u)|(0xFFu&(uval>>7)));
 		*it++ = static_cast<unsigned char>((0x7Fu)&uval);
 	} else if (val <= (0x0F'FF'FF'FFu)) {
-		uint32_t uval = static_cast<uint32_t>(val);
+		std::uint32_t uval = static_cast<std::uint32_t>(val);
 		*it++ = static_cast<unsigned char>((0x80u)|(0xFFu&(uval>>21)));
 		*it++ = static_cast<unsigned char>((0x80u)|(0xFFu&(uval>>14)));
 		*it++ = static_cast<unsigned char>((0x80u)|(0xFFu&(uval>>7)));
 		*it++ = static_cast<unsigned char>((0x7Fu)&uval);
 	} else {
-		uint32_t uval = 0x0F'FF'FF'FF;
+		std::uint32_t uval = 0x0F'FF'FF'FF;
 		*it++ = static_cast<unsigned char>((0x80u)|(0xFFu&(uval>>21)));
 		*it++ = static_cast<unsigned char>((0x80u)|(0xFFu&(uval>>14)));
 		*it++ = static_cast<unsigned char>((0x80u)|(0xFFu&(uval>>7)));
@@ -113,7 +115,7 @@ OIt write_vlq(T val, OIt it) {
 
 //
 // template<typename T> 
-// T to_be_byte_order(T val)
+// T jmid::to_be_byte_order(T val)
 //
 // Reverses the byte-order in val such that the byte in least-significant 
 // position is in most significant position, and the byte in 
@@ -183,7 +185,7 @@ T read_be(InIt beg, InIt end) {
 
 
 //
-// OIt write_24bit_be(uint32_t val, OIt dest) {
+// OIt jmid::write_24bit_be(uint32_t val, OIt dest) {
 //
 // Where OIt is an iterator to an array of unsigned char and T is an 
 // unsigned integer type, writes the 3 bytes of val _following_ the most
@@ -191,11 +193,11 @@ T read_be(InIt beg, InIt end) {
 // to into the destination range one past the last element copied.  
 //
 template<typename OIt>
-OIt write_24bit_be(uint32_t val, OIt dest) {
+OIt write_24bit_be(std::uint32_t val, OIt dest) {
 	//static_assert(std::is_same<std::decay<decltype(*dest)>::type,char>::value
 	//	|| std::is_same<std::decay<decltype(*dest)>::type,unsigned char>::value);
 	
-	auto be_val = to_be_byte_order(val);
+	auto be_val = jmid::to_be_byte_order(val);
 	unsigned char *p = static_cast<unsigned char*>(static_cast<void*>(&be_val));
 	++p;  // Truncate the most-significant byte
 	for (int i=0; i<3; ++i) {
@@ -204,11 +206,11 @@ OIt write_24bit_be(uint32_t val, OIt dest) {
 	return dest;
 };
 template<typename OIt>
-OIt write_16bit_be(uint16_t val, OIt dest) {
+OIt write_16bit_be(std::uint16_t val, OIt dest) {
 	//static_assert(std::is_same<std::decay<decltype(*dest)>::type,char>::value
 	//	|| std::is_same<std::decay<decltype(*dest)>::type,unsigned char>::value);
 	
-	auto be_val = to_be_byte_order(val);
+	auto be_val = jmid::to_be_byte_order(val);
 	unsigned char *p = static_cast<unsigned char*>(static_cast<void*>(&be_val));
 	for (int i=0; i<2; ++i) {
 		*dest++ = *p++;
@@ -216,11 +218,11 @@ OIt write_16bit_be(uint16_t val, OIt dest) {
 	return dest;
 };
 template<typename OIt>
-OIt write_32bit_be(uint32_t val, OIt dest) {
+OIt write_32bit_be(std::uint32_t val, OIt dest) {
 	//static_assert(std::is_same<std::decay<decltype(*dest)>::type,char>::value
 	//	|| std::is_same<std::decay<decltype(*dest)>::type,unsigned char>::value);
 	
-	auto be_val = to_be_byte_order(val);
+	auto be_val = jmid::to_be_byte_order(val);
 	unsigned char *p = static_cast<unsigned char*>(static_cast<void*>(&be_val));
 	for (int i=0; i<4; ++i) {
 		*dest++ = *p++;
@@ -228,4 +230,7 @@ OIt write_32bit_be(uint32_t val, OIt dest) {
 	return dest;
 };
 
+
+
+}  // namespace jmid
 

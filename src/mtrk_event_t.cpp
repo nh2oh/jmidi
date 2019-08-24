@@ -30,8 +30,8 @@ mtrk_event_t::mtrk_event_t(int32_t dt, jmid::ch_event_data_t md) noexcept {
 	auto n = jmid::channel_status_byte_n_data_bytes(s);
 	// NB:  n==0 if s is invalid, but this is impossible after a call
 	// to normalize().  
-	this->d_.resize_small2small_nocopy(delta_time_field_size(dt)+1+n);  // +1=>s
-	auto dest = write_delta_time(dt,this->d_.begin());
+	this->d_.resize_small2small_nocopy(jmid::delta_time_field_size(dt)+1+n);  // +1=>s
+	auto dest = jmid::write_delta_time(dt,this->d_.begin());
 	*dest++ = s;
 	*dest++ = md.p1;
 	if (n==2) {
@@ -109,16 +109,16 @@ mtrk_event_t::const_iterator mtrk_event_t::dt_begin() noexcept {
 	return mtrk_event_t::const_iterator(this->d_.begin());
 }
 mtrk_event_t::const_iterator mtrk_event_t::dt_end() const noexcept {
-	return advance_to_dt_end(this->d_.begin(),this->d_.end());
+	return jmid::advance_to_dt_end(this->d_.begin(),this->d_.end());
 }
 mtrk_event_t::const_iterator mtrk_event_t::dt_end() noexcept {
-	return advance_to_dt_end(this->d_.begin(),this->d_.end());
+	return jmid::advance_to_dt_end(this->d_.begin(),this->d_.end());
 }
 mtrk_event_t::const_iterator mtrk_event_t::event_begin() const noexcept {
-	return advance_to_dt_end(this->d_.begin(),this->d_.end());
+	return jmid::advance_to_dt_end(this->d_.begin(),this->d_.end());
 }
 mtrk_event_t::const_iterator mtrk_event_t::event_begin() noexcept {
-	return advance_to_dt_end(this->d_.begin(),this->d_.end());
+	return jmid::advance_to_dt_end(this->d_.begin(),this->d_.end());
 }
 mtrk_event_t::const_iterator mtrk_event_t::payload_begin() const noexcept {
 	return this->payload_range_impl().begin;
@@ -143,30 +143,30 @@ unsigned char *mtrk_event_t::push_back(unsigned char c) {  // Private
 }
 mtrk_event_iterator_range_t mtrk_event_t::payload_range_impl() const noexcept {
 	auto it_end = this->d_.end();
-	auto it = advance_to_dt_end(this->d_.begin(),it_end);
+	auto it = jmid::advance_to_dt_end(this->d_.begin(),it_end);
 	auto s = *it;
 	if (jmid::is_meta_status_byte(s)) {
 		it += 2;  // 0xFFu, type-byte
-		it = advance_to_vlq_end(it,it_end);
+		it = jmid::advance_to_vlq_end(it,it_end);
 	} else if (jmid::is_sysex_status_byte(s)) {
 		it += 1;  // 0xF0u or 0xF7u
-		it = advance_to_vlq_end(it,it_end);
+		it = jmid::advance_to_vlq_end(it,it_end);
 	}
 	return {it,it_end};
 }
 int32_t mtrk_event_t::delta_time() const noexcept {
-	return read_delta_time(this->d_.begin(),this->d_.end()).val;
+	return jmid::read_delta_time(this->d_.begin(),this->d_.end()).val;
 }
 unsigned char mtrk_event_t::status_byte() const noexcept {
-	return *advance_to_dt_end(this->d_.begin(),this->d_.end());
+	return *jmid::advance_to_dt_end(this->d_.begin(),this->d_.end());
 }
 unsigned char mtrk_event_t::running_status() const noexcept {
-	auto p = advance_to_dt_end(this->d_.begin(),this->d_.end());
+	auto p = jmid::advance_to_dt_end(this->d_.begin(),this->d_.end());
 	return jmid::get_running_status_byte(*p,0x00u);
 }
 mtrk_event_t::size_type mtrk_event_t::data_size() const noexcept {  // Not including delta-t
 	auto end = this->d_.end();
-	auto p = advance_to_dt_end(this->d_.begin(),end);
+	auto p = jmid::advance_to_dt_end(this->d_.begin(),end);
 	return end-p;
 }
 
@@ -211,14 +211,14 @@ jmid::meta_header_t mtrk_event_t::get_meta() const noexcept {
 }
 
 int32_t mtrk_event_t::set_delta_time(int32_t dt) {
-	auto new_dt_size = delta_time_field_size(dt);
+	auto new_dt_size = jmid::delta_time_field_size(dt);
 	auto beg = this->d_.begin();  auto end = this->d_.end();
-	auto curr_dt_size = advance_to_dt_end(beg,end)-beg;
+	auto curr_dt_size = jmid::advance_to_dt_end(beg,end)-beg;
 	if (curr_dt_size == new_dt_size) {
-		write_delta_time(dt,beg);
+		jmid::write_delta_time(dt,beg);
 	} else if (new_dt_size < curr_dt_size) {  // shrink present event
 		auto curr_event_beg = beg+curr_dt_size;
-		auto it = write_delta_time(dt,beg);
+		auto it = jmid::write_delta_time(dt,beg);
 		it = std::copy(curr_event_beg,end,it);
 		this->d_.resize(it-beg);
 	} else if (new_dt_size > curr_dt_size) {  // grow present event
@@ -228,7 +228,7 @@ int32_t mtrk_event_t::set_delta_time(int32_t dt) {
 		auto new_beg = this->d_.begin();
 		auto new_end = this->d_.end();
 		std::copy_backward(new_beg,new_beg+old_size,new_end);
-		write_delta_time(dt,this->d_.begin());
+		jmid::write_delta_time(dt,this->d_.begin());
 	}
 	return this->delta_time();
 }
@@ -252,8 +252,8 @@ bool mtrk_event_t::operator!=(const mtrk_event_t& rhs) const noexcept {
 
 void mtrk_event_t::default_init(int32_t dt) noexcept {
 	//this->d_ = mtrk_event_t_internal::small_bytevec_t();
-	this->d_.resize_small2small_nocopy(delta_time_field_size(dt)+3);
-	auto it = write_delta_time(dt,this->d_.begin());
+	this->d_.resize_small2small_nocopy(jmid::delta_time_field_size(dt)+3);
+	auto it = jmid::write_delta_time(dt,this->d_.begin());
 	*it++ = 0x90u;  // Note-on, channel "1"
 	*it++ = 0x3Cu;  // 0x3C==60=="Middle C" (C4, 261.63Hz)
 	*it++ = 0x3Fu;  // 0x3F==63, ~= 127/2
@@ -284,7 +284,7 @@ mtrk_event_t make_meta_sysex_generic_unsafe(int32_t dt, unsigned char type,
 	// Ex, 
 	// if end-beg == 7 && add_f7_cap, len will == 8
 	// if end-beg == 31 && !add_f7_cap, len will == 31
-	int32_t sz = delta_time_field_size(dt) + 1 + vlq_field_size(len)
+	int32_t sz = jmid::delta_time_field_size(dt) + 1 + jmid::vlq_field_size(len)
 		+ len;
 	if (type == 0xFFu) {
 		sz += 1;  // For meta events, 1 extra byte for the mtype byte
@@ -293,12 +293,12 @@ mtrk_event_t make_meta_sysex_generic_unsafe(int32_t dt, unsigned char type,
 	auto result = mtrk_event_t(mtrk_event_t::init_small_w_size_0_t {});
 	result.d_.resize(sz);
 	auto it = result.d_.begin();
-	it = write_delta_time(dt,it);
+	it = jmid::write_delta_time(dt,it);
 	*it++ = type;
 	if (type==0xFFu) {
 		*it++ = mtype;
 	}
-	it = write_vlq(len,it);
+	it = jmid::write_vlq(len,it);
 	it = std::copy(beg,end,it);
 	if (add_f7_cap) {
 		*it++ = 0xF7u;
@@ -421,7 +421,7 @@ validate_meta_event(const unsigned char *beg, const unsigned char *end) {
 		return result;
 	}
 	auto p = beg+2;
-	auto len = read_vlq(p,end);
+	auto len = jmid::read_vlq(p,end);
 	if (!len.is_valid) {
 		result.error = mtrk_event_error_t::errc::sysex_or_meta_invalid_vlq_length;
 		return result;
@@ -451,7 +451,7 @@ validate_sysex_event(const unsigned char *beg, const unsigned char *end) {
 		return result;
 	}
 	auto p = beg+1;
-	auto len = read_vlq(p,end);
+	auto len = jmid::read_vlq(p,end);
 	if (!len.is_valid) {
 		result.error = mtrk_event_error_t::errc::sysex_or_meta_invalid_vlq_length;
 		return result;

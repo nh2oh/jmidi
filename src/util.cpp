@@ -7,7 +7,7 @@
 
 
 
-bool read_binary_csio(std::filesystem::path pth, std::vector<char>& dest) {
+bool jmid::read_binary_csio(std::filesystem::path pth, std::vector<char>& dest) {
 	auto fp = std::fopen(pth.string().c_str(), "r");
 	if (!fp) {
 		return false;
@@ -19,7 +19,7 @@ bool read_binary_csio(std::filesystem::path pth, std::vector<char>& dest) {
 }
 
 
-std::string randstr(int n) {
+std::string jmid::randstr(int n) {
 	std::string s;
 	if (n<=0) {
 		return s;

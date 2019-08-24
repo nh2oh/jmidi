@@ -351,7 +351,7 @@ std::string jmid::print(const jmid::mtrk_t& mtrk) {
 std::string jmid::print_event_arrays(jmid::mtrk_t::const_iterator beg, jmid::mtrk_t::const_iterator end) {
 	std::string s {};
 
-	sep_t sep {};
+	jmid::sep_t sep {};
 	sep.byte_pfx = "0x";
 	sep.byte_sfx = "u";
 	sep.elem_sep = ",";
@@ -359,7 +359,7 @@ std::string jmid::print_event_arrays(jmid::mtrk_t::const_iterator beg, jmid::mtr
 	std::int32_t cumtk = 0;
 	for (auto it=beg; it!=end; ++it) { //(const auto& e : mtrk) {
 		s += "{{";
-		print_hexascii(it->begin(),it->end(),std::back_inserter(s),sep);
+		jmid::print_hexascii(it->begin(),it->end(),std::back_inserter(s),sep);
 		s += ("}, " + std::to_string(cumtk) + ", "
 			+ std::to_string(cumtk+it->delta_time()) + "},\n");
 		cumtk += it->delta_time();
@@ -369,7 +369,7 @@ std::string jmid::print_event_arrays(jmid::mtrk_t::const_iterator beg, jmid::mtr
 std::string jmid::print_event_arrays(const jmid::mtrk_t& mtrk) {
 	std::string s {};
 
-	sep_t sep {};
+	jmid::sep_t sep {};
 	sep.byte_pfx = "0x";
 	sep.byte_sfx = "u";
 	sep.elem_sep = ",";
@@ -377,7 +377,7 @@ std::string jmid::print_event_arrays(const jmid::mtrk_t& mtrk) {
 	std::int32_t cumtk = 0;
 	for (const auto& e : mtrk) {
 		s += "{{";
-		print_hexascii(e.begin(),e.end(),std::back_inserter(s),sep);
+		jmid::print_hexascii(e.begin(),e.end(),std::back_inserter(s),sep);
 		s += ("}, " + std::to_string(cumtk) + ", "
 			+ std::to_string(cumtk+e.delta_time()) + "},\n");
 		cumtk += e.delta_time();
@@ -498,7 +498,7 @@ std::string jmid::explain(const jmid::mtrk_error_t& err) {
 		s += "The header begins with an invalid SMF chunk ID.  ";
 	} else if (err.code==jmid::mtrk_error_t::errc::length_gt_mtrk_max) {
 		s += "The length field in the chunk header encodes the value ";
-		s += std::to_string(read_be<std::uint32_t>(err.header.data()+4,err.header.data()+8));
+		s += std::to_string(jmid::read_be<std::uint32_t>(err.header.data()+4,err.header.data()+8));
 		s += ".  This library enforces a maximum MTrk chunk length of "
 			"mtrk_t::length_max == ";
 		s += std::to_string(mtrk_t::length_max);

@@ -3,6 +3,8 @@
 #include <vector>
 #include <string>
 
+namespace jmid {
+
 // bool read_binary_csio(std::filesystem::path pth, 
 //							std::vector<char>& dest)
 // Uses C-style I/O (std::fopen, std::fread()) to read a file into dest.  
@@ -15,3 +17,4 @@ bool read_binary_csio(std::filesystem::path, std::vector<char>&);
 // call.  
 std::string randstr(int);
 
+}  // namespace jmid

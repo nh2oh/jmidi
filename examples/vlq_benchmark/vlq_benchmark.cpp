@@ -52,10 +52,10 @@ int main (int argc, char *argv[]) {
 	int64_t tot_ms_new = 0;  int64_t tot_ms_a = 0;  int64_t tot_ms_b = 0;
 	for (const auto& idx : test_order) {
 		if (idx==0) {
-			std::cout << "\tStarting write_vlq():  ";
+			std::cout << "\tStarting jmid::write_vlq():  ";
 			auto tstart = std::chrono::high_resolution_clock::now();
 			for (size_t i=0; i<opts.N; ++i) {
-				write_vlq(rints[i],dest.data());
+				jmid::write_vlq(rints[i],dest.data());
 				result_sum += dest[2];
 			}
 			auto tend = std::chrono::high_resolution_clock::now();
@@ -90,7 +90,7 @@ int main (int argc, char *argv[]) {
 	}
 	std::cout << "------------------------------------\n";
 
-	std::cout << "write_vlq():  " << tot_ms_new << " ms total\n";
+	std::cout << "jmid::write_vlq():  " << tot_ms_new << " ms total\n";
 	std::cout << "write_vlq_old_a():  " << tot_ms_a << " ms total\n";
 	std::cout << "write_vlq_old_b():  " << tot_ms_b << " ms total\n";
 

@@ -20,14 +20,14 @@ TEST(midi_vlq_tests, toBEByteOrder) {
 	}};
 
 	for (const auto& tc : tests) {
-		auto res = to_be_byte_order(tc.input);
+		auto res = jmid::to_be_byte_order(tc.input);
 		EXPECT_EQ(res,tc.ans) << "Failed for e.ans==" << tc.ans << "\n";
 	}
 }
 
 // read_be<uint8_t>(...)
 // These test cases are the same as for the ui32 test set (directly below).  
-// The full range (4 bytes) of the input field is passed to read_be().  The 
+// The full range (4 bytes) of the input field is passed to jmid::read_be().  The 
 // expectation is that only the first byte will be read and contribute to 
 // the value returned.  
 TEST(midi_vlq_tests, readBigEndianUi8) {
@@ -56,7 +56,7 @@ TEST(midi_vlq_tests, readBigEndianUi8) {
 		{{0xFF,0xFF,0xFF,0xFF},0xFFu}  // max value
 	}};
 	for (const auto& tc : ui8_tests) {
-		auto res = read_be<uint8_t>(tc.field.begin(),tc.field.end());
+		auto res = jmid::read_be<uint8_t>(tc.field.begin(),tc.field.end());
 		EXPECT_EQ(res,tc.ans) << "Failed for e.ans==" << tc.ans << "\n";
 	}
 }
@@ -88,7 +88,7 @@ TEST(midi_vlq_tests, readBigEndianUi32) {
 		{{0xFF,0xFF,0xFF,0xFF},0xFFFFFFFFu}  // max value
 	}};
 	for (const auto& tc : ui32_tests) {
-		auto res = read_be<uint32_t>(tc.field.begin(),tc.field.end());
+		auto res = jmid::read_be<uint32_t>(tc.field.begin(),tc.field.end());
 		EXPECT_EQ(res,tc.ans) << "Failed for e.ans==" << tc.ans << "\n";
 	}
 }
@@ -112,7 +112,7 @@ TEST(midi_vlq_tests, readBigEndianUi64) {
 		{{0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF},0xFFFFFFFFFFFFFFFFu}   // max val
 	}};
 	for (const auto& tc : ui64_tests) {
-		auto res = read_be<uint64_t>(tc.field.begin(),tc.field.end());
+		auto res = jmid::read_be<uint64_t>(tc.field.begin(),tc.field.end());
 		EXPECT_EQ(res,tc.ans) << "Failed for e.ans==" << tc.ans << "\n";
 	}
 }
@@ -149,7 +149,7 @@ TEST(midi_vlq_tests, read24BitBigEndianIntoUi32) {
 		{{0xFF,0xFF,0xFF,0xFF},0x00'FF'FF'FFu}  // max value
 	}};
 	for (const auto& tc : ui24_tests) {
-		auto res = read_be<uint32_t>(tc.field.begin(),tc.field.begin()+3);
+		auto res = jmid::read_be<uint32_t>(tc.field.begin(),tc.field.begin()+3);
 		EXPECT_EQ(res,tc.ans) << "Failed for e.ans==" << tc.ans << "\n";
 	}
 }
@@ -159,32 +159,32 @@ TEST(midi_vlq_tests, read24BitBigEndianIntoUi32) {
 TEST(midi_vlq_tests, VlqFieldSizeP131Examples) {
 	std::array<uint32_t,3> onebyte_ui32t {0x00u,0x40u,0x7Fu};
 	for (const auto& tc : onebyte_ui32t) {
-		auto res = vlq_field_size(tc);
+		auto res = jmid::vlq_field_size(tc);
 		EXPECT_EQ(res,1);
 	}
 	std::array<uint8_t,3> onebyte_ui8t {0x00u,0x40u,0x7Fu};
 	for (const auto& tc : onebyte_ui8t) {
-		auto res = vlq_field_size(tc);
+		auto res = jmid::vlq_field_size(tc);
 		EXPECT_EQ(res,1);
 	}
 	std::array<uint32_t,3> twobyte_ui32t {0x80u,0x2000u,0x3FFFu};
 	for (const auto& tc : twobyte_ui32t) {
-		auto res = vlq_field_size(tc);
+		auto res = jmid::vlq_field_size(tc);
 		EXPECT_EQ(res,2);
 	}
 	std::array<uint32_t,3> threebyte_ui32t {0x4000u,0x100000u,0x1FFFFFu};
 	for (const auto& tc : threebyte_ui32t) {
-		auto res = vlq_field_size(tc);
+		auto res = jmid::vlq_field_size(tc);
 		EXPECT_EQ(res,3);
 	}
 	std::array<uint32_t,3> fourbyte_ui32t {0x00200000u,0x08000000u,0x0FFFFFFFu};
 	for (const auto& tc : fourbyte_ui32t) {
-		auto res = vlq_field_size(tc);
+		auto res = jmid::vlq_field_size(tc);
 		EXPECT_EQ(res,4);
 	}
 }
 
-// vlq_field_size() w/ values invalid for MIDI VLQ quantities:
+// jmid::vlq_field_size() w/ values invalid for MIDI VLQ quantities:
 // Input values are either < 0 or > 0x0FFFFFFF.  
 // Values < 0 should be clamped to 0 and occupy 1 byte.  
 // Values > 0x0FFFFFFF should be clamped to 0x0FFFFFFF and occupy 4 bytes.  
@@ -193,14 +193,14 @@ TEST(midi_vlq_tests, VlqFieldSizeInvalidValues) {
 	std::array<int16_t,4> i16t_negative {-1,-2,-127,-32768};
 	for (const auto& tc : i16t_negative) {
 		ASSERT_TRUE(tc >= std::numeric_limits<int16_t>::min());
-		auto res = vlq_field_size(tc);
+		auto res = jmid::vlq_field_size(tc);
 		EXPECT_EQ(res,1);
 	}
 	std::array<int32_t,8> i32t_negative {-1,-2,-127,-32767,-32768,-32769,
 		-147483647,-147483648};
 	for (const auto& tc : i32t_negative) {
 		ASSERT_TRUE(tc >= std::numeric_limits<int32_t>::min());
-		auto res = vlq_field_size(tc);
+		auto res = jmid::vlq_field_size(tc);
 		EXPECT_EQ(res,1);
 	}
 	
@@ -213,7 +213,7 @@ TEST(midi_vlq_tests, VlqFieldSizeInvalidValues) {
 		2147483647 // 0x7FFFFFFF == numeric_limits<int32_t>::max()
 	};
 	for (const auto& tc : i32t_positive) {
-		auto res = vlq_field_size(tc);
+		auto res = jmid::vlq_field_size(tc);
 		EXPECT_EQ(res,4);
 	}
 	std::array<uint32_t,8> ui32t_positive {
@@ -227,7 +227,7 @@ TEST(midi_vlq_tests, VlqFieldSizeInvalidValues) {
 		std::numeric_limits<uint32_t>::max()
 	};
 	for (const auto& tc : i32t_positive) {
-		auto res = vlq_field_size(tc);
+		auto res = jmid::vlq_field_size(tc);
 		EXPECT_EQ(res,4);
 	}
 	std::array<uint64_t,8> ui64t_positive {
@@ -241,7 +241,7 @@ TEST(midi_vlq_tests, VlqFieldSizeInvalidValues) {
 		std::numeric_limits<uint64_t>::max()
 	};
 	for (const auto& tc : ui64t_positive) {
-		auto res = vlq_field_size(tc);
+		auto res = jmid::vlq_field_size(tc);
 		EXPECT_EQ(res,4);
 	}
 }
@@ -250,7 +250,7 @@ TEST(midi_vlq_tests, VlqFieldSizeInvalidValues) {
 TEST(midi_vlq_tests, interpretVLFieldValidFields) {
 	struct test_t {
 		std::array<unsigned char,6> field {0x00,0x00,0x00,0x00,0x00,0x00};
-		vlq_field_interpreted ans {};
+		jmid::vlq_field_interpreted ans {};
 	};
 
 	// Examples from p131 of the MIDI std
@@ -269,7 +269,7 @@ TEST(midi_vlq_tests, interpretVLFieldValidFields) {
 		{{0xFF,0xFF,0xFF,0x7F,0x00,0x00},{0x0FFFFFFF,4,true}}
 	}};
 	for (const auto& tc : p131_tests) {
-		auto res = read_vlq(tc.field.begin(),tc.field.end());
+		auto res = jmid::read_vlq(tc.field.begin(),tc.field.end());
 		EXPECT_EQ(res.val,tc.ans.val);
 		EXPECT_EQ(res.N,tc.ans.N);
 		EXPECT_EQ(res.is_valid,tc.ans.is_valid);
@@ -288,7 +288,7 @@ TEST(midi_vlq_tests, interpretVLFieldValidFields) {
 		{{0x80,0x80,0x80,0x70,0x80,0x80},{0x00000070,4,true}}
 	}};
 	for (const auto& tc : other_tests) {
-		auto res = read_vlq(tc.field.begin(),tc.field.end());
+		auto res = jmid::read_vlq(tc.field.begin(),tc.field.end());
 		EXPECT_EQ(res.val,tc.ans.val);
 		EXPECT_EQ(res.N,tc.ans.N);
 		EXPECT_EQ(res.is_valid,tc.ans.is_valid);
@@ -299,7 +299,7 @@ TEST(midi_vlq_tests, interpretVLFieldValidFields) {
 TEST(midi_vlq_tests, interpretVLFieldInvalidFields) {
 	struct test_t {
 		std::array<unsigned char,6> field {0x00,0x00,0x00,0x00,0x00,0x00};
-		vlq_field_interpreted ans {};
+		jmid::vlq_field_interpreted ans {};
 	};
 	std::array<test_t,4> tests {{
 		// Should stop reading after 4 bytes, even though the iterator
@@ -312,7 +312,7 @@ TEST(midi_vlq_tests, interpretVLFieldInvalidFields) {
 	}};
 
 	for (const auto& tc : tests) {
-		auto res = read_vlq(tc.field.begin(),tc.field.end());
+		auto res = jmid::read_vlq(tc.field.begin(),tc.field.end());
 		EXPECT_EQ(res.val,tc.ans.val);
 		EXPECT_EQ(res.N,tc.ans.N);
 		EXPECT_EQ(res.is_valid,tc.ans.is_valid);
@@ -343,7 +343,7 @@ TEST(midi_vlq_tests, advanceToVlqEndValidFields) {
 		{{0xFF,0xFF,0xFF,0x7F,0x00,0x00},4}
 	}};
 	for (const auto& tc : p131_tests) {
-		auto it = advance_to_vlq_end(tc.field.begin(),tc.field.end());
+		auto it = jmid::advance_to_vlq_end(tc.field.begin(),tc.field.end());
 		EXPECT_EQ(it-tc.field.begin(),tc.distance);
 	}
 
@@ -360,7 +360,7 @@ TEST(midi_vlq_tests, advanceToVlqEndValidFields) {
 		{{0x80,0x80,0x80,0x70,0x80,0x80},4}
 	}};
 	for (const auto& tc : other_tests) {
-		auto it = advance_to_vlq_end(tc.field.begin(),tc.field.end());
+		auto it = jmid::advance_to_vlq_end(tc.field.begin(),tc.field.end());
 		EXPECT_EQ(it-tc.field.begin(),tc.distance);
 	}
 }
@@ -382,7 +382,7 @@ TEST(midi_vlq_tests, advanceToVlqEndInvalidFields) {
 	}};
 
 	for (const auto& tc : tests) {
-		auto it = advance_to_vlq_end(tc.field.begin(),tc.field.end());
+		auto it = jmid::advance_to_vlq_end(tc.field.begin(),tc.field.end());
 		EXPECT_EQ(it-tc.field.begin(),tc.distance);
 	}
 }
@@ -415,7 +415,7 @@ TEST(midi_vlq_tests, WriteVLFieldP131Examples) {
 	for (const auto& tc : tests) {
 		std::array<unsigned char,4> curr_result {0x00u,0x00u,0x00u,0x00u};
 
-		auto it = write_vlq(tc.val,curr_result.begin());
+		auto it = jmid::write_vlq(tc.val,curr_result.begin());
 		auto nbytes_written = it-curr_result.begin();
 		EXPECT_EQ(nbytes_written,tc.N);
 
@@ -426,7 +426,7 @@ TEST(midi_vlq_tests, WriteVLFieldP131Examples) {
 		}
 
 		EXPECT_EQ(tc.val,
-			read_vlq(curr_result.begin(),curr_result.end()).val);
+			jmid::read_vlq(curr_result.begin(),curr_result.end()).val);
 	}
 }
 
@@ -456,7 +456,7 @@ TEST(midi_vlq_tests, WriteVLFieldInvalidInput) {
 	};
 	for (const auto& tc : ui32t_positive) {
 		std::array<unsigned char,4> curr_result {0x00u,0x00u,0x00u,0x00u};
-		auto it = write_vlq(tc,curr_result.begin());
+		auto it = jmid::write_vlq(tc,curr_result.begin());
 		auto nbytes_written = it-curr_result.begin();
 		EXPECT_EQ(nbytes_written,Nbytes_field_too_big);
 		ASSERT_TRUE(field_input_too_big.size()==curr_result.size());
@@ -464,7 +464,7 @@ TEST(midi_vlq_tests, WriteVLFieldInvalidInput) {
 			EXPECT_EQ(curr_result[i],field_input_too_big[i]);
 		}
 		EXPECT_EQ(val_input_too_big,
-			read_vlq(curr_result.begin(),curr_result.end()).val);
+			jmid::read_vlq(curr_result.begin(),curr_result.end()).val);
 	}
 	std::array<uint64_t,8> ui64t_positive {
 		268435456u,  // 0x0FFFFFFF + 1
@@ -478,7 +478,7 @@ TEST(midi_vlq_tests, WriteVLFieldInvalidInput) {
 	};
 	for (const auto& tc : ui64t_positive) {
 		std::array<unsigned char,4> curr_result {0x00u,0x00u,0x00u,0x00u};
-		auto it = write_vlq(tc,curr_result.begin());
+		auto it = jmid::write_vlq(tc,curr_result.begin());
 		auto nbytes_written = it-curr_result.begin();
 		EXPECT_EQ(nbytes_written,Nbytes_field_too_big);
 		ASSERT_TRUE(field_input_too_big.size()==curr_result.size());
@@ -486,7 +486,7 @@ TEST(midi_vlq_tests, WriteVLFieldInvalidInput) {
 			EXPECT_EQ(curr_result[i],field_input_too_big[i]);
 		}
 		EXPECT_EQ(val_input_too_big,
-			read_vlq(curr_result.begin(),curr_result.end()).val);
+			jmid::read_vlq(curr_result.begin(),curr_result.end()).val);
 	}
 
 	// Values too small (negative)
@@ -494,7 +494,7 @@ TEST(midi_vlq_tests, WriteVLFieldInvalidInput) {
 	for (const auto& tc : i16t_negative) {
 		ASSERT_TRUE(tc >= std::numeric_limits<int16_t>::min());
 		std::array<unsigned char,4> curr_result {0x00u,0x00u,0x00u,0x00u};
-		auto it = write_vlq(tc,curr_result.begin());
+		auto it = jmid::write_vlq(tc,curr_result.begin());
 		auto nbytes_written = it-curr_result.begin();
 		EXPECT_EQ(nbytes_written,Nbytes_field_too_small);
 		ASSERT_TRUE(field_input_too_small.size()==curr_result.size());
@@ -502,14 +502,14 @@ TEST(midi_vlq_tests, WriteVLFieldInvalidInput) {
 			EXPECT_EQ(curr_result[i],field_input_too_small[i]);
 		}
 		EXPECT_EQ(val_input_too_small,
-			read_vlq(curr_result.begin(),curr_result.end()).val);
+			jmid::read_vlq(curr_result.begin(),curr_result.end()).val);
 	}
 	std::array<int32_t,8> i32t_negative {-1,-2,-127,-32767,-32768,-32769,
 		-147483647,-147483648};
 	for (const auto& tc : i32t_negative) {
 		ASSERT_TRUE(tc >= std::numeric_limits<int32_t>::min());
 		std::array<unsigned char,4> curr_result {0x00u,0x00u,0x00u,0x00u};
-		auto it = write_vlq(tc,curr_result.begin());
+		auto it = jmid::write_vlq(tc,curr_result.begin());
 		auto nbytes_written = it-curr_result.begin();
 		EXPECT_EQ(nbytes_written,Nbytes_field_too_small);
 		ASSERT_TRUE(field_input_too_small.size()==curr_result.size());
@@ -517,7 +517,7 @@ TEST(midi_vlq_tests, WriteVLFieldInvalidInput) {
 			EXPECT_EQ(curr_result[i],field_input_too_small[i]);
 		}
 		EXPECT_EQ(val_input_too_small,
-			read_vlq(curr_result.begin(),curr_result.end()).val);
+			jmid::read_vlq(curr_result.begin(),curr_result.end()).val);
 	}
 
 }

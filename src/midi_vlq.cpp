@@ -1,5 +1,6 @@
 #include "midi_vlq.h"
 #include <limits>
+#include <cstdint>
 
 
 template<typename TIn, typename TOut>
