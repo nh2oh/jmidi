@@ -32,20 +32,20 @@ TEST(mtrk_event_t_meta_factories, makeTempo) {
 		
 	};
 	for (const auto& e : tests) {
-		const auto ev = make_tempo(e.dt_in,e.tempo_in);
+		const auto ev = jmid::make_tempo(e.dt_in,e.tempo_in);
 		auto dt_size = delta_time_field_size(e.dt_ans);
 		auto pyld_size = 3;
 		auto dat_size = 3+pyld_size;
 		auto tot_size = dt_size+dat_size;
-		EXPECT_EQ(classify_meta_event(ev),meta_event_t::tempo);
-		EXPECT_TRUE(is_tempo(ev));
+		EXPECT_EQ(jmid::classify_meta_event(ev),jmid::meta_event_t::tempo);
+		EXPECT_TRUE(jmid::is_tempo(ev));
 		EXPECT_EQ(ev.delta_time(),e.dt_ans);
 		EXPECT_EQ(ev.size(),tot_size);
 		EXPECT_EQ(ev.data_size(),dat_size);
 		EXPECT_EQ(ev.running_status(),0x00u);
 		EXPECT_EQ(ev.status_byte(),0xFFu);
 
-		EXPECT_EQ(get_tempo(ev),e.tempo_ans);
+		EXPECT_EQ(jmid::get_tempo(ev),e.tempo_ans);
 
 		EXPECT_EQ(ev.end()-ev.begin(),tot_size);
 		EXPECT_EQ(ev.end()-ev.event_begin(),dat_size);
@@ -62,13 +62,13 @@ TEST(mtrk_event_t_meta_factories, makeTempo) {
 TEST(mtrk_event_t_meta_factories, makeEOT) {
 	std::vector<int32_t> tests {0,1,128,125428};
 	for (const auto& e : tests) {
-		const auto ev = make_eot(e);
+		const auto ev = jmid::make_eot(e);
 		auto dt_size = delta_time_field_size(e);
 		auto pyld_size = 0;
 		auto dat_size = 3+pyld_size;
 		auto tot_size = dt_size+dat_size;
-		EXPECT_EQ(classify_meta_event(ev),meta_event_t::eot);
-		EXPECT_TRUE(is_eot(ev));
+		EXPECT_EQ(jmid::classify_meta_event(ev),jmid::meta_event_t::eot);
+		EXPECT_TRUE(jmid::is_eot(ev));
 		EXPECT_EQ(ev.delta_time(),e);
 		EXPECT_EQ(ev.size(),tot_size);
 		EXPECT_EQ(ev.data_size(),dat_size);
@@ -112,15 +112,15 @@ TEST(mtrk_event_t_meta_factories, makeTimesig) {
 		auto pyld_size = 4;
 		auto dat_size = 3+pyld_size;
 		auto tot_size = dt_size+dat_size;
-		EXPECT_EQ(classify_meta_event(ev),meta_event_t::timesig);
-		EXPECT_TRUE(is_timesig(ev));
+		EXPECT_EQ(jmid::classify_meta_event(ev),jmid::meta_event_t::timesig);
+		EXPECT_TRUE(jmid::is_timesig(ev));
 		EXPECT_EQ(ev.delta_time(),e.dt);
 		EXPECT_EQ(ev.size(),tot_size);
 		EXPECT_EQ(ev.data_size(),dat_size);
 		EXPECT_EQ(ev.running_status(),0x00u);
 		EXPECT_EQ(ev.status_byte(),0xFFu);
 
-		EXPECT_EQ(get_timesig(ev),e.ts);
+		EXPECT_EQ(jmid::get_timesig(ev),e.ts);
 
 		EXPECT_EQ(ev.end()-ev.begin(),tot_size);
 		EXPECT_EQ(ev.end()-ev.event_begin(),dat_size);
@@ -140,16 +140,16 @@ TEST(mtrk_event_t_meta_factories, makeEventsWithTextPayloads) {
 	struct testset_t {
 		mtrk_event_t (*fp_make)(const int32_t&, const std::string&);
 		bool (*fp_is)(const mtrk_event_t&);
-		meta_event_t ans_evtype;
+		jmid::meta_event_t ans_evtype;
 	};
 	std::vector<testset_t> testsets {
-		{make_text,is_text,meta_event_t::text},
-		{make_copyright,is_copyright,meta_event_t::copyright},
-		{make_trackname,is_trackname,meta_event_t::trackname},
-		{make_instname,is_instname,meta_event_t::instname},
-		{make_lyric,is_lyric,meta_event_t::lyric},
-		{make_marker,is_marker,meta_event_t::marker},
-		{make_cuepoint,is_cuepoint,meta_event_t::cuepoint}		
+		{jmid::make_text,jmid::is_text,jmid::meta_event_t::text},
+		{jmid::make_copyright,jmid::is_copyright,jmid::meta_event_t::copyright},
+		{jmid::make_trackname,jmid::is_trackname,jmid::meta_event_t::trackname},
+		{jmid::make_instname,jmid::is_instname,jmid::meta_event_t::instname},
+		{jmid::make_lyric,jmid::is_lyric,jmid::meta_event_t::lyric},
+		{jmid::make_marker,jmid::is_marker,jmid::meta_event_t::marker},
+		{jmid::make_cuepoint,jmid::is_cuepoint,jmid::meta_event_t::cuepoint}		
 	};
 
 	struct test_t {
@@ -174,14 +174,14 @@ TEST(mtrk_event_t_meta_factories, makeEventsWithTextPayloads) {
 	for (const auto curr_testset : testsets) {
 		for (const auto& e : tests) {
 			auto ev = (*curr_testset.fp_make)(e.dt,e.s);
-			EXPECT_EQ(classify_meta_event(ev),curr_testset.ans_evtype);
+			EXPECT_EQ(jmid::classify_meta_event(ev),curr_testset.ans_evtype);
 			EXPECT_TRUE((*curr_testset.fp_is)(ev));
-			EXPECT_TRUE(meta_has_text(ev));
+			EXPECT_TRUE(jmid::meta_has_text(ev));
 			EXPECT_EQ(ev.delta_time(),e.dt);
 
-			auto txt = meta_generic_gettext(ev);
+			auto txt = jmid::meta_generic_gettext(ev);
 
-			EXPECT_EQ(meta_generic_gettext(ev),e.s);
+			EXPECT_EQ(jmid::meta_generic_gettext(ev),e.s);
 		}
 	}
 }

@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <array>
+#include <algorithm>
 
 
 namespace mtrk_event_t_internal {

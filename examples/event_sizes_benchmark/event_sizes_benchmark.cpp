@@ -200,7 +200,7 @@ int avg_and_max_event_sizes(const std::vector<std::filesystem::path>& files,
 			<< "; n >= 24 && <= 31 bytes == " << std::to_string(n_events_2431bytes)
 			<< "; n > 31 bytes == " << std::to_string(n_events_gt31bytes)
 			<< ";\n";
-		outfile << print(biggest_event,mtrk_sbo_print_opts::detail) << '\n';
+		outfile << jmid::print(biggest_event,jmid::mtrk_sbo_print_opts::detail) << '\n';
 		outfile << "==============================================="
 				"=================================\n\n";
 	}

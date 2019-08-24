@@ -49,12 +49,12 @@ int main(int argc, char *argv[]) {
 	}
 
 	for (const auto& tdivc : tdiv_counts) {
-		if (is_tpq(tdivc.tdiv)) {
+		if (jmid::is_tpq(tdivc.tdiv)) {
 			std::cout << "tpq\t" 
-				<< get_tpq(tdivc.tdiv)
+				<< jmid::get_tpq(tdivc.tdiv)
 				<< "\t" << tdivc.count;
-		} else if (is_smpte(tdivc.tdiv)) {
-			auto smpte = get_smpte(tdivc.tdiv);
+		} else if (jmid::is_smpte(tdivc.tdiv)) {
+			auto smpte = jmid::get_smpte(tdivc.tdiv);
 			std::cout << "smpte\t" 
 				<< "tcf==" << smpte.time_code 
 				<< " subframes==" << smpte.subframes

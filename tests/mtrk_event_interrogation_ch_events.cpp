@@ -15,13 +15,13 @@ TEST(mtrk_event_channel_interrogators, isChannelVoiceModeTestSetCEvents) {
 		EXPECT_TRUE(maybe_ev);
 		auto ev = maybe_ev.event;
 		
-		EXPECT_TRUE(is_channel(ev));
+		EXPECT_TRUE(jmid::is_channel(ev));
 		if (tc.is_ch_mode) {
-			EXPECT_TRUE(is_channel_mode(ev));
-			EXPECT_FALSE(is_channel_voice(ev));
+			EXPECT_TRUE(jmid::is_channel_mode(ev));
+			EXPECT_FALSE(jmid::is_channel_voice(ev));
 		} else {
-			EXPECT_FALSE(is_channel_mode(ev));
-			EXPECT_TRUE(is_channel_voice(ev));
+			EXPECT_FALSE(jmid::is_channel_mode(ev));
+			EXPECT_TRUE(jmid::is_channel_voice(ev));
 		}
 	}
 }
@@ -48,9 +48,9 @@ TEST(mtrk_event_channel_interrogators, isChannelVoiceModeAssortedEvents) {
 	
 	for (const auto& tc : tests) {
 		const mtrk_event_t ev(tc.dt_input,tc.md_input);
-		EXPECT_TRUE(is_channel(ev));
-		EXPECT_TRUE(is_channel_voice(ev));
-		EXPECT_FALSE(is_channel_mode(ev));
+		EXPECT_TRUE(jmid::is_channel(ev));
+		EXPECT_TRUE(jmid::is_channel_voice(ev));
+		EXPECT_FALSE(jmid::is_channel_mode(ev));
 	}
 }
 

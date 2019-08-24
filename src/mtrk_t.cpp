@@ -247,7 +247,7 @@ mtrk_t::validate_t mtrk_t::validate() const {
 	jmid::ch_event_data_t curr_chev_data;  //mtrk_event_t::channel_event_data_t curr_chev_data;
 	auto is_matching_onoff 
 		= [&curr_chev_data](const sounding_notes_t& sev) -> bool {
-		return is_onoff_pair(sev.ch,sev.note,
+		return jmid::is_onoff_pair(sev.ch,sev.note,
 						curr_chev_data.ch,curr_chev_data.p1);
 	};
 
@@ -267,8 +267,8 @@ mtrk_t::validate_t mtrk_t::validate() const {
 		cumtk += this->evnts_[i].delta_time();
 		found_ch_ev = (found_ch_ev || jmid::is_channel_status_byte(s));
 		
-		if (is_note_on(this->evnts_[i])) {
-			curr_chev_data = get_channel_event(this->evnts_[i]);
+		if (jmid::is_note_on(this->evnts_[i])) {
+			curr_chev_data = jmid::get_channel_event(this->evnts_[i]);
 			auto it = std::find_if(sounding.begin(),sounding.end(),
 				is_matching_onoff);
 			if (it!=sounding.end()) {
@@ -279,8 +279,8 @@ mtrk_t::validate_t mtrk_t::validate() const {
 					+ ".  \n");
 			}  //it==sounding.end() => orphan "off" event
 			sounding.push_back({i,curr_chev_data.ch,curr_chev_data.p1});
-		} else if (is_note_off(this->evnts_[i])) {
-			curr_chev_data = get_channel_event(this->evnts_[i]);  //curr_chev_data = this->evnts_[i].midi_data();
+		} else if (jmid::is_note_off(this->evnts_[i])) {
+			curr_chev_data = jmid::get_channel_event(this->evnts_[i]);  //curr_chev_data = this->evnts_[i].midi_data();
 			auto it = std::find_if(sounding.begin(),sounding.end(),
 				is_matching_onoff);
 			if (it!=sounding.end()) {
@@ -291,14 +291,14 @@ mtrk_t::validate_t mtrk_t::validate() const {
 					+ std::to_string(curr_chev_data.ch) + "; event number "
 					+ std::to_string(it->idx) + ".  \n");
 			}
-		} else if (is_eot(this->evnts_[i]) && (i!=(this->evnts_.size()-1))) {
+		} else if (jmid::is_eot(this->evnts_[i]) && (i!=(this->evnts_.size()-1))) {
 			r.error = ("Illegal \"End-of-track\" (EOT) meta-event found "
 				"at idx i = " + std::to_string(i) + " and cumulative "
 				"delta-time = " + std::to_string(cumtk) + ".  EOT "
 				"events are only valid as the very last event in an MTrk "
 				"event sequence.  ");
 			return r;
-		} else if (is_seqn(this->evnts_[i]) && ((cumtk>0) || found_ch_ev)) {
+		} else if (jmid::is_seqn(this->evnts_[i]) && ((cumtk>0) || found_ch_ev)) {
 			// Test for illegal sequence-number meta event occuring after 
 			// a midi channel event or at t>0.  
 			r.error = ("Illegal \"Sequence number\" meta-event found "
@@ -311,7 +311,7 @@ mtrk_t::validate_t mtrk_t::validate() const {
 	}
 
 	// The final event must be a meta-end-of-track msg.  
-	if ((this->evnts_.size()==0) || !is_eot(this->evnts_.back())) {
+	if ((this->evnts_.size()==0) || !jmid::is_eot(this->evnts_.back())) {
 		r.error = "this->evnts_.size()==0 || !is_eot(this->evnts_.back()):  "
 			"The final event in an MTrk event sequence must be an"
 			"\"end-of-track\" meta event.  ";
@@ -343,7 +343,7 @@ std::string print(const mtrk_t& mtrk) {
 	s.reserve(mtrk.nbytes()*100);  // TODO:  Magic constant 100
 	for (auto it=mtrk.begin(); it!=mtrk.end(); ++it) {
 		//s += print(*it);
-		s += print(*it,mtrk_sbo_print_opts::detail);
+		s += print(*it,jmid::mtrk_sbo_print_opts::detail);
 		s += "\n";
 	}
 	return s;
@@ -386,17 +386,17 @@ std::string print_event_arrays(const mtrk_t& mtrk) {
 }
 bool is_tempo_map(const mtrk_t& trk) {
 	auto found_not_allowed = [](const mtrk_event_t& ev) -> bool {
-		if (!is_meta(ev)) {
+		if (!jmid::is_meta(ev)) {
 			return true;
 		}
-		auto mt_type = classify_meta_event(ev);
-		return (mt_type!=meta_event_t::tempo
-			&& mt_type!=meta_event_t::timesig
-			&& mt_type!=meta_event_t::eot
-			&& mt_type!=meta_event_t::seqn
-			&& mt_type!=meta_event_t::trackname
-			&& mt_type!=meta_event_t::smpteoffset
-			&& mt_type!=meta_event_t::marker);
+		auto mt_type = jmid::classify_meta_event(ev);
+		return (mt_type!=jmid::meta_event_t::tempo
+			&& mt_type!=jmid::meta_event_t::timesig
+			&& mt_type!=jmid::meta_event_t::eot
+			&& mt_type!=jmid::meta_event_t::seqn
+			&& mt_type!=jmid::meta_event_t::trackname
+			&& mt_type!=jmid::meta_event_t::smpteoffset
+			&& mt_type!=jmid::meta_event_t::marker);
 	};
 
 	return std::find_if(trk.begin(),trk.end(),found_not_allowed)==trk.end();
@@ -413,7 +413,7 @@ bool is_equivalent_permutation_ignore_dt(mtrk_t::const_iterator beg1,
 	// equiv elements on [beg1,end1), return false.  
 	for (auto it=beg1; it!=end1; ++it) {
 		auto pred = [&it](const mtrk_event_t& rhs) -> bool {
-			return is_eq_ignore_dt(*it,rhs);
+			return jmid::is_eq_ignore_dt(*it,rhs);
 		};
 
 		if (it != std::find_if(beg1,it,pred)) {
@@ -468,9 +468,9 @@ double duration(mtrk_t::const_iterator beg, mtrk_t::const_iterator end,
 				const jmid::time_division_t& tdiv, int32_t tempo) {
 	double s = 0.0;  // cumulative number of seconds
 	for (auto it=beg; it!=end; ++it) {
-		s += ticks2sec(it->delta_time(),tdiv,tempo);
+		s += jmid::ticks2sec(it->delta_time(),tdiv,tempo);
 		// A tempo meta event can change the tempo:
-		tempo = get_tempo(*it,tempo);
+		tempo = jmid::get_tempo(*it,tempo);
 	}
 	return s;
 }
@@ -539,13 +539,13 @@ mtrk_t::const_iterator get_simultaneous_events(mtrk_t::const_iterator beg,
 event_tk_t<mtrk_t::const_iterator> find_linked_off(mtrk_t::const_iterator beg,
 					mtrk_t::const_iterator end, const mtrk_event_t& on) {
 	event_tk_t<mtrk_t::const_iterator> res {end,0};
-	if (!is_note_on(on)) {
+	if (!jmid::is_note_on(on)) {
 		return res;
 	}
-	auto md_on = get_channel_event(on);
+	auto md_on = jmid::get_channel_event(on);
 	// Note that when beg points at the linked-off event, beg->delta_time()
 	// is _not_ added to res.tk.  
-	while (beg!=end && !is_onoff_pair(md_on.ch,md_on.p1,*beg)) {
+	while (beg!=end && !jmid::is_onoff_pair(md_on.ch,md_on.p1,*beg)) {
 		res.tk += beg->delta_time();
 		++beg;
 	}
@@ -561,7 +561,7 @@ std::vector<linked_onoff_pair_t>
 	int32_t tkonset = 0;
 	for (auto curr=beg; curr!=end; ++curr) {
 		tkonset += curr->delta_time();
-		if (!is_note_on(*curr)) {
+		if (!jmid::is_note_on(*curr)) {
 			continue;
 		}
 
@@ -603,7 +603,7 @@ std::string print_linked_onoff_pairs(const mtrk_t& mtrk) {
 	ss << "\n";
 
 	auto print_half = [&ss,&w](int32_t cumtk, const mtrk_event_t& onoff)->void {
-		auto md = get_channel_event(onoff); //.midi_data();
+		auto md = jmid::get_channel_event(onoff); //.midi_data();
 		//ss << std::setw(w.ch) << std::to_string(md.ch);
 		ss << std::setw(w.p1p2) << std::to_string(md.p1);
 		ss << std::setw(w.p1p2) << std::to_string(md.p2);
@@ -612,7 +612,7 @@ std::string print_linked_onoff_pairs(const mtrk_t& mtrk) {
 
 	auto pairs = get_linked_onoff_pairs(mtrk.begin(),mtrk.end());
 	for (const auto e : pairs) {
-		ss << std::setw(w.ch) << std::to_string(get_channel_event(*e.on.it).ch); //->midi_data().ch);
+		ss << std::setw(w.ch) << std::to_string(jmid::get_channel_event(*e.on.it).ch); //->midi_data().ch);
 		print_half(e.on.tk,*e.on.it);
 		ss << std::setw(w.sep) << " ";
 		print_half(e.off.tk,*e.off.it);

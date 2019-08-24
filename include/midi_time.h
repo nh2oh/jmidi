@@ -37,13 +37,13 @@ public:
 	// This is declared deleted b/c is is ambiguous; does the user mean for
 	// the uint16_t argument to be interpreted as a number of tpq, or as a
 	// "raw value," as by make_time_division_from_raw(uint16_t)?
-	explicit jmid::time_division_t(std::uint16_t)=delete;
+	explicit time_division_t(std::uint16_t)=delete;
 	// Construct a SMPTE-valued time-division object
 	// Allowed values for arg 1 (SMPTE-time-code) are -24, -25, -29, -30.  
 	// If an invalid value is passed in, -24 is substituted.  The value for
 	// arg 2 (subdivisions-per-frame) is clamped to [1,255].  
-	explicit jmid::time_division_t(std::int32_t, std::int32_t);
-	explicit jmid::time_division_t(smpte_t);
+	explicit time_division_t(std::int32_t, std::int32_t);
+	explicit time_division_t(smpte_t);
 	
 	// Getters
 	// If called on an object of the wrong type, the value returned 

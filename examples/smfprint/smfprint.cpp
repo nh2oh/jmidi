@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
 	for (const auto& trk : smf.smf) {
 		std::cout << "Track " << trkn << '\n';
 		for (const auto& ev : trk) {
-			std::cout << print(ev,mtrk_sbo_print_opts::detail) << '\n';
+			std::cout << jmid::print(ev,jmid::mtrk_sbo_print_opts::detail) << '\n';
 		}
 	}
 

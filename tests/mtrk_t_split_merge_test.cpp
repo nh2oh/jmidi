@@ -29,8 +29,8 @@ TEST(mtrk_t_tests, SplitCopyIfForNoteNum67WithTSB) {
 	auto mtrk_b = make_mtrk_tsb(tsb);
 
 	auto isntnum43 = [](const mtrk_event_t& ev)->bool {
-		auto md = get_channel_event(ev);
-		return (is_channel_voice(ev) && (md.p1==67));  // 67 == 0x43u
+		auto md = jmid::get_channel_event(ev);
+		return (jmid::is_channel_voice(ev) && (md.p1==67));  // 67 == 0x43u
 	};
 
 	auto new_mtrk = mtrk_t();
@@ -41,8 +41,8 @@ TEST(mtrk_t_tests, SplitCopyIfForNoteNum67WithTSB) {
 	EXPECT_EQ(new_mtrk.size(),tsb_note_67_events.size());
 	for (int i=0; i<new_mtrk.size(); ++i) {
 		tk_onset += new_mtrk[i].delta_time();
-		EXPECT_TRUE(is_channel_voice(new_mtrk[i]));
-		auto md = get_channel_event(new_mtrk[i]);
+		EXPECT_TRUE(jmid::is_channel_voice(new_mtrk[i]));
+		auto md = jmid::get_channel_event(new_mtrk[i]);
 		EXPECT_EQ(md.p1,67);
 		EXPECT_EQ(tk_onset,tsb_note_67_events[i].tkonset);
 
@@ -65,7 +65,7 @@ TEST(mtrk_t_tests, SplitCopyIfForMetaEventsWithTSB) {
 	auto mtrk_b = make_mtrk_tsb(tsb);
 
 	auto ismeta = [](const mtrk_event_t& ev)->bool {
-		return is_meta(ev);
+		return jmid::is_meta(ev);
 	};
 
 	auto new_mtrk = mtrk_t();
@@ -76,7 +76,7 @@ TEST(mtrk_t_tests, SplitCopyIfForMetaEventsWithTSB) {
 	EXPECT_EQ(new_mtrk.size(),tsb_meta_events.size());
 	for (int i=0; i<new_mtrk.size(); ++i) { 
 		tk_onset += new_mtrk[i].delta_time();
-		EXPECT_TRUE(is_meta(new_mtrk[i]));
+		EXPECT_TRUE(jmid::is_meta(new_mtrk[i]));
 		EXPECT_EQ(tk_onset,tsb_meta_events[i].tkonset);
 
 		// The raw data in tsb_meta_events have the delta time fields from
@@ -98,8 +98,8 @@ TEST(mtrk_t_tests, SplitIfForNoteNum67WithTSB) {
 	auto mtrk_b = make_mtrk_tsb(tsb);
 
 	auto isntnum43 = [](const mtrk_event_t& ev)->bool {
-		auto md = get_channel_event(ev);
-		return (is_channel_voice(ev) && (md.p1==67));  // 67 == 0x43u
+		auto md = jmid::get_channel_event(ev);
+		return (jmid::is_channel_voice(ev) && (md.p1==67));  // 67 == 0x43u
 	};
 
 	auto it = split_if(mtrk_b.begin(),mtrk_b.end(),isntnum43);
@@ -110,8 +110,8 @@ TEST(mtrk_t_tests, SplitIfForNoteNum67WithTSB) {
 	EXPECT_EQ(mtrk_first.size(),tsb_note_67_events.size());
 	for (int i=0; i<mtrk_first.size(); ++i) {
 		tk_onset += mtrk_first[i].delta_time();
-		EXPECT_TRUE(is_channel_voice(mtrk_first[i]));
-		auto md = get_channel_event(mtrk_first[i]);
+		EXPECT_TRUE(jmid::is_channel_voice(mtrk_first[i]));
+		auto md = jmid::get_channel_event(mtrk_first[i]);
 		EXPECT_EQ(md.p1,67);
 		EXPECT_EQ(tk_onset,tsb_note_67_events[i].tkonset);
 
@@ -128,8 +128,8 @@ TEST(mtrk_t_tests, SplitIfForNoteNum67WithTSB) {
 	tk_onset = 0;
 	for (int i=0; i<mtrk_second.size(); ++i) {
 		tk_onset += mtrk_second[i].delta_time();
-		if (is_channel_voice(mtrk_second[i])) {
-			auto md = get_channel_event(mtrk_second[i]);
+		if (jmid::is_channel_voice(mtrk_second[i])) {
+			auto md = jmid::get_channel_event(mtrk_second[i]);
 			EXPECT_NE(md.p1,67);
 		}
 		EXPECT_EQ(tk_onset,tsb_non_note_67_events[i].tkonset);
@@ -152,8 +152,8 @@ TEST(mtrk_t_tests, SplitIfMtrkOverloadForNoteNum67WithTSB) {
 	auto mtrk_b = make_mtrk_tsb(tsb);
 
 	auto isntnum43 = [](const mtrk_event_t& ev)->bool {
-		auto md = get_channel_event(ev);
-		return (is_channel_voice(ev) && (md.p1==67));  // 67 == 0x43u
+		auto md = jmid::get_channel_event(ev);
+		return (jmid::is_channel_voice(ev) && (md.p1==67));  // 67 == 0x43u
 	};
 
 	auto mtrk_first = split_if(mtrk_b,isntnum43);

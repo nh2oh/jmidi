@@ -1,5 +1,6 @@
 #pragma once
-#include <limits>  // CHAR_BIT
+#include <limits>
+#include <climits>  // CHAR_BIT
 #include <type_traits>  // std::enable_if<>, is_integral<>, is_unsigned<>
 #include <cstdint>
 #include <cstring>
@@ -59,7 +60,7 @@ InIt advance_to_vlq_end(InIt beg, InIt end) {
 //
 template<typename T>
 constexpr int vlq_field_size(T val) {
-	uint32_t uval;
+	uint32_t uval = 0;
 	if (val < 0) {
 		uval = 0;
 	} else if (val > 0x0FFFFFFF) {
@@ -166,14 +167,14 @@ T to_be_byte_order(T val) {
 //
 template<typename T, typename InIt>
 T read_be(InIt beg, InIt end) {
-	static_assert(std::is_same<
-		std::decay<decltype(*beg)>::type,unsigned char>::value);
+	static_assert(std::is_same<typename std::decay<decltype(*beg)>::type,char>::value
+		|| std::is_same<typename std::decay<decltype(*beg)>::type,unsigned char>::value);
 	static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value);
 
 	T result {0};
 	for (int i=0; (i<sizeof(T) && (beg!=end)); ++i) {
 		result <<= CHAR_BIT;
-		result += *beg++;
+		result += static_cast<unsigned char>(*beg++);
 	}
 
 	return result;
@@ -191,8 +192,8 @@ T read_be(InIt beg, InIt end) {
 //
 template<typename OIt>
 OIt write_24bit_be(uint32_t val, OIt dest) {
-	static_assert(std::is_same<
-		std::decay<decltype(*dest)>::type,unsigned char>::value);
+	//static_assert(std::is_same<std::decay<decltype(*dest)>::type,char>::value
+	//	|| std::is_same<std::decay<decltype(*dest)>::type,unsigned char>::value);
 	
 	auto be_val = to_be_byte_order(val);
 	unsigned char *p = static_cast<unsigned char*>(static_cast<void*>(&be_val));
@@ -204,8 +205,8 @@ OIt write_24bit_be(uint32_t val, OIt dest) {
 };
 template<typename OIt>
 OIt write_16bit_be(uint16_t val, OIt dest) {
-	static_assert(std::is_same<
-		std::decay<decltype(*dest)>::type,unsigned char>::value);
+	//static_assert(std::is_same<std::decay<decltype(*dest)>::type,char>::value
+	//	|| std::is_same<std::decay<decltype(*dest)>::type,unsigned char>::value);
 	
 	auto be_val = to_be_byte_order(val);
 	unsigned char *p = static_cast<unsigned char*>(static_cast<void*>(&be_val));
@@ -216,8 +217,8 @@ OIt write_16bit_be(uint16_t val, OIt dest) {
 };
 template<typename OIt>
 OIt write_32bit_be(uint32_t val, OIt dest) {
-	//static_assert(std::is_same<
-	//	std::decay<decltype(*dest)>::type,unsigned char>::value);
+	//static_assert(std::is_same<std::decay<decltype(*dest)>::type,char>::value
+	//	|| std::is_same<std::decay<decltype(*dest)>::type,unsigned char>::value);
 	
 	auto be_val = to_be_byte_order(val);
 	unsigned char *p = static_cast<unsigned char*>(static_cast<void*>(&be_val));

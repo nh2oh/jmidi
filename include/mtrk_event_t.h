@@ -47,6 +47,12 @@
 struct mtrk_event_error_t;
 struct maybe_mtrk_event_t;
 struct mtrk_event_debug_helper_t;
+class mtrk_event_t;
+
+namespace jmid {
+mtrk_event_t make_ch_event_generic_unsafe(std::int32_t, 
+								const jmid::ch_event_data_t&) noexcept;
+}
 
 struct mtrk_event_container_types_t {
 	using value_type = unsigned char;
@@ -168,7 +174,7 @@ private:
 	bool is_big() const;
 	bool is_small() const;
 
-	friend mtrk_event_t make_ch_event_generic_unsafe(int32_t, 
+	friend mtrk_event_t jmid::make_ch_event_generic_unsafe(std::int32_t, 
 								const jmid::ch_event_data_t&) noexcept;
 
 	// delta-time, type (0x{FF,F0,F7}), meta-type, length, payload beg, payload end, 

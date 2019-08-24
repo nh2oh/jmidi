@@ -183,7 +183,7 @@ TEST(mtrk_event_t_tests, metaEventsMoveAssignBigIntoSmall) {
 	EXPECT_TRUE(maybe_small);
 	auto small = maybe_small.event;
 	EXPECT_EQ(small.delta_time(),small_data.dtval);
-	EXPECT_TRUE(is_meta(small));
+	EXPECT_TRUE(jmid::is_meta(small));
 	EXPECT_EQ(small.size(),small_data.bytes.size());
 	EXPECT_EQ(small.data_size(),small_data.data_size);
 
@@ -192,7 +192,7 @@ TEST(mtrk_event_t_tests, metaEventsMoveAssignBigIntoSmall) {
 	EXPECT_TRUE(maybe_big);
 	auto big = maybe_big.event;
 	EXPECT_EQ(big.delta_time(),big_data.dtval);
-	EXPECT_TRUE(is_meta(big));
+	EXPECT_TRUE(jmid::is_meta(big));
 	EXPECT_EQ(big.size(),big_data.bytes.size());
 	EXPECT_EQ(big.data_size(),big_data.data_size);
 	
@@ -205,12 +205,12 @@ TEST(mtrk_event_t_tests, metaEventsMoveAssignBigIntoSmall) {
 	// 0x00u is interpreted as a delta_time == 0; the event is otherwise
 	// invalid
 	EXPECT_EQ(big_mvfrom.delta_time(),0);
-	EXPECT_TRUE(is_channel(big_mvfrom));
+	EXPECT_TRUE(jmid::is_channel(big_mvfrom));
 	EXPECT_EQ(big_mvfrom.size(),4);
 	EXPECT_EQ(big_mvfrom.data_size(),3);
 	// small has the values as if constructed from big_data
 	EXPECT_EQ(small_mvinto.delta_time(),big_data.dtval);
-	EXPECT_TRUE(is_meta(small_mvinto));
+	EXPECT_TRUE(jmid::is_meta(small_mvinto));
 	EXPECT_EQ(small_mvinto.size(),big_data.bytes.size());
 	EXPECT_EQ(small_mvinto.data_size(),big_data.data_size);
 
@@ -221,7 +221,7 @@ TEST(mtrk_event_t_tests, metaEventsMoveAssignBigIntoSmall) {
 		big_data.bytes.data()+big_data.bytes.size(),0,nullptr).event;
 	// small has the values as if constructed from big_data
 	EXPECT_EQ(small_mvinto.delta_time(),big_data.dtval);
-	EXPECT_TRUE(is_meta(small_mvinto));
+	EXPECT_TRUE(jmid::is_meta(small_mvinto));
 	EXPECT_EQ(small_mvinto.size(),big_data.bytes.size());
 	EXPECT_EQ(small_mvinto.data_size(),big_data.data_size);
 }
@@ -266,7 +266,7 @@ TEST(mtrk_event_t_tests, metaEventsMoveAssignSmallIntoBig) {
 	auto small = maybe_small.event;
 
 	EXPECT_EQ(small.delta_time(),small_data.dtval);
-	EXPECT_TRUE(is_meta(small));
+	EXPECT_TRUE(jmid::is_meta(small));
 	EXPECT_EQ(small.size(),small_data.bytes.size());
 	EXPECT_EQ(small.data_size(),small_data.data_size);
 
@@ -275,7 +275,7 @@ TEST(mtrk_event_t_tests, metaEventsMoveAssignSmallIntoBig) {
 	EXPECT_TRUE(maybe_big);
 	auto big = maybe_big.event;
 	EXPECT_EQ(big.delta_time(),big_data.dtval);
-	EXPECT_TRUE(is_meta(big));
+	EXPECT_TRUE(jmid::is_meta(big));
 	EXPECT_EQ(big.size(),big_data.bytes.size());
 	EXPECT_EQ(big.data_size(),big_data.data_size);
 	
@@ -287,13 +287,13 @@ TEST(mtrk_event_t_tests, metaEventsMoveAssignSmallIntoBig) {
 	// small_mvfrom now has the moved-from state
 	EXPECT_EQ(small_mvfrom.delta_time(),0);
 
-	EXPECT_TRUE(is_channel(small_mvfrom));
+	EXPECT_TRUE(jmid::is_channel(small_mvfrom));
 	EXPECT_EQ(small_mvfrom.size(),4);
 	EXPECT_EQ(small_mvfrom.data_size(),3);
 	// big_mvinto (which is no longer "big") has the values as if 
 	// constructed from small_data
 	EXPECT_EQ(big_mvinto.delta_time(),small_data.dtval);
-	EXPECT_TRUE(is_meta(big_mvinto));
+	EXPECT_TRUE(jmid::is_meta(big_mvinto));
 	EXPECT_EQ(big_mvinto.size(),small_data.bytes.size());
 	EXPECT_EQ(big_mvinto.data_size(),small_data.data_size);
 
@@ -305,7 +305,7 @@ TEST(mtrk_event_t_tests, metaEventsMoveAssignSmallIntoBig) {
 	// big_mvinto (which is no longer "big") has the values as if 
 	// constructed from small_data
 	EXPECT_EQ(big_mvinto.delta_time(),small_data.dtval);
-	EXPECT_TRUE(is_meta(big_mvinto));
+	EXPECT_TRUE(jmid::is_meta(big_mvinto));
 	EXPECT_EQ(big_mvinto.size(),small_data.bytes.size());
 	EXPECT_EQ(big_mvinto.data_size(),small_data.data_size);
 }
@@ -316,31 +316,31 @@ TEST(mtrk_event_t_tests, metaEventsMoveAssignSmallIntoBig) {
 //
 TEST(mtrk_event_t_tests, metaEventTypeHasText) {
 	struct test_t {
-		meta_event_t t {meta_event_t::unknown};
+		jmid::meta_event_t t {jmid::meta_event_t::unknown};
 		bool ans_hastext {false};
 	};
 	std::vector<test_t> tests {
-		{meta_event_t::seqn,false},
-		{meta_event_t::text,true},
-		{meta_event_t::copyright,true},
-		{meta_event_t::trackname,true},
-		{meta_event_t::instname,true},
-		{meta_event_t::lyric,true},
-		{meta_event_t::marker,true},
-		{meta_event_t::cuepoint,true},
-		{meta_event_t::chprefix,false},
-		{meta_event_t::eot,false},
-		{meta_event_t::tempo,false},
-		{meta_event_t::smpteoffset,false},
-		{meta_event_t::timesig,false},
-		{meta_event_t::keysig,false},
-		{meta_event_t::seqspecific,false},
-		{meta_event_t::invalid,false},
-		{meta_event_t::unknown,false}
+		{jmid::meta_event_t::seqn,false},
+		{jmid::meta_event_t::text,true},
+		{jmid::meta_event_t::copyright,true},
+		{jmid::meta_event_t::trackname,true},
+		{jmid::meta_event_t::instname,true},
+		{jmid::meta_event_t::lyric,true},
+		{jmid::meta_event_t::marker,true},
+		{jmid::meta_event_t::cuepoint,true},
+		{jmid::meta_event_t::chprefix,false},
+		{jmid::meta_event_t::eot,false},
+		{jmid::meta_event_t::tempo,false},
+		{jmid::meta_event_t::smpteoffset,false},
+		{jmid::meta_event_t::timesig,false},
+		{jmid::meta_event_t::keysig,false},
+		{jmid::meta_event_t::seqspecific,false},
+		{jmid::meta_event_t::invalid,false},
+		{jmid::meta_event_t::unknown,false}
 	};
 
 	for (const auto& e : tests) {
-		EXPECT_EQ(meta_hastext_impl(static_cast<uint16_t>(e.t)),e.ans_hastext);
+		EXPECT_EQ(jmid::meta_hastext_impl(static_cast<uint16_t>(e.t)),e.ans_hastext);
 	}
 
 }

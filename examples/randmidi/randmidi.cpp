@@ -50,14 +50,14 @@ int main(int argc, char *argv[]) {
 	std::uniform_int_distribution<size_t> rd_nv(0,nt2tks.size()-1);
 	
 	auto mtrk = mtrk_t();
-	mtrk.push_back(make_seqn(0,0));
-	mtrk.push_back(make_copyright(0,"Ben Knowles 2019"));
-	mtrk.push_back(make_trackname(0,"Track 1 (0)"));
-	mtrk.push_back(make_instname(0,"Acoustic Grand"));
-	mtrk.push_back(make_timesig(0,{4,2,24,8}));
+	mtrk.push_back(jmid::make_seqn(0,0));
+	mtrk.push_back(jmid::make_copyright(0,"Ben Knowles 2019"));
+	mtrk.push_back(jmid::make_trackname(0,"Track 1 (0)"));
+	mtrk.push_back(jmid::make_instname(0,"Acoustic Grand"));
+	mtrk.push_back(jmid::make_timesig(0,{4,2,24,8}));
 	// tempo:  500000 us/q => 0.5 s/q => 2 q/s => 120 q/min => "120 bpm"
-	mtrk.push_back(make_tempo(0,250000));
-	mtrk.push_back(make_program_change(0,0,0));
+	mtrk.push_back(jmid::make_tempo(0,250000));
+	mtrk.push_back(jmid::make_program_change(0,0,0));
 	// 0 => Acoustic Grand; 6 => Harpsichord
 	
 	int ch = 0;  int vel = 60;
@@ -68,13 +68,13 @@ int main(int argc, char *argv[]) {
 		auto curr_ntval = nt2tks[rd_nv(re)];
 		auto curr_ntnum = 60+rd_nt(re);
 		auto curr_pair 
-			= make_onoff_pair(curr_ntval,ch,curr_ntnum,vel,vel);
+			= jmid::make_onoff_pair(curr_ntval,ch,curr_ntnum,vel,vel);
 		mtrk.push_back(curr_pair.on);
 		mtrk.push_back(curr_pair.off);
 
 		ntks += curr_ntval;
 	}
-	mtrk.push_back(make_eot(0));
+	mtrk.push_back(jmid::make_eot(0));
 
 	auto smf = smf_t();
 	smf.set_mthd(mthd);

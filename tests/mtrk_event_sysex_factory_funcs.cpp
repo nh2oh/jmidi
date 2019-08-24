@@ -24,11 +24,11 @@ TEST(mtrk_event_sysex_factories, makeSysexF0PayloadsLackTerminalF7) {
 		bool ans_is_small = (ans_tot_size<=23);
 		auto ans_payload = e.payload_in;  ans_payload.push_back(0xF7u);
 
-		const auto ev = make_sysex_f0(e.dt_in,e.payload_in);
+		const auto ev = jmid::make_sysex_f0(e.dt_in,e.payload_in);
 
-		EXPECT_TRUE(is_sysex(ev));
-		EXPECT_TRUE(is_sysex_f0(ev));
-		EXPECT_FALSE(is_sysex_f7(ev));
+		EXPECT_TRUE(jmid::is_sysex(ev));
+		EXPECT_TRUE(jmid::is_sysex_f0(ev));
+		EXPECT_FALSE(jmid::is_sysex_f7(ev));
 
 		EXPECT_EQ(ev.delta_time(),e.ans_dt);
 		EXPECT_EQ(ev.size(),ans_tot_size);
@@ -70,11 +70,11 @@ TEST(mtrk_event_sysex_factories, makeSysexF0PayloadsWithTerminalF7) {
 		bool ans_is_small = (ans_tot_size<=23);
 		auto ans_payload = e.payload_in;
 
-		const auto ev = make_sysex_f0(e.dt_in,e.payload_in);
+		const auto ev = jmid::make_sysex_f0(e.dt_in,e.payload_in);
 
-		EXPECT_TRUE(is_sysex(ev));
-		EXPECT_TRUE(is_sysex_f0(ev));
-		EXPECT_FALSE(is_sysex_f7(ev));
+		EXPECT_TRUE(jmid::is_sysex(ev));
+		EXPECT_TRUE(jmid::is_sysex_f0(ev));
+		EXPECT_FALSE(jmid::is_sysex_f7(ev));
 
 		EXPECT_EQ(ev.delta_time(),e.ans_dt);
 		EXPECT_EQ(ev.size(),ans_tot_size);
@@ -116,11 +116,11 @@ TEST(mtrk_event_sysex_factories, makeSysexF7PayloadsLackTerminalF7) {
 		bool ans_is_small = (ans_tot_size<=23);
 		auto ans_payload = e.payload_in;  ans_payload.push_back(0xF7u);
 
-		const auto ev = make_sysex_f7(e.dt_in,e.payload_in);
+		const auto ev = jmid::make_sysex_f7(e.dt_in,e.payload_in);
 
-		EXPECT_TRUE(is_sysex(ev));
-		EXPECT_FALSE(is_sysex_f0(ev));
-		EXPECT_TRUE(is_sysex_f7(ev));
+		EXPECT_TRUE(jmid::is_sysex(ev));
+		EXPECT_FALSE(jmid::is_sysex_f0(ev));
+		EXPECT_TRUE(jmid::is_sysex_f7(ev));
 
 		EXPECT_EQ(ev.delta_time(),e.ans_dt);
 		EXPECT_EQ(ev.size(),ans_tot_size);
@@ -162,11 +162,11 @@ TEST(mtrk_event_sysex_factories, makeSysexF7PayloadsWithTerminalF7) {
 		bool ans_is_small = (ans_tot_size<=23);
 		auto ans_payload = e.payload_in;
 
-		const auto ev = make_sysex_f7(e.dt_in,e.payload_in);
+		const auto ev = jmid::make_sysex_f7(e.dt_in,e.payload_in);
 
-		EXPECT_TRUE(is_sysex(ev));
-		EXPECT_FALSE(is_sysex_f0(ev));
-		EXPECT_TRUE(is_sysex_f7(ev));
+		EXPECT_TRUE(jmid::is_sysex(ev));
+		EXPECT_FALSE(jmid::is_sysex_f0(ev));
+		EXPECT_TRUE(jmid::is_sysex_f7(ev));
 
 		EXPECT_EQ(ev.delta_time(),e.ans_dt);
 		EXPECT_EQ(ev.size(),ans_tot_size);

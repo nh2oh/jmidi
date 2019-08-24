@@ -1,11 +1,13 @@
 #pragma once
 #include "mtrk_event_t.h"
+#include "aux_types.h"
+#include "midi_time.h"
 #include <string>
 #include <cstdint>
 #include <vector>
 
 
-
+namespace jmid {
 
 // Needed for the friend dcln of 
 // print(const mtrk_event_t&, mtrk_sbo_print_opts).  
@@ -48,7 +50,7 @@ bool is_eq_ignore_dt(const mtrk_event_t&, const mtrk_event_t&);
 // Meta event categories.  I include the leading 0xFF byte so that it is 
 // possible to have "unknown" and "invalid" message types.  
 // 
-enum class meta_event_t : uint16_t {
+enum class meta_event_t : std::uint16_t {
 	seqn = 0xFF00u,  // Sequence _number_
 	text = 0xFF01u,
 	copyright = 0xFF02u,
@@ -68,8 +70,8 @@ enum class meta_event_t : uint16_t {
 	invalid = 0x0000u,
 	unknown = 0xFFFFu
 };
-meta_event_t classify_meta_event_impl(const uint16_t&);
-bool meta_hastext_impl(const uint16_t&);
+meta_event_t classify_meta_event_impl(const std::uint16_t&);
+bool meta_hastext_impl(const std::uint16_t&);
 meta_event_t classify_meta_event(const mtrk_event_t&);
 std::string print(const meta_event_t&);
 bool is_meta(const mtrk_event_t&, const meta_event_t&);
@@ -99,7 +101,7 @@ std::string meta_generic_gettext(const mtrk_event_t&);
 
 // Value returned represents "usec/midi-q-nt"
 // 500000 => 120 q nts/min
-int32_t get_tempo(const mtrk_event_t&, int32_t=500000);
+std::int32_t get_tempo(const mtrk_event_t&, std::int32_t=500000);
 // A default {}-constructed midi_timesig_t contains the defaults as
 // stipulated by the MIDI std.  
 jmid::midi_timesig_t get_timesig(const mtrk_event_t&, jmid::midi_timesig_t={});
@@ -120,29 +122,29 @@ std::vector<unsigned char> get_seqspecific(const mtrk_event_t&, std::vector<unsi
 //
 // For all these make_* functions, parameter 1 is a delta-time.  
 //
-mtrk_event_t make_seqn(const int32_t&, const uint16_t&);
-mtrk_event_t make_chprefix(const int32_t&, const uint8_t&);
+mtrk_event_t make_seqn(const std::int32_t&, const std::uint16_t&);
+mtrk_event_t make_chprefix(const std::int32_t&, const std::uint8_t&);
 // mtrk_event_t make_tempo(const int32_t&, const uint32_t&)
 // Parameter 2 is us/quarter-note
 // A meta tempo event stores the tempo as a 24-bit int, hence the max
 // value is 0xFFFFFFu (==16777215); values larger are truncated to this
 // max value.  
-mtrk_event_t make_tempo(const int32_t&, const uint32_t&);
-mtrk_event_t make_eot(const int32_t&);
+mtrk_event_t make_tempo(const std::int32_t&, const std::uint32_t&);
+mtrk_event_t make_eot(const std::int32_t&);
 // TODO:  Are there bounds on the values of the ts params?
-mtrk_event_t make_timesig(const int32_t&, const jmid::midi_timesig_t&);
-mtrk_event_t make_instname(const int32_t&, const std::string&);
-mtrk_event_t make_trackname(const int32_t&, const std::string&);
-mtrk_event_t make_lyric(const int32_t&, const std::string&);
-mtrk_event_t make_marker(const int32_t&, const std::string&);
-mtrk_event_t make_cuepoint(const int32_t&, const std::string&);
-mtrk_event_t make_text(const int32_t&, const std::string&);
-mtrk_event_t make_copyright(const int32_t&, const std::string&);
+mtrk_event_t make_timesig(const std::int32_t&, const jmid::midi_timesig_t&);
+mtrk_event_t make_instname(const std::int32_t&, const std::string&);
+mtrk_event_t make_trackname(const std::int32_t&, const std::string&);
+mtrk_event_t make_lyric(const std::int32_t&, const std::string&);
+mtrk_event_t make_marker(const std::int32_t&, const std::string&);
+mtrk_event_t make_cuepoint(const std::int32_t&, const std::string&);
+mtrk_event_t make_text(const std::int32_t&, const std::string&);
+mtrk_event_t make_copyright(const std::int32_t&, const std::string&);
 // Writes the delta time, 0xFF, type, a vl-length, then the string into
 // the event.  If the uint8_t type byte does not correspond to a
 // text-containing meta event, returns a default-constructed mtrk_event_t
 // (which is a meta text event w/ payload size 0).  
-mtrk_event_t make_meta_generic_text(const int32_t&, const meta_event_t&,
+mtrk_event_t make_meta_generic_text(const std::int32_t&, const meta_event_t&,
 									const std::string&);
 
 //
@@ -211,32 +213,32 @@ bool is_onoff_pair(int, int, int, int);
 // == 0x90u, even if the status_nybble of the ch_event_data_t passed in is
 // == 0xA0u.  
 //
-mtrk_event_t make_ch_event_generic_unsafe(int32_t, const jmid::ch_event_data_t&) noexcept;
-mtrk_event_t make_ch_event(int32_t, const jmid::ch_event_data_t&);
+mtrk_event_t make_ch_event_generic_unsafe(std::int32_t, const jmid::ch_event_data_t&) noexcept;
+mtrk_event_t make_ch_event(std::int32_t, const jmid::ch_event_data_t&);
 // status nybble, channel, p1, p2
-mtrk_event_t make_ch_event(int32_t, int, int, int, int);
+mtrk_event_t make_ch_event(std::int32_t, int, int, int, int);
 // Sets the status nybble to 0x90u and p2 to be the greater of the value
 // passed in or 1 (a note-on event can not have a velocity of 0).  
-mtrk_event_t make_note_on(int32_t, jmid::ch_event_data_t);
-mtrk_event_t make_note_on(int32_t, int, int, int);
+mtrk_event_t make_note_on(std::int32_t, jmid::ch_event_data_t);
+mtrk_event_t make_note_on(std::int32_t, int, int, int);
 // Makes a channel event w/ status nybble == 0x80u
-mtrk_event_t make_note_off(int32_t, jmid::ch_event_data_t);
-mtrk_event_t make_note_off(int32_t, int, int, int);
+mtrk_event_t make_note_off(std::int32_t, jmid::ch_event_data_t);
+mtrk_event_t make_note_off(std::int32_t, int, int, int);
 // Makes a channel event w/ status nybble == 0x90u (normally => note on),
 // but w/a p2 of 0.  
-mtrk_event_t make_note_off90(int32_t, jmid::ch_event_data_t);
-mtrk_event_t make_key_pressure(int32_t, jmid::ch_event_data_t);  // 0xA0u
-mtrk_event_t make_key_pressure(int32_t, int, int, int);
-mtrk_event_t make_control_change(int32_t, jmid::ch_event_data_t);  // 0xB0u
-mtrk_event_t make_control_change(int32_t, int, int, int);
-mtrk_event_t make_program_change(int32_t, jmid::ch_event_data_t);  // 0xC0u
-mtrk_event_t make_program_change(int32_t, int, int);
-mtrk_event_t make_channel_pressure(int32_t, jmid::ch_event_data_t);  // 0xD0u
-mtrk_event_t make_channel_pressure(int32_t, int, int);
-mtrk_event_t make_pitch_bend(int32_t, jmid::ch_event_data_t);  // 0xE0u
-mtrk_event_t make_pitch_bend(int32_t, int, int, int);
-mtrk_event_t make_channel_mode(int32_t, jmid::ch_event_data_t);  // 0xB0u
-mtrk_event_t make_channel_mode(int32_t, int, int, int);
+mtrk_event_t make_note_off90(std::int32_t, jmid::ch_event_data_t);
+mtrk_event_t make_key_pressure(std::int32_t, jmid::ch_event_data_t);  // 0xA0u
+mtrk_event_t make_key_pressure(std::int32_t, int, int, int);
+mtrk_event_t make_control_change(std::int32_t, jmid::ch_event_data_t);  // 0xB0u
+mtrk_event_t make_control_change(std::int32_t, int, int, int);
+mtrk_event_t make_program_change(std::int32_t, jmid::ch_event_data_t);  // 0xC0u
+mtrk_event_t make_program_change(std::int32_t, int, int);
+mtrk_event_t make_channel_pressure(std::int32_t, jmid::ch_event_data_t);  // 0xD0u
+mtrk_event_t make_channel_pressure(std::int32_t, int, int);
+mtrk_event_t make_pitch_bend(std::int32_t, jmid::ch_event_data_t);  // 0xE0u
+mtrk_event_t make_pitch_bend(std::int32_t, int, int, int);
+mtrk_event_t make_channel_mode(std::int32_t, jmid::ch_event_data_t);  // 0xB0u
+mtrk_event_t make_channel_mode(std::int32_t, int, int, int);
 
 // On/off event pairs
 // onoff_pair_t make_onoff_pair(int32_t duration int channel, int note, 
@@ -249,9 +251,9 @@ struct onoff_pair_t {
 	mtrk_event_t on;
 	mtrk_event_t off;
 };
-onoff_pair_t make_onoff_pair(int32_t, int, int, int, int);
-mtrk_event_t make_matching_off(int32_t, const mtrk_event_t&);
-mtrk_event_t make_matching_off90(int32_t, const mtrk_event_t&);
+onoff_pair_t make_onoff_pair(std::int32_t, int, int, int, int);
+mtrk_event_t make_matching_off(std::int32_t, const mtrk_event_t&);
+mtrk_event_t make_matching_off90(std::int32_t, const mtrk_event_t&);
 
 //
 // Sysex event classification
@@ -263,7 +265,7 @@ bool is_sysex_f7(const mtrk_event_t&);
 // mtrk_event_t make_meta_sysex_generic_impl(int32_t, unsigned char, 
 //					bool, const unsigned char *,
 //					const unsigned char *);
-mtrk_event_t make_meta_sysex_generic_impl(int32_t, unsigned char, 
+mtrk_event_t make_meta_sysex_generic_impl(std::int32_t, unsigned char, 
 					unsigned char, bool, const unsigned char *,
 					const unsigned char *);
 // Create a sysex event w/ type byte == 0xF0u and payload == to the contents 
@@ -283,6 +285,9 @@ mtrk_event_t make_meta_sysex_generic_impl(int32_t, unsigned char,
 //
 // make_sysex_f0(0, {0x04u,0xF7u,0xF7u,0xF7u})  // three terminal F7's
 // =>  {0x00u,  0xF0u,  0x04u,  0x04u,0xF7u,0xF7u,0xF7u}
-mtrk_event_t make_sysex_f0(const uint32_t&, const std::vector<unsigned char>&);
-mtrk_event_t make_sysex_f7(const uint32_t&, const std::vector<unsigned char>&);
+mtrk_event_t make_sysex_f0(const std::uint32_t&, const std::vector<unsigned char>&);
+mtrk_event_t make_sysex_f7(const std::uint32_t&, const std::vector<unsigned char>&);
+
+}  // namespace jmid
+
 

@@ -1,5 +1,6 @@
 #pragma once
-#include <limits>  // CHAR_BIT
+#include <climits>  // CHAR_BIT
+#include <limits>
 #include <type_traits>  // std::enable_if<>, is_integral<>, is_unsigned<>
 #include <cstdint>
 #include <cstring>  // std::memcpy()
@@ -25,7 +26,7 @@ constexpr uint32_t vlq_field_literal_value(T val) {
 	static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value,
 		"MIDI VL fields only encode unsigned integral values");
 	
-	uint32_t uval;
+	uint32_t uval = 0;
 	if (val < 0) {
 		uval = 0;
 	} else if (val > 0x0FFFFFFF) {
@@ -116,8 +117,10 @@ OIt write_vlq_old_b(T val, OIt it) {
 //
 template<typename T, typename OIt>
 OIt write_bytes(T val, OIt dest) {
-	static_assert(std::is_same<
-		std::decay<decltype(*dest)>::type,unsigned char>::value);
+	static_assert(std::is_same<typename std::decay<decltype(*dest)>::type,char>::value
+		|| std::is_same<typename std::decay<decltype(*dest)>::type,unsigned char>::value);
+	//static_assert(std::is_same<
+	//	std::decay<decltype(*dest)>::type,unsigned char>::value);
 
 	unsigned char *p = static_cast<unsigned char*>(static_cast<void*>(&val));
 	for (int i=0; i<sizeof(T); ++i) {
@@ -131,8 +134,10 @@ OIt write_bytes(T val, OIt dest) {
 };
 template<typename T, typename OIt>
 OIt write_bytes(T val, std::size_t n, OIt dest) {
-	static_assert(std::is_same<
-		std::decay<decltype(*dest)>::type,unsigned char>::value);
+	static_assert(std::is_same<typename std::decay<decltype(*dest)>::type,char>::value
+		|| std::is_same<typename std::decay<decltype(*dest)>::type,unsigned char>::value);
+	//static_assert(std::is_same<
+	//	std::decay<decltype(*dest)>::type,unsigned char>::value);
 
 	auto niter = sizeof(T)<=n ? sizeof(T) : n;
 	unsigned char *p = static_cast<unsigned char*>(static_cast<void*>(&val));

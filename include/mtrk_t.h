@@ -305,7 +305,7 @@ InIt make_mtrk(InIt it, InIt end, maybe_mtrk_t *result, mtrk_error_t *err) {
 		}
 		
 		if (!found_eot) {
-			found_eot = is_eot(curr_event.event);
+			found_eot = jmid::is_eot(curr_event.event);
 		}
 		rs = curr_event.event.running_status();
 		result->mtrk.evnts_.push_back(std::move(curr_event.event));

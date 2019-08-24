@@ -39,8 +39,8 @@ struct tk_integrator_t : integrator_t {
 };
 struct lyric_integrator_t : integrator_t {
 	lyric_integrator_t& operator+=(const mtrk_event_t& ev) override {
-		if (is_lyric(ev)) {
-			this->val_ = meta_generic_gettext(ev);  // ev.text_payload();
+		if (jmid::is_lyric(ev)) {
+			this->val_ = jmid::meta_generic_gettext(ev);  // ev.text_payload();
 			return *this;
 		}
 	};
@@ -53,7 +53,7 @@ struct lyric_integrator_t : integrator_t {
 struct time_integrator_t : integrator_t {
 	time_integrator_t& operator+=(const mtrk_event_t& ev) override {
 		this->val_ += ev.delta_time()*(this->tempo_/this->tpq_)/1000;
-		this->tempo_ = get_tempo(ev,this->tempo_);
+		this->tempo_ = jmid::get_tempo(ev,this->tempo_);
 		return *this;
 	};
 	std::string print() override {
