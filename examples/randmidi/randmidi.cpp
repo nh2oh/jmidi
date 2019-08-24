@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
 	std::discrete_distribution<int> rd_nt(major_weights.begin(),
 											major_weights.end());
 
-	auto mthd = mthd_t();
+	auto mthd = jmid::mthd_t();
 	mthd.set_format(0);
 	mthd.set_ntrks(1);
 	auto tdiv = jmid::time_division_t(96);

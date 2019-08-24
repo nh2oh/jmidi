@@ -11,6 +11,8 @@
 #include <array>
 #include <algorithm>
 
+namespace jmid {
+
 //
 // Class mthd_t
 //
@@ -57,8 +59,8 @@ struct mthd_error_t;
 
 struct mthd_container_types_t {
 	using value_type = unsigned char;
-	using size_type = int32_t;
-	using difference_type = int32_t;
+	using size_type = std::int32_t;
+	using difference_type = std::int32_t;
 	using reference = value_type&;
 	using const_reference = const value_type&;
 	using pointer = value_type*;
@@ -84,12 +86,12 @@ public:
 	// size()==14, length()==4; Format 1, 0 tracks, 120 tpq
 	mthd_t() noexcept;
 	// mthd_t(int32_t fmt, int32_t ntrks, jmid::time_division_t tdf);
-	explicit mthd_t(int32_t, int32_t, jmid::time_division_t) noexcept;
+	explicit mthd_t(std::int32_t, std::int32_t, jmid::time_division_t) noexcept;
 	// mthd_t(int32_t fmt, int32_t ntrks, int32_t division (tpq));
 	// the value for division is silently clamped to [1,32767].  
-	explicit mthd_t(int32_t, int32_t, int32_t) noexcept;
+	explicit mthd_t(std::int32_t, std::int32_t, std::int32_t) noexcept;
 	// mthd_t(int32_t fmt, int32_t ntrks, int32_t SMPTE-tcf, SMPTE-subdivs);
-	explicit mthd_t(int32_t, int32_t, int32_t, int32_t) noexcept;
+	explicit mthd_t(std::int32_t, std::int32_t, std::int32_t, std::int32_t) noexcept;
 
 	mthd_t(const mthd_t&);
 	mthd_t(mthd_t&&) noexcept;
@@ -113,43 +115,43 @@ public:
 	const_iterator cend() const noexcept;
 
 	// Getters
-	int32_t length() const noexcept;
-	int32_t format() const noexcept;
+	std::int32_t length() const noexcept;
+	std::int32_t format() const noexcept;
 	// Note:  Number of MTrks, not the number of "chunks"
-	int32_t ntrks() const noexcept;
+	std::int32_t ntrks() const noexcept;
 	jmid::time_division_t division() const noexcept;
 
 	// Setters
 	// Illegal values are _silently_ set to legal values.  
 	// If ntrks > 1, the allowed range is [1,0xFFFF]
 	// If ntrks <= 1, the allowed range is [0,0xFFFF]
-	int32_t set_format(int32_t) noexcept;
+	std::int32_t set_format(std::int32_t) noexcept;
 	// Number of MTrks, not the number of "chunks"
 	// If format() == 0, the allowed range is [0,1].  
 	// If format() > 0, the allowed range is [0,0xFFFF].  
-	int32_t set_ntrks(int32_t) noexcept;
+	std::int32_t set_ntrks(std::int32_t) noexcept;
 	jmid::time_division_t set_division(jmid::time_division_t) noexcept;
 	// set_division_tpq/smpte() pass the input to the jmid::time_division_t ctors,
 	// which silently correct invalid values.  
-	int32_t set_division_tpq(int32_t) noexcept;
+	std::int32_t set_division_tpq(std::int32_t) noexcept;
 	// smpte_t set_division_smpte(int32_t tcf, int32_t subdivs);
-	jmid::smpte_t set_division_smpte(int32_t,int32_t) noexcept;
+	jmid::smpte_t set_division_smpte(std::int32_t,std::int32_t) noexcept;
 	jmid::smpte_t set_division_smpte(jmid::smpte_t) noexcept;
 	// Sets the length field and resizes the array if necessary
 	// The input length is first clamped to 
 	// [mthd::length_min,mthd_t::length_max].  If the new length is < the 
 	// present length, the array will be truncated and data may be lost.  
-	int32_t set_length(int32_t);
+	std::int32_t set_length(std::int32_t);
 private:
-	static constexpr int32_t format_min = 0;
-	static constexpr int32_t format_max = 0xFFFF;
-	static_assert(format_min >= std::numeric_limits<uint16_t>::min());
-	static_assert(format_min <= std::numeric_limits<uint16_t>::max());
-	static constexpr int32_t ntrks_min = 0;
-	static constexpr int32_t ntrks_max_fmt_0 = 1;
-	static constexpr int32_t ntrks_max_fmt_gt0 = 0xFFFF;
-	static_assert(ntrks_min >= std::numeric_limits<uint16_t>::min());
-	static_assert(ntrks_max_fmt_gt0 <= std::numeric_limits<uint16_t>::max());
+	static constexpr std::int32_t format_min = 0;
+	static constexpr std::int32_t format_max = 0xFFFF;
+	static_assert(format_min >= std::numeric_limits<std::uint16_t>::min());
+	static_assert(format_min <= std::numeric_limits<std::uint16_t>::max());
+	static constexpr std::int32_t ntrks_min = 0;
+	static constexpr std::int32_t ntrks_max_fmt_0 = 1;
+	static constexpr std::int32_t ntrks_max_fmt_gt0 = 0xFFFF;
+	static_assert(ntrks_min >= std::numeric_limits<std::uint16_t>::min());
+	static_assert(ntrks_max_fmt_gt0 <= std::numeric_limits<std::uint16_t>::max());
 
 	static const std::array<unsigned char,14> def_;
 
@@ -194,7 +196,7 @@ std::string& print(const mthd_t&, std::string&);
 //
 //
 struct mthd_error_t {
-	enum class errc : uint8_t {
+	enum class errc : std::uint8_t {
 		header_overflow,
 		non_mthd_id,
 		invalid_length,
@@ -253,12 +255,12 @@ InIt make_mthd(InIt it, InIt end, maybe_mthd_t *result, mthd_error_t *err) {
 		set_error(mthd_error_t::errc::non_mthd_id);
 		return it;
 	}
-	auto length = read_be<uint32_t>(dest_beg+4,dest);
+	auto length = read_be<std::uint32_t>(dest_beg+4,dest);
 	if ((length < 6) || (length > mthd_t::length_max)) {
 		set_error(mthd_error_t::errc::invalid_length);
 		return it;
 	}
-	auto slength = static_cast<int32_t>(length);
+	auto slength = static_cast<std::int32_t>(length);
 	
 	// Format, ntrks, division
 	int j = 0;
@@ -270,9 +272,9 @@ InIt make_mthd(InIt it, InIt end, maybe_mthd_t *result, mthd_error_t *err) {
 		set_error(mthd_error_t::errc::overflow_in_data_section);
 		return it;
 	}
-	auto format = read_be<uint16_t>(dest_beg+8,dest_beg+10);
-	auto ntrks = read_be<uint16_t>(dest_beg+10,dest_beg+12);
-	auto division = read_be<uint16_t>(dest_beg+12,dest_beg+14);
+	auto format = read_be<std::uint16_t>(dest_beg+8,dest_beg+10);
+	auto ntrks = read_be<std::uint16_t>(dest_beg+10,dest_beg+12);
+	auto division = read_be<std::uint16_t>(dest_beg+12,dest_beg+14);
 	if ((format==0) && (ntrks >1)) {
 		set_error(mthd_error_t::errc::inconsistent_format_ntrks);
 		return it;
@@ -313,4 +315,7 @@ maybe_mthd_t make_mthd(InIt it, InIt end, mthd_error_t *err) {
 	return result;
 };
 
+
+
+}  // namespace jmid
 

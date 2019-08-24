@@ -104,16 +104,16 @@ public:
 	//
 	// MThd accessors
 	//
-	const mthd_t& mthd() const;
-	mthd_t& mthd();
+	const jmid::mthd_t& mthd() const;
+	jmid::mthd_t& mthd();
 	int32_t format() const;  // mthd alias
 	jmid::time_division_t division() const;  // mthd alias
 	int32_t mthd_size() const;  // mthd alias
-	void set_mthd(const maybe_mthd_t&);
-	void set_mthd(const mthd_t&);
-	void set_mthd(mthd_t&&) noexcept;
+	void set_mthd(const jmid::maybe_mthd_t&);
+	void set_mthd(const jmid::mthd_t&);
+	void set_mthd(jmid::mthd_t&&) noexcept;
 private:
-	mthd_t mthd_;
+	jmid::mthd_t mthd_;
 	std::vector<value_type> mtrks_;
 	std::vector<std::vector<unsigned char>> uchks_ {};
 	// Since MTrk and unknown chunks are split into mtrks_ and uchks_,
@@ -135,7 +135,7 @@ struct smf_error_t {
 		no_error,
 		other
 	};
-	mthd_error_t mthd_err_obj;
+	jmid::mthd_error_t mthd_err_obj;
 	mtrk_error_t mtrk_err_obj;
 	uint16_t expect_num_mtrks;
 	uint16_t num_mtrks_read;
@@ -172,7 +172,7 @@ std::string explain(const smf_error_t&);
 template<typename InIt>
 InIt make_smf(InIt it, InIt end, maybe_smf_t *result, smf_error_t *err) {
 	mtrk_error_t curr_mtrk_error;
-	mthd_error_t* p_mthd_error = nullptr;
+	jmid::mthd_error_t* p_mthd_error = nullptr;
 	if (err) {
 		p_mthd_error = &(err->mthd_err_obj);
 	}
@@ -192,8 +192,8 @@ InIt make_smf(InIt it, InIt end, maybe_smf_t *result, smf_error_t *err) {
 		}
 	};
 
-	maybe_mthd_t maybe_mthd;
-	it = make_mthd(it,end,&maybe_mthd,p_mthd_error);
+	jmid::maybe_mthd_t maybe_mthd;
+	it = jmid::make_mthd(it,end,&maybe_mthd,p_mthd_error);
 	i += maybe_mthd.nbytes_read;
 	if (!maybe_mthd) {
 		set_error(smf_error_t::errc::mthd_error,0,0,0);

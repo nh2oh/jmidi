@@ -196,23 +196,23 @@ jmid::time_division_t smf_t::division() const {
 int32_t smf_t::mthd_size() const {
 	return this->mthd_.size();
 }
-const mthd_t& smf_t::mthd() const {
+const jmid::mthd_t& smf_t::mthd() const {
 	return this->mthd_;
 }
-mthd_t& smf_t::mthd() {
+jmid::mthd_t& smf_t::mthd() {
 	return this->mthd_;
 }
-void smf_t::set_mthd(const maybe_mthd_t& mthd) {
+void smf_t::set_mthd(const jmid::maybe_mthd_t& mthd) {
 	if (mthd) {
 		this->mthd_ = mthd.mthd;
 	}
 	this->mthd_.set_ntrks(this->mtrks_.size());
 }
-void smf_t::set_mthd(const mthd_t& mthd) {
+void smf_t::set_mthd(const jmid::mthd_t& mthd) {
 	this->mthd_ = mthd;
 	this->mthd_.set_ntrks(this->mtrks_.size());
 }
-void smf_t::set_mthd(mthd_t&& mthd) noexcept {
+void smf_t::set_mthd(jmid::mthd_t&& mthd) noexcept {
 	this->mthd_ = std::move(mthd);
 	this->mthd_.set_ntrks(this->mtrks_.size());
 }

@@ -313,13 +313,13 @@ int inspect_mthds(const std::filesystem::path& bp,
 		std::string s; s.reserve(1000);
 		s += curr_path.string() + '\n';
 
-		mthd_error_t mthd_error {};
+		jmid::mthd_error_t mthd_error {};
 		auto it = std::istreambuf_iterator(f);
-		auto mthd = make_mthd(it,std::istreambuf_iterator<unsigned char>(),&mthd_error);
+		auto mthd = jmid::make_mthd(it,std::istreambuf_iterator<unsigned char>(),&mthd_error);
 		if (mthd) {
-			print(mthd.mthd,s);
+			jmid::print(mthd.mthd,s);
 		} else {
-			s += explain(mthd_error);
+			s += jmid::explain(mthd_error);
 		}
 		*out << s << '\n';
 		*out << "==============================================="
