@@ -80,7 +80,7 @@ int event_sizes_benchmark(int mode, int Nth,
 	int i=0;
 	for (const auto& dir_ent : rdi) {
 		auto curr_path = dir_ent.path();
-		if (!has_midifile_extension(curr_path)) {
+		if (!jmid::has_midifile_extension(curr_path)) {
 			continue;
 		}
 		thread_files[i%Nth].push_back(curr_path);
@@ -114,12 +114,12 @@ int avg_and_max_event_sizes(const std::vector<std::filesystem::path>& files,
 	std::vector<char> fdata;  // Used if mode == 0
 	int n_midi_files = 0;
 	for (const auto& curr_path : files) {
-		if (!has_midifile_extension(curr_path)) {
+		if (!jmid::has_midifile_extension(curr_path)) {
 			continue;
 		}
 
-		maybe_smf_t maybe_smf;
-		smf_error_t smf_error;
+		jmid::maybe_smf_t maybe_smf;
+		jmid::smf_error_t smf_error;
 		if (mode == 0) {  // Batch
 			std::basic_ifstream<char> f(curr_path,
 				std::ios_base::in|std::ios_base::binary);
@@ -134,7 +134,7 @@ int avg_and_max_event_sizes(const std::vector<std::filesystem::path>& files,
 			fdata.resize(fsize);
 			f.read(fdata.data(),fsize);
 			//auto n = std::min(fdata.size(),std::size_t{25});
-			make_smf(fdata.data(),fdata.data()+fdata.size(),
+			jmid::make_smf(fdata.data(),fdata.data()+fdata.size(),
 				&maybe_smf,&smf_error);
 			f.close();
 		} else if (mode == 1) {  // iostreams
@@ -146,7 +146,7 @@ int avg_and_max_event_sizes(const std::vector<std::filesystem::path>& files,
 			++n_midi_files;
 			std::istreambuf_iterator<char> it(f);
 			auto end = std::istreambuf_iterator<char>();
-			make_smf(it,end,&maybe_smf,&smf_error);
+			jmid::make_smf(it,end,&maybe_smf,&smf_error);
 			f.close();
 		} else if (mode == 2) {  // csio
 			auto nbytes = std::filesystem::file_size(curr_path);
@@ -154,7 +154,7 @@ int avg_and_max_event_sizes(const std::vector<std::filesystem::path>& files,
 			auto b = read_binary_csio(curr_path,fdata);
 			if (!b) { continue; }
 			++n_midi_files;
-			make_smf(fdata.data(),fdata.data()+fdata.size(),
+			jmid::make_smf(fdata.data(),fdata.data()+fdata.size(),
 				&maybe_smf,&smf_error);
 		}
 		

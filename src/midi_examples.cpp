@@ -104,7 +104,7 @@ int function_counts() {
 	std::filesystem::path pth 
 		= "D:\\cpp\\nh2oh\\au\\au\\gt_aulib\\test_data\\tempo_duration\\tdiv25_tempo250k.midi";
 	//std::filesystem::path pth = R"(C:\Users\ben\Desktop\hallelujah_joy_to_the_world.mid)";
-	maybe_smf_t maybe_smf = read_smf(pth,nullptr);
+	jmid::maybe_smf_t maybe_smf = jmid::read_smf(pth,nullptr);
 
 	return 0;
 }
@@ -120,7 +120,7 @@ int classify_smf_errors(const std::filesystem::path& inp,
 	int n_midi_files = 0;
 	for (const auto& dir_ent : rdi) {
 		auto curr_path = dir_ent.path();
-		if (!has_midifile_extension(curr_path)) {
+		if (!jmid::has_midifile_extension(curr_path)) {
 			continue;
 		}
 		std::basic_ifstream<char> f(curr_path,
@@ -141,8 +141,8 @@ int classify_smf_errors(const std::filesystem::path& inp,
 		f.read(fdata.data(),fsize);
 		f.close();
 
-		maybe_smf_t maybe_smf;
-		smf_error_t smf_error;
+		jmid::maybe_smf_t maybe_smf;
+		jmid::smf_error_t smf_error;
 		make_smf(fdata.data(),fdata.data()+fdata.size(),
 			&maybe_smf,&smf_error);
 		if (maybe_smf) {
@@ -151,19 +151,19 @@ int classify_smf_errors(const std::filesystem::path& inp,
 
 		outfile << curr_path.string() << "\n";
 		switch (smf_error.code) {
-		case smf_error_t::errc::mthd_error:
+		case jmid::smf_error_t::errc::mthd_error:
 			outfile << "smf_error_t::errc::mthd_error";
 			break;
-		case smf_error_t::errc::mtrk_error:
+		case jmid::smf_error_t::errc::mtrk_error:
 			outfile << "smf_error_t::errc::mtrk_error";
 			break;
-		case smf_error_t::errc::overflow_reading_uchk:
+		case jmid::smf_error_t::errc::overflow_reading_uchk:
 			outfile << "smf_error_t::errc::overflow_reading_uchk";
 			break;
-		case smf_error_t::errc::unexpected_num_mtrks:
+		case jmid::smf_error_t::errc::unexpected_num_mtrks:
 			outfile << "smf_error_t::errc::unexpected_num_mtrks";
 			break;
-		case smf_error_t::errc::other:
+		case jmid::smf_error_t::errc::other:
 			outfile << "smf_error_t::errc::other";
 			break;
 		default:
@@ -171,7 +171,7 @@ int classify_smf_errors(const std::filesystem::path& inp,
 			break;
 		}
 		
-		if (smf_error.code==smf_error_t::errc::mtrk_error) {
+		if (smf_error.code==jmid::smf_error_t::errc::mtrk_error) {
 			outfile << '\t';
 			switch (smf_error.mtrk_err_obj.code) {
 			case jmid::mtrk_error_t::errc::header_overflow:
@@ -201,7 +201,7 @@ int classify_smf_errors(const std::filesystem::path& inp,
 			}
 		}
 
-		if (smf_error.code==smf_error_t::errc::mtrk_error
+		if (smf_error.code==jmid::smf_error_t::errc::mtrk_error
 				&& smf_error.mtrk_err_obj.code==jmid::mtrk_error_t::errc::invalid_event) {
 			outfile << '\t';
 			switch (smf_error.mtrk_err_obj.event_error.code) {
@@ -255,18 +255,18 @@ int read_midi_directory(const std::filesystem::path& bp) {
 	int n_err_files = 0;  // The number of midi files w/ errors
 	for (const auto& dir_ent : rdi) {
 		auto curr_path = dir_ent.path();
-		if (!has_midifile_extension(curr_path)) {
+		if (!jmid::has_midifile_extension(curr_path)) {
 			continue;
 		}
 		++n_midi_files;
 
-		smf_error_t smf_error;
-		auto maybesmf = read_smf(curr_path,&smf_error);
+		jmid::smf_error_t smf_error;
+		auto maybesmf = jmid::read_smf(curr_path,&smf_error);
 		std::cout << "File number " << n_midi_files << '\n' 
 			<< curr_path.string() << '\n';
 		if (!maybesmf) {
 			++n_err_files;
-			errmsg = explain(smf_error);
+			errmsg = jmid::explain(smf_error);
 			std::cout << "Error! (" << n_err_files << ")\n" 
 				<< errmsg << '\n';
 		} else {
@@ -298,7 +298,7 @@ int inspect_mthds(const std::filesystem::path& bp,
 	int n_midi_files = 0;
 	for (const auto& dir_ent : rdi) {
 		auto curr_path = dir_ent.path();
-		if (!has_midifile_extension(curr_path)) {
+		if (!jmid::has_midifile_extension(curr_path)) {
 			continue;
 		}
 		++n_midi_files;

@@ -520,7 +520,7 @@ void print_meta_tests(const std::vector<meta_test_t>& tests) {
 
 
 int make_example_midifile_081019() {
-	auto mf = smf_t();
+	auto mf = jmid::smf_t();
 
 
 

@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
 	}
 	mtrk.push_back(jmid::make_eot(0));
 
-	auto smf = smf_t();
+	auto smf = jmid::smf_t();
 	smf.set_mthd(mthd);
 	smf.push_back(mtrk);
 	
@@ -84,7 +84,7 @@ int main(int argc, char *argv[]) {
 		outfile /= (randstr(4)+"_randmidi.midi");
 	}
 	std::cout << "Output == " << outfile << std::endl;
-	auto smf_path_result = write_smf(smf,outfile);
+	auto smf_path_result = jmid::write_smf(smf,outfile);
 
 	return 0;
 }

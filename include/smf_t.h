@@ -8,6 +8,10 @@
 #include <vector>
 #include <filesystem>
 
+
+namespace jmid {
+
+
 //
 // smf_t
 //
@@ -39,8 +43,8 @@
 
 struct smf_container_types_t {
 	using value_type = jmid::mtrk_t;
-	using size_type = int64_t;
-	using difference_type = int32_t; //std::ptrdiff_t;
+	using size_type = std::int64_t;
+	using difference_type = std::int32_t; //std::ptrdiff_t;
 	using reference = value_type&;
 	using const_reference = const value_type&;
 	using pointer = value_type*;
@@ -106,9 +110,9 @@ public:
 	//
 	const jmid::mthd_t& mthd() const;
 	jmid::mthd_t& mthd();
-	int32_t format() const;  // mthd alias
+	std::int32_t format() const;  // mthd alias
 	jmid::time_division_t division() const;  // mthd alias
-	int32_t mthd_size() const;  // mthd alias
+	std::int32_t mthd_size() const;  // mthd alias
 	void set_mthd(const jmid::maybe_mthd_t&);
 	void set_mthd(const jmid::mthd_t&);
 	void set_mthd(jmid::mthd_t&&) noexcept;
@@ -125,7 +129,7 @@ private:
 std::string print(const smf_t&);
 
 struct smf_error_t {
-	enum class errc : uint8_t {
+	enum class errc : std::uint8_t {
 		file_read_error,
 		mthd_error,
 		mtrk_error,
@@ -222,7 +226,7 @@ InIt make_smf(InIt it, InIt end, maybe_smf_t *result, smf_error_t *err) {
 				auto bi_uchk = std::back_inserter(curr_uchk);
 				std::copy(ph,ph+hsz,bi_uchk);
 				auto uchk_sz = read_be<uint32_t>(ph+4,ph+hsz);
-				uint32_t j=0;
+				std::uint32_t j=0;
 				for (j=0; (it!=end && j<uchk_sz); ++j) {
 					*bi_uchk++ = static_cast<unsigned char>(*it++);  ++i;
 				}
@@ -298,11 +302,11 @@ private:
 		mtrk_event_t::const_iterator beg;
 		mtrk_event_t::const_iterator end;
 		mtrk_event_t::const_iterator curr;
-		uint32_t tkonset;
+		std::uint32_t tkonset;
 	};
 	std::vector<range_pos> r_;
 	std::vector<range_pos>::iterator curr_;
-	uint32_t tkonset_;
+	std::uint32_t tkonset_;
 };
 class simultaneous_range_iterator {
 public:
@@ -311,11 +315,11 @@ private:
 		mtrk_event_t::const_iterator beg;
 		mtrk_event_t::const_iterator end;
 		mtrk_event_t::const_iterator curr;
-		uint32_t tkonset;
+		std::uint32_t tkonset;
 	};
 	std::vector<range_pos> r_;
 	std::vector<range_pos>::iterator curr_;
-	uint32_t tkonset_;
+	std::uint32_t tkonset_;
 };
 
 /*class smf2_chrono_iterator {
@@ -331,7 +335,7 @@ private:
 
 struct all_smf_events_dt_ordered_t {
 	mtrk_event_t ev;
-	uint32_t cumtk;
+	std::uint32_t cumtk;
 	int trackn;
 };
 std::vector<all_smf_events_dt_ordered_t> get_events_dt_ordered(const smf_t&);
@@ -367,3 +371,4 @@ make_smf_simultaneous_event_range(mtrk_iterator_t beg, mtrk_iterator_t end);
 */
 
 
+}  // namespace jmid

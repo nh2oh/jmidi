@@ -25,12 +25,12 @@ int main(int argc, char *argv[]) {
 	auto rdi = std::filesystem::recursive_directory_iterator(p);
 	for (const auto& dir_ent : rdi) {
 		auto curr_path = dir_ent.path();
-		if (!has_midifile_extension(curr_path)) {
+		if (!jmid::has_midifile_extension(curr_path)) {
 			continue;
 		}
 		
-		smf_error_t smf_error;
-		maybe_smf_t smf = read_smf(curr_path,&smf_error);
+		jmid::smf_error_t smf_error;
+		jmid::maybe_smf_t smf = jmid::read_smf(curr_path,&smf_error);
 		if (!smf) {
 			continue;
 		}

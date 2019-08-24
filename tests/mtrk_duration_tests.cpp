@@ -47,11 +47,11 @@ TEST(mtrk_duration_tests, cchromSingleTempoEvent) {
 	int num_files_tested = 0;
 	for (const auto& tc : tests) {
 		auto p = basepath/tc.file;
-		if (!has_midifile_extension(p)) {
+		if (!jmid::has_midifile_extension(p)) {
 			continue;
 		}
 
-		maybe_smf_t maybe_smf = read_smf(p,nullptr);
+		jmid::maybe_smf_t maybe_smf = jmid::read_smf(p,nullptr);
 		ASSERT_TRUE(maybe_smf);
 		EXPECT_EQ(maybe_smf.smf.mthd().division(),tc.tdiv);
 
@@ -65,7 +65,7 @@ TEST(mtrk_duration_tests, cchromSingleTempoEvent) {
 			auto curr_duration_tks = trk.nticks();
 			auto expect_duration_s = curr_sptk*curr_duration_tks;
 			
-			auto curr_duration_s = duration(trk,maybe_smf.smf.mthd().division());
+			auto curr_duration_s = jmid::duration(trk,maybe_smf.smf.mthd().division());
 			EXPECT_TRUE(std::abs(curr_duration_s-expect_duration_s)<=permissible_err_s);
 		}
 		++num_files_tested;

@@ -17,53 +17,53 @@
 #include <iterator>
 
 
-smf_t::smf_t() noexcept {
+jmid::smf_t::smf_t() noexcept {
 	//...
 }
-smf_t::smf_t(const smf_t& rhs) {
+jmid::smf_t::smf_t(const jmid::smf_t& rhs) {
 	this->mthd_ = rhs.mthd_;
 	this->mtrks_ = rhs.mtrks_;
 	this->uchks_ = rhs.uchks_;
 	this->chunkorder_ = rhs.chunkorder_;
 }
-smf_t::smf_t(smf_t&& rhs) noexcept {
+jmid::smf_t::smf_t(jmid::smf_t&& rhs) noexcept {
 	this->mthd_ = std::move(rhs.mthd_);
 	this->mtrks_ = std::move(rhs.mtrks_);
 	this->uchks_ = std::move(rhs.uchks_);
 	this->chunkorder_ = std::move(rhs.chunkorder_);
 }
-smf_t& smf_t::operator=(const smf_t& rhs) {
+jmid::smf_t& jmid::smf_t::operator=(const jmid::smf_t& rhs) {
 	this->mthd_ = rhs.mthd_;
 	this->mtrks_ = rhs.mtrks_;
 	this->uchks_ = rhs.uchks_;
 	this->chunkorder_ = rhs.chunkorder_;
 	return *this;
 }
-smf_t& smf_t::operator=(smf_t&& rhs) noexcept {
+jmid::smf_t& jmid::smf_t::operator=(jmid::smf_t&& rhs) noexcept {
 	this->mthd_ = std::move(rhs.mthd_);
 	this->mtrks_ = std::move(rhs.mtrks_);
 	this->uchks_ = std::move(rhs.uchks_);
 	this->chunkorder_ = std::move(rhs.chunkorder_);
 	return *this;
 }
-smf_t::~smf_t() noexcept {
+jmid::smf_t::~smf_t() noexcept {
 	//...
 }
 
-smf_t::size_type smf_t::size() const {
+jmid::smf_t::size_type jmid::smf_t::size() const {
 	return this->ntrks();
 }
-smf_t::size_type smf_t::nchunks() const {
+jmid::smf_t::size_type jmid::smf_t::nchunks() const {
 	return this->mtrks_.size()+this->uchks_.size()+1;
 	// + 1 to account for the MThd 
 }
-smf_t::size_type smf_t::ntrks() const {
+jmid::smf_t::size_type jmid::smf_t::ntrks() const {
 	return this->mtrks_.size();
 }
-smf_t::size_type smf_t::nuchks() const {
+jmid::smf_t::size_type jmid::smf_t::nuchks() const {
 	return this->uchks_.size();
 }
-smf_t::size_type smf_t::nbytes() const {
+jmid::smf_t::size_type jmid::smf_t::nbytes() const {
 	smf_t::size_type n = 0;
 	n = this->mthd_.nbytes();  // TODO:  Implement + rename to nbytes
 	for (const auto& e : this->mtrks_) {
@@ -74,151 +74,151 @@ smf_t::size_type smf_t::nbytes() const {
 	}
 	return n;
 }
-smf_t::iterator smf_t::begin() {
+jmid::smf_t::iterator jmid::smf_t::begin() {
 	if (this->mtrks_.size()==0) {
 		return smf_t::iterator(nullptr);
 	}
 	return smf_t::iterator(&(this->mtrks_[0]));
 }
-smf_t::iterator smf_t::end() {
+jmid::smf_t::iterator jmid::smf_t::end() {
 	if (this->mtrks_.size()==0) {
-		return smf_t::iterator(nullptr);
+		return jmid::smf_t::iterator(nullptr);
 	}
-	return smf_t::iterator(&(this->mtrks_[0]) + this->mtrks_.size());
+	return jmid::smf_t::iterator(&(this->mtrks_[0]) + this->mtrks_.size());
 }
-smf_t::const_iterator smf_t::cbegin() const {
+jmid::smf_t::const_iterator jmid::smf_t::cbegin() const {
 	if (this->mtrks_.size()==0) {
-		return smf_t::const_iterator(nullptr);
+		return jmid::smf_t::const_iterator(nullptr);
 	}
-	return smf_t::const_iterator(&(this->mtrks_[0]));
+	return jmid::smf_t::const_iterator(&(this->mtrks_[0]));
 }
-smf_t::const_iterator smf_t::cend() const {
+jmid::smf_t::const_iterator jmid::smf_t::cend() const {
 	if (this->mtrks_.size()==0) {
-		return smf_t::const_iterator(nullptr);
+		return jmid::smf_t::const_iterator(nullptr);
 	}
-	return smf_t::const_iterator(&(this->mtrks_[0]) + this->mtrks_.size());
+	return jmid::smf_t::const_iterator(&(this->mtrks_[0]) + this->mtrks_.size());
 }
-smf_t::const_iterator smf_t::begin() const {
+jmid::smf_t::const_iterator jmid::smf_t::begin() const {
 	return this->cbegin();
 }
-smf_t::const_iterator smf_t::end() const {
+jmid::smf_t::const_iterator jmid::smf_t::end() const {
 	return this->cend();
 }
-smf_t::reference smf_t::push_back(smf_t::const_reference mtrk) {
+jmid::smf_t::reference jmid::smf_t::push_back(jmid::smf_t::const_reference mtrk) {
 	this->mtrks_.push_back(mtrk);
 	this->chunkorder_.push_back(0);
 	this->mthd_.set_ntrks(this->mtrks_.size());
 	return this->mtrks_.back();
 }
-smf_t::reference smf_t::push_back(jmid::mtrk_t&& mtrk) {
+jmid::smf_t::reference jmid::smf_t::push_back(jmid::mtrk_t&& mtrk) {
 	this->mtrks_.push_back(std::move(mtrk));
 	this->chunkorder_.push_back(0);
 	this->mthd_.set_ntrks(this->mtrks_.size());
 	return this->mtrks_.back();
 }
-smf_t::iterator smf_t::insert(smf_t::iterator it, smf_t::const_reference mtrk) {
+jmid::smf_t::iterator jmid::smf_t::insert(jmid::smf_t::iterator it, jmid::smf_t::const_reference mtrk) {
 	auto n = it-this->begin();
 	this->mtrks_.insert((this->mtrks_.begin()+n),mtrk);
 	this->chunkorder_.insert((this->chunkorder_.begin()+n),0);
 	this->mthd_.set_ntrks(this->mtrks_.size());
 	return it;
 }
-smf_t::const_iterator smf_t::insert(smf_t::const_iterator it, smf_t::const_reference mtrk) {
+jmid::smf_t::const_iterator jmid::smf_t::insert(jmid::smf_t::const_iterator it, jmid::smf_t::const_reference mtrk) {
 	auto n = it-this->begin();
 	this->mtrks_.insert((this->mtrks_.begin()+n),mtrk);
 	this->chunkorder_.insert((this->chunkorder_.begin()+n),0);
 	this->mthd_.set_ntrks(this->mtrks_.size());
 	return it;
 }
-smf_t::iterator smf_t::erase(smf_t::iterator it) {
+jmid::smf_t::iterator jmid::smf_t::erase(jmid::smf_t::iterator it) {
 	auto n = it-this->begin();
 	this->mtrks_.erase((this->mtrks_.begin()+n));
 	this->chunkorder_.erase((this->chunkorder_.begin()+n));
 	this->mthd_.set_ntrks(this->mtrks_.size());
 	return this->begin()+n;
 }
-smf_t::const_iterator smf_t::erase(smf_t::const_iterator it) {
+jmid::smf_t::const_iterator jmid::smf_t::erase(jmid::smf_t::const_iterator it) {
 	auto n = it-this->begin();
 	this->mtrks_.erase((this->mtrks_.begin()+n));
 	this->chunkorder_.erase((this->chunkorder_.begin()+n));
 	this->mthd_.set_ntrks(this->mtrks_.size());
 	return this->begin()+n;
 }
-const smf_t::uchk_value_type& smf_t::push_back(const smf_t::uchk_value_type& uchk) {
+const jmid::smf_t::uchk_value_type& jmid::smf_t::push_back(const jmid::smf_t::uchk_value_type& uchk) {
 	this->uchks_.push_back(uchk);
 	this->chunkorder_.push_back(1);
 	return this->uchks_.back();
 }
-smf_t::uchk_iterator smf_t::insert(smf_t::uchk_iterator it,
-				const smf_t::uchk_value_type& uchk) {
+jmid::smf_t::uchk_iterator jmid::smf_t::insert(jmid::smf_t::uchk_iterator it,
+				const jmid::smf_t::uchk_value_type& uchk) {
 	auto n = it-this->uchks_.begin();
 	this->uchks_.insert(it,uchk);
 	this->chunkorder_.insert((this->chunkorder_.begin()+n),1);
 	return it;
 }
-smf_t::uchk_const_iterator smf_t::insert(smf_t::uchk_const_iterator it,
-				const smf_t::uchk_value_type& uchk) {
+jmid::smf_t::uchk_const_iterator jmid::smf_t::insert(jmid::smf_t::uchk_const_iterator it,
+				const jmid::smf_t::uchk_value_type& uchk) {
 	auto n = it-this->uchks_.begin();
 	this->uchks_.insert(it,uchk);
 	this->chunkorder_.insert((this->chunkorder_.begin()+n),1);
 	return it;
 }
-smf_t::uchk_iterator smf_t::erase(smf_t::uchk_iterator it) {
+jmid::smf_t::uchk_iterator jmid::smf_t::erase(jmid::smf_t::uchk_iterator it) {
 	auto n = it-this->uchks_.begin();
 	this->uchks_.erase((this->uchks_.begin()+n));
 	this->chunkorder_.erase((this->chunkorder_.begin()+n));
 	return this->uchks_.begin()+n;
 }
-smf_t::uchk_const_iterator smf_t::erase(smf_t::uchk_const_iterator it) {
+jmid::smf_t::uchk_const_iterator jmid::smf_t::erase(jmid::smf_t::uchk_const_iterator it) {
 	auto n = it-this->uchks_.begin();
 	this->uchks_.erase((this->uchks_.begin()+n));
 	this->chunkorder_.erase((this->chunkorder_.begin()+n));
 	return this->uchks_.begin()+n;
 }
-smf_t::reference smf_t::operator[](smf_t::size_type n) {
+jmid::smf_t::reference jmid::smf_t::operator[](jmid::smf_t::size_type n) {
 	return this->mtrks_[n];
 }
-smf_t::const_reference smf_t::operator[](smf_t::size_type n) const {
+jmid::smf_t::const_reference jmid::smf_t::operator[](jmid::smf_t::size_type n) const {
 	return this->mtrks_[n];
 }
-const smf_t::uchk_value_type& smf_t::get_uchk(smf_t::size_type n) const {
+const jmid::smf_t::uchk_value_type& jmid::smf_t::get_uchk(jmid::smf_t::size_type n) const {
 	return this->uchks_[n];
 }
-smf_t::uchk_value_type& smf_t::get_uchk(smf_t::size_type n) {
+jmid::smf_t::uchk_value_type& jmid::smf_t::get_uchk(jmid::smf_t::size_type n) {
 	return this->uchks_[n];
 }
-int32_t smf_t::format() const {
+std::int32_t jmid::smf_t::format() const {
 	return this->mthd_.format();
 }
-jmid::time_division_t smf_t::division() const {
+jmid::time_division_t jmid::smf_t::division() const {
 	return this->mthd_.division();
 }
-int32_t smf_t::mthd_size() const {
+std::int32_t jmid::smf_t::mthd_size() const {
 	return this->mthd_.size();
 }
-const jmid::mthd_t& smf_t::mthd() const {
+const jmid::mthd_t& jmid::smf_t::mthd() const {
 	return this->mthd_;
 }
-jmid::mthd_t& smf_t::mthd() {
+jmid::mthd_t& jmid::smf_t::mthd() {
 	return this->mthd_;
 }
-void smf_t::set_mthd(const jmid::maybe_mthd_t& mthd) {
+void jmid::smf_t::set_mthd(const jmid::maybe_mthd_t& mthd) {
 	if (mthd) {
 		this->mthd_ = mthd.mthd;
 	}
 	this->mthd_.set_ntrks(this->mtrks_.size());
 }
-void smf_t::set_mthd(const jmid::mthd_t& mthd) {
+void jmid::smf_t::set_mthd(const jmid::mthd_t& mthd) {
 	this->mthd_ = mthd;
 	this->mthd_.set_ntrks(this->mtrks_.size());
 }
-void smf_t::set_mthd(jmid::mthd_t&& mthd) noexcept {
+void jmid::smf_t::set_mthd(jmid::mthd_t&& mthd) noexcept {
 	this->mthd_ = std::move(mthd);
 	this->mthd_.set_ntrks(this->mtrks_.size());
 }
 
 // TODO:  The call to nbytes() is v. expensive
-std::string print(const smf_t& smf) {
+std::string jmid::print(const jmid::smf_t& smf) {
 	std::string s {};
 	s.reserve(20*smf.size());  // TODO: Magic constant 20
 
@@ -227,7 +227,7 @@ std::string print(const smf_t& smf) {
 		"num tracks = " + std::to_string(smf.ntrks());
 	s += "\n\n";
 
-	s += print(smf.mthd());
+	s += jmid::print(smf.mthd());
 	s += "\n\n";
 
 	for (int i=0; i<smf.ntrks(); ++i) {
@@ -250,35 +250,35 @@ std::string print(const smf_t& smf) {
 
 
 
-maybe_smf_t::operator bool() const {
+jmid::maybe_smf_t::operator bool() const {
 	return this->error==smf_error_t::errc::no_error;
 }
-maybe_smf_t read_smf(const std::filesystem::path& fp, smf_error_t *err) {
-	maybe_smf_t result;
+jmid::maybe_smf_t jmid::read_smf(const std::filesystem::path& fp, jmid::smf_error_t *err) {
+	jmid::maybe_smf_t result;
 	std::basic_ifstream<char> f(fp,std::ios::in|std::ios::binary);
 	std::istreambuf_iterator<char> it(f);
 	auto end = std::istreambuf_iterator<char>();
 
 	if (!f.is_open() || !f.good()) {
-		result.error = smf_error_t::errc::file_read_error;
+		result.error = jmid::smf_error_t::errc::file_read_error;
 		if (err) {
-			err->code = smf_error_t::errc::file_read_error;
+			err->code = jmid::smf_error_t::errc::file_read_error;
 		}
 		return result;
 	}
 	
-	make_smf(it,end,&result,err);
+	jmid::make_smf(it,end,&result,err);
 	return result;
 };
 
-maybe_smf_t read_smf_bulkfileread(const std::filesystem::path& fp, 
-					smf_error_t *err, std::vector<char> *pfdata) {
-	maybe_smf_t result;
+jmid::maybe_smf_t jmid::read_smf_bulkfileread(const std::filesystem::path& fp, 
+					jmid::smf_error_t *err, std::vector<char> *pfdata) {
+	jmid::maybe_smf_t result;
 	std::basic_ifstream<char> f(fp,
 		std::ios_base::in|std::ios_base::binary);
 	if (!f.is_open() || !f.good()) {
 		if (err) {
-			err->code = smf_error_t::errc::file_read_error;
+			err->code = jmid::smf_error_t::errc::file_read_error;
 		}
 		return result;
 	}
@@ -299,13 +299,13 @@ maybe_smf_t read_smf_bulkfileread(const std::filesystem::path& fp,
 
 	const char *it = pfdata->data();
 	const char *end = pfdata->data()+pfdata->size();
-	make_smf(it,end,&result,err);
+	jmid::make_smf(it,end,&result,err);
 	return result;
 }
 
-std::string explain(const smf_error_t& err) {
+std::string jmid::explain(const jmid::smf_error_t& err) {
 	std::string s {};
-	if (err.code==smf_error_t::errc::no_error) {
+	if (err.code==jmid::smf_error_t::errc::no_error) {
 		return s;
 	}
 
@@ -321,27 +321,27 @@ std::string explain(const smf_error_t& err) {
 	};
 
 	s += "Error reading SMF:  ";
-	if (err.code==smf_error_t::errc::file_read_error) {
+	if (err.code==jmid::smf_error_t::errc::file_read_error) {
 		s += "Error opening or reading file.  ";
-	} else if (err.code==smf_error_t::errc::mthd_error) {
-		s += explain(err.mthd_err_obj);
-	} else if (err.code==smf_error_t::errc::mtrk_error) {
-		s += explain(err.mtrk_err_obj);
+	} else if (err.code==jmid::smf_error_t::errc::mthd_error) {
+		s += jmid::explain(err.mthd_err_obj);
+	} else if (err.code==jmid::smf_error_t::errc::mtrk_error) {
+		s += jmid::explain(err.mtrk_err_obj);
 		append_values();
-	} else if (err.code==smf_error_t::errc::overflow_reading_uchk) {
+	} else if (err.code==jmid::smf_error_t::errc::overflow_reading_uchk) {
 		s += "Encountered end-of-input prior to reading in the full data "
 			"section of the present uchk.  ";
 		append_values();
-	} else if (err.code==smf_error_t::errc::terminated_before_end_of_file) {
+	} else if (err.code==jmid::smf_error_t::errc::terminated_before_end_of_file) {
 		s += "Read in the final MTrk chunk, but did not encounter end-of-input.  "
 			"The file may have padding or other garbage past the end of the "
 			"last chunk, or the number of MTrks may be misreported in the MThd.  ";
 		append_values();
-	} else if (err.code==smf_error_t::errc::unexpected_num_mtrks) {
+	} else if (err.code==jmid::smf_error_t::errc::unexpected_num_mtrks) {
 		s += "Terminated scanning before the reading the expected number of "
 			"MTrk chunks.  The ntrks field of the MThd chunk may be incorrect.  ";
 		append_values();
-	} else if (err.code==smf_error_t::errc::other) {
+	} else if (err.code==jmid::smf_error_t::errc::other) {
 		s += "smf_error_t::errc::other.  ";
 	} else {
 		s += "Unknown error.  ";
@@ -351,15 +351,15 @@ std::string explain(const smf_error_t& err) {
 }
 
 
-std::filesystem::path write_smf(const smf_t& smf, const std::filesystem::path& p) {
+std::filesystem::path jmid::write_smf(const jmid::smf_t& smf, const std::filesystem::path& p) {
 	std::basic_ofstream<char> fsout(p,std::ios::out|std::ios::binary);
 	std::ostreambuf_iterator<char> it(fsout);
-	write_smf(smf,it);
+	jmid::write_smf(smf,it);
 	fsout.close();
 	return p;
 }
 
-bool has_midifile_extension(const std::filesystem::path& fp) {
+bool jmid::has_midifile_extension(const std::filesystem::path& fp) {
 	if (!std::filesystem::is_regular_file(fp)) {
 		return false;
 	}
@@ -378,21 +378,21 @@ bool has_midifile_extension(const std::filesystem::path& fp) {
 
 
 
-std::vector<all_smf_events_dt_ordered_t> get_events_dt_ordered(const smf_t& smf) {
-	std::vector<all_smf_events_dt_ordered_t> result;
+std::vector<jmid::all_smf_events_dt_ordered_t> jmid::get_events_dt_ordered(const jmid::smf_t& smf) {
+	std::vector<jmid::all_smf_events_dt_ordered_t> result;
 	//result.reserve(smf.nchunks...
 	
 	for (int i=0; i<smf.ntrks(); ++i) {
 		const auto& curr_trk = smf[i];
-		uint32_t cumtk = 0;
+		std::uint32_t cumtk = 0;
 		for (const auto& e : curr_trk) {
 			cumtk += e.delta_time();
 			result.push_back({e,cumtk,i});
 		}
 	}
 
-	auto lt_ev = [](const all_smf_events_dt_ordered_t& lhs, 
-					const all_smf_events_dt_ordered_t& rhs)->bool {
+	auto lt_ev = [](const jmid::all_smf_events_dt_ordered_t& lhs, 
+					const jmid::all_smf_events_dt_ordered_t& rhs)->bool {
 		if (lhs.cumtk == rhs.cumtk) {
 			return lhs.trackn < rhs.trackn;
 		} else {
@@ -404,7 +404,7 @@ std::vector<all_smf_events_dt_ordered_t> get_events_dt_ordered(const smf_t& smf)
 	return result;
 }
 
-std::string print(const std::vector<all_smf_events_dt_ordered_t>& evs) {
+std::string print(const std::vector<jmid::all_smf_events_dt_ordered_t>& evs) {
 	struct width_t {
 		int def {12};  // "default"
 		int sep {3};
