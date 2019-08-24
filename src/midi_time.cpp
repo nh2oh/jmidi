@@ -22,7 +22,7 @@ jmid::time_division_t::time_division_t(std::int32_t tcf, std::int32_t subdivs) {
 	auto subdivs_ui8 = static_cast<std::uint8_t>(std::clamp(subdivs,1,0xFF));
 	// The high-byte of val has the bit 8 set, and bits [7,0] have the 
 	// bit-pattern of tcf.  The low-byte has the bit-pattern of upf.  
-	auto psrc = static_cast<unsigned char*>(static_cast<void*>(&tcf));
+	auto psrc = static_cast<unsigned char*>(static_cast<void*>(&tcf_i8));
 	this->d_[0] = *psrc;
 	psrc = static_cast<unsigned char*>(static_cast<void*>(&subdivs_ui8));
 	this->d_[1] = *psrc;
@@ -38,7 +38,7 @@ jmid::time_division_t::type jmid::time_division_t::get_type() const {
 }
 jmid::smpte_t jmid::time_division_t::get_smpte() const {
 	jmid::smpte_t result;
-	int8_t tcf_i8 = 0;
+	std::int8_t tcf_i8 = 0;
 	auto pdest = static_cast<unsigned char*>(static_cast<void*>(&tcf_i8));
 	*pdest = this->d_[0];
 	if ((tcf_i8 != -24) && (tcf_i8 != -25) && (tcf_i8 != -29) 

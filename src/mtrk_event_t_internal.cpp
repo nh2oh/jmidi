@@ -144,7 +144,7 @@ int32_t big_t::reserve(int32_t new_cap) {
 	new_cap = std::clamp(new_cap,this->capacity(),big_t::size_max);
 	if (new_cap > this->capacity()) {
 		// For a freshly init()'d object, p_==nullptr, but sz_==cap_==0
-		auto psrc = this->p_;
+		//auto psrc = this->p_;
 		unsigned char *pdest = new unsigned char[static_cast<uint32_t>(new_cap)];
 		//small_bytevec_t::call_counts.calls_new++;
 		std::copy(this->begin(),this->end(),pdest);

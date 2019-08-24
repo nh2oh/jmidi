@@ -88,7 +88,7 @@ std::string jmid::explain(const jmid::chunk_header_error_t& err) {
 		s += "The length field encodes a value that is too large.  "
 			"This library enforces a maximum chunk length of ";
 		s += std::to_string(jmid::chunk_view_t::length_max);
-			" bytes, the largest value representable in a signed 32-bit "
+		s += " bytes, the largest value representable in a signed 32-bit "
 			"int.  length == ";
 		s += std::to_string(err.length);
 		s += ".  ";

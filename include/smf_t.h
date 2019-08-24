@@ -288,13 +288,11 @@ std::filesystem::path write_smf(const smf_t&, const std::filesystem::path&);
 // "MIDI"
 bool has_midifile_extension(const std::filesystem::path&);
 
-
+/*
 struct mtrk_event_range_t {
 	mtrk_event_t::const_iterator beg;
 	mtrk_event_t::const_iterator end;
 };
-
-
 class sequential_range_iterator {
 public:
 private:
@@ -321,6 +319,7 @@ private:
 	std::vector<range_pos>::iterator curr_;
 	std::uint32_t tkonset_;
 };
+*/
 
 /*class smf2_chrono_iterator {
 public:

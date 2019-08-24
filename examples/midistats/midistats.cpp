@@ -4,7 +4,7 @@
 #include <filesystem>
 #include <string>
 #include <algorithm>
-
+#include <vector>
 
 int main(int argc, char *argv[]) {
 	if (argc < 2) {

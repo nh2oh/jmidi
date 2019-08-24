@@ -229,7 +229,7 @@ InIt make_mthd(InIt it, InIt end, maybe_mthd_t *result, mthd_error_t *err) {
 	auto dest_beg = dest;
 	std::ptrdiff_t i=0;  // The number of bytes read from the input stream
 
-	auto set_error = [&err,&result,&dest,&i](mthd_error_t::errc ec)->void {
+	auto set_error = [&err,&result,&i](mthd_error_t::errc ec)->void {
 		result->error = ec;
 		result->nbytes_read = i;
 		if (err) {

@@ -518,7 +518,9 @@ mtrk_event_t jmid::make_key_pressure(std::int32_t dt, int ch, int p1, int p2) {
 }
 mtrk_event_t jmid::make_control_change(std::int32_t dt, jmid::ch_event_data_t md) {
 	md.status_nybble = 0xB0u;
-	md.p1 >= 120 ? 119 : md.p1;  // p1 >=120 (==0b01111000) => select_ch_mode
+	if (md.p1 >= 120) {  // p1 >=120 (==0b01111000) => select_ch_mode
+		md.p1 = 119;
+	}
 	return jmid::make_ch_event(dt,md);
 }
 mtrk_event_t jmid::make_control_change(std::int32_t dt, int ch, int p1, int p2) {
@@ -549,7 +551,9 @@ mtrk_event_t jmid::make_pitch_bend(std::int32_t dt, int ch, int p1, int p2) {
 }
 mtrk_event_t jmid::make_channel_mode(std::int32_t dt, jmid::ch_event_data_t md) {
 	md.status_nybble = 0xB0u;
-	md.p1 < 120 ? 120 : md.p1;  // p1 <120 (==0b01111000) => control_change
+	if (md.p1 < 120) {  // p1 <120 (==0b01111000) => control_change
+		md.p1 = 120;
+	}
 	return jmid::make_ch_event(dt,md);
 }
 mtrk_event_t jmid::make_channel_mode(std::int32_t dt, int ch, int p1, int p2) {

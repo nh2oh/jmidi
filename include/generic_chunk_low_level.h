@@ -13,11 +13,13 @@ namespace jmid {
 // maybe_header_t read_chunk_header(const unsigned char *beg,
 //									const unsigned char *end);
 //
+
+// TODO:  This is unused except for the static member
 class chunk_view_t {
 public:
 	static constexpr std::int32_t length_max = std::numeric_limits<std::int32_t>::max()-8;
 private:
-	const unsigned char *p_;
+	//const unsigned char *p_;
 };
 
 enum class chunk_id : std::uint8_t {

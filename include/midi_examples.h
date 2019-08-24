@@ -1,5 +1,4 @@
 #pragma once
-#include "midi_vlq.h"
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -21,13 +20,10 @@ extern const std::vector<midi_test_stuff_t> midi_test_dirs;
 int midi_example();
 
 int read_midi_directory(const std::filesystem::path&);
-int inspect_mthds(const std::filesystem::path&, const std::filesystem::path&);
-
 
 int classify_smf_errors(const std::filesystem::path&,
 	const std::filesystem::path&);
 
 int function_counts();
-int conversions();
-int ratiosfp();
+
 

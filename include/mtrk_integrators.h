@@ -23,6 +23,8 @@
 // a lyric event has to be processed by the lyric integrator _and_
 // by the delta_time integrator.  The integrator vector could be 
 // wrapped into it's own type w/a custom += to be more effecient.  
+
+/*
 struct integrator_t {
 	virtual integrator_t& operator+=(const mtrk_event_t& ev)=0;
 	virtual std::string print()=0;
@@ -64,5 +66,5 @@ struct time_integrator_t : integrator_t {
 	uint32_t tempo_ {500000};
 	uint32_t tpq_ {96};  // ticks per q nt from MThd
 };
-
+*/
 
