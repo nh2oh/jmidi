@@ -1,5 +1,5 @@
 #include "mthd_t.h"
-#include "mtrk_event_t_internal.h"
+#include "small_bytevec_t.h"
 #include "generic_chunk_low_level.h"
 #include "midi_time.h"
 #include "midi_vlq.h"
@@ -17,7 +17,7 @@ const std::array<unsigned char,14> jmid::mthd_t::def_ {
 };
 
 void jmid::mthd_t::default_init() noexcept {  // private
-	this->d_ = mtrk_event_t_internal::small_bytevec_t();
+	this->d_ = jmid::internal::small_bytevec_t();
 	this->d_.resize_small2small_nocopy(14);
 	std::memcpy(this->d_.begin(),&(jmid::mthd_t::def_[0]),jmid::mthd_t::def_.size());
 }
@@ -26,7 +26,7 @@ jmid::mthd_t::mthd_t() noexcept {
 	this->default_init();
 }
 jmid::mthd_t::mthd_t(jmid::mthd_t::init_small_w_size_0_t) noexcept {
-	this->d_ = mtrk_event_t_internal::small_bytevec_t();
+	this->d_ = jmid::internal::small_bytevec_t();
 }
 jmid::mthd_t::mthd_t(std::int32_t fmt, std::int32_t ntrks, jmid::time_division_t tdf) noexcept {
 	this->default_init();

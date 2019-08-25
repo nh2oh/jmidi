@@ -23,7 +23,7 @@
     <ClCompile Include="..\..\src\mthd_t.cpp" />
     <ClCompile Include="..\..\src\mtrk_event_methods.cpp" />
     <ClCompile Include="..\..\src\mtrk_event_t.cpp" />
-    <ClCompile Include="..\..\src\mtrk_event_t_internal.cpp" />
+    <ClCompile Include="..\..\src\small_bytevec_t.cpp" />
     <ClCompile Include="..\..\src\mtrk_integrators.cpp" />
     <ClCompile Include="..\..\src\mtrk_t.cpp" />
     <ClCompile Include="..\..\src\print_hexascii.cpp" />
@@ -44,7 +44,7 @@
     <ClInclude Include="..\..\include\mthd_t.h" />
     <ClInclude Include="..\..\include\mtrk_event_methods.h" />
     <ClInclude Include="..\..\include\mtrk_event_t.h" />
-    <ClInclude Include="..\..\include\mtrk_event_t_internal.h" />
+    <ClInclude Include="..\..\include\small_bytevec_t.h" />
     <ClInclude Include="..\..\include\mtrk_integrators.h" />
     <ClInclude Include="..\..\include\mtrk_t.h" />
     <ClInclude Include="..\..\include\print_hexascii.h" />

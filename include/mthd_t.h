@@ -1,7 +1,7 @@
 #pragma once
 #include "generic_chunk_low_level.h"
 #include "generic_iterator.h"
-#include "mtrk_event_t_internal.h"
+#include "small_bytevec_t.h"
 #include "midi_time.h"  // jmid::time_division_t
 #include "midi_vlq.h"
 #include <cstdint>
@@ -159,7 +159,7 @@ private:
 	mthd_t(init_small_w_size_0_t) noexcept;
 	void default_init() noexcept;
 
-	mtrk_event_t_internal::small_bytevec_t d_;
+	jmid::internal::small_bytevec_t d_;
 
 	template <typename InIt>
 	friend InIt make_mthd(InIt, InIt, maybe_mthd_t*, mthd_error_t*);

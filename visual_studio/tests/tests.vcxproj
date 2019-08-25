@@ -25,7 +25,7 @@
     <ClCompile Include="..\..\tests\mtrk_duration_tests.cpp" />
     <ClCompile Include="..\..\tests\mtrk_event_class_method_tests.cpp" />
     <ClCompile Include="..\..\tests\mtrk_event_ctor_tests.cpp" />
-    <ClCompile Include="..\..\tests\mtrk_event_internal.cpp" />
+    <ClCompile Include="..\..\tests\small_bytevec_tests.cpp" />
     <ClCompile Include="..\..\tests\mtrk_event_interrogation_ch_events.cpp" />
     <ClCompile Include="..\..\tests\mtrk_event_sysex_factory_funcs.cpp" />
     <ClCompile Include="..\..\tests\mtrk_event_t_meta_factory_funcs_tests.cpp" />

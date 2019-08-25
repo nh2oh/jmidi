@@ -1,5 +1,5 @@
 #pragma once
-#include "mtrk_event_t_internal.h"
+#include "small_bytevec_t.h"
 #include "generic_iterator.h"
 #include "midi_status_byte.h"
 #include "midi_delta_time.h"
@@ -141,7 +141,7 @@ public:
 	bool operator==(const mtrk_event_t&) const noexcept;
 	bool operator!=(const mtrk_event_t&) const noexcept;
 private:
-	mtrk_event_t_internal::small_bytevec_t d_;
+	jmid::internal::small_bytevec_t d_;
 	
 	// delta_time()==0, Note-on, channel==1, note==60 (0x3C), 
 	// velocity==63 (0x3F).  
