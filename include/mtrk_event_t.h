@@ -64,8 +64,8 @@ struct mtrk_event_container_types_t {
 	using const_pointer = const value_type*;
 };
 struct mtrk_event_iterator_range_t {
-	generic_ra_const_iterator<mtrk_event_container_types_t> begin;
-	generic_ra_const_iterator<mtrk_event_container_types_t> end;
+	internal::generic_ra_const_iterator<mtrk_event_container_types_t> begin;
+	internal::generic_ra_const_iterator<mtrk_event_container_types_t> end;
 };
 
 class mtrk_event_t {
@@ -77,8 +77,8 @@ public:
 	using const_reference = mtrk_event_container_types_t::const_reference;
 	using pointer = mtrk_event_container_types_t::pointer;
 	using const_pointer = mtrk_event_container_types_t::const_pointer;
-	using iterator = generic_ra_iterator<mtrk_event_container_types_t>;
-	using const_iterator = generic_ra_const_iterator<mtrk_event_container_types_t>;
+	using iterator = internal::generic_ra_iterator<mtrk_event_container_types_t>;
+	using const_iterator = internal::generic_ra_const_iterator<mtrk_event_container_types_t>;
 	// TODO:  reverse_iterator, const_reverse_iterator
 
 	static constexpr size_type size_max = 0x0FFFFFFF;

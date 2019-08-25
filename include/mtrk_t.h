@@ -57,8 +57,8 @@ public:
 	using const_reference = mtrk_container_types_t::const_reference;
 	using pointer = mtrk_container_types_t::pointer;
 	using const_pointer = mtrk_container_types_t::const_pointer;
-	using iterator = generic_ra_iterator<mtrk_container_types_t>;
-	using const_iterator = generic_ra_const_iterator<mtrk_container_types_t>;
+	using iterator = internal::generic_ra_iterator<mtrk_container_types_t>;
+	using const_iterator = internal::generic_ra_const_iterator<mtrk_container_types_t>;
 
 	// The max. allowed value of the 'length' field in the chunk header.  
 	// _not_ the same as the max allowed number of events.  

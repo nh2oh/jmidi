@@ -75,8 +75,8 @@ public:
 	using const_reference = mthd_container_types_t::const_reference;
 	using pointer = mthd_container_types_t::pointer;
 	using const_pointer = mthd_container_types_t::const_pointer;
-	using iterator = generic_ra_iterator<mthd_container_types_t>;
-	using const_iterator = generic_ra_const_iterator<mthd_container_types_t>;
+	using iterator = internal::generic_ra_iterator<mthd_container_types_t>;
+	using const_iterator = internal::generic_ra_const_iterator<mthd_container_types_t>;
 	
 	static constexpr size_type length_min = 6;
 	static constexpr size_type length_max = std::numeric_limits<size_type>::max()-8;

@@ -2,6 +2,9 @@
 #include <iterator>  // std::random_access_iterator_tag;
 
 
+
+namespace jmid {
+namespace internal {
 //
 // TODO
 // -> Binary operators ==, !=, <, >, ... for pairs of const and non-const
@@ -185,6 +188,7 @@ generic_ra_const_iterator<C> operator+(typename generic_ra_const_iterator<C>::di
 };
 
 
-void generic_iterator_tests();
 
+}  // namespace jmid
+}  // namespace internal
 

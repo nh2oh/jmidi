@@ -67,10 +67,6 @@ inout_dirs_t get_midi_test_dirs(const std::string& name) {
 
 
 int midi_example() {
-
-	//function_counts();
-
-
 	//auto d = get_midi_test_dirs("random_collection");
 	//classify_smf_errors(d.inp,d.outp.parent_path()/"errors.txt");//  "random_collection"
 	//event_sizes_benchmark();
@@ -99,14 +95,6 @@ int midi_example() {
 	return 0;
 }
 
-int function_counts() {
-	std::filesystem::path pth 
-		= "D:\\cpp\\nh2oh\\au\\au\\gt_aulib\\test_data\\tempo_duration\\tdiv25_tempo250k.midi";
-	//std::filesystem::path pth = R"(C:\Users\ben\Desktop\hallelujah_joy_to_the_world.mid)";
-	jmid::maybe_smf_t maybe_smf = jmid::read_smf(pth,nullptr);
-
-	return 0;
-}
 
 
 

@@ -24,6 +24,6 @@ int read_midi_directory(const std::filesystem::path&);
 int classify_smf_errors(const std::filesystem::path&,
 	const std::filesystem::path&);
 
-int function_counts();
+
 
 

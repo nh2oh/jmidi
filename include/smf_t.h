@@ -60,8 +60,8 @@ public:
 	using const_reference = smf_container_types_t::const_reference;
 	using pointer = smf_container_types_t::pointer;
 	using const_pointer = smf_container_types_t::const_pointer;
-	using iterator = generic_ra_iterator<smf_container_types_t>;
-	using const_iterator = generic_ra_const_iterator<smf_container_types_t>;
+	using iterator = internal::generic_ra_iterator<smf_container_types_t>;
+	using const_iterator = internal::generic_ra_const_iterator<smf_container_types_t>;
 
 	using uchk_iterator = std::vector<std::vector<unsigned char>>::iterator;
 	using uchk_const_iterator = std::vector<std::vector<unsigned char>>::const_iterator;
@@ -171,6 +171,7 @@ struct maybe_smf_t {
 maybe_smf_t read_smf(const std::filesystem::path&, smf_error_t*);
 maybe_smf_t read_smf_bulkfileread(const std::filesystem::path&, 
 						smf_error_t*, std::vector<char>*);
+std::string print(smf_error_t::errc);
 std::string explain(const smf_error_t&);
 
 template<typename InIt>
