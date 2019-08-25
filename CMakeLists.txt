@@ -21,7 +21,7 @@ add_library(
 target_include_directories(jmidi PUBLIC include)
 target_compile_features(jmidi PUBLIC cxx_std_17)
 
-find_package(Threads)
+#find_package(Threads)
 
 add_executable(tests
 	tests/delta_time_test_data.cpp  tests/delta_time_test_data.h  
@@ -42,8 +42,12 @@ add_executable(tests
 )
 target_link_libraries(tests PUBLIC jmidi)
 find_package(GTest)
-target_link_libraries(tests PUBLIC gtest gmock gtest_main)
-target_link_libraries(tests PUBLIC ${CMAKE_THREAD_LIBS_INIT})
+# "module mode" (default):  CMake searches for a file called Find<PackageName>.cmake. 
+#     The file is first searched in the CMAKE_MODULE_PATH,  then among the "Find Modules"
+#     provided by the CMake installation...
+target_link_libraries(tests PUBLIC GTest::GTest GTest::Main)
+#target_link_libraries(tests PUBLIC gtest gmock gtest_main)
+#target_link_libraries(tests PUBLIC ${CMAKE_THREAD_LIBS_INIT})
 
 
 add_executable(event_sizes_benchmark
@@ -51,8 +55,8 @@ add_executable(event_sizes_benchmark
 	examples/event_sizes_benchmark/event_sizes_benchmark.h
 )
 target_compile_features(event_sizes_benchmark PUBLIC cxx_std_17)
-find_package(Threads)
-target_link_libraries(event_sizes_benchmark PUBLIC ${CMAKE_THREAD_LIBS_INIT}) 
+#find_package(Threads)
+#target_link_libraries(event_sizes_benchmark PUBLIC ${CMAKE_THREAD_LIBS_INIT}) 
 target_link_libraries(event_sizes_benchmark PUBLIC jmidi)
 
 add_executable(vlq_benchmark
@@ -78,6 +82,10 @@ target_link_libraries(smfprint PUBLIC jmidi)
 # add_compile_options, include_directories, link_directories, link_libraries
 # CMAKE_CXX_FLAGS
 
+# find_library() as an alternative to find_package()
+
+
+# Write a Config.cmake file: This is what a library author should do to support clients.
 
 
 

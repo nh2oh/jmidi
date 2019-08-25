@@ -204,31 +204,31 @@ int classify_smf_errors(const std::filesystem::path& inp,
 				&& smf_error.mtrk_err_obj.code==jmid::mtrk_error_t::errc::invalid_event) {
 			outfile << '\t';
 			switch (smf_error.mtrk_err_obj.event_error.code) {
-			case mtrk_event_error_t::errc::invalid_delta_time:
+			case jmid::mtrk_event_error_t::errc::invalid_delta_time:
 				outfile << "mtrk_event_error_t::errc::invalid_delta_time";
 				break;
-			case mtrk_event_error_t::errc::no_data_following_delta_time:
+			case jmid::mtrk_event_error_t::errc::no_data_following_delta_time:
 				outfile << "mtrk_event_error_t::errc::no_data_following_delta_time";
 				break;
-			case mtrk_event_error_t::errc::invalid_status_byte:
+			case jmid::mtrk_event_error_t::errc::invalid_status_byte:
 				outfile << "mtrk_event_error_t::errc::invalid_status_byte";
 				break;
-			case mtrk_event_error_t::errc::channel_calcd_length_exceeds_input:
+			case jmid::mtrk_event_error_t::errc::channel_calcd_length_exceeds_input:
 				outfile << "mtrk_event_error_t::errc::channel_calcd_length_exceeds_input";
 				break;
-			case mtrk_event_error_t::errc::channel_invalid_data_byte:
+			case jmid::mtrk_event_error_t::errc::channel_invalid_data_byte:
 				outfile << "mtrk_event_error_t::errc::channel_invalid_data_byte";
 				break;
-			case mtrk_event_error_t::errc::sysex_or_meta_overflow_in_header:
+			case jmid::mtrk_event_error_t::errc::sysex_or_meta_overflow_in_header:
 				outfile << "mtrk_event_error_t::errc::sysex_or_meta_overflow_in_header";
 				break;
-			case mtrk_event_error_t::errc::sysex_or_meta_invalid_vlq_length:
+			case jmid::mtrk_event_error_t::errc::sysex_or_meta_invalid_vlq_length:
 				outfile << "mtrk_event_error_t::errc::sysex_or_meta_invalid_vlq_length";
 				break;
-			case mtrk_event_error_t::errc::sysex_or_meta_calcd_length_exceeds_input:
+			case jmid::mtrk_event_error_t::errc::sysex_or_meta_calcd_length_exceeds_input:
 				outfile << "mtrk_event_error_t::errc::sysex_or_meta_calcd_length_exceeds_input";
 				break;
-			case mtrk_event_error_t::errc::other:
+			case jmid::mtrk_event_error_t::errc::other:
 				outfile << "mtrk_event_error_t::errc::other";
 				break;
 			default:

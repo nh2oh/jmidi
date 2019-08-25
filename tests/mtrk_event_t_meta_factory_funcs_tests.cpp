@@ -138,8 +138,8 @@ TEST(mtrk_event_t_meta_factories, makeTimesig) {
 //
 TEST(mtrk_event_t_meta_factories, makeEventsWithTextPayloads) {
 	struct testset_t {
-		mtrk_event_t (*fp_make)(const int32_t&, const std::string&);
-		bool (*fp_is)(const mtrk_event_t&);
+		jmid::mtrk_event_t (*fp_make)(const int32_t&, const std::string&);
+		bool (*fp_is)(const jmid::mtrk_event_t&);
 		jmid::meta_event_t ans_evtype;
 	};
 	std::vector<testset_t> testsets {

@@ -13,7 +13,7 @@ using namespace mtrk_tests;
 jmid::mtrk_t make_mtrk_tsb(const std::vector<tsb_t>& v) {
 	auto mtrk_tsb = jmid::mtrk_t();  // auto to avoid MVP
 	for (const auto& e : v) {
-		auto curr_ev = make_mtrk_event(e.d.data(),e.d.data()+e.d.size(),
+		auto curr_ev = jmid::make_mtrk_event(e.d.data(),e.d.data()+e.d.size(),
 			0,nullptr).event;
 		mtrk_tsb.push_back(curr_ev);
 	}
@@ -28,7 +28,7 @@ jmid::mtrk_t make_mtrk_tsb(const std::vector<tsb_t>& v) {
 TEST(mtrk_t_tests, SplitCopyIfForNoteNum67WithTSB) {
 	auto mtrk_b = make_mtrk_tsb(tsb);
 
-	auto isntnum43 = [](const mtrk_event_t& ev)->bool {
+	auto isntnum43 = [](const jmid::mtrk_event_t& ev)->bool {
 		auto md = jmid::get_channel_event(ev);
 		return (jmid::is_channel_voice(ev) && (md.p1==67));  // 67 == 0x43u
 	};
@@ -48,7 +48,7 @@ TEST(mtrk_t_tests, SplitCopyIfForNoteNum67WithTSB) {
 
 		// The raw data in tsb_note_67_events have the delta time fields from
 		// mtrk_b
-		auto ev = make_mtrk_event(tsb_note_67_events[i].d.data(),
+		auto ev = jmid::make_mtrk_event(tsb_note_67_events[i].d.data(),
 			tsb_note_67_events[i].d.data()+tsb_note_67_events[i].d.size(),
 			0x00u,nullptr).event;
 		ev.set_delta_time(new_mtrk[i].delta_time());
@@ -64,7 +64,7 @@ TEST(mtrk_t_tests, SplitCopyIfForNoteNum67WithTSB) {
 TEST(mtrk_t_tests, SplitCopyIfForMetaEventsWithTSB) {
 	auto mtrk_b = make_mtrk_tsb(tsb);
 
-	auto ismeta = [](const mtrk_event_t& ev)->bool {
+	auto ismeta = [](const jmid::mtrk_event_t& ev)->bool {
 		return jmid::is_meta(ev);
 	};
 
@@ -81,7 +81,7 @@ TEST(mtrk_t_tests, SplitCopyIfForMetaEventsWithTSB) {
 
 		// The raw data in tsb_meta_events have the delta time fields from
 		// mtrk_b
-		auto ev = make_mtrk_event(tsb_meta_events[i].d.data(),
+		auto ev = jmid::make_mtrk_event(tsb_meta_events[i].d.data(),
 			tsb_meta_events[i].d.data()+tsb_meta_events[i].d.size(),
 			0x00u,nullptr).event;
 		ev.set_delta_time(new_mtrk[i].delta_time());
@@ -97,7 +97,7 @@ TEST(mtrk_t_tests, SplitCopyIfForMetaEventsWithTSB) {
 TEST(mtrk_t_tests, SplitIfForNoteNum67WithTSB) {
 	auto mtrk_b = make_mtrk_tsb(tsb);
 
-	auto isntnum43 = [](const mtrk_event_t& ev)->bool {
+	auto isntnum43 = [](const jmid::mtrk_event_t& ev)->bool {
 		auto md = jmid::get_channel_event(ev);
 		return (jmid::is_channel_voice(ev) && (md.p1==67));  // 67 == 0x43u
 	};
@@ -117,7 +117,7 @@ TEST(mtrk_t_tests, SplitIfForNoteNum67WithTSB) {
 
 		// The raw data in tsb_note_67_events have the delta time fields from
 		// mtrk_b
-		auto ev = make_mtrk_event(tsb_note_67_events[i].d.data(),
+		auto ev = jmid::make_mtrk_event(tsb_note_67_events[i].d.data(),
 			tsb_note_67_events[i].d.data()+tsb_note_67_events[i].d.size(),
 			0x00u,nullptr).event;
 		ev.set_delta_time(mtrk_first[i].delta_time());
@@ -136,7 +136,7 @@ TEST(mtrk_t_tests, SplitIfForNoteNum67WithTSB) {
 
 		// The raw data in tsb_non_note_67_events have the delta time fields from
 		// mtrk_b
-		auto ev = make_mtrk_event(tsb_non_note_67_events[i].d.data(),
+		auto ev = jmid::make_mtrk_event(tsb_non_note_67_events[i].d.data(),
 			tsb_non_note_67_events[i].d.data()+tsb_non_note_67_events[i].d.size(),
 			0x00u,nullptr).event;
 		ev.set_delta_time(mtrk_second[i].delta_time());
@@ -151,7 +151,7 @@ TEST(mtrk_t_tests, SplitIfForNoteNum67WithTSB) {
 TEST(mtrk_t_tests, SplitIfMtrkOverloadForNoteNum67WithTSB) {
 	auto mtrk_b = make_mtrk_tsb(tsb);
 
-	auto isntnum43 = [](const mtrk_event_t& ev)->bool {
+	auto isntnum43 = [](const jmid::mtrk_event_t& ev)->bool {
 		auto md = jmid::get_channel_event(ev);
 		return (jmid::is_channel_voice(ev) && (md.p1==67));  // 67 == 0x43u
 	};

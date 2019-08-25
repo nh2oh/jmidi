@@ -173,7 +173,7 @@ int avg_and_max_event_sizes(const std::vector<std::filesystem::path>& files,
 		int32_t n_events_2431bytes = 0;
 		int32_t n_events_leq23bytes = 0;
 		int32_t max_sz = 0;
-		auto biggest_event = mtrk_event_t();
+		auto biggest_event = jmid::mtrk_event_t();
 		for (const auto& trk : maybe_smf.smf) {
 			for (const auto& ev : trk) {
 				auto sz = ev.size();

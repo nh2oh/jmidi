@@ -8,6 +8,8 @@
 #include <cstdint>
 
 
+namespace jmid {
+
 //
 // class mtrk_event_t
 // A container for MTrk events.  
@@ -49,10 +51,8 @@ struct maybe_mtrk_event_t;
 struct mtrk_event_debug_helper_t;
 class mtrk_event_t;
 
-namespace jmid {
 mtrk_event_t make_ch_event_generic_unsafe(std::int32_t, 
 								const jmid::ch_event_data_t&) noexcept;
-}
 
 struct mtrk_event_container_types_t {
 	using value_type = unsigned char;
@@ -67,20 +67,9 @@ struct mtrk_event_iterator_range_t {
 	generic_ra_const_iterator<mtrk_event_container_types_t> begin;
 	generic_ra_const_iterator<mtrk_event_container_types_t> end;
 };
-/*struct mtrk_event_call_count_t {
-	int def_ctor {0};
-	int smallsz_ctor {0};
-	int dt_ctor {0};
-	int cpy_ctor {0};
-	int mv_ctor {0};
-	int mv_assn {0};
-	int cpy_assn {0};
-};*/
+
 class mtrk_event_t {
 public:
-
-	//static mtrk_event_call_count_t call_counts;
-
 	using value_type = mtrk_event_container_types_t::value_type;
 	using size_type = mtrk_event_container_types_t::size_type;
 	using difference_type = mtrk_event_container_types_t::difference_type;  // TODO:  Inconsistent
@@ -98,8 +87,8 @@ public:
 	// on channel "1" w/ velocity 60 and delta-time == 0.  
 	explicit mtrk_event_t() noexcept;
 	// Default-constructed value w/ the given delta-time.  
-	explicit mtrk_event_t(int32_t) noexcept;
-	mtrk_event_t(int32_t, jmid::ch_event_data_t) noexcept;
+	explicit mtrk_event_t(std::int32_t) noexcept;
+	mtrk_event_t(std::int32_t, jmid::ch_event_data_t) noexcept;
 	mtrk_event_t(const mtrk_event_t&);
 	mtrk_event_t& operator=(const mtrk_event_t&);
 	mtrk_event_t(mtrk_event_t&&) noexcept;
@@ -135,7 +124,7 @@ public:
 
 	// Getters
 	//smf_event_type type() const noexcept;
-	int32_t delta_time() const noexcept;
+	std::int32_t delta_time() const noexcept;
 	unsigned char status_byte() const noexcept;
 	// The value of the running-status _after_ this event has passed
 	unsigned char running_status() const noexcept;
@@ -147,7 +136,7 @@ public:
 	jmid::meta_header_t get_meta() const noexcept;
 
 	// Setters
-	int32_t set_delta_time(int32_t);
+	std::int32_t set_delta_time(std::int32_t);
 
 	bool operator==(const mtrk_event_t&) const noexcept;
 	bool operator!=(const mtrk_event_t&) const noexcept;
@@ -158,7 +147,7 @@ private:
 	// velocity==63 (0x3F).  
 	// 63 is ~1/2 way between 0 and the max velocity of 127 (0x7F)
 	// {0x00u,0x90u,0x3Cu,0x3Fu}
-	void default_init(int32_t=0) noexcept;
+	void default_init(std::int32_t=0) noexcept;
 
 	// This ctor avoids calling default_init(), thus the newly ctor'd object
 	// is in an invalid state (it's not a valid mtrk event).   
@@ -180,11 +169,11 @@ private:
 	// delta-time, type (0x{FF,F0,F7}), meta-type, length, payload beg, payload end, 
 	// add_f7_cap.  length must be consistent w/ end-beg && add_f7_cap.  
 	friend mtrk_event_t make_meta_sysex_generic_unsafe(int32_t, unsigned char, 
-		unsigned char, int32_t, const unsigned char *, 
+		unsigned char, std::int32_t, const unsigned char *, 
 		const unsigned char *, bool);
 
 	template <typename InIt>
-	friend InIt make_mtrk_event(InIt, InIt, int32_t, 
+	friend InIt make_mtrk_event(InIt, InIt, std::int32_t, 
 							unsigned char, maybe_mtrk_event_t*, 
 							mtrk_event_error_t*);
 
@@ -198,12 +187,12 @@ struct mtrk_event_debug_helper_t {
 };
 mtrk_event_debug_helper_t debug_info(const mtrk_event_t&);
 
-mtrk_event_t make_meta_sysex_generic_unsafe(int32_t, unsigned char, 
-		unsigned char, int32_t, const unsigned char *,
+mtrk_event_t make_meta_sysex_generic_unsafe(std::int32_t, unsigned char, 
+		unsigned char, std::int32_t, const unsigned char *,
 		const unsigned char *, bool);
 
 struct mtrk_event_error_t {
-	enum class errc : uint8_t {
+	enum class errc : std::uint8_t {
 		invalid_delta_time,
 		no_data_following_delta_time,
 		invalid_status_byte,  // Can't determine, or ex, 0xF8, 0xFC,...
@@ -232,7 +221,7 @@ struct maybe_mtrk_event_t {
 
 struct validate_channel_event_result_t {
 	jmid::ch_event_data_t data;
-	int32_t size;
+	std::int32_t size;
 	mtrk_event_error_t::errc error {mtrk_event_error_t::errc::other};
 	operator bool() const;
 };
@@ -305,8 +294,8 @@ InIt make_mtrk_event(InIt it, InIt end, unsigned char rs,
 	// On return, 'it' points one past the final byte of the field, and uc
 	// is the final byte of the field.  This holds even for invalid fields
 	// where the msb of the 4'th byte  == 1.  
-	auto inl_read_vlq = [&it, &end, &i, &uc]()->int32_t {
-		uint32_t uval = 0;
+	auto inl_read_vlq = [&it, &end, &i, &uc]()->std::int32_t {
+		std::uint32_t uval = 0;
 		int j = 0;
 		while (it!=end) {
 			uc = static_cast<unsigned char>(*it++);  ++i;  ++j;
@@ -317,7 +306,7 @@ InIt make_mtrk_event(InIt it, InIt end, unsigned char rs,
 				break;
 			}
 		}
-		return static_cast<int32_t>(uval);
+		return static_cast<std::int32_t>(uval);
 	};
 
 	// The delta-time field
@@ -346,7 +335,7 @@ InIt make_mtrk_event(InIt it, InIt end, unsigned char rs,
 // dest-event.begin() in set_error().  
 //
 template <typename InIt>
-InIt make_mtrk_event(InIt it, InIt end, int32_t dt, 
+InIt make_mtrk_event(InIt it, InIt end, std::int32_t dt, 
 						unsigned char rs, maybe_mtrk_event_t *result, 
 						mtrk_event_error_t *err) {
 	// Initialize 'result'
@@ -377,8 +366,8 @@ InIt make_mtrk_event(InIt it, InIt end, int32_t dt,
 	// On return, 'it' points one past the final byte of the field, and uc
 	// is the final byte of the field.  This holds even for invalid fields
 	// where the msb of the 4'th byte  == 1.  
-	auto inl_read_vlq = [&it, &end, &i, &uc]()->int32_t {
-		uint32_t uval = 0;
+	auto inl_read_vlq = [&it, &end, &i, &uc]()->std::int32_t {
+		std::uint32_t uval = 0;
 		int j = 0;
 		while (it!=end) {
 			uc = static_cast<unsigned char>(*it++);  ++i;  ++j;
@@ -389,7 +378,7 @@ InIt make_mtrk_event(InIt it, InIt end, int32_t dt,
 				break;
 			}
 		}
-		return static_cast<int32_t>(uval);
+		return static_cast<std::int32_t>(uval);
 	};
 
 	// The delta-time field
@@ -485,10 +474,12 @@ maybe_mtrk_event_t make_mtrk_event(InIt it, InIt end,
 // it points one past the end of a dt field.  
 //
 template <typename InIt>
-maybe_mtrk_event_t make_mtrk_event(InIt it, InIt end, int32_t dt, 
+maybe_mtrk_event_t make_mtrk_event(InIt it, InIt end, std::int32_t dt, 
 							unsigned char rs, mtrk_event_error_t *err) {
 	maybe_mtrk_event_t result;
 	it = make_mtrk_event(it,end,dt,rs,&result,err);
 	return result;
 };
 
+
+}  // namespace jmid

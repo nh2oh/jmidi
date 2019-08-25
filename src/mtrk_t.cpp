@@ -91,26 +91,26 @@ jmid::mtrk_t::const_iterator jmid::mtrk_t::end() const {
 	}
 	return jmid::mtrk_t::const_iterator(&(this->evnts_[0]) + this->evnts_.size());
 }
-mtrk_event_t& jmid::mtrk_t::operator[](jmid::mtrk_t::size_type idx) {
+jmid::mtrk_event_t& jmid::mtrk_t::operator[](jmid::mtrk_t::size_type idx) {
 	return this->evnts_[idx];
 }
-const mtrk_event_t& jmid::mtrk_t::operator[](jmid::mtrk_t::size_type idx) const {
+const jmid::mtrk_event_t& jmid::mtrk_t::operator[](jmid::mtrk_t::size_type idx) const {
 	return this->evnts_[idx];
 }
-mtrk_event_t& jmid::mtrk_t::back() {
+jmid::mtrk_event_t& jmid::mtrk_t::back() {
 	return this->evnts_.back();
 }
-const mtrk_event_t& jmid::mtrk_t::back() const {
+const jmid::mtrk_event_t& jmid::mtrk_t::back() const {
 	return this->evnts_.back();
 }
-mtrk_event_t& jmid::mtrk_t::front() {
+jmid::mtrk_event_t& jmid::mtrk_t::front() {
 	return this->evnts_.front();
 }
-const mtrk_event_t& jmid::mtrk_t::front() const {
+const jmid::mtrk_event_t& jmid::mtrk_t::front() const {
 	return this->evnts_.front();
 }
-jmid::event_tk_t<jmid::mtrk_t::iterator> jmid::mtrk_t::at_cumtk(int32_t cumtk_on) {
-	event_tk_t<mtrk_t::iterator> res {this->begin(),0};
+jmid::event_tk_t<jmid::mtrk_t::iterator> jmid::mtrk_t::at_cumtk(std::int32_t cumtk_on) {
+	jmid::event_tk_t<jmid::mtrk_t::iterator> res {this->begin(),0};
 	while (res.it!=this->end() && res.tk<cumtk_on) {
 		res.tk += res.it->delta_time();
 		++(res.it);
@@ -150,7 +150,7 @@ jmid::event_tk_t<jmid::mtrk_t::const_iterator> jmid::mtrk_t::at_tkonset(std::int
 	}
 	return res;
 }
-mtrk_event_t& jmid::mtrk_t::push_back(const mtrk_event_t& ev) {
+jmid::mtrk_event_t& jmid::mtrk_t::push_back(const jmid::mtrk_event_t& ev) {
 	if (this->evnts_.size() < jmid::mtrk_t::capacity_max) {
 		this->evnts_.push_back(ev);
 	}
@@ -159,14 +159,14 @@ mtrk_event_t& jmid::mtrk_t::push_back(const mtrk_event_t& ev) {
 void jmid::mtrk_t::pop_back() {
 	this->evnts_.pop_back();
 }
-jmid::mtrk_t::iterator jmid::mtrk_t::insert(jmid::mtrk_t::iterator it, const mtrk_event_t& ev) {
+jmid::mtrk_t::iterator jmid::mtrk_t::insert(jmid::mtrk_t::iterator it, const jmid::mtrk_event_t& ev) {
 	if (this->evnts_.size() >= jmid::mtrk_t::capacity_max) {
 		return it;
 	}
 	auto vit = this->evnts_.insert(this->evnts_.begin()+(it-this->begin()),ev);
 	return this->begin() + static_cast<mtrk_t::size_type>(vit-this->evnts_.begin());
 }
-jmid::mtrk_t::iterator jmid::mtrk_t::insert_no_tkshift(jmid::mtrk_t::iterator it, mtrk_event_t ev) {
+jmid::mtrk_t::iterator jmid::mtrk_t::insert_no_tkshift(jmid::mtrk_t::iterator it, jmid::mtrk_event_t ev) {
 	std::int32_t new_dt = ev.delta_time();
 	while ((it != this->end()) && (it->delta_time() < new_dt)) {
 		new_dt -= it->delta_time();
@@ -180,7 +180,7 @@ jmid::mtrk_t::iterator jmid::mtrk_t::insert_no_tkshift(jmid::mtrk_t::iterator it
 }
 // Insert the provided event into the sequence such that its onset tick
 // is == arg1 + arg2.delta_time()
-jmid::mtrk_t::iterator jmid::mtrk_t::insert(std::int32_t cumtk_pos, mtrk_event_t ev) {
+jmid::mtrk_t::iterator jmid::mtrk_t::insert(std::int32_t cumtk_pos, jmid::mtrk_event_t ev) {
 	auto new_tk_onset = cumtk_pos+ev.delta_time();
 	auto where = this->at_tkonset(cumtk_pos);
 	// Insertion before where.it guarantees insertion at cumtk < cumtk_pos
@@ -385,7 +385,7 @@ std::string jmid::print_event_arrays(const jmid::mtrk_t& mtrk) {
 	return s;
 }
 bool jmid::is_tempo_map(const jmid::mtrk_t& trk) {
-	auto found_not_allowed = [](const mtrk_event_t& ev) -> bool {
+	auto found_not_allowed = [](const jmid::mtrk_event_t& ev) -> bool {
 		if (!jmid::is_meta(ev)) {
 			return true;
 		}
@@ -412,7 +412,7 @@ bool jmid::is_equivalent_permutation_ignore_dt(jmid::mtrk_t::const_iterator beg1
 	// elements on [beg2,end2).  If there are 0, or if n2 != the number of
 	// equiv elements on [beg1,end1), return false.  
 	for (auto it=beg1; it!=end1; ++it) {
-		auto pred = [&it](const mtrk_event_t& rhs) -> bool {
+		auto pred = [&it](const jmid::mtrk_event_t& rhs) -> bool {
 			return jmid::is_eq_ignore_dt(*it,rhs);
 		};
 
@@ -537,7 +537,7 @@ jmid::mtrk_t::const_iterator jmid::get_simultaneous_events(jmid::mtrk_t::const_i
 }
 
 jmid::event_tk_t<jmid::mtrk_t::const_iterator> jmid::find_linked_off(jmid::mtrk_t::const_iterator beg,
-					jmid::mtrk_t::const_iterator end, const mtrk_event_t& on) {
+					jmid::mtrk_t::const_iterator end, const jmid::mtrk_event_t& on) {
 	jmid::event_tk_t<jmid::mtrk_t::const_iterator> res {end,0};
 	if (!jmid::is_note_on(on)) {
 		return res;
@@ -602,7 +602,7 @@ std::string jmid::print_linked_onoff_pairs(const jmid::mtrk_t& mtrk) {
 	ss << std::setw(w.def) << "Duration";
 	ss << "\n";
 
-	auto print_half = [&ss,&w](std::int32_t cumtk, const mtrk_event_t& onoff)->void {
+	auto print_half = [&ss,&w](std::int32_t cumtk, const jmid::mtrk_event_t& onoff)->void {
 		auto md = jmid::get_channel_event(onoff); //.midi_data();
 		//ss << std::setw(w.ch) << std::to_string(md.ch);
 		ss << std::setw(w.p1p2) << std::to_string(md.p1);

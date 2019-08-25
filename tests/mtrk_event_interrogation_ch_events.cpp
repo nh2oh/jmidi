@@ -10,7 +10,7 @@
 // Test set C data (all cases are valid mtrk channel events)
 TEST(mtrk_event_channel_interrogators, isChannelVoiceModeTestSetCEvents) {
 	for (auto& tc : set_c_midi_events_valid) {
-		auto maybe_ev = make_mtrk_event(tc.data.data(),
+		auto maybe_ev = jmid::make_mtrk_event(tc.data.data(),
 			tc.data.data()+tc.data.size(),tc.midisb_prev_event,nullptr);
 		EXPECT_TRUE(maybe_ev);
 		auto ev = maybe_ev.event;
@@ -47,7 +47,7 @@ TEST(mtrk_event_channel_interrogators, isChannelVoiceModeAssortedEvents) {
 	};
 	
 	for (const auto& tc : tests) {
-		const mtrk_event_t ev(tc.dt_input,tc.md_input);
+		const jmid::mtrk_event_t ev(tc.dt_input,tc.md_input);
 		EXPECT_TRUE(jmid::is_channel(ev));
 		EXPECT_TRUE(jmid::is_channel_voice(ev));
 		EXPECT_FALSE(jmid::is_channel_mode(ev));

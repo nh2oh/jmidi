@@ -10,9 +10,9 @@
 // Delta-time test set A contains (+) values, some of which exceed the max
 // value of 0x0FFFFFFF; these should be clamped to 0x0FFFFFFF.  
 TEST(mtrk_event_class_method_tests, setDtPositiveValues) {
-	const auto default_ev = mtrk_event_t();
+	const auto default_ev = jmid::mtrk_event_t();
 	for (const auto& tc : dt_test_set_a) {
-		auto ev = mtrk_event_t();
+		auto ev = jmid::mtrk_event_t();
 		ev.set_delta_time(tc.dt_input);
 		EXPECT_EQ(ev.delta_time(),tc.ans_value);
 
@@ -32,9 +32,9 @@ TEST(mtrk_event_class_method_tests, setDtPositiveValues) {
 // Delta-time test set B contains - values, all of which should be clamped
 // to 0.  
 TEST(mtrk_event_class_method_tests, setDtNegativeValues) {
-	const auto default_ev = mtrk_event_t();
+	const auto default_ev = jmid::mtrk_event_t();
 	for (const auto& tc : dt_test_set_b) {
-		auto ev = mtrk_event_t();
+		auto ev = jmid::mtrk_event_t();
 		ev.set_delta_time(tc.dt_input);
 		EXPECT_EQ(ev.delta_time(),tc.ans_value);
 
@@ -54,8 +54,8 @@ TEST(mtrk_event_class_method_tests, setDtNegativeValues) {
 // constructed).  Delta-time test set C contains all values from set A and 
 // some from set B.  
 TEST(mtrk_event_class_method_tests, CallSetDtRepeatedly) {
-	const auto default_ev = mtrk_event_t();
-	auto ev = mtrk_event_t();
+	const auto default_ev = jmid::mtrk_event_t();
+	auto ev = jmid::mtrk_event_t();
 	for (const auto& tc : dt_test_set_c) {
 		ev.set_delta_time(tc.dt_input);
 		EXPECT_EQ(ev.delta_time(),tc.ans_value);
@@ -80,8 +80,8 @@ TEST(mtrk_event_class_method_tests, CallSetDtRepeatedlyRandomValues) {
 	//std::uniform_int_distribution rd(0,0x0FFFFFFF);
 	std::geometric_distribution rd(0.5);
 
-	const auto default_ev = mtrk_event_t();
-	auto ev = mtrk_event_t();
+	const auto default_ev = jmid::mtrk_event_t();
+	auto ev = jmid::mtrk_event_t();
 	int32_t dt = 0;
 	int32_t prev_dt = 0;
 	for (int i=0; i<10000; ++i) {

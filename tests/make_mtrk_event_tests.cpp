@@ -51,7 +51,7 @@ TEST(make_mtrk_event_tests, assortedMidiEventsNoRS) {
 	};
 
 	for (const auto& tc : tests) {
-		auto maybe_ev = make_mtrk_event(tc.bytes.data(),
+		auto maybe_ev = jmid::make_mtrk_event(tc.bytes.data(),
 			tc.bytes.data()+tc.bytes.size(),0,nullptr);
 		EXPECT_TRUE(maybe_ev);
 		EXPECT_EQ(maybe_ev.event.delta_time(),tc.delta_time);
@@ -65,7 +65,7 @@ TEST(make_mtrk_event_tests, assortedMidiEventsNoRS) {
 		}
 
 		auto dt_end = tc.bytes.data() + (tc.size-tc.data_size);
-		maybe_ev = make_mtrk_event(dt_end,
+		maybe_ev = jmid::make_mtrk_event(dt_end,
 			tc.bytes.data()+tc.bytes.size(),tc.delta_time,0,nullptr);
 		EXPECT_TRUE(maybe_ev);
 		EXPECT_EQ(maybe_ev.event.delta_time(),tc.delta_time);
@@ -228,7 +228,7 @@ TEST(make_mtrk_event_tests, randomChEvntsSmallRandomRS) {
 				tc.applic_midi_status);
 		}
 
-		auto maybe_ev = make_mtrk_event(tc.data.data(),
+		auto maybe_ev = jmid::make_mtrk_event(tc.data.data(),
 			tc.data.data()+tc.data.size(),tc.midisb_prev_event,nullptr);
 		EXPECT_TRUE(maybe_ev);
 		EXPECT_EQ(maybe_ev.event.delta_time(),tc.dt_value);
@@ -240,7 +240,7 @@ TEST(make_mtrk_event_tests, randomChEvntsSmallRandomRS) {
 		}
 
 		auto dt_end = tc.data.data() + tc.dt_field_size;
-		maybe_ev = make_mtrk_event(dt_end,
+		maybe_ev = jmid::make_mtrk_event(dt_end,
 			tc.data.data()+tc.data.size(),tc.dt_value,tc.midisb_prev_event,nullptr);
 		EXPECT_TRUE(maybe_ev);
 		EXPECT_EQ(maybe_ev.event.delta_time(),tc.dt_value);
@@ -298,7 +298,7 @@ TEST(make_mtrk_event_tests, metaEventsSmallNoRS) {
 	};
 	
 	for (const auto& tc : tests) {
-		auto maybe_ev = make_mtrk_event(tc.bytes.data(),
+		auto maybe_ev = jmid::make_mtrk_event(tc.bytes.data(),
 			tc.bytes.data()+tc.bytes.size(),0,nullptr);
 		EXPECT_TRUE(maybe_ev);
 		EXPECT_EQ(maybe_ev.event.delta_time(),tc.delta_time);
@@ -310,7 +310,7 @@ TEST(make_mtrk_event_tests, metaEventsSmallNoRS) {
 		}
 
 		auto dt_end = tc.bytes.data() + (tc.size-tc.data_size);
-		maybe_ev = make_mtrk_event(dt_end,
+		maybe_ev = jmid::make_mtrk_event(dt_end,
 			tc.bytes.data()+tc.bytes.size(),tc.delta_time,0,nullptr);
 		EXPECT_TRUE(maybe_ev);
 		EXPECT_EQ(maybe_ev.event.delta_time(),tc.delta_time);
@@ -382,7 +382,7 @@ TEST(make_mtrk_event_tests, metaEventsBigNoRS) {
 	};
 
 	for (const auto& tc : tests) {
-		auto maybe_ev = make_mtrk_event(tc.bytes.data(),
+		auto maybe_ev = jmid::make_mtrk_event(tc.bytes.data(),
 			tc.bytes.data()+tc.bytes.size(),0,nullptr);
 		EXPECT_TRUE(maybe_ev);
 		EXPECT_EQ(maybe_ev.event.delta_time(),tc.delta_time);
@@ -394,7 +394,7 @@ TEST(make_mtrk_event_tests, metaEventsBigNoRS) {
 		}
 
 		auto dt_end = tc.bytes.data() + (tc.size-tc.data_size);
-		maybe_ev = make_mtrk_event(dt_end,
+		maybe_ev = jmid::make_mtrk_event(dt_end,
 			tc.bytes.data()+tc.bytes.size(),tc.delta_time,0,nullptr);
 		EXPECT_TRUE(maybe_ev);
 		EXPECT_EQ(maybe_ev.event.delta_time(),tc.delta_time);
@@ -443,7 +443,7 @@ TEST(make_mtrk_event_tests, assortedChEvntsSmallRandomRSTestSetC) {
 				tc.applic_midi_status);
 		}
 
-		auto maybe_ev = make_mtrk_event(tc.data.data(),
+		auto maybe_ev = jmid::make_mtrk_event(tc.data.data(),
 			tc.data.data()+tc.data.size(),tc.midisb_prev_event,nullptr);
 		EXPECT_TRUE(maybe_ev);
 		EXPECT_EQ(maybe_ev.event.delta_time(),tc.dt_value);
@@ -455,7 +455,7 @@ TEST(make_mtrk_event_tests, assortedChEvntsSmallRandomRSTestSetC) {
 		}
 
 		auto dt_end = tc.data.data() + tc.dt_field_size;
-		maybe_ev = make_mtrk_event(dt_end,
+		maybe_ev = jmid::make_mtrk_event(dt_end,
 			tc.data.data()+tc.data.size(),tc.dt_value,tc.midisb_prev_event,nullptr);
 		EXPECT_TRUE(maybe_ev);
 		EXPECT_EQ(maybe_ev.event.delta_time(),tc.dt_value);
@@ -480,8 +480,8 @@ TEST(make_mtrk_event_tests, assortedChEvntsSmallRandomRSTestSetC) {
 //
 TEST(make_mtrk_event_tests, assortedChEvntsSmallInvalidTestSetD) {
 	for (auto& tc : set_d_midi_events_nostatus_invalid) {
-		mtrk_event_error_t err;
-		auto maybe_ev = make_mtrk_event(tc.data.data(),
+		jmid::mtrk_event_error_t err;
+		auto maybe_ev = jmid::make_mtrk_event(tc.data.data(),
 			tc.data.data()+tc.data.size(),tc.midisb_prev_event,&err);
 		EXPECT_FALSE(maybe_ev);
 	}
@@ -495,8 +495,8 @@ TEST(make_mtrk_event_tests, assortedChEvntsSmallInvalidTestSetD) {
 //
 TEST(make_mtrk_event_tests, RandomEventsAllRSBytesValid) {
 	for (const auto& tc : set_a_valid_rs) {
-		mtrk_event_error_t err;
-		auto maybe_ev = make_mtrk_event(tc.data.data(),
+		jmid::mtrk_event_error_t err;
+		auto maybe_ev = jmid::make_mtrk_event(tc.data.data(),
 			tc.data.data()+tc.data.size(),tc.rs_pre,&err);
 		EXPECT_TRUE(maybe_ev);
 		EXPECT_EQ(maybe_ev.event.running_status(),tc.rs_post);
@@ -514,8 +514,8 @@ TEST(make_mtrk_event_tests, RandomEventsAllRSBytesValid) {
 // 
 TEST(make_mtrk_event_tests, RandomMtrkEventsAllRSBytesInvalid) {
 	for (const auto& tc : set_b_invalid_rs) {
-		mtrk_event_error_t err;
-		auto maybe_ev = make_mtrk_event(tc.data.data(),
+		jmid::mtrk_event_error_t err;
+		auto maybe_ev = jmid::make_mtrk_event(tc.data.data(),
 			tc.data.data()+tc.data.size(),tc.rs_pre,&err);
 
 		// In this set, events w/o an event-local status byte are
@@ -548,9 +548,8 @@ TEST(make_mtrk_event_tests, RandomMtrkEventsAllRSBytesInvalid) {
 //
 TEST(make_mtrk_event_tests, RandomMIDIEventsRSandNonRS) {
 	for (const auto& tc : set_c_midi_events_valid) {
-
-		mtrk_event_error_t err;
-		auto maybe_ev = make_mtrk_event(tc.data.data(),
+		jmid::mtrk_event_error_t err;
+		auto maybe_ev = jmid::make_mtrk_event(tc.data.data(),
 			tc.data.data()+tc.data.size(),tc.midisb_prev_event,&err);
 		EXPECT_TRUE(maybe_ev);
 		EXPECT_EQ(maybe_ev.event.running_status(),tc.applic_midi_status);

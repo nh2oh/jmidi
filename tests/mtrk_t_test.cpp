@@ -11,7 +11,7 @@ using namespace mtrk_tests;
 jmid::mtrk_t make_tsa() {
 	auto mtrk_tsa = jmid::mtrk_t();  // auto to avoid MVP
 	for (const auto& e : tsa) {
-		auto curr_ev = make_mtrk_event(e.d.data(),e.d.data()+e.d.size(),
+		auto curr_ev = jmid::make_mtrk_event(e.d.data(),e.d.data()+e.d.size(),
 			0,nullptr).event;
 		mtrk_tsa.push_back(curr_ev);
 	}
@@ -27,7 +27,7 @@ TEST(mtrk_t_tests, DefaultCtorMultiplePushBackTestSetA) {
 	EXPECT_EQ(mtrk_tsa.size(),tsa.size());
 	EXPECT_EQ(mtrk_tsa.nticks(),tsa_props.duration_tks);
 	for (int i=0; i<tsa.size(); ++i) {
-		auto curr_ev = make_mtrk_event(tsa[i].d.data(),
+		auto curr_ev = jmid::make_mtrk_event(tsa[i].d.data(),
 			tsa[i].d.data()+tsa[i].d.size(),0,nullptr).event;
 		EXPECT_EQ(mtrk_tsa[i],curr_ev);
 	}
@@ -42,8 +42,8 @@ TEST(mtrk_t_tests, InsertEventWithZeroDtIntoTestSetAMethodInsert) {
 
 	// On, off events for note num 57 on ch=0; both events have delta-time
 	// == 0.  
-	mtrk_event_t e_on(0,jmid::ch_event_data_t {0x90u,0,57,25});
-	mtrk_event_t e_off(0,jmid::ch_event_data_t {0x90u,0,57,0});
+	jmid::mtrk_event_t e_on(0,jmid::ch_event_data_t {0x90u,0,57,25});
+	jmid::mtrk_event_t e_off(0,jmid::ch_event_data_t {0x90u,0,57,0});
 	
 	auto old_ev4 = *(mtrk_tsa.begin()+4);
 	auto old_ev5 = *(mtrk_tsa.begin()+5);
@@ -80,7 +80,7 @@ TEST(mtrk_t_tests, AtCumtkTestSetA) {
 	// at_cumtk() returns the first event w/a cumtk >= the cumtk provided
 	struct test_t {
 		int32_t cumtk_arg;
-		mtrk_event_t ev_ans;
+		jmid::mtrk_event_t ev_ans;
 		int32_t cumtk_ans;
 	};
 	std::vector<test_t> tests {
@@ -121,7 +121,7 @@ TEST(mtrk_t_tests, AtTkonsetTestSetA) {
 	struct test_t {
 		int32_t tkonset_arg;
 
-		mtrk_event_t ev_ans;
+		jmid::mtrk_event_t ev_ans;
 		int32_t cumtk_ans;
 		int32_t tkonset_ans;
 	};
@@ -163,7 +163,7 @@ TEST(mtrk_t_tests, AtTkonsetTestSetA) {
 TEST(mtrk_t_tests, InsertWithZeroDtIntoTSAMethodInsertAtCumtk) {
 	auto mtrk_tsa = make_tsa();  // "mtrk test set a"
 	// Note-on event for note num 57 on ch=0, velocity==25, delta-time==0.  
-	mtrk_event_t e_on(0,jmid::ch_event_data_t {0x90u,0,57,25});
+	jmid::mtrk_event_t e_on(0,jmid::ch_event_data_t {0x90u,0,57,25});
 
 	struct test_t {
 		int32_t insert_at_cumtk {0};
@@ -228,7 +228,7 @@ TEST(mtrk_t_tests, InsertWithZeroDtIntoTSAMethodInsertAtCumtk) {
 TEST(mtrk_t_tests, InsertWithZeroDtIntoTSAMethodInsertNoTkShift) {
 	auto mtrk_tsa = make_tsa();  // "mtrk test set a"
 	// Note-on event for note num 57 on ch=0, velocity==25, delta-time==0.  
-	mtrk_event_t e_on(0,jmid::ch_event_data_t {0x90u,0,57,25});
+	jmid::mtrk_event_t e_on(0,jmid::ch_event_data_t {0x90u,0,57,25});
 
 	struct test_t {
 		int insert_at_idx {0};
@@ -344,8 +344,8 @@ TEST(mtrk_t_tests, InsertWithNzeroDtIntoTSAMethodInsertNoTkShift) {
 	};
 	
 	for (const auto ctest : tests) {
-		auto ev = mtrk_event_t(ctest.ev_dt,jmid::ch_event_data_t {0x90u,0,57,25});
-		auto expect_ev_inserted = mtrk_event_t(ctest.inserted_dt,jmid::ch_event_data_t {0x90u,0,57,25});
+		auto ev = jmid::mtrk_event_t(ctest.ev_dt,jmid::ch_event_data_t {0x90u,0,57,25});
+		auto expect_ev_inserted = jmid::mtrk_event_t(ctest.inserted_dt,jmid::ch_event_data_t {0x90u,0,57,25});
 		auto mtrk_tsa = make_tsa();
 		auto init_nticks = mtrk_tsa.nticks();
 
