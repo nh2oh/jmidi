@@ -210,6 +210,9 @@ struct mtrk_event_error_t {
 	unsigned char s;
 	mtrk_event_error_t::errc code;
 };
+// std::string print(mtrk_event_error_t::errc ec);
+// If ec == mtrk_event_error_t::errc::no_error, returns an empty string
+std::string print(mtrk_event_error_t::errc);
 std::string explain(const mtrk_event_error_t&);
 struct maybe_mtrk_event_t {
 	mtrk_event_t event;

@@ -15,7 +15,6 @@
     <ClCompile Include="..\..\src\generic_chunk_low_level.cpp" />
     <ClCompile Include="..\..\src\generic_iterator.cpp" />
     <ClCompile Include="..\..\src\midi_delta_time.cpp" />
-    <ClCompile Include="..\..\src\midi_examples.cpp" />
     <ClCompile Include="..\..\src\midi_raw_test_parts.cpp" />
     <ClCompile Include="..\..\src\midi_status_byte.cpp" />
     <ClCompile Include="..\..\src\midi_time.cpp" />
@@ -36,7 +35,6 @@
     <ClInclude Include="..\..\include\generic_iterator.h" />
     <ClInclude Include="..\..\include\midi_data.h" />
     <ClInclude Include="..\..\include\midi_delta_time.h" />
-    <ClInclude Include="..\..\include\midi_examples.h" />
     <ClInclude Include="..\..\include\midi_raw_test_parts.h" />
     <ClInclude Include="..\..\include\midi_status_byte.h" />
     <ClInclude Include="..\..\include\midi_time.h" />

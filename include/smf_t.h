@@ -171,6 +171,8 @@ struct maybe_smf_t {
 maybe_smf_t read_smf(const std::filesystem::path&, smf_error_t*);
 maybe_smf_t read_smf_bulkfileread(const std::filesystem::path&, 
 						smf_error_t*, std::vector<char>*);
+// std::string print(smf_error_t::errc ec);
+// if ec == smf_error_t::errc::no_error, returns an empty string
 std::string print(smf_error_t::errc);
 std::string explain(const smf_error_t&);
 

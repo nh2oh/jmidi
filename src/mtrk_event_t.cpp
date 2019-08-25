@@ -305,7 +305,42 @@ jmid::mtrk_event_debug_helper_t jmid::debug_info(const jmid::mtrk_event_t& ev) {
 	r.is_big = ev.d_.debug_is_big();
 	return r;
 }
-
+std::string jmid::print(jmid::mtrk_event_error_t::errc ec) {
+	std::string s;
+	switch (ec) {
+	case jmid::mtrk_event_error_t::errc::invalid_delta_time:
+		s = "mtrk_event_error_t::errc::invalid_delta_time";
+		break;
+	case jmid::mtrk_event_error_t::errc::no_data_following_delta_time:
+		s = "mtrk_event_error_t::errc::no_data_following_delta_time";
+		break;
+	case jmid::mtrk_event_error_t::errc::invalid_status_byte:
+		s = "mtrk_event_error_t::errc::invalid_status_byte";
+		break;
+	case jmid::mtrk_event_error_t::errc::channel_calcd_length_exceeds_input:
+		s = "mtrk_event_error_t::errc::channel_calcd_length_exceeds_input";
+		break;
+	case jmid::mtrk_event_error_t::errc::channel_invalid_data_byte:
+		s = "mtrk_event_error_t::errc::channel_invalid_data_byte";
+		break;
+	case jmid::mtrk_event_error_t::errc::sysex_or_meta_overflow_in_header:
+		s = "mtrk_event_error_t::errc::sysex_or_meta_overflow_in_header";
+		break;
+	case jmid::mtrk_event_error_t::errc::sysex_or_meta_invalid_vlq_length:
+		s = "mtrk_event_error_t::errc::sysex_or_meta_invalid_vlq_length";
+		break;
+	case jmid::mtrk_event_error_t::errc::sysex_or_meta_calcd_length_exceeds_input:
+		s = "mtrk_event_error_t::errc::sysex_or_meta_calcd_length_exceeds_input";
+		break;
+	case jmid::mtrk_event_error_t::errc::other:
+		s = "mtrk_event_error_t::errc::other";
+		break;
+	default:
+		s = "mtrk_event_error_t::errc::?";
+		break;
+	}
+	return s;
+}
 std::string jmid::explain(const jmid::mtrk_event_error_t& err) {
 	std::string s;  
 	if (err.code==jmid::mtrk_event_error_t::errc::no_error) {

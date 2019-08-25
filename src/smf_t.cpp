@@ -303,6 +303,36 @@ jmid::maybe_smf_t jmid::read_smf_bulkfileread(const std::filesystem::path& fp,
 	return result;
 }
 
+std::string jmid::print(jmid::smf_error_t::errc ec) {
+	std::string s;
+	switch (ec) {
+	case jmid::smf_error_t::errc::file_read_error:
+		s = "smf_error_t::errc::file_read_error";
+		break;
+	case jmid::smf_error_t::errc::mthd_error:
+		s = "smf_error_t::errc::mthd_error";
+		break;
+	case jmid::smf_error_t::errc::mtrk_error:
+		s = "smf_error_t::errc::mtrk_error";
+		break;
+	case jmid::smf_error_t::errc::overflow_reading_uchk:
+		s = "smf_error_t::errc::overflow_reading_uchk";
+		break;
+	case jmid::smf_error_t::errc::terminated_before_end_of_file:
+		s = "smf_error_t::errc::terminated_before_end_of_file";
+		break;
+	case jmid::smf_error_t::errc::unexpected_num_mtrks:
+		s = "smf_error_t::errc::unexpected_num_mtrks";
+		break;
+	case jmid::smf_error_t::errc::other:
+		s = "smf_error_t::errc::other";
+		break;
+	default:
+		s = "smf_error_t::errc::?";
+		break;
+	}
+	return s;
+}
 std::string jmid::explain(const jmid::smf_error_t& err) {
 	std::string s {};
 	if (err.code==jmid::smf_error_t::errc::no_error) {

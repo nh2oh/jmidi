@@ -227,6 +227,9 @@ struct mtrk_error_t {
 	unsigned char rs;
 	mtrk_error_t::errc code;
 };
+// std::string print(mtrk_error_t::errc ec);
+// if ec == mtrk_error_t::errc::no_error, returns an empty string
+std::string print(mtrk_error_t::errc);
 std::string explain(const mtrk_error_t&);
 struct maybe_mtrk_t {
 	mtrk_t mtrk;

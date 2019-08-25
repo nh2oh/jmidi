@@ -478,7 +478,36 @@ double jmid::duration(jmid::mtrk_t::const_iterator beg, jmid::mtrk_t::const_iter
 jmid::maybe_mtrk_t::operator bool() const {
 	return (this->error == jmid::mtrk_error_t::errc::no_error);
 }
-
+std::string jmid::print(jmid::mtrk_error_t::errc ec) {
+	std::string s;
+	switch (ec) {
+	case jmid::mtrk_error_t::errc::header_overflow:
+		s = "mtrk_error_t::errc::header_overflow";
+		break;
+	case jmid::mtrk_error_t::errc::valid_but_non_mtrk_id:
+		s = "mtrk_error_t::errc::valid_but_non_mtrk_id";
+		break;
+	case jmid::mtrk_error_t::errc::invalid_id:
+		s = "mtrk_error_t::errc::invalid_id";
+		break;
+	case jmid::mtrk_error_t::errc::length_gt_mtrk_max:
+		s = "mtrk_error_t::errc::length_gt_mtrk_max";
+		break;
+	case jmid::mtrk_error_t::errc::invalid_event:
+		s = "mtrk_error_t::errc::invalid_event";
+		break;
+	case jmid::mtrk_error_t::errc::no_eot_event:
+		s = "mtrk_error_t::errc::no_eot_event";
+		break;
+	case jmid::mtrk_error_t::errc::other:
+		s = "mtrk_error_t::errc::other";
+		break;
+	default:
+		s = "mtrk_error_t::errc::?";
+		break;
+	}
+	return s;
+}
 std::string jmid::explain(const jmid::mtrk_error_t& err) {
 	std::string s;  
 	if (err.code==jmid::mtrk_error_t::errc::no_error) {
