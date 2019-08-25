@@ -160,10 +160,10 @@ std::int32_t jmid::mthd_t::set_length(std::int32_t new_len) {
 	new_len = std::clamp(new_len,jmid::mthd_t::length_min,jmid::mthd_t::length_max);
 	int32_t l = this->length();
 	if (new_len != l) {
-		l = this->d_.resize(new_len+8)-8;
-		jmid::write_32bit_be(static_cast<std::uint32_t>(l),this->d_.begin()+4);
+		auto p = this->d_.resize(new_len+8);
+		jmid::write_32bit_be(static_cast<std::uint32_t>(new_len),p+4);
 	}
-	return l;
+	return new_len;
 }
 
 std::string jmid::explain(const jmid::mthd_error_t& err) {

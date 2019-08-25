@@ -15,6 +15,7 @@ struct meta_header_t  {
 	operator bool() const;
 };
 
+
 struct sysex_header_t  {
 	std::uint8_t s;  // 0xF0u or 0xF7u
 	std::int32_t size;  // vlq length
@@ -51,6 +52,7 @@ struct ch_event_data_t {
 	std::uint8_t p2 {0x00u};
 	operator bool() const;
 };
+std::string print(const ch_event_data_t&);
 bool verify(const ch_event_data_t&);
 // ch_event_data_t make_midi_ch_event_data(int status_nybble, 
 //								int channel, int p1, int p2);

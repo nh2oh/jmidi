@@ -23,7 +23,7 @@ struct small_t {
 	
 	void init() noexcept;
 	std::int32_t size() const noexcept;
-	constexpr int32_t capacity() const noexcept;
+	constexpr std::int32_t capacity() const noexcept;
 	// Can only resize to a value on [0,small_t::size_max]
 	std::int32_t resize(std::int32_t) noexcept;
 	//std::int32_t resize(small_size_t) noexcept;
@@ -63,7 +63,7 @@ struct big_t {
 	// Deletes p_; object must be initialized before calling
 	void adopt(const pad_t&, unsigned char*, std::int32_t, std::int32_t) noexcept;
 	std::int32_t size() const noexcept;
-	std::int32_t resize(int32_t);
+	std::int32_t resize(std::int32_t);
 	// If resizing to something bigger than the present capacity, does 
 	// not copy the data into the new buffer; if resizing smaller, the 
 	// effect is the same as a call to resize().  
@@ -84,6 +84,14 @@ struct big_t {
 // Very simple "'small' std::vector"-like class for managing an array 
 // of unsigned char.  
 //
+struct small_bytevec_range_t {
+	unsigned char *begin;
+	unsigned char *end;
+};
+struct small_bytevec_const_range_t {
+	const unsigned char *begin;
+	const unsigned char *end;
+};
 class small_bytevec_t {
 public:
 	static constexpr std::int32_t size_max = big_t::size_max;
@@ -114,9 +122,9 @@ public:
 	// int32_t resize(int32_t new_sz);
 	// If 'big' and the new size is <= small_bytevec_t::capacity_small, 
 	// will cause a big->small transition.  
-	std::int32_t resize(std::int32_t);
+	unsigned char *resize(std::int32_t);
 	template<typename T>
-	std::int32_t resize(T sz) {
+	unsigned char *resize(T sz) {
 		std::int32_t szi32 = static_cast<std::int32_t>(std::clamp(sz,T(0),
 			static_cast<T>(small_bytevec_t::size_max)));
 		return this->resize(szi32);
@@ -125,10 +133,10 @@ public:
 	// big->small transition, the present object's data is not copied into
 	// the new buffer.  Otherwise the effect is the same as a call to 
 	// resize().  
-	std::int32_t resize_nocopy(std::int32_t);
+	unsigned char *resize_nocopy(std::int32_t);
 	// A wrapper for this->u_.s_.resize(new_sz); For a small->small resize
 	// there is no allocation, thus the method can be noexcept
-	std::int32_t resize_small2small_nocopy(std::int32_t) noexcept;
+	unsigned char *resize_small2small_nocopy(std::int32_t) noexcept;
 	// int32_t reserve(int32_t new_cap);
 	// Will cause big->small, but never small->big transitions.  
 	std::int32_t reserve(std::int32_t);
@@ -136,6 +144,11 @@ public:
 	unsigned char *push_back(unsigned char);
 
 	bool debug_is_big() const noexcept;
+
+	small_bytevec_range_t data_range() noexcept;
+	small_bytevec_const_range_t data_range() const noexcept;
+	small_bytevec_range_t pad_or_data_range() noexcept;
+	small_bytevec_const_range_t pad_or_data_range() const noexcept;
 
 	unsigned char* begin() noexcept;
 	const unsigned char* begin() const noexcept;

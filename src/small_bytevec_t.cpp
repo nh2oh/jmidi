@@ -58,7 +58,7 @@ const unsigned char *jmid::internal::small_t::end() const noexcept {
 //-----------------------------------------------------------------------------
 void jmid::internal::big_t::init() noexcept {
 	this->flags_=0x00u;
-	//this->pad_.fill(0x00u);
+	this->pad_.fill(0x00u);
 	this->p_ = nullptr;
 	this->sz_ = 0u;
 	this->cap_ = 0u;
@@ -184,7 +184,7 @@ jmid::internal::small_bytevec_t::small_bytevec_t(const jmid::internal::small_byt
 	if (rhs.is_big()) {
 		// I *probably* need a big object, but rhs may be a small amount of
 		// data in a big object.  
-		this->init_big();
+		this->init_big();  // TODO:  Zeros this->u_.b_.pad_, which is not needed
 		this->resize_nocopy(rhs.u_.b_.size());
 		// Note that calling this->resize_nocopy() is different from calling 
 		// this->u_.b_.resize_nocopy(); the former will cause a big->small 
@@ -192,6 +192,9 @@ jmid::internal::small_bytevec_t::small_bytevec_t(const jmid::internal::small_byt
 		// this->init_big(), after resize_nocopy()ing, this may be small, 
 		// hence copying into this->begin() rather than this->u_.b_.begin().  
 		std::copy(rhs.u_.b_.begin(),rhs.u_.b_.end(),this->begin());
+		if (this->is_big()) {
+			this->u_.b_.pad_ = rhs.u_.b_.pad_;
+		}
 	} else {
 		this->init_small();
 		this->u_.s_.resize(rhs.u_.s_.size());
@@ -201,6 +204,9 @@ jmid::internal::small_bytevec_t::small_bytevec_t(const jmid::internal::small_byt
 jmid::internal::small_bytevec_t& jmid::internal::small_bytevec_t::operator=(const jmid::internal::small_bytevec_t& rhs) {  // Copy assign
 	this->resize_nocopy(rhs.size());
 	std::copy(rhs.begin(),rhs.end(),this->begin());
+	if (this->is_big()) {
+		this->u_.b_.pad_ = rhs.u_.b_.pad_;
+	}
 	return *this;
 }
 jmid::internal::small_bytevec_t::small_bytevec_t(jmid::internal::small_bytevec_t&& rhs) noexcept {  // Move ctor
@@ -271,7 +277,7 @@ std::int32_t jmid::internal::small_bytevec_t::capacity() const noexcept {
 		return this->u_.b_.capacity();
 	}
 }
-std::int32_t jmid::internal::small_bytevec_t::resize(std::int32_t new_sz) {
+unsigned char *jmid::internal::small_bytevec_t::resize(std::int32_t new_sz) {
 	new_sz = std::clamp(new_sz,0,jmid::internal::small_bytevec_t::size_max);
 	if (this->is_big()) {
 		if (new_sz <= small_t::size_max) {  // Resize big->small
@@ -288,12 +294,15 @@ std::int32_t jmid::internal::small_bytevec_t::resize(std::int32_t new_sz) {
 				delete [] psrc;
 				//small_bytevec_t::call_counts.calls_delete++;
 			}
+			return this->u_.s_.begin();
 		} else {  // new_sz > small_t::size_max;  keep object big
-			return this->u_.b_.resize(new_sz);
+			this->u_.b_.resize(new_sz);
+			return this->u_.b_.begin();
 		}
 	} else {  // present object is small
 		if (new_sz <= small_t::size_max) {  // Keep small
-			return this->u_.s_.resize(new_sz);
+			this->u_.s_.resize(new_sz);
+			return this->u_.s_.begin();
 		} else {  // new_sz > small_t::size_max; Resize small->big
 			auto new_cap = new_sz;
 			unsigned char *pdest = new unsigned char[static_cast<uint32_t>(new_cap)];
@@ -301,11 +310,11 @@ std::int32_t jmid::internal::small_bytevec_t::resize(std::int32_t new_sz) {
 			std::copy(this->u_.s_.begin(),this->u_.s_.end(),pdest);
 			this->init_big();
 			this->u_.b_.adopt(this->u_.b_.pad_,pdest,new_sz,new_cap);
+			return this->u_.b_.begin();
 		}
 	}
-	return new_sz;
 }
-std::int32_t jmid::internal::small_bytevec_t::resize_nocopy(std::int32_t new_sz) {
+unsigned char *jmid::internal::small_bytevec_t::resize_nocopy(std::int32_t new_sz) {
 	new_sz = std::clamp(new_sz,0,jmid::internal::small_bytevec_t::size_max);
 	if (this->is_big()) {
 		if (new_sz <= small_t::size_max) {  // Resize big->small
@@ -314,25 +323,29 @@ std::int32_t jmid::internal::small_bytevec_t::resize_nocopy(std::int32_t new_sz)
 				//small_bytevec_t::call_counts.calls_delete++;
 			}
 			this->init_small();  // Does not try to delete [] b_.p_
-			return this->u_.s_.resize(new_sz);
+			this->u_.s_.resize(new_sz);
+			return this->u_.s_.begin();
 		} else {  // new_sz > small_t::size_max;  keep object big
-			return this->u_.b_.resize_nocopy(new_sz);
+			this->u_.b_.resize_nocopy(new_sz);
+			return this->u_.b_.begin();
 		}
 	} else {  // present object is small
 		if (new_sz <= small_t::size_max) {  // Keep small
-			return this->u_.s_.resize(new_sz);
+			this->u_.s_.resize(new_sz);
+			return this->u_.s_.begin();
 		} else {  // new_sz > small_t::size_max; Resize small->big
 			auto new_cap = new_sz;
 			unsigned char *p = new unsigned char[static_cast<uint32_t>(new_cap)];
 			//small_bytevec_t::call_counts.calls_new++;
 			this->init_big();
 			this->u_.b_.adopt(this->u_.b_.pad_,p,new_sz,new_cap);
+			return this->u_.b_.begin();
 		}
 	}
-	return new_sz;
 }
-std::int32_t jmid::internal::small_bytevec_t::resize_small2small_nocopy(std::int32_t new_sz) noexcept {
-	return this->u_.s_.resize(new_sz);
+unsigned char *jmid::internal::small_bytevec_t::resize_small2small_nocopy(std::int32_t new_sz) noexcept {
+	this->u_.s_.resize(new_sz);
+	return this->u_.s_.begin();
 }
 std::int32_t jmid::internal::small_bytevec_t::reserve(std::int32_t new_cap) {
 	new_cap = std::clamp(new_cap,this->capacity(),jmid::internal::small_bytevec_t::size_max);
@@ -373,6 +386,36 @@ unsigned char *jmid::internal::small_bytevec_t::push_back(unsigned char c) {
 
 bool jmid::internal::small_bytevec_t::debug_is_big() const noexcept {
 	return this->is_big();
+}
+jmid::internal::small_bytevec_range_t jmid::internal::small_bytevec_t::data_range() noexcept {
+	if (this->is_small()) {
+		return {this->u_.s_.begin(),this->u_.s_.end()};
+	} else {
+		return {this->u_.b_.begin(),this->u_.b_.end()};
+	}
+}
+jmid::internal::small_bytevec_const_range_t jmid::internal::small_bytevec_t::data_range() const noexcept {
+	if (this->is_small()) {
+		return {this->u_.s_.begin(),this->u_.s_.end()};
+	} else {
+		return {this->u_.b_.begin(),this->u_.b_.end()};
+	}
+}
+jmid::internal::small_bytevec_range_t jmid::internal::small_bytevec_t::pad_or_data_range() noexcept {
+	if (this->is_small()) {
+		return {this->u_.s_.begin(),this->u_.s_.end()};
+	} else {
+		return {this->u_.b_.pad_.data(),
+			this->u_.b_.pad_.data()+this->u_.b_.pad_.size()};
+	}
+}
+jmid::internal::small_bytevec_const_range_t jmid::internal::small_bytevec_t::pad_or_data_range() const noexcept {
+	if (this->is_small()) {
+		return {this->u_.s_.begin(),this->u_.s_.end()};
+	} else {
+		return {this->u_.b_.pad_.data(),
+			this->u_.b_.pad_.data()+this->u_.b_.pad_.size()};
+	}
 }
 unsigned char *jmid::internal::small_bytevec_t::begin() noexcept {
 	if (this->is_small()) {

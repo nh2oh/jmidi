@@ -134,6 +134,7 @@ public:
 	// will test invalid.  The exact value is unspecified.  
 	jmid::ch_event_data_t get_channel_event_data() const noexcept;
 	jmid::meta_header_t get_meta() const noexcept;
+	jmid::sysex_header_t get_sysex() const noexcept;
 
 	// Setters
 	std::int32_t set_delta_time(std::int32_t);

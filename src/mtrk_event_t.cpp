@@ -25,8 +25,8 @@ jmid::mtrk_event_t::mtrk_event_t(std::int32_t dt, jmid::ch_event_data_t md) noex
 	auto n = jmid::channel_status_byte_n_data_bytes(s);
 	// NB:  n==0 if s is invalid, but this is impossible after a call
 	// to normalize().  
-	this->d_.resize_small2small_nocopy(jmid::delta_time_field_size(dt)+1+n);  // +1=>s
-	auto dest = jmid::write_delta_time(dt,this->d_.begin());
+	auto dest = this->d_.resize_small2small_nocopy(jmid::delta_time_field_size(dt)+1+n);  // +1=>s
+	dest = jmid::write_delta_time(dt,dest);
 	*dest++ = s;
 	*dest++ = md.p1;
 	if (n==2) {
@@ -133,7 +133,19 @@ unsigned char *jmid::mtrk_event_t::push_back(unsigned char c) {  // Private
 	return this->d_.push_back(c);
 }
 jmid::mtrk_event_iterator_range_t jmid::mtrk_event_t::payload_range_impl() const noexcept {
-	auto it_end = this->d_.end();
+	auto its = this->d_.data_range();
+	its.begin = jmid::advance_to_dt_end(its.begin,its.end);
+	auto s = *(its.begin);
+	if (jmid::is_meta_status_byte(s)) {
+		its.begin += 2;  // 0xFFu, type-byte
+		its.begin = jmid::advance_to_vlq_end(its.begin,its.end);
+	} else if (jmid::is_sysex_status_byte(s)) {
+		its.begin += 1;  // 0xF0u or 0xF7u
+		its.begin = jmid::advance_to_vlq_end(its.begin,its.end);
+	}
+	return {its.begin,its.end};
+
+	/*auto it_end = this->d_.end();
 	auto it = jmid::advance_to_dt_end(this->d_.begin(),it_end);
 	auto s = *it;
 	if (jmid::is_meta_status_byte(s)) {
@@ -143,7 +155,7 @@ jmid::mtrk_event_iterator_range_t jmid::mtrk_event_t::payload_range_impl() const
 		it += 1;  // 0xF0u or 0xF7u
 		it = jmid::advance_to_vlq_end(it,it_end);
 	}
-	return {it,it_end};
+	return {it,it_end};*/
 }
 std::int32_t jmid::mtrk_event_t::delta_time() const noexcept {
 	return jmid::read_delta_time(this->d_.begin(),this->d_.end()).val;
@@ -167,13 +179,15 @@ jmid::ch_event_data_t jmid::mtrk_event_t::get_channel_event_data() const noexcep
 	// is that if big, it can safely read d_.u_.b_.pad_ directly, skipping
 	// the its.end-its.begin checks.  The present implementation is no
 	// better than the free function impl.  
-	auto its = this->payload_range();
 	jmid::ch_event_data_t result;
 	result.status_nybble = 0x00u;  // Causes result to test invalid
+
+	auto its = this->d_.pad_or_data_range();
+	its.begin = advance_to_dt_end(its.begin,its.end);
 	if (its.end-its.begin <= 2) {
 		return result;
 	}
-	auto s = (*its.begin);
+	auto s = *(its.begin);
 	if (!jmid::is_channel_status_byte(s)) {
 		return result;
 	}
@@ -181,11 +195,13 @@ jmid::ch_event_data_t jmid::mtrk_event_t::get_channel_event_data() const noexcep
 	result.ch = s&0x0Fu;
 	++(its.begin);
 	result.p1 = *(its.begin);
-	++(its.begin);
-	if (its.begin == its.end) {
-		return result;
+	if (jmid::channel_status_byte_n_data_bytes(s)==2) {
+		++(its.begin);
+		result.p2 = *(its.begin);
+	} else {
+		result.p2 = 0x00u;
 	}
-	result.p2 = *its.begin;
+	
 	return result;
 }
 jmid::meta_header_t jmid::mtrk_event_t::get_meta() const noexcept {
@@ -195,9 +211,41 @@ jmid::meta_header_t jmid::mtrk_event_t::get_meta() const noexcept {
 	// the its.end-its.begin checks and the pointer-chasing into the 
 	// remote buffer.  
 	jmid::meta_header_t result;  result.s = 0x00u;  // Invalid
-	
 
+	auto its = this->d_.pad_or_data_range();
+	its.begin = advance_to_dt_end(its.begin,its.end);
+	if (its.end-its.begin < 3) {
+		return result;
+	}
+	result.s = *(its.begin);
+	if (!jmid::is_meta_status_byte(result.s)) {
+		return result;
+	}
+	++(its.begin);
+	result.mt = *(its.begin);
+	++(its.begin);
+	result.size = jmid::read_vlq(its.begin,its.end).val;
+	return result;
+}
+jmid::sysex_header_t jmid::mtrk_event_t::get_sysex() const noexcept {
+	// TODO:
+	// The reason this is most efficiently implemented as a member function
+	// is that if big, it can safely read d_.u_.b_.pad_ directly, skipping
+	// the its.end-its.begin checks and the pointer-chasing into the 
+	// remote buffer.  
+	jmid::sysex_header_t result;  result.s = 0x00u;  // Invalid
 
+	auto its = this->d_.pad_or_data_range();
+	its.begin = advance_to_dt_end(its.begin,its.end);
+	if (its.end-its.begin < 2) {
+		return result;
+	}
+	result.s = *(its.begin);
+	if (!jmid::is_sysex_status_byte(result.s)) {
+		return result;
+	}
+	++(its.begin);
+	result.size = jmid::read_vlq(its.begin,its.end).val;
 	return result;
 }
 
@@ -243,8 +291,8 @@ bool jmid::mtrk_event_t::operator!=(const jmid::mtrk_event_t& rhs) const noexcep
 
 void jmid::mtrk_event_t::default_init(std::int32_t dt) noexcept {
 	//this->d_ = mtrk_event_t_internal::small_bytevec_t();
-	this->d_.resize_small2small_nocopy(jmid::delta_time_field_size(dt)+3);
-	auto it = jmid::write_delta_time(dt,this->d_.begin());
+	auto it = this->d_.resize_small2small_nocopy(jmid::delta_time_field_size(dt)+3);
+	it = jmid::write_delta_time(dt,it);
 	*it++ = 0x90u;  // Note-on, channel "1"
 	*it++ = 0x3Cu;  // 0x3C==60=="Middle C" (C4, 261.63Hz)
 	*it++ = 0x3Fu;  // 0x3F==63, ~= 127/2

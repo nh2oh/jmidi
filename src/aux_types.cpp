@@ -45,6 +45,52 @@ jmid::ch_event_data_t jmid::make_midi_ch_event_data(int sn, int ch,
 	md.p2 = std::clamp(p2,0,0x7F);
 	return md;
 }
+std::string jmid::print(const jmid::ch_event_data_t& md) {
+	std::string s;
+	if (!md) {
+		s += "Invalid";
+		return s;
+	}
+
+	switch ((md.status_nybble)&0xF0u) {
+	case 0x80u:
+		s += "Note-off";
+		break;
+	case 0x90u:  // TODO:  Handle note-off w/ v==0
+		s += "Note-on";
+		break;
+	case 0xA0u:
+		s += "Key pressure";
+		break;
+	case 0xB0u:
+		if (((md.p1)>>3)==0b00001111u) {
+			s += "Channel mode";
+		} else {
+			s += "Control change";
+		}
+		break;
+	case 0xC0u:
+		s += "Program change";
+		break;
+	case 0xD0u:
+		s += "Channel pressure";
+		break;
+	case 0xE0u:
+		s += "Pitch bend";
+		break;
+	default:
+		s += "Invalid";
+		return s;
+	}
+
+	s += ":  ch=" + std::to_string(md.p1-1) + ", p1=" + std::to_string((md.p1));
+	if (channel_status_byte_n_data_bytes((md.status_nybble)|(md.ch)) == 2) {
+		s += ", p2=" + std::to_string(md.p2);
+	}
+
+	return s;
+}
+
 bool jmid::verify(const jmid::ch_event_data_t& md) {
 	auto s = ((md.status_nybble & 0xF0u) + (md.ch & 0x0Fu));
 	if (!jmid::is_channel_status_byte(s)) {

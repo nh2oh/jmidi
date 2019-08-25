@@ -21,7 +21,8 @@ enum class mtrk_sbo_print_opts {
 	debug  
 };
 
-std::string print(const mtrk_event_t&,
+std::string print_type(const jmid::mtrk_event_t&);
+std::string print(const jmid::mtrk_event_t&,
 			mtrk_sbo_print_opts=mtrk_sbo_print_opts::normal);
 
 // Returns true if both events have the same byte-pattern on

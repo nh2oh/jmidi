@@ -15,9 +15,25 @@
 
 
 
-
-
-std::string jmid::print(const mtrk_event_t& evnt, jmid::mtrk_sbo_print_opts opts) {
+std::string jmid::print_type(const jmid::mtrk_event_t& evnt) {
+	std::string s;
+	if (jmid::is_channel(evnt)) {
+		s += "channel::";
+		auto ch = evnt.get_channel_event_data();
+		s += print(ch);
+	} else if (is_meta(evnt)) {
+		s += "meta::";
+		s += jmid::print(jmid::classify_meta_event(evnt));
+	} else if (is_sysex_f0(evnt)) {
+		s += "sysex_F0";
+		//auto sx = evnt.get_sysex();
+	} else if (is_sysex_f7(evnt)) {
+		s += "sysex_F7";
+		//auto sx = evnt.get_sysex();
+	}
+	return s;
+}
+std::string jmid::print(const jmid::mtrk_event_t& evnt, jmid::mtrk_sbo_print_opts opts) {
 	std::string s {};
 	s += ("delta-time = " + std::to_string(evnt.delta_time()) + ", ");
 	s += "type = " + print(jmid::classify_status_byte(evnt.status_byte())) + ", ";
