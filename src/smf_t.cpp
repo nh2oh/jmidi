@@ -107,7 +107,7 @@ jmid::smf_t::const_iterator jmid::smf_t::end() const {
 jmid::smf_t::reference jmid::smf_t::push_back(jmid::smf_t::const_reference mtrk) {
 	this->mtrks_.push_back(mtrk);
 	this->chunkorder_.push_back(0);
-	this->mthd_.set_ntrks(this->mtrks_.size());
+	this->mthd_.set_ntrks(this->ntrks());
 	return this->mtrks_.back();
 }
 jmid::smf_t::reference jmid::smf_t::push_back(jmid::mtrk_t&& mtrk) {
@@ -253,12 +253,23 @@ std::string jmid::print(const jmid::smf_t& smf) {
 jmid::maybe_smf_t::operator bool() const {
 	return this->error==smf_error_t::errc::no_error;
 }
-jmid::maybe_smf_t jmid::read_smf(const std::filesystem::path& fp, jmid::smf_error_t *err) {
+jmid::maybe_smf_t jmid::read_smf(const std::filesystem::path& fp, 
+			jmid::smf_error_t *err, std::int32_t max_stream_bytes) {
 	jmid::maybe_smf_t result;
-	std::basic_ifstream<char> f(fp,std::ios::in|std::ios::binary);
+	result.nbytes_read = 0;
+	result.error = jmid::smf_error_t::errc::no_error;
+	auto sz = std::filesystem::file_size(fp);
+	if (sz > max_stream_bytes) {
+		if (err) {
+			// TODO:  Wrong error code
+			err->code = jmid::smf_error_t::errc::other;
+		}
+		return result;
+	}
+
+	std::basic_ifstream<char> f(fp,std::ios_base::in|std::ios_base::binary);
 	std::istreambuf_iterator<char> it(f);
 	auto end = std::istreambuf_iterator<char>();
-
 	if (!f.is_open() || !f.good()) {
 		result.error = jmid::smf_error_t::errc::file_read_error;
 		if (err) {
@@ -267,15 +278,25 @@ jmid::maybe_smf_t jmid::read_smf(const std::filesystem::path& fp, jmid::smf_erro
 		return result;
 	}
 	
-	jmid::make_smf(it,end,&result,err);
+	jmid::make_smf(it,end,&result,err,max_stream_bytes);
 	return result;
 };
 
 jmid::maybe_smf_t jmid::read_smf_bulkfileread(const std::filesystem::path& fp, 
-					jmid::smf_error_t *err, std::vector<char> *pfdata) {
+					jmid::smf_error_t *err, std::vector<char> *pfdata,
+					std::int32_t max_stream_bytes) {
 	jmid::maybe_smf_t result;
-	std::basic_ifstream<char> f(fp,
-		std::ios_base::in|std::ios_base::binary);
+	result.nbytes_read = 0;
+	result.error = jmid::smf_error_t::errc::no_error;
+	auto sz = std::filesystem::file_size(fp);
+	if (sz > max_stream_bytes) {
+		if (err) {
+			// TODO:  Wrong error code
+			err->code = jmid::smf_error_t::errc::other;
+		}
+		return result;
+	}
+	std::basic_ifstream<char> f(fp,std::ios_base::in|std::ios_base::binary);
 	if (!f.is_open() || !f.good()) {
 		if (err) {
 			err->code = jmid::smf_error_t::errc::file_read_error;
@@ -299,7 +320,7 @@ jmid::maybe_smf_t jmid::read_smf_bulkfileread(const std::filesystem::path& fp,
 
 	const char *it = pfdata->data();
 	const char *end = pfdata->data()+pfdata->size();
-	jmid::make_smf(it,end,&result,err);
+	jmid::make_smf(it,end,&result,err,max_stream_bytes);
 	return result;
 }
 

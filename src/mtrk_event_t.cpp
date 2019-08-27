@@ -12,7 +12,7 @@
 jmid::mtrk_event_t::mtrk_event_t() noexcept {
 	this->default_init(0);
 }
-jmid::mtrk_event_t::mtrk_event_t(mtrk_event_t::init_small_w_size_0_t) noexcept {  // private
+jmid::mtrk_event_t::mtrk_event_t(jmid::mtrk_event_t::init_small_w_size_0_t) noexcept {  // private
 	this->d_ = jmid::internal::small_bytevec_t();
 }
 jmid::mtrk_event_t::mtrk_event_t(std::int32_t dt) noexcept {
@@ -60,7 +60,7 @@ jmid::mtrk_event_t::size_type jmid::mtrk_event_t::capacity() const noexcept {
 	return this->d_.capacity();
 }
 jmid::mtrk_event_t::size_type jmid::mtrk_event_t::reserve(jmid::mtrk_event_t::size_type new_cap) {
-	new_cap = std::clamp(new_cap,0,mtrk_event_t::size_max);
+	new_cap = std::clamp(new_cap,0,jmid::mtrk_event_t::size_max);
 	return this->d_.reserve(new_cap);
 }
 const unsigned char *jmid::mtrk_event_t::data() noexcept {
@@ -183,7 +183,7 @@ jmid::ch_event_data_t jmid::mtrk_event_t::get_channel_event_data() const noexcep
 	result.status_nybble = 0x00u;  // Causes result to test invalid
 
 	auto its = this->d_.pad_or_data_range();
-	its.begin = advance_to_dt_end(its.begin,its.end);
+	its.begin = jmid::advance_to_dt_end(its.begin,its.end);
 	if (its.end-its.begin <= 2) {
 		return result;
 	}
@@ -213,7 +213,7 @@ jmid::meta_header_t jmid::mtrk_event_t::get_meta() const noexcept {
 	jmid::meta_header_t result;  result.s = 0x00u;  // Invalid
 
 	auto its = this->d_.pad_or_data_range();
-	its.begin = advance_to_dt_end(its.begin,its.end);
+	its.begin = jmid::advance_to_dt_end(its.begin,its.end);
 	if (its.end-its.begin < 3) {
 		return result;
 	}
@@ -236,7 +236,7 @@ jmid::sysex_header_t jmid::mtrk_event_t::get_sysex() const noexcept {
 	jmid::sysex_header_t result;  result.s = 0x00u;  // Invalid
 
 	auto its = this->d_.pad_or_data_range();
-	its.begin = advance_to_dt_end(its.begin,its.end);
+	its.begin = jmid::advance_to_dt_end(its.begin,its.end);
 	if (its.end-its.begin < 2) {
 		return result;
 	}
@@ -329,7 +329,7 @@ jmid::mtrk_event_t jmid::make_meta_sysex_generic_unsafe(std::int32_t dt, unsigne
 		sz += 1;  // For meta events, 1 extra byte for the mtype byte
 	}
 
-	auto result = mtrk_event_t(mtrk_event_t::init_small_w_size_0_t {});
+	auto result = jmid::mtrk_event_t(jmid::mtrk_event_t::init_small_w_size_0_t {});
 	result.d_.resize(sz);
 	auto it = result.d_.begin();
 	it = jmid::write_delta_time(dt,it);
@@ -417,7 +417,7 @@ std::string jmid::explain(const jmid::mtrk_event_error_t& err) {
 	} else if (err.code==jmid::mtrk_event_error_t::errc::sysex_or_meta_calcd_length_exceeds_input) {
 		s += "Encountered end-of-input while reading in the payload of the "
 			"present sysex or meta event.  ";
-	} else if (err.code==mtrk_event_error_t::errc::other) {
+	} else if (err.code==jmid::mtrk_event_error_t::errc::other) {
 		s += "mtrk_event_error_t::errc::other.  ";
 	} else {
 		s += "Unknown error.  ";
@@ -487,7 +487,7 @@ jmid::validate_meta_event(const unsigned char *beg, const unsigned char *end) {
 	jmid::validate_meta_event_result_t result;
 	result.error = jmid::mtrk_event_error_t::errc::other;
 	if (!end || !beg || ((end-beg)<3)) {
-		result.error = mtrk_event_error_t::errc::sysex_or_meta_overflow_in_header;
+		result.error = jmid::mtrk_event_error_t::errc::sysex_or_meta_overflow_in_header;
 		return result;
 	}
 	if (!jmid::is_meta_status_byte(*beg)) {
@@ -515,7 +515,7 @@ jmid::validate_meta_event(const unsigned char *beg, const unsigned char *end) {
 jmid::validate_sysex_event_result_t
 jmid::validate_sysex_event(const unsigned char *beg, const unsigned char *end) {
 	jmid::validate_sysex_event_result_t result;
-	result.error = mtrk_event_error_t::errc::other;
+	result.error = jmid::mtrk_event_error_t::errc::other;
 	if (!end || !beg || ((end-beg)<2)) {
 		result.error = jmid::mtrk_event_error_t::errc::sysex_or_meta_overflow_in_header;
 		return result;

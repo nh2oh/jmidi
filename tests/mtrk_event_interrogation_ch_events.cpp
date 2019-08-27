@@ -11,7 +11,8 @@
 TEST(mtrk_event_channel_interrogators, isChannelVoiceModeTestSetCEvents) {
 	for (auto& tc : set_c_midi_events_valid) {
 		auto maybe_ev = jmid::make_mtrk_event(tc.data.data(),
-			tc.data.data()+tc.data.size(),tc.midisb_prev_event,nullptr);
+			tc.data.data()+tc.data.size(),tc.midisb_prev_event,nullptr,
+			tc.data.size());
 		EXPECT_TRUE(maybe_ev);
 		auto ev = maybe_ev.event;
 		

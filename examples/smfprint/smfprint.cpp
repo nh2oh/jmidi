@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
 		<< " (" << std::filesystem::file_size(f) << " bytes):\n";
 
 	jmid::smf_error_t smf_error;
-	jmid::maybe_smf_t smf = jmid::read_smf(f,&smf_error);
+	jmid::maybe_smf_t smf = jmid::read_smf(f,&smf_error,std::filesystem::file_size(f));
 	if (!smf) {
 		std::cout << jmid::explain(smf_error) << std::endl;
 		return 2;
@@ -35,6 +35,7 @@ int main(int argc, char *argv[]) {
 		for (const auto& ev : trk) {
 			std::cout << jmid::print(ev,jmid::mtrk_sbo_print_opts::detail) << '\n';
 		}
+		trkn++;
 	}
 
 	return 0;

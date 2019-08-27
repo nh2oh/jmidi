@@ -21,8 +21,8 @@ int main(int argc, char *argv[]) {
 
 	std::filesystem::path basedir 
 		//= "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\0_to_I\\cl_to_I\\";
-		//= "C:\\Users\\ben\\Desktop\\midi_random_collection\\";
-		= "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\";
+		= "C:\\Users\\ben\\Desktop\\midi_archive\\desktop\\midi_random_collection\\";
+		//= "C:\\Users\\ben\\Desktop\\midi_archive\\make_smf_corp\\";
 	event_sizes_benchmark(opts.mode,opts.Nth,basedir);
 
 	return 0;
@@ -93,8 +93,9 @@ int event_sizes_benchmark(int mode, int Nth,
 		<< ":  " << std::endl;
 	std::vector<std::thread> vth;
 	for (int i=0; i<Nth; ++i) {
-		std::string outf_name = std::to_string(Nth) + "th" 
-			+ std::to_string(i+1) + ".txt";
+		std::string outf_name = std::to_string(i+1) + "_"
+			+ std::to_string(Nth) + "th_mode" 
+			+ std::to_string(mode) +  + ".txt";
 		auto outp = basedir.parent_path()/outf_name;
 		vth.emplace_back(std::thread(avg_and_max_event_sizes,
 			thread_files[i],outp,mode));
@@ -135,7 +136,7 @@ int avg_and_max_event_sizes(const std::vector<std::filesystem::path>& files,
 			f.read(fdata.data(),fsize);
 			//auto n = std::min(fdata.size(),std::size_t{25});
 			jmid::make_smf(fdata.data(),fdata.data()+fdata.size(),
-				&maybe_smf,&smf_error);
+				&maybe_smf,&smf_error,fdata.size());
 			f.close();
 		} else if (mode == 1) {  // iostreams
 			std::basic_ifstream<char> f(curr_path,
@@ -146,16 +147,17 @@ int avg_and_max_event_sizes(const std::vector<std::filesystem::path>& files,
 			++n_midi_files;
 			std::istreambuf_iterator<char> it(f);
 			auto end = std::istreambuf_iterator<char>();
-			jmid::make_smf(it,end,&maybe_smf,&smf_error);
+			jmid::make_smf(it,end,&maybe_smf,&smf_error,
+				std::filesystem::file_size(curr_path));
 			f.close();
 		} else if (mode == 2) {  // csio
 			auto nbytes = std::filesystem::file_size(curr_path);
 			fdata.resize(nbytes);
-			auto b = jmid::read_binary_csio(curr_path,fdata);
-			if (!b) { continue; }
+			nbytes = jmid::read_binary_csio(curr_path,fdata);
+			fdata.resize(nbytes);
 			++n_midi_files;
 			jmid::make_smf(fdata.data(),fdata.data()+fdata.size(),
-				&maybe_smf,&smf_error);
+				&maybe_smf,&smf_error,nbytes);
 		}
 		
 
@@ -163,7 +165,8 @@ int avg_and_max_event_sizes(const std::vector<std::filesystem::path>& files,
 			<< curr_path.string() << '\n';
 		if (!maybe_smf) {
 			outfile << "\t!maybe_smf:  " << explain(smf_error) 
-				<< "\nskipping...\n"; 
+				<< "\n\tnbytes_read == " << maybe_smf.nbytes_read
+				<< ".  skipping...\n"; 
 			continue;
 		}
 		

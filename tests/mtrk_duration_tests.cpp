@@ -51,7 +51,7 @@ TEST(mtrk_duration_tests, cchromSingleTempoEvent) {
 			continue;
 		}
 
-		jmid::maybe_smf_t maybe_smf = jmid::read_smf(p,nullptr);
+		jmid::maybe_smf_t maybe_smf = jmid::read_smf(p,nullptr,1000);
 		ASSERT_TRUE(maybe_smf);
 		EXPECT_EQ(maybe_smf.smf.mthd().division(),tc.tdiv);
 

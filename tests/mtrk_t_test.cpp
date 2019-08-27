@@ -12,7 +12,7 @@ jmid::mtrk_t make_tsa() {
 	auto mtrk_tsa = jmid::mtrk_t();  // auto to avoid MVP
 	for (const auto& e : tsa) {
 		auto curr_ev = jmid::make_mtrk_event(e.d.data(),e.d.data()+e.d.size(),
-			0,nullptr).event;
+			0,nullptr,e.d.size()).event;
 		mtrk_tsa.push_back(curr_ev);
 	}
 	return mtrk_tsa;
@@ -28,7 +28,7 @@ TEST(mtrk_t_tests, DefaultCtorMultiplePushBackTestSetA) {
 	EXPECT_EQ(mtrk_tsa.nticks(),tsa_props.duration_tks);
 	for (int i=0; i<tsa.size(); ++i) {
 		auto curr_ev = jmid::make_mtrk_event(tsa[i].d.data(),
-			tsa[i].d.data()+tsa[i].d.size(),0,nullptr).event;
+			tsa[i].d.data()+tsa[i].d.size(),0,nullptr,tsa[i].d.size()).event;
 		EXPECT_EQ(mtrk_tsa[i],curr_ev);
 	}
 }

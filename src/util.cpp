@@ -6,16 +6,16 @@
 #include <string>
 
 
+// TODO:  Test cases w/ inputs containing 0x1A, input w/ spaces preceeding an \n
 
-bool jmid::read_binary_csio(std::filesystem::path pth, std::vector<char>& dest) {
-	auto fp = std::fopen(pth.string().c_str(), "r");
+std::size_t jmid::read_binary_csio(std::filesystem::path pth, std::vector<char>& dest) {
+	auto fp = std::fopen(pth.string().c_str(), "rb");
 	if (!fp) {
-		return false;
+		return 0;
 	}
 	auto nread = std::fread(dest.data(), sizeof(char), dest.size(), fp);
-
 	std::fclose(fp);
-	return nread==dest.size();
+	return nread;
 }
 
 

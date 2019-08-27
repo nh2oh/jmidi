@@ -30,7 +30,8 @@ int main(int argc, char *argv[]) {
 		}
 		
 		jmid::smf_error_t smf_error;
-		jmid::maybe_smf_t smf = jmid::read_smf(curr_path,&smf_error);
+		jmid::maybe_smf_t smf = jmid::read_smf(curr_path,&smf_error,
+			std::filesystem::file_size(curr_path));
 		if (!smf) {
 			continue;
 		}

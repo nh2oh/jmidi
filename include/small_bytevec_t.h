@@ -137,6 +137,10 @@ public:
 	// A wrapper for this->u_.s_.resize(new_sz); For a small->small resize
 	// there is no allocation, thus the method can be noexcept
 	unsigned char *resize_small2small_nocopy(std::int32_t) noexcept;
+	// TODO:  unsigned char *resize_preserve_cap(std::int32_t) should be
+	// the default behavior of reserve().  
+	// If big, does _not_ cause a big->small transition
+	unsigned char *resize_preserve_cap(std::int32_t);
 	// int32_t reserve(int32_t new_cap);
 	// Will cause big->small, but never small->big transitions.  
 	std::int32_t reserve(std::int32_t);

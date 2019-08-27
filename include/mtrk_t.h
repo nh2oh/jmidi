@@ -167,7 +167,7 @@ private:
 	std::vector<mtrk_event_t> evnts_;
 
 	template <typename InIt>
-	friend InIt make_mtrk(InIt, InIt, maybe_mtrk_t*, mtrk_error_t*);
+	friend InIt make_mtrk(InIt, InIt, maybe_mtrk_t*, mtrk_error_t*,std::int32_t);
 };
 std::string print(const mtrk_t&);
 // Prints each mtrk event as hexascii (using dbk::print_hexascii()) along
@@ -246,9 +246,10 @@ struct maybe_mtrk_t {
 // 
 //
 template <typename InIt>
-InIt make_mtrk(InIt it, InIt end, maybe_mtrk_t *result, mtrk_error_t *err) {
+InIt make_mtrk(InIt it, InIt end, maybe_mtrk_t *result, mtrk_error_t *err,
+				const std::int32_t max_stream_bytes) {
 	std::ptrdiff_t i = 0;  // The number of bytes read from the stream
-	
+	// TODO:  Dumb:  Should work like read_mthd()
 	std::array<unsigned char, 8> header;
 
 	// The main loop calls make_mtrk_event(..., p_mtrk_event_error), which
@@ -272,23 +273,26 @@ InIt make_mtrk(InIt it, InIt end, maybe_mtrk_t *result, mtrk_error_t *err) {
 	auto dest = header.begin();
 	
 	// Copy the {'M','T','r','k', a,b,c,d}
-	while ((it!=end)&&(i<8)) {
-		*dest++ = static_cast<unsigned char>(*it++);  ++i;
+	while ((it!=end) && (i<8) && (i<max_stream_bytes)) {
+		++i;
+		*dest++ = static_cast<unsigned char>(*it++);
 	}
-	if (i!=8) {
+	if ((i!=8)) {// || (i>max_stream_bytes)) {
 		set_error(mtrk_error_t::errc::header_overflow,0x00u);
 		return it;
 	}
 	
-	if (!is_mtrk_header_id(header.data(),header.data()+header.size())) {
-		if (is_valid_header_id(header.data(),header.data()+header.size())) {
+	if (!jmid::is_mtrk_header_id(header.data(),header.data()+header.size())) {
+		if (jmid::is_valid_header_id(header.data(),header.data()+header.size())) {
+			// Could be an "Unknown"-type chunk
 			set_error(mtrk_error_t::errc::valid_but_non_mtrk_id,0x00u);
 		} else {
 			set_error(mtrk_error_t::errc::invalid_id,0x00u);
 		}
 		return it;
 	}
-	auto ulen = jmid::read_be<uint32_t>(header.data()+4,header.data()+header.size());
+	auto ulen = jmid::read_be<std::uint32_t>(header.data()+4,
+									header.data()+header.size());
 	if (ulen > mtrk_t::length_max) {
 		set_error(mtrk_error_t::errc::length_gt_mtrk_max,0x00u);
 		return it;
@@ -297,14 +301,19 @@ InIt make_mtrk(InIt it, InIt end, maybe_mtrk_t *result, mtrk_error_t *err) {
 
 	// From experience with thousands of midi files encountered in the wild,
 	// the average number of bytes per MTrk event is about 3.  
-	auto approx_nevents = static_cast<double>(len/3.0);
-	result->mtrk.evnts_.reserve(static_cast<mtrk_t::size_type>(approx_nevents));
+	auto expect_nevents = static_cast<double>(len/3.0);
+	auto expect_nbytes = sizeof(mtrk_event_t)*expect_nevents;
+	if (expect_nbytes > max_stream_bytes) {
+		expect_nevents = max_stream_bytes/sizeof(mtrk_event_t);
+	}
+	result->mtrk.evnts_.reserve(static_cast<mtrk_t::size_type>(expect_nevents));
 
 	bool found_eot = false;
 	unsigned char rs = 0x00u;  // value of the running-status
+	// TODO:  Again, somewhat defeats the caller-allocated *result
 	maybe_mtrk_event_t curr_event;
-	while (it!=end && !found_eot) {
-		it = make_mtrk_event(it,end,rs,&curr_event,p_mtrk_event_error);
+	while ((it!=end) && (!found_eot) && (i<max_stream_bytes)) {
+		it = make_mtrk_event(it,end,rs,&curr_event,p_mtrk_event_error,max_stream_bytes-i);
 		i += curr_event.nbytes_read;
 		if (!curr_event) {
 			set_error(mtrk_error_t::errc::invalid_event,rs);
@@ -317,7 +326,12 @@ InIt make_mtrk(InIt it, InIt end, maybe_mtrk_t *result, mtrk_error_t *err) {
 		rs = curr_event.event.running_status();
 		result->mtrk.evnts_.push_back(std::move(curr_event.event));
 	}
+	
 	if (!found_eot) {
+		if (i>=max_stream_bytes) {
+			set_error(mtrk_error_t::errc::other,rs);  // TODO:  Wrong error code
+			return it;
+		}
 		set_error(mtrk_error_t::errc::no_eot_event,rs);
 		return it;
 	}
@@ -328,7 +342,8 @@ InIt make_mtrk(InIt it, InIt end, maybe_mtrk_t *result, mtrk_error_t *err) {
 };
 
 template <typename InIt>
-maybe_mtrk_t make_mtrk(InIt it, InIt end, mtrk_error_t *err) {
+maybe_mtrk_t make_mtrk(InIt it, InIt end, mtrk_error_t *err,
+						const std::int32_t max_stream_bytes) {
 	maybe_mtrk_t result;
 	it = make_mtrk(it,end,&result,err);
 	return result;

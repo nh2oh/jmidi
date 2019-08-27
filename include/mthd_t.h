@@ -162,7 +162,7 @@ private:
 	jmid::internal::small_bytevec_t d_;
 
 	template <typename InIt>
-	friend InIt make_mthd(InIt, InIt, maybe_mthd_t*, mthd_error_t*);
+	friend InIt make_mthd(InIt, InIt, maybe_mthd_t*, mthd_error_t*, std::int32_t);
 };
 std::string print(const mthd_t&);
 std::string& print(const mthd_t&, std::string&);
@@ -208,6 +208,7 @@ struct mthd_error_t {
 		no_error,
 		other
 	};
+	// TODO:  This array is dumb
 	std::array<unsigned char, 14> header;
 	mthd_error_t::errc code;
 };
@@ -219,13 +220,15 @@ struct maybe_mthd_t {
 	operator bool() const;
 };
 template <typename InIt>
-InIt make_mthd(InIt it, InIt end, maybe_mthd_t *result, mthd_error_t *err) {
+InIt make_mthd(InIt it, InIt end, maybe_mthd_t *result, mthd_error_t *err,
+				const std::int32_t max_stream_bytes) {
 	// <Header Chunk> = <chunk type> <length> <format> <ntrks> <division> 
 	//                   MThd uint32_t uint16_t uint16_t uint16_t
 
-	result->mthd = mthd_t(mthd_t::init_small_w_size_0_t {}); 
-	result->mthd.d_.resize_small2small_nocopy(14);
-	auto dest = result->mthd.d_.begin();
+	//result->mthd = mthd_t(mthd_t::init_small_w_size_0_t {}); 
+	//result->mthd.d_.resize_small2small_nocopy(14);
+	result->mthd.d_.resize_preserve_cap(14);
+	auto dest = result->mthd.d_.begin();  // TODO:  Returned by resize_preserve_cap();
 	auto dest_beg = dest;
 	std::ptrdiff_t i=0;  // The number of bytes read from the input stream
 
@@ -242,12 +245,12 @@ InIt make_mthd(InIt it, InIt end, maybe_mthd_t *result, mthd_error_t *err) {
 		}
 	};
 	
-	// {'M','T','h','d'}
-	while ((it!=end)&&(i<8)) {
+	// {'M','T','h','d', n,n,n,n}
+	while ((it!=end) && (i<8) && (i<max_stream_bytes)) {
 		++i;
 		*dest++ = static_cast<unsigned char>(*it++);
 	}
-	if (i!=8) {
+	if ((i!=8) || (i>=max_stream_bytes)) {
 		set_error(mthd_error_t::errc::header_overflow);
 		return it;
 	}
@@ -255,20 +258,25 @@ InIt make_mthd(InIt it, InIt end, maybe_mthd_t *result, mthd_error_t *err) {
 		set_error(mthd_error_t::errc::non_mthd_id);
 		return it;
 	}
-	auto length = jmid::read_be<std::uint32_t>(dest_beg+4,dest);
-	if ((length < 6) || (length > mthd_t::length_max)) {
+	auto ulen = jmid::read_be<std::uint32_t>(dest_beg+4,dest);
+	if ((ulen < 6) || (ulen > mthd_t::length_max)) {
 		set_error(mthd_error_t::errc::invalid_length);
 		return it;
 	}
-	auto slength = static_cast<std::int32_t>(length);
+	auto len = static_cast<std::int32_t>(ulen);
 	
 	// Format, ntrks, division
-	int j = 0;
-	while ((it!=end)&&(j<6)) {
+	// TODO:  I am reading these fields directly into the mthd_t d_ array, 
+	// thereby breaking the invariants of the class.  Wat.  
+	// TODO:  ... and in consequence i am repeating the invariant checks
+	// below:  if ((format==0) && (ntrks >1)) ...
+	int j = 0;  // The number of bytes read from the data section (== i-8).  
+	while ((it!=end) && (j<6) && (i<max_stream_bytes)) {
 		++j;
-		*dest++ = static_cast<unsigned char>(*it++);  ++i;
+		++i;
+		*dest++ = static_cast<unsigned char>(*it++);
 	}
-	if (j!=6) {
+	if ((j!=6)) {  // || (i>=max_stream_bytes)) {
 		set_error(mthd_error_t::errc::overflow_in_data_section);
 		return it;
 	}
@@ -284,12 +292,32 @@ InIt make_mthd(InIt it, InIt end, maybe_mthd_t *result, mthd_error_t *err) {
 		return it;
 	}
 
-	// Data beyond the std-specified format-ntrks-division fields
-	if (slength > 6) {
-		result->mthd.d_.resize(8+slength);  // NB:  invalidates dest, dest_beg
-		dest = result->mthd.d_.begin()+14;
-		dest_beg = dest;
-		auto len = slength - 6;
+	// Data beyond the standard 6 bytes
+	auto dest_end = result->mthd.d_.end();
+	while ((j<len) && (it!=end) && (i<max_stream_bytes)) {
+		if (dest == dest_end) {
+			auto sz = result->mthd.d_.size();
+			result->mthd.d_.resize(sz+256);  // Secret hardcoded resize policy
+			dest_beg = result->mthd.d_.begin();
+			dest = dest_beg + sz;
+			dest_end = result->mthd.d_.end();
+		}
+		++j;
+		++i;
+		*dest++ = static_cast<unsigned char>(*it++);
+	}
+	if ((j!=len)) { // || (i>=max_stream_bytes)) {
+		set_error(mthd_error_t::errc::overflow_in_data_section);
+		return it;
+	}
+	/*
+	// Data beyond the std-specified format-ntrks-division fields.  
+	// The present size of mthd.d_ is 14
+	if (len > j) {  //if (len > 6) {
+		result->mthd.d_.resize(8+len);  // NB:  invalidates dest, dest_beg
+		// dest = result->mthd.d_.begin()+14; // Always true initially
+		//dest_beg = dest;
+		auto len = len - 6;
 		j=0;
 		while ((it!=end) && (j<len)) {
 			++j;
@@ -299,7 +327,7 @@ InIt make_mthd(InIt it, InIt end, maybe_mthd_t *result, mthd_error_t *err) {
 			set_error(mthd_error_t::errc::overflow_in_data_section);
 			return it;
 		}
-	}
+	}*/
 	
 	result->error = mthd_error_t::errc::no_error;
 	result->nbytes_read = i;
@@ -307,11 +335,12 @@ InIt make_mthd(InIt it, InIt end, maybe_mthd_t *result, mthd_error_t *err) {
 };
 
 template <typename InIt>
-maybe_mthd_t make_mthd(InIt it, InIt end, mthd_error_t *err) {
+maybe_mthd_t make_mthd(InIt it, InIt end, mthd_error_t *err, 
+						std::int32_t max_stream_bytes) {
 	// <Header Chunk> = <chunk type> <length> <format> <ntrks> <division> 
 	//                   MThd uint32_t uint16_t uint16_t uint16_t
 	maybe_mthd_t result;
-	it = make_mthd(it,end,&result,err);
+	it = make_mthd(it,end,&result,err,max_stream_bytes);
 	return result;
 };
 

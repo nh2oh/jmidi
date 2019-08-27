@@ -1,20 +1,44 @@
 #include "midi_time.h"
-#include <cfenv>
+#include "smf_t.h"
+#include "util.h"
+//#include <cfenv>
 #include <vector>
 #include <string>
 #include <cmath>
+#include <iostream>
+#include <filesystem>
 
-int err_duration();
-
-
-
+//int err_duration();
 
 int main(int argc, char *argv[]) {
+	std::filesystem::path pth = "C:\\Users\\ben\\Desktop\\midi_archive\\make_smf_corp\\";
+
+	std::vector<std::filesystem::path> files;
+	std::filesystem::recursive_directory_iterator rdi(pth);
+	for (auto& di : rdi) {
+		if (std::filesystem::is_directory(di)) {
+			continue;
+		}
+		files.push_back(di.path());
+	}
+
+	for (int i=0; i<files.size(); ++i) {
+		std::string fname = files[i].filename().string();
+		auto smf = jmid::read_smf(files[i],nullptr,
+			std::filesystem::file_size(files[i]));
+		if (smf) {
+			fname = "valid_" + fname + ".midi";
+		} else {
+			fname = "invalid_" + fname + ".midi";
+		}
+		std::filesystem::rename(files[i],files[i].parent_path()/fname);
+		//di.replace_filename(std::filesystem::path(fname));
+	}
 
 	return 0;
 }
 
-
+/*
 int err_duration() {
 	std::vector<jmid::time_division_t> tdivs {
 		// Small values
@@ -56,7 +80,7 @@ int err_duration() {
 			}
 		}
 	}
-
+	*/
 	/*int n_a=0; int n_b=0; int n_c=0; int n_ans=0; int n_d=0;
 	for (const auto& tdiv : tdivs) {
 		for (int ntks = 1; ntks<100000; ++ntks) {
@@ -94,8 +118,8 @@ int err_duration() {
 			}
 		}
 	}*/
-
+/*
 	return 0;
 }
-
+*/
 

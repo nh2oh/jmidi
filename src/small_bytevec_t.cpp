@@ -347,6 +347,25 @@ unsigned char *jmid::internal::small_bytevec_t::resize_small2small_nocopy(std::i
 	this->u_.s_.resize(new_sz);
 	return this->u_.s_.begin();
 }
+unsigned char *jmid::internal::small_bytevec_t::resize_preserve_cap(std::int32_t new_sz) {
+	new_sz = std::clamp(new_sz,0,jmid::internal::small_bytevec_t::size_max);
+	if (this->is_big()) {
+		this->u_.b_.resize(new_sz);
+		return this->u_.b_.begin();
+	} else {  // present object is small
+		if (new_sz <= small_t::size_max) {  // Keep small
+			this->u_.s_.resize(new_sz);
+			return this->u_.s_.begin();
+		} else {  // new_sz > small_t::size_max; Resize small->big
+			auto new_cap = new_sz;
+			unsigned char *pdest = new unsigned char[static_cast<uint32_t>(new_cap)];
+			std::copy(this->u_.s_.begin(),this->u_.s_.end(),pdest);
+			this->init_big();
+			this->u_.b_.adopt(this->u_.b_.pad_,pdest,new_sz,new_cap);
+			return this->u_.b_.begin();
+		}
+	}
+}
 std::int32_t jmid::internal::small_bytevec_t::reserve(std::int32_t new_cap) {
 	new_cap = std::clamp(new_cap,this->capacity(),jmid::internal::small_bytevec_t::size_max);
 	if (this->is_big()) {

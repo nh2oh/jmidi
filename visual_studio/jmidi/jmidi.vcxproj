@@ -49,6 +49,9 @@
     <ClInclude Include="..\..\include\smf_t.h" />
     <ClInclude Include="..\..\include\util.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="ClassDiagram.cd" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <ProjectGuid>{2d5f43cc-a421-4482-855d-496461e189c8}</ProjectGuid>

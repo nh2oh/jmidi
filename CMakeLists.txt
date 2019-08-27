@@ -14,9 +14,9 @@ message("CMAKE_PROJECT_NAME == ${CMAKE_PROJECT_NAME}")
 
 add_library(
 	jmidi
-	src/aux_types.cpp  src/generic_chunk_low_level.cpp  src/generic_iterator.cpp  src/midi_delta_time.cpp  src/midi_examples.cpp  src/midi_raw_test_parts.cpp  src/midi_status_byte.cpp  src/midi_time.cpp  src/midi_vlq.cpp  src/mthd_t.cpp  src/mtrk_event_methods.cpp  src/mtrk_event_t.cpp  src/mtrk_event_t_internal.cpp  src/mtrk_integrators.cpp  src/mtrk_t.cpp  src/print_hexascii.cpp  src/smf_t.cpp  src/util.cpp
+	src/aux_types.cpp  src/generic_chunk_low_level.cpp  src/generic_iterator.cpp  src/midi_delta_time.cpp  src/midi_raw_test_parts.cpp  src/midi_status_byte.cpp  src/midi_time.cpp  src/midi_vlq.cpp  src/mthd_t.cpp  src/mtrk_event_methods.cpp  src/mtrk_event_t.cpp  src/small_bytevec_t.cpp  src/mtrk_integrators.cpp  src/mtrk_t.cpp  src/print_hexascii.cpp  src/smf_t.cpp  src/util.cpp
 
-	include/aux_types.h  include/generic_chunk_low_level.h  include/generic_iterator.h  include/midi_data.h  include/midi_delta_time.h  include/midi_examples.h  include/midi_raw_test_parts.h  include/midi_status_byte.h  include/midi_time.h  include/midi_vlq.h  include/mthd_t.h  include/mtrk_event_methods.h  include/mtrk_event_t.h  include/mtrk_event_t_internal.h  include/mtrk_integrators.h  include/mtrk_t.h  include/print_hexascii.h  include/smf_t.h  include/util.h
+	include/aux_types.h  include/generic_chunk_low_level.h  include/generic_iterator.h  include/midi_data.h  include/midi_delta_time.h  include/midi_raw_test_parts.h  include/midi_status_byte.h  include/midi_time.h  include/midi_vlq.h  include/mthd_t.h  include/mtrk_event_methods.h  include/mtrk_event_t.h  include/small_bytevec_t.h  include/mtrk_integrators.h  include/mtrk_t.h  include/print_hexascii.h  include/smf_t.h  include/util.h
 )
 target_include_directories(jmidi PUBLIC include)
 target_compile_features(jmidi PUBLIC cxx_std_17)
@@ -32,7 +32,7 @@ add_executable(tests
 	tests/midi_vlq_tests.cpp  tests/mthd_test_data.cpp  tests/mthd_test_data.h  
 	tests/mthd_t_test.cpp  tests/mtrk_duration_tests.cpp  
 	tests/mtrk_event_class_method_tests.cpp  tests/mtrk_event_ctor_tests.cpp  
-	tests/mtrk_event_internal.cpp  tests/mtrk_event_interrogation_ch_events.cpp  
+	tests/small_bytevec_tests.cpp  tests/mtrk_event_interrogation_ch_events.cpp  
 	tests/mtrk_event_sysex_factory_funcs.cpp  
 	tests/mtrk_event_t_meta_factory_funcs_tests.cpp  tests/mtrk_event_t_tests.cpp 
 	tests/mtrk_special_member_function_tests.cpp  tests/mtrk_test_data.cpp  

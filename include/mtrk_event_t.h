@@ -169,14 +169,14 @@ private:
 
 	// delta-time, type (0x{FF,F0,F7}), meta-type, length, payload beg, payload end, 
 	// add_f7_cap.  length must be consistent w/ end-beg && add_f7_cap.  
-	friend mtrk_event_t make_meta_sysex_generic_unsafe(int32_t, unsigned char, 
+	friend mtrk_event_t make_meta_sysex_generic_unsafe(std::int32_t, unsigned char, 
 		unsigned char, std::int32_t, const unsigned char *, 
 		const unsigned char *, bool);
 
 	template <typename InIt>
 	friend InIt make_mtrk_event(InIt, InIt, std::int32_t, 
 							unsigned char, maybe_mtrk_event_t*, 
-							mtrk_event_error_t*);
+							mtrk_event_error_t*,std::int32_t);
 
 	friend mtrk_event_debug_helper_t debug_info(const mtrk_event_t&);
 };
@@ -281,7 +281,8 @@ validate_sysex_event(const unsigned char*, const unsigned char*);
 //
 template <typename InIt>
 InIt make_mtrk_event(InIt it, InIt end, unsigned char rs, 
-			maybe_mtrk_event_t *result, mtrk_event_error_t *err) {
+			maybe_mtrk_event_t *result, mtrk_event_error_t *err,
+			std::int32_t max_stream_bytes) {
 
 	int i = 0;  // Counts the number of times 'it' has been incremented
 	unsigned char uc = 0;  // The last byte extracted from 'it'
@@ -290,6 +291,7 @@ InIt make_mtrk_event(InIt it, InIt end, unsigned char rs,
 		result->error = ec;
 		result->nbytes_read = i;
 		if (err) {
+			err->s = 0;
 			err->rs = rs;
 			err->code = ec;
 		}
@@ -298,10 +300,10 @@ InIt make_mtrk_event(InIt it, InIt end, unsigned char rs,
 	// On return, 'it' points one past the final byte of the field, and uc
 	// is the final byte of the field.  This holds even for invalid fields
 	// where the msb of the 4'th byte  == 1.  
-	auto inl_read_vlq = [&it, &end, &i, &uc]()->std::int32_t {
+	auto inl_read_vlq = [&it, &end, &i, &uc, &max_stream_bytes]()->std::int32_t {
 		std::uint32_t uval = 0;
 		int j = 0;
-		while (it!=end) {
+		while ((it!=end) && (i<max_stream_bytes)) {
 			uc = static_cast<unsigned char>(*it++);  ++i;  ++j;
 			uval += uc&0x7Fu;
 			if ((uc&0x80u) && (j<4)) {
@@ -324,7 +326,7 @@ InIt make_mtrk_event(InIt it, InIt end, unsigned char rs,
 	// result->nbytes_read,event,size, etc is untouched; if the caller 
 	// passed in a ptr to an uninitialized result, these values are 
 	// garbage; this is ok!
-	it = make_mtrk_event(it, end, dt, rs, result, err);
+	it = make_mtrk_event(it, end, dt, rs, result, err, max_stream_bytes-i);
 	result->nbytes_read += i;
 	return it;
 };
@@ -341,7 +343,7 @@ InIt make_mtrk_event(InIt it, InIt end, unsigned char rs,
 template <typename InIt>
 InIt make_mtrk_event(InIt it, InIt end, std::int32_t dt, 
 						unsigned char rs, maybe_mtrk_event_t *result, 
-						mtrk_event_error_t *err) {
+						mtrk_event_error_t *err, std::int32_t max_stream_bytes) {
 	// Initialize 'result'
 	// The largest possible event "header" is 10 bytes, corresponding to
 	// a meta event w/a 4-byte delta time and a 4 byte vlq length field:
@@ -357,11 +359,13 @@ InIt make_mtrk_event(InIt it, InIt end, std::int32_t dt,
 	result->error = mtrk_event_error_t::errc::other;
 	std::ptrdiff_t i = 0;  // Counts the number of times 'it' has been incremented
 	unsigned char uc = 0;  // The last byte extracted from 'it'
+	unsigned char s = 0; 
 
-	auto set_error = [&err,&result,&rs,&i](mtrk_event_error_t::errc ec) -> void {
+	auto set_error = [&err,&result,&rs,&s,&i](mtrk_event_error_t::errc ec) -> void {
 		result->error = ec;
 		result->nbytes_read = i;
 		if (err) {
+			err->s = s;
 			err->rs = rs;
 			err->code = ec;
 		}
@@ -370,10 +374,10 @@ InIt make_mtrk_event(InIt it, InIt end, std::int32_t dt,
 	// On return, 'it' points one past the final byte of the field, and uc
 	// is the final byte of the field.  This holds even for invalid fields
 	// where the msb of the 4'th byte  == 1.  
-	auto inl_read_vlq = [&it, &end, &i, &uc]()->std::int32_t {
+	auto inl_read_vlq = [&it, &end, &i, &uc, &max_stream_bytes]()->std::int32_t {
 		std::uint32_t uval = 0;
 		int j = 0;
-		while (it!=end) {
+		while ((it!=end) && (i<max_stream_bytes)) {
 			uc = static_cast<unsigned char>(*it++);  ++i;  ++j;
 			uval += uc&0x7Fu;
 			if ((uc&0x80u) && (j<4)) {
@@ -393,12 +397,12 @@ InIt make_mtrk_event(InIt it, InIt end, std::int32_t dt,
 	dest = jmid::write_delta_time(dt,dest);
 
 	// The status byte
-	if (it==end) {
+	if ((it==end) || (i>=max_stream_bytes)) {
 		set_error(mtrk_event_error_t::errc::no_data_following_delta_time);
 		return it;
 	}
 	uc = static_cast<unsigned char>(*it++);  ++i;
-	auto s = jmid::get_status_byte(uc,rs);
+	s = jmid::get_status_byte(uc,rs);
 	*dest++ = s;
 
 	if (jmid::is_channel_status_byte(s)) {
@@ -408,7 +412,7 @@ InIt make_mtrk_event(InIt it, InIt end, std::int32_t dt,
 			n-=1;
 		}
 		for (int j=0; j<n; ++j) {
-			if (it==end) {
+			if ((it==end) || (i>=max_stream_bytes)) {
 				set_error(mtrk_event_error_t::errc::channel_calcd_length_exceeds_input);
 				return it;
 			}
@@ -423,14 +427,14 @@ InIt make_mtrk_event(InIt it, InIt end, std::int32_t dt,
 	} else if (jmid::is_sysex_or_meta_status_byte(s)) {
 		// s == 0xFF || 0xF7 || 0xF0
 		if (jmid::is_meta_status_byte(s)) {
-			if (it==end) {
+			if (it==end || (i>=max_stream_bytes)) {
 				set_error(mtrk_event_error_t::errc::sysex_or_meta_overflow_in_header);
 				return it;
 			}
 			uc = static_cast<unsigned char>(*it++);  ++i;  // The Meta-type byte
 			*dest++ = uc;
 		}
-		if (it==end) {
+		if ((it==end) || (i>=max_stream_bytes)) {
 			set_error(mtrk_event_error_t::errc::sysex_or_meta_overflow_in_header);
 			return it;
 		}
@@ -441,11 +445,12 @@ InIt make_mtrk_event(InIt it, InIt end, std::int32_t dt,
 		}
 		dest = jmid::write_vlq(static_cast<uint32_t>(len),dest);
 		auto n_written = (dest-result->event.d_.begin());
-		result->event.d_.resize(n_written+len);  // Resize may invalidate dest
+		//result->event.d_.resize(n_written+len);  // Resize may invalidate dest
+		std::int32_t expect_size = n_written+len;
+		result->event.d_.resize(std::min(expect_size,static_cast<std::int32_t>(max_stream_bytes+jmid::delta_time_field_size(dt))));
 		dest = result->event.d_.begin()+n_written;
-
 		for (int j=0; j<len; ++j) {
-			if (it==end) {
+			if ((it==end) || (i>=max_stream_bytes)) {
 				set_error(mtrk_event_error_t::errc::sysex_or_meta_calcd_length_exceeds_input);
 				return it;
 			}
@@ -468,10 +473,10 @@ InIt make_mtrk_event(InIt it, InIt end, std::int32_t dt,
 // it points at the first byte of a dt field.  
 //
 template <typename InIt>
-maybe_mtrk_event_t make_mtrk_event(InIt it, InIt end, 
-							unsigned char rs, mtrk_event_error_t *err) {
+maybe_mtrk_event_t make_mtrk_event(InIt it, InIt end, unsigned char rs, 
+					mtrk_event_error_t *err, std::int32_t max_stream_bytes) {
 	maybe_mtrk_event_t result;
-	it = make_mtrk_event(it,end,rs,&result,err);
+	it = make_mtrk_event(it,end,rs,&result,err,max_stream_bytes);
 	return result;
 };
 // 
@@ -479,9 +484,10 @@ maybe_mtrk_event_t make_mtrk_event(InIt it, InIt end,
 //
 template <typename InIt>
 maybe_mtrk_event_t make_mtrk_event(InIt it, InIt end, std::int32_t dt, 
-							unsigned char rs, mtrk_event_error_t *err) {
+							unsigned char rs, mtrk_event_error_t *err,
+							std::int32_t max_stream_bytes) {
 	maybe_mtrk_event_t result;
-	it = make_mtrk_event(it,end,dt,rs,&result,err);
+	it = make_mtrk_event(it,end,dt,rs,&result,err,max_stream_bytes);
 	return result;
 };
 

@@ -168,17 +168,18 @@ struct maybe_smf_t {
 // std::vector<char>, in one shot w/a call to std::ifstream::read().  
 // Delegates to make_smf() w/ the vector iterators.
 //
-maybe_smf_t read_smf(const std::filesystem::path&, smf_error_t*);
+maybe_smf_t read_smf(const std::filesystem::path&, smf_error_t*, std::int32_t);
 maybe_smf_t read_smf_bulkfileread(const std::filesystem::path&, 
-						smf_error_t*, std::vector<char>*);
+						smf_error_t*, std::vector<char>*, std::int32_t);
 // std::string print(smf_error_t::errc ec);
 // if ec == smf_error_t::errc::no_error, returns an empty string
 std::string print(smf_error_t::errc);
 std::string explain(const smf_error_t&);
 
 template<typename InIt>
-InIt make_smf(InIt it, InIt end, maybe_smf_t *result, smf_error_t *err) {
-	jmid::mtrk_error_t curr_mtrk_error;
+InIt make_smf(InIt it, InIt end, maybe_smf_t *result, smf_error_t *err,
+			const std::int32_t max_stream_bytes) {
+	jmid::mtrk_error_t curr_mtrk_error;  // ... ???
 	jmid::mthd_error_t* p_mthd_error = nullptr;
 	if (err) {
 		p_mthd_error = &(err->mthd_err_obj);
@@ -199,8 +200,10 @@ InIt make_smf(InIt it, InIt end, maybe_smf_t *result, smf_error_t *err) {
 		}
 	};
 
+	// TODO:  Totally defeats the point of having the caller 
+	// prereserve & pass in a ptr
 	jmid::maybe_mthd_t maybe_mthd;
-	it = jmid::make_mthd(it,end,&maybe_mthd,p_mthd_error);
+	it = jmid::make_mthd(it,end,&maybe_mthd,p_mthd_error,max_stream_bytes);
 	i += maybe_mthd.nbytes_read;
 	if (!maybe_mthd) {
 		set_error(smf_error_t::errc::mthd_error,0,0,0);
@@ -215,9 +218,11 @@ InIt make_smf(InIt it, InIt end, maybe_smf_t *result, smf_error_t *err) {
 
 	int n_mtrks_read = 0;
 	int n_uchks_read = 0;
-	jmid::maybe_mtrk_t curr_mtrk;  
-	while ((it!=end) && (n_mtrks_read<expect_ntrks)) {
-		it = jmid::make_mtrk(it,end,&curr_mtrk,&curr_mtrk_error);
+	// TODO:  Totally defeats the point of having the caller 
+	// prereserve & pass in a ptr
+	jmid::maybe_mtrk_t curr_mtrk;
+	while ((it!=end) && (n_mtrks_read<expect_ntrks) && (i<max_stream_bytes)) {
+		it = jmid::make_mtrk(it,end,&curr_mtrk,&curr_mtrk_error,max_stream_bytes-i);
 		i += curr_mtrk.nbytes_read;
 
 		// If it was pointing at the first byte of a UChk header...
@@ -230,7 +235,7 @@ InIt make_smf(InIt it, InIt end, maybe_smf_t *result, smf_error_t *err) {
 				std::copy(ph,ph+hsz,bi_uchk);
 				auto uchk_sz = jmid::read_be<uint32_t>(ph+4,ph+hsz);
 				std::uint32_t j=0;
-				for (j=0; (it!=end && j<uchk_sz); ++j) {
+				for (j=0; ((it!=end) && (j<uchk_sz) && (i<max_stream_bytes)); ++j) {
 					*bi_uchk++ = static_cast<unsigned char>(*it++);  ++i;
 				}
 				if (j!=uchk_sz) {
@@ -262,6 +267,11 @@ InIt make_smf(InIt it, InIt end, maybe_smf_t *result, smf_error_t *err) {
 	}
 
 	if (n_mtrks_read != expect_ntrks) {
+		if (i >= max_stream_bytes) {
+			set_error(smf_error_t::errc::other,  // TODO:  Wrong error code
+				expect_ntrks,n_mtrks_read,n_uchks_read);
+			return it;
+		}
 		set_error(smf_error_t::errc::unexpected_num_mtrks,
 				expect_ntrks,n_mtrks_read,n_uchks_read);
 		return it;
