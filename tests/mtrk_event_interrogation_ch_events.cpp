@@ -12,7 +12,10 @@ TEST(mtrk_event_channel_interrogators, isChannelVoiceModeTestSetCEvents) {
 	for (auto& tc : set_c_midi_events_valid) {
 		auto maybe_ev = jmid::make_mtrk_event(tc.data.data(),
 			tc.data.data()+tc.data.size(),tc.midisb_prev_event,nullptr,
-			tc.data.size());
+			tc.data.size()+1);
+		// Note I am setting the max allowable event size to 
+		// tc.data.size()+1.  The final events differ from the raw data
+		// only by the presence of an event-local status byte.  
 		EXPECT_TRUE(maybe_ev);
 		auto ev = maybe_ev.event;
 		

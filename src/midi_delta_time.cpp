@@ -2,6 +2,21 @@
 #include <cstdint>
 #include <algorithm>
 
+/*
+TODO:  In progress...
+bool jmid::in_dt_field::operator()(const unsigned char& byte) {
+	this->n += 1;
+	this->last = byte;
+	this->uval += byte&0x7Fu;
+	if ((byte&0x80u) && (this->n<4)) {
+		this->uval <<= 7;  // Note:  Not shifting on the final iteration
+	} else {  // High bit not set => this is the final byte
+		break;
+	}
+
+	return (this->n<=4);
+}
+*/
 
 bool jmid::is_valid_delta_time(std::int32_t dt) {
 	return !((dt>0x0FFFFFFF) || (dt<0));

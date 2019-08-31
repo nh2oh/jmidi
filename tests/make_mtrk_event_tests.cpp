@@ -223,6 +223,7 @@ TEST(make_mtrk_event_tests, randomChEvntsSmallRandomRS) {
 		bool input_is_in_rs = tc.data_length < data_size_with_status_byte;
 		auto size_with_status_byte = tc.dt_field_size 
 			+ data_size_with_status_byte;
+		// NB:  size_with_status_byte is the expected final event.size()
 		auto data_no_rs = tc.data;
 		if (input_is_in_rs) {
 			data_no_rs.insert(data_no_rs.begin()+tc.dt_field_size,
@@ -231,7 +232,9 @@ TEST(make_mtrk_event_tests, randomChEvntsSmallRandomRS) {
 
 		auto maybe_ev = jmid::make_mtrk_event(tc.data.data(),
 			tc.data.data()+tc.data.size(),tc.midisb_prev_event,nullptr,
-			tc.data.size());
+			size_with_status_byte);
+		// NB:  I could set the max event size to something 
+		// > size_with_status_byte, but not smaller.  
 		EXPECT_TRUE(maybe_ev);
 		EXPECT_EQ(maybe_ev.event.delta_time(),tc.dt_value);
 
@@ -244,7 +247,9 @@ TEST(make_mtrk_event_tests, randomChEvntsSmallRandomRS) {
 		auto dt_end = tc.data.data() + tc.dt_field_size;
 		maybe_ev = jmid::make_mtrk_event(dt_end,
 			tc.data.data()+tc.data.size(),tc.dt_value,tc.midisb_prev_event,
-			nullptr, tc.data.size());
+			nullptr, size_with_status_byte);
+		// NB:  I could set the max event size to something 
+		// > size_with_status_byte, but not smaller.  
 		EXPECT_TRUE(maybe_ev);
 		EXPECT_EQ(maybe_ev.event.delta_time(),tc.dt_value);
 
@@ -302,7 +307,7 @@ TEST(make_mtrk_event_tests, metaEventsSmallNoRS) {
 	
 	for (const auto& tc : tests) {
 		auto maybe_ev = jmid::make_mtrk_event(tc.bytes.data(),
-			tc.bytes.data()+tc.bytes.size(),0,nullptr,tc.bytes.size());
+			tc.bytes.data()+tc.bytes.size(),0,nullptr,tc.bytes.size()+100);
 		EXPECT_TRUE(maybe_ev);
 		EXPECT_EQ(maybe_ev.event.delta_time(),tc.delta_time);
 
@@ -315,7 +320,7 @@ TEST(make_mtrk_event_tests, metaEventsSmallNoRS) {
 		auto dt_end = tc.bytes.data() + (tc.size-tc.data_size);
 		maybe_ev = jmid::make_mtrk_event(dt_end,
 			tc.bytes.data()+tc.bytes.size(),tc.delta_time,0,
-			nullptr,tc.bytes.size());
+			nullptr,tc.bytes.size()+100);
 		EXPECT_TRUE(maybe_ev);
 		EXPECT_EQ(maybe_ev.event.delta_time(),tc.delta_time);
 
@@ -450,7 +455,7 @@ TEST(make_mtrk_event_tests, assortedChEvntsSmallRandomRSTestSetC) {
 
 		auto maybe_ev = jmid::make_mtrk_event(tc.data.data(),
 			tc.data.data()+tc.data.size(),tc.midisb_prev_event,
-			nullptr,tc.data.size());
+			nullptr,size_with_status_byte);
 		EXPECT_TRUE(maybe_ev);
 		EXPECT_EQ(maybe_ev.event.delta_time(),tc.dt_value);
 
@@ -463,7 +468,7 @@ TEST(make_mtrk_event_tests, assortedChEvntsSmallRandomRSTestSetC) {
 		auto dt_end = tc.data.data() + tc.dt_field_size;
 		maybe_ev = jmid::make_mtrk_event(dt_end,
 			tc.data.data()+tc.data.size(),tc.dt_value,tc.midisb_prev_event,
-			nullptr,tc.data.size());
+			nullptr,size_with_status_byte);
 		EXPECT_TRUE(maybe_ev);
 		EXPECT_EQ(maybe_ev.event.delta_time(),tc.dt_value);
 
@@ -505,7 +510,7 @@ TEST(make_mtrk_event_tests, RandomEventsAllRSBytesValid) {
 	for (const auto& tc : set_a_valid_rs) {
 		jmid::mtrk_event_error_t err;
 		auto maybe_ev = jmid::make_mtrk_event(tc.data.data(),
-			tc.data.data()+tc.data.size(),tc.rs_pre,&err,tc.data.size());
+			tc.data.data()+tc.data.size(),tc.rs_pre,&err,tc.data.size()+100);
 		EXPECT_TRUE(maybe_ev);
 		EXPECT_EQ(maybe_ev.event.running_status(),tc.rs_post);
 		
@@ -524,7 +529,7 @@ TEST(make_mtrk_event_tests, RandomMtrkEventsAllRSBytesInvalid) {
 	for (const auto& tc : set_b_invalid_rs) {
 		jmid::mtrk_event_error_t err;
 		auto maybe_ev = jmid::make_mtrk_event(tc.data.data(),
-			tc.data.data()+tc.data.size(),tc.rs_pre,&err,tc.data.size());
+			tc.data.data()+tc.data.size(),tc.rs_pre,&err,tc.data.size()+100);
 
 		// In this set, events w/o an event-local status byte are
 		// uninterpretible, since all rs bytes are invalid.  
@@ -559,7 +564,7 @@ TEST(make_mtrk_event_tests, RandomMIDIEventsRSandNonRS) {
 		jmid::mtrk_event_error_t err;
 		auto maybe_ev = jmid::make_mtrk_event(tc.data.data(),
 			tc.data.data()+tc.data.size(),tc.midisb_prev_event,&err,
-			tc.data.size());
+			tc.data.size()+100);
 		EXPECT_TRUE(maybe_ev);
 		EXPECT_EQ(maybe_ev.event.running_status(),tc.applic_midi_status);
 	}

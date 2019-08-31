@@ -15,67 +15,21 @@
 int main(int argc, char *argv[]) {
 	auto opts = get_options(argc,argv);
 	std::cout << "Running the event_sizes_benchmark benchmark with:\n"
+		<< "\tpath == " << opts.path << "\n"
 		<< "\tNth == " << opts.Nth << " threads.\n"
 		<< "\tmode == " << opts.mode << " \n"
 		<< std::endl;
 
-	std::filesystem::path basedir 
-		//= "C:\\Users\\ben\\Desktop\\midi_archive\\midi_archive\\0_to_I\\cl_to_I\\";
-		= "C:\\Users\\ben\\Desktop\\midi_archive\\desktop\\midi_random_collection\\";
-		//= "C:\\Users\\ben\\Desktop\\midi_archive\\make_smf_corp\\";
-	event_sizes_benchmark(opts.mode,opts.Nth,basedir);
+	event_sizes_benchmark(opts.mode,opts.Nth,opts.path);
 
 	return 0;
 }
 
 
-opts_t get_options(int argc, char **argv) {
-	struct opts_type {
-		std::regex rx;
-		int val;
-		int def_val;
-	};
-	std::array<opts_type,2> opts {{
-		// The number of threads
-		{std::regex("-Nth=(\\d+)"),-1,4},
-		// The file-read mode:  0=>batch, 1=>istreambuf_iterator0
-		{std::regex("-mode=(\\d+)"),-1,0}
-	}};
-
-	for (int i=0; i<argc; ++i) {
-		for (int j=0; j<opts.size(); ++j) {
-			std::cmatch curr_match;
-			std::regex_match(argv[i],curr_match,opts[j].rx);
-			if (curr_match.empty()) { continue; }
-			opts[j].val = std::stoi(curr_match[1].str());
-			// Each argv[i] should match only one of the options in opts:
-			break;
-		}
-	}
-
-	opts_t result;
-	result.Nth = opts[0].val;
-	if (opts[0].val <= 0) {
-		result.Nth = opts[0].def_val;
-	}
-	result.mode = opts[1].val;
-	if ((opts[1].val != 0) && (opts[1].val != 1) && (opts[1].val != 2)) {
-		result.mode = opts[1].def_val;
-	}
-	return result;
-}
-
 
 int event_sizes_benchmark(int mode, int Nth,
 							const std::filesystem::path& basedir) {
-	if ((mode != 0) && (mode != 1) && (mode != 2)) {
-		mode = 0;  // 0 => batch, 1=>istreambuf_iterator
-	}
-	if (Nth <= 0) {
-		Nth = 1;
-	}
-
-	auto rdi = std::filesystem::recursive_directory_iterator(basedir);//.parent_path());
+	auto rdi = std::filesystem::recursive_directory_iterator(basedir);
 	std::vector<std::vector<std::filesystem::path>> thread_files(Nth);
 	int i=0;
 	for (const auto& dir_ent : rdi) {
@@ -136,7 +90,7 @@ int avg_and_max_event_sizes(const std::vector<std::filesystem::path>& files,
 			f.read(fdata.data(),fsize);
 			//auto n = std::min(fdata.size(),std::size_t{25});
 			jmid::make_smf(fdata.data(),fdata.data()+fdata.size(),
-				&maybe_smf,&smf_error,fdata.size());
+				&maybe_smf,&smf_error,fdata.size()+500);
 			f.close();
 		} else if (mode == 1) {  // iostreams
 			std::basic_ifstream<char> f(curr_path,
@@ -148,7 +102,7 @@ int avg_and_max_event_sizes(const std::vector<std::filesystem::path>& files,
 			std::istreambuf_iterator<char> it(f);
 			auto end = std::istreambuf_iterator<char>();
 			jmid::make_smf(it,end,&maybe_smf,&smf_error,
-				std::filesystem::file_size(curr_path));
+				std::filesystem::file_size(curr_path)+500);
 			f.close();
 		} else if (mode == 2) {  // csio
 			auto nbytes = std::filesystem::file_size(curr_path);
@@ -157,7 +111,7 @@ int avg_and_max_event_sizes(const std::vector<std::filesystem::path>& files,
 			fdata.resize(nbytes);
 			++n_midi_files;
 			jmid::make_smf(fdata.data(),fdata.data()+fdata.size(),
-				&maybe_smf,&smf_error,nbytes);
+				&maybe_smf,&smf_error,nbytes+500);
 		}
 		
 
@@ -211,4 +165,57 @@ int avg_and_max_event_sizes(const std::vector<std::filesystem::path>& files,
 	outfile.close();
 	return 0;
 }
+
+
+opts_t get_options(int argc, char **argv) {
+	opts_t result;
+	bool found_nth = false;
+	bool found_path = false;
+	bool found_mode = false;
+	for (int i=0; i<argc; ++i) {
+		std::cmatch curr_match;
+		if (!found_nth) {
+			std::regex rx("-Nth=(\\d+)");
+			std::regex_match(argv[i],curr_match,rx);
+			if (!curr_match.empty()) {
+				result.Nth = std::stoi(curr_match[1].str());
+				found_nth = true;
+				continue;
+			}
+		}
+		if (!found_mode) {
+			std::regex rx("-mode=(\\d+)");
+			std::regex_match(argv[i],curr_match,rx);
+			if (!curr_match.empty()) {
+				result.mode = std::stoi(curr_match[1].str());
+				found_mode = true;
+				continue;
+			}
+		}
+		if (!found_path) {
+			std::regex rx("-path=(.+)");
+			std::regex_match(argv[i],curr_match,rx);
+			if (!curr_match.empty()) {
+				result.path = curr_match[1].str();
+				found_path = true;
+				continue;
+			}
+		}
+	}
+
+	if (!found_nth) { result.Nth = 1; }
+	if (!found_mode) { result.mode = 0; }
+	if (!found_path) { result.path = "."; }
+
+	if ((result.mode != 0) && (result.mode != 1) 
+		&& (result.mode != 2)) {
+		result.mode = 0;  // 0 => batch, 1=>istreambuf_iterator
+	}
+	if (result.Nth <= 0) {
+		result.Nth = 1;
+	}
+
+	return result;
+}
+
 

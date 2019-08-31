@@ -6,6 +6,7 @@
 struct opts_t {
 	int Nth;
 	int mode;
+	std::filesystem::path path;
 };
 opts_t get_options(int, char**);
 

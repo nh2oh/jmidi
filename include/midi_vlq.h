@@ -44,6 +44,24 @@ vlq_field_interpreted read_vlq(InIt beg, InIt end) {
 	result.is_valid = !(uc & 0x80u);
 	return result;
 };
+template<typename InIt>
+InIt read_vlq(InIt beg, InIt end, vlq_field_interpreted& result) {
+	std::uint32_t uval = 0;
+	unsigned char uc = 0;
+	while (beg!=end) {
+		uc = *beg++;
+		uval += uc&0x7Fu;
+		++(result.N);
+		if ((uc&0x80u) && (result.N<4)) {
+			uval <<= 7;  // Note:  Not shifting on the final iteration
+		} else {
+			break;
+		}
+	}
+	result.val = static_cast<std::int32_t>(uval);
+	result.is_valid = !(uc & 0x80u);
+	return beg;
+};
 //
 // Advance the iterator to the end of the vlq; do not parse the field
 //

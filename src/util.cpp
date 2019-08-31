@@ -7,7 +7,8 @@
 
 
 // TODO:  Test cases w/ inputs containing 0x1A, input w/ spaces preceeding an \n
-
+// TODO:  Test cases w/ path's that do not convert to std::string<char> w/o 
+// throwing.  
 std::size_t jmid::read_binary_csio(std::filesystem::path pth, std::vector<char>& dest) {
 	auto fp = std::fopen(pth.string().c_str(), "rb");
 	if (!fp) {

@@ -178,6 +178,10 @@ private:
 							unsigned char, maybe_mtrk_event_t*, 
 							mtrk_event_error_t*,std::int32_t);
 
+	template <typename InIt>
+	friend InIt make_mtrk_event2(InIt, InIt, unsigned char, mtrk_event_t*, 
+							mtrk_event_error_t*);
+
 	friend mtrk_event_debug_helper_t debug_info(const mtrk_event_t&);
 };
 struct mtrk_event_debug_helper_t {
@@ -271,21 +275,32 @@ validate_sysex_event(const unsigned char*, const unsigned char*);
 //template <typename InIt>
 //InIt make_mtrk_event(InIt it, InIt end, int32_t dt, 
 //						unsigned char rs, maybe_mtrk_event_t *result, 
-//						mtrk_event_error_t *err);
+//						mtrk_event_error_t *err, std::int32_t max_event_nbytes);
 //template <typename InIt>
 //maybe_mtrk_event_t make_mtrk_event(InIt it, InIt end, int32_t dt, 
-//							unsigned char rs, mtrk_event_error_t *err);
+//							unsigned char rs, mtrk_event_error_t *err,
+//							std::int32_t max_event_nbytes);
 // 
 // 'it' points one past the final byte of the delta-time field of an
 // MTrk event.  *err may be null, *result may not be null.  
 //
+// max_event_nbytes is the maximum number of bytes that result.event is 
+// allowed to occupy.  This should usually be set to some large value, say
+// ~ the size of the file being read in, to allow for the possibility of
+// large sysex or meta text events.  If it is made too large, however, a 
+// corrupted vlq length field in a meta or sysex event could cause a massive
+// and unnecessary allocation for the event's payload.  
+//
+//
 template <typename InIt>
 InIt make_mtrk_event(InIt it, InIt end, unsigned char rs, 
 			maybe_mtrk_event_t *result, mtrk_event_error_t *err,
-			std::int32_t max_stream_bytes) {
+			std::int32_t max_event_nbytes) {
 
 	int i = 0;  // Counts the number of times 'it' has been incremented
 	unsigned char uc = 0;  // The last byte extracted from 'it'
+
+	// TODO:  Need to resize the event on error
 
 	auto set_error = [&err,&result,&rs,&i](mtrk_event_error_t::errc ec) -> void {
 		result->error = ec;
@@ -297,28 +312,10 @@ InIt make_mtrk_event(InIt it, InIt end, unsigned char rs,
 		}
 	};
 
-	// On return, 'it' points one past the final byte of the field, and uc
-	// is the final byte of the field.  This holds even for invalid fields
-	// where the msb of the 4'th byte  == 1.  
-	auto inl_read_vlq = [&it, &end, &i, &uc, &max_stream_bytes]()->std::int32_t {
-		std::uint32_t uval = 0;
-		int j = 0;
-		while ((it!=end) && (i<max_stream_bytes)) {
-			uc = static_cast<unsigned char>(*it++);  ++i;  ++j;
-			uval += uc&0x7Fu;
-			if ((uc&0x80u) && (j<4)) {
-				uval <<= 7;  // Note:  Not shifting on the final iteration
-			} else {  // High bit not set => this is the final byte
-				break;
-			}
-		}
-		return static_cast<std::int32_t>(uval);
-	};
-
-	// The delta-time field
-	// make_mtrk_event_evstart() checks jmid::is_valid_delta_time(dt)
-	auto dt = inl_read_vlq();
-	if (uc&0x80u) {
+	jmid::dt_field_interpreted dtf;
+	it = jmid::read_delta_time(it,end,dtf);
+	i += dtf.N;
+	if (!dtf.is_valid) {
 		set_error(mtrk_event_error_t::errc::invalid_delta_time);
 		return it;
 	}
@@ -326,7 +323,7 @@ InIt make_mtrk_event(InIt it, InIt end, unsigned char rs,
 	// result->nbytes_read,event,size, etc is untouched; if the caller 
 	// passed in a ptr to an uninitialized result, these values are 
 	// garbage; this is ok!
-	it = make_mtrk_event(it, end, dt, rs, result, err, max_stream_bytes-i);
+	it = make_mtrk_event(it, end, dtf.val, rs, result, err, max_event_nbytes);// max_stream_bytes-i);
 	result->nbytes_read += i;
 	return it;
 };
@@ -343,7 +340,7 @@ InIt make_mtrk_event(InIt it, InIt end, unsigned char rs,
 template <typename InIt>
 InIt make_mtrk_event(InIt it, InIt end, std::int32_t dt, 
 						unsigned char rs, maybe_mtrk_event_t *result, 
-						mtrk_event_error_t *err, std::int32_t max_stream_bytes) {
+						mtrk_event_error_t *err, std::int32_t max_event_nbytes) {
 	// Initialize 'result'
 	// The largest possible event "header" is 10 bytes, corresponding to
 	// a meta event w/a 4-byte delta time and a 4 byte vlq length field:
@@ -355,9 +352,9 @@ InIt make_mtrk_event(InIt it, InIt end, std::int32_t dt,
 		result->event.d_.resize(10);
 	//}
 	auto dest = result->event.d_.begin();
-	result->nbytes_read = 0;
+	//result->nbytes_read = 0;
 	result->error = mtrk_event_error_t::errc::other;
-	std::ptrdiff_t i = 0;  // Counts the number of times 'it' has been incremented
+	int i = 0;  // Counts the number of times 'it' has been incremented
 	unsigned char uc = 0;  // The last byte extracted from 'it'
 	unsigned char s = 0; 
 
@@ -371,48 +368,33 @@ InIt make_mtrk_event(InIt it, InIt end, std::int32_t dt,
 		}
 	};
 
-	// On return, 'it' points one past the final byte of the field, and uc
-	// is the final byte of the field.  This holds even for invalid fields
-	// where the msb of the 4'th byte  == 1.  
-	auto inl_read_vlq = [&it, &end, &i, &uc, &max_stream_bytes]()->std::int32_t {
-		std::uint32_t uval = 0;
-		int j = 0;
-		while ((it!=end) && (i<max_stream_bytes)) {
-			uc = static_cast<unsigned char>(*it++);  ++i;  ++j;
-			uval += uc&0x7Fu;
-			if ((uc&0x80u) && (j<4)) {
-				uval <<= 7;  // Note:  Not shifting on the final iteration
-			} else {  // High bit not set => this is the final byte
-				break;
-			}
-		}
-		return static_cast<std::int32_t>(uval);
-	};
-
 	// The delta-time field
 	if (!jmid::is_valid_delta_time(dt)) {
 		set_error(mtrk_event_error_t::errc::invalid_delta_time);
 		return it;
 	}
 	dest = jmid::write_delta_time(dt,dest);
+	max_event_nbytes -= jmid::delta_time_field_size(dt);
 
 	// The status byte
-	if ((it==end) || (i>=max_stream_bytes)) {
+	if ((it==end) || (max_event_nbytes<=0)) {
 		set_error(mtrk_event_error_t::errc::no_data_following_delta_time);
 		return it;
 	}
 	uc = static_cast<unsigned char>(*it++);  ++i;
 	s = jmid::get_status_byte(uc,rs);
 	*dest++ = s;
+	--max_event_nbytes;
 
 	if (jmid::is_channel_status_byte(s)) {
 		auto n = jmid::channel_status_byte_n_data_bytes(s);
 		if (jmid::is_data_byte(uc)) {
 			*dest++ = uc;
+			--max_event_nbytes;
 			n-=1;
 		}
 		for (int j=0; j<n; ++j) {
-			if ((it==end) || (i>=max_stream_bytes)) {
+			if ((it==end) || (max_event_nbytes<=0)) {
 				set_error(mtrk_event_error_t::errc::channel_calcd_length_exceeds_input);
 				return it;
 			}
@@ -422,40 +404,57 @@ InIt make_mtrk_event(InIt it, InIt end, std::int32_t dt,
 				return it;
 			}
 			*dest++ = uc;
+			--max_event_nbytes;
 		}
 		result->event.d_.resize(dest-result->event.d_.begin());
 	} else if (jmid::is_sysex_or_meta_status_byte(s)) {
 		// s == 0xFF || 0xF7 || 0xF0
 		if (jmid::is_meta_status_byte(s)) {
-			if (it==end || (i>=max_stream_bytes)) {
+			if (it==end || (max_event_nbytes<=0)) {
 				set_error(mtrk_event_error_t::errc::sysex_or_meta_overflow_in_header);
 				return it;
 			}
 			uc = static_cast<unsigned char>(*it++);  ++i;  // The Meta-type byte
 			*dest++ = uc;
+			--max_event_nbytes;
 		}
-		if ((it==end) || (i>=max_stream_bytes)) {
+		if ((it==end) || (max_event_nbytes<=0)) {
 			set_error(mtrk_event_error_t::errc::sysex_or_meta_overflow_in_header);
 			return it;
 		}
-		auto len = inl_read_vlq();
-		if (uc & 0x80u) {
+		jmid::vlq_field_interpreted lenf;
+		it = jmid::read_vlq(it,end,lenf);
+		i += lenf.N;
+		if ((!lenf.is_valid) || (max_event_nbytes<0)) {
+			// TODO:  The (max_event_nbytes<0) test is not needed
 			set_error(mtrk_event_error_t::errc::sysex_or_meta_invalid_vlq_length);
 			return it;
 		}
-		dest = jmid::write_vlq(static_cast<uint32_t>(len),dest);
+		/*auto len = inl_read_vlq();
+		if (uc & 0x80u) {
+			set_error(mtrk_event_error_t::errc::sysex_or_meta_invalid_vlq_length);
+			return it;
+		}*/
+		dest = jmid::write_vlq(static_cast<uint32_t>(lenf.val),dest);
+		max_event_nbytes -= lenf.N;
+		if (lenf.val > max_event_nbytes) {
+			set_error(mtrk_event_error_t::errc::sysex_or_meta_calcd_length_exceeds_input);
+			return it;
+		}
 		auto n_written = (dest-result->event.d_.begin());
-		//result->event.d_.resize(n_written+len);  // Resize may invalidate dest
-		std::int32_t expect_size = n_written+len;
-		result->event.d_.resize(std::min(expect_size,static_cast<std::int32_t>(max_stream_bytes+jmid::delta_time_field_size(dt))));
+		result->event.d_.resize(n_written+lenf.val);
+		//std::int32_t expect_size = n_written+lenf.val;
+		//result->event.d_.resize(std::min(expect_size,static_cast<std::int32_t>(max_stream_bytes+jmid::delta_time_field_size(dt))));
 		dest = result->event.d_.begin()+n_written;
-		for (int j=0; j<len; ++j) {
-			if ((it==end) || (i>=max_stream_bytes)) {
+		for (int j=0; j<lenf.val; ++j) {
+			if ((it==end) || (max_event_nbytes<=0)) {
+				// TODO:  I should resize result->event to (dest-result->event.d_.begin())
 				set_error(mtrk_event_error_t::errc::sysex_or_meta_calcd_length_exceeds_input);
 				return it;
 			}
 			uc = static_cast<unsigned char>(*it++);  ++i;
 			*dest++ = uc;
+			--max_event_nbytes;
 		}
 	} else if (jmid::is_unrecognized_status_byte(s) || !jmid::is_status_byte(s)) {
 		set_error(mtrk_event_error_t::errc::invalid_status_byte);

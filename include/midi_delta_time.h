@@ -4,7 +4,14 @@
 #include <type_traits>
 
 namespace jmid {
-
+/*
+TODO:  In progress...
+struct in_dt_field {
+	std::uint32_t uval {0};
+	std::uint8_t last {0};
+	std::int8_t n {0};
+	bool operator()(const unsigned char&);
+};*/
 
 // True if the input value falls within [0,0x0FFFFFFF] == [0,268,435,455]
 bool is_valid_delta_time(std::int32_t);
@@ -39,6 +46,24 @@ dt_field_interpreted read_delta_time(InIt beg, InIt end) {
 	result.val = static_cast<std::int32_t>(uval);
 	result.is_valid = !(uc & 0x80u);
 	return result;
+};
+template<typename InIt>
+InIt read_delta_time(InIt beg, InIt end, dt_field_interpreted& result) {
+	std::uint32_t uval = 0;
+	unsigned char uc = 0;
+	while (beg!=end) {
+		uc = *beg++;
+		uval += uc&0x7Fu;
+		++(result.N);
+		if ((uc&0x80u) && (result.N<4)) {
+			uval <<= 7;  // Note:  Not shifting on the final iteration
+		} else {  // High bit not set => this is the final byte
+			break;
+		}
+	}
+	result.val = static_cast<std::int32_t>(uval);
+	result.is_valid = !(uc & 0x80u);
+	return beg;
 };
 // Advance the iterator to the end of the delta-time vlq; a maximum of 4 
 // bytes, or to the end of the range, whichever comes first.  

@@ -342,7 +342,9 @@ jmid::mtrk_event_t jmid::make_timesig(const std::int32_t& dt, const jmid::midi_t
 		static_cast<unsigned char>(ts.clckspclk),
 		static_cast<unsigned char>(ts.ntd32pq)};
 	return jmid::make_mtrk_event(d.data(),d.data()+d.size(),dt,0,
-		nullptr,d.size()).event;
+		nullptr,d.size()+4).event;
+	// Setting the max event size to d.size()+4 to allow for the largest 
+	// possible delta_time.  
 }
 jmid::mtrk_event_t jmid::make_instname(const std::int32_t& dt, const std::string& s) {
 	return make_meta_generic_text(dt,jmid::meta_event_t::instname,s);
