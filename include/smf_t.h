@@ -176,6 +176,98 @@ maybe_smf_t read_smf_bulkfileread(const std::filesystem::path&,
 std::string print(smf_error_t::errc);
 std::string explain(const smf_error_t&);
 
+
+template<typename InIt>
+InIt make_smf2(InIt it, InIt end, smf_t *result, smf_error_t *err) {
+	auto set_error = [&err]
+					(smf_error_t::errc ec, int expect_ntrks, 
+						int n_mtrks_read, int n_uchks_read)->void {
+		if (err) {
+			err->code = ec;
+			err->num_mtrks_read = n_mtrks_read;
+			err->num_uchks_read = n_uchks_read;
+			err->expect_num_mtrks = expect_ntrks;
+		}
+	};
+
+	// TODO:  Totally defeats the point of having the caller 
+	// prereserve & pass in a ptr
+	jmid::maybe_mthd_t maybe_mthd;
+	it = jmid::make_mthd(it,end,&maybe_mthd,nullptr,14);  // TODO:  Temporary 14
+	if (!maybe_mthd) {
+		set_error(smf_error_t::errc::mthd_error,0,0,0);
+		return it;
+	}
+	auto expect_ntrks = maybe_mthd.mthd.ntrks();
+	// When set_mthd() is called, the smf_t object will modify the 
+	// ntrks field in the mthd_t to match its member mtrks_.size(),
+	// which is presently 0.  
+	result->set_mthd(std::move(maybe_mthd.mthd));
+	// auto expect_ntrks = result->smf.mthd().ntrks();
+
+	result->mtrks_.reserve(std::min(expect_ntrks,25));  // TODO:  Magic number 25
+	// TODO:  Not pushing-back() into result; overwriting result:
+	result->mtrks_.resize(0); 
+	result->uchks_.resize(0);
+
+	int n_mtrks_read = 0;
+	int n_uchks_read = 0;
+	jmid::mtrk_event_error_t curr_event_error;
+	jmid::mtrk_error_t curr_mtrk_error;
+	while ((it!=end) && (n_mtrks_read<expect_ntrks)) {
+		jmid::chunk_header_t curr_chk_header;
+		jmid::chunk_header_error_t curr_chk_header_err;
+		it = jmid::read_chunk_header(it,end,&curr_chk_header,
+			&curr_chk_header_err);
+		if (curr_chk_header_err.code != jmid::chunk_header_error_t::errc::no_error) {
+			set_error(smf_error_t::errc::other,0,0,0);
+			return it;
+		}
+
+		if (jmid::has_mtrk_id(curr_chk_header) 
+				&& jmid::has_valid_length(curr_chk_header)) {
+			// it was pointing at the first byte of an MTrk header...
+			result->mtrks_.resize(result->mtrks_.size()+1);
+			auto p_curr_mtrk = &(result->mtrks_.back());
+			it = jmid::make_mtrk_event_seq(it,end,p_curr_mtrk,&curr_mtrk_error);
+			if (curr_mtrk_error.code != jmid::mtrk_error_t::errc::no_error) {
+				// Invalid as an MTrk, but not for reason of being a UChk
+				set_error(smf_error_t::errc::mtrk_error,expect_ntrks,
+					n_mtrks_read,n_uchks_read);
+				return it;
+			}
+			++n_mtrks_read;
+		} else if (jmid::has_uchk_id(curr_chk_header) 
+				&& jmid::has_valid_length(curr_chk_header)) {
+			// it was pointing at the first byte of a UChk header...
+			result->uchks_.resize(result->uchks_.size()+1);
+			auto bi_uchk = std::back_inserter(result->uchks_.back());
+			std::uint32_t j=0;
+			for (j=0; ((it!=end) && (j<curr_chk_header.length)); ++j) {
+				*bi_uchk++ = static_cast<unsigned char>(*it++);
+			}
+			if (j!=curr_chk_header.length) {
+				set_error(smf_error_t::errc::overflow_reading_uchk,
+							expect_ntrks,n_mtrks_read,n_uchks_read);
+				return it;
+			}
+			++n_uchks_read;
+		}
+	}  // To next chunk
+
+	if (n_mtrks_read != expect_ntrks) {
+		set_error(smf_error_t::errc::unexpected_num_mtrks,
+				expect_ntrks,n_mtrks_read,n_uchks_read);
+		return it;
+	}
+	
+	set_error(smf_error_t::errc::no_error,expect_ntrks,n_mtrks_read,
+				n_uchks_read);
+	return it;
+};
+
+
+
 template<typename InIt>
 InIt make_smf(InIt it, InIt end, maybe_smf_t *result, smf_error_t *err,
 			const std::int32_t max_stream_bytes) {

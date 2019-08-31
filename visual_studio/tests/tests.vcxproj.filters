@@ -90,6 +90,9 @@
     <ClCompile Include="..\..\tests\small_bytevec_tests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\tests\make_mtrk_event2_tests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\tests\delta_time_test_data.h">

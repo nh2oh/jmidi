@@ -4,6 +4,7 @@
 #include "mtrk_event_t.h"
 #include "mtrk_event_methods.h"  // is_eot()
 #include "generic_iterator.h"
+#include "make_mtrk_event.h"
 #include <string>
 #include <cstdint>
 #include <vector>
@@ -238,6 +239,147 @@ struct maybe_mtrk_t {
 	operator bool() const;
 };
 
+
+
+
+template <typename InIt>
+InIt make_mtrk2(InIt it, InIt end, mtrk_t *result, mtrk_error_t *err) {
+	auto set_error = [&err](mtrk_error_t::errc ec, unsigned char rs) -> void {
+		if (err) {
+			err->rs = rs;
+			err->code = ec;
+		}
+	};
+	set_error(mtrk_error_t::errc::no_error);
+	
+	// Copy the {'M','T','r','k', a,b,c,d}
+	// TODO:  Dumb:  Should work like read_mthd()
+	// TODO:  It = read_chunk_header(It, It, *result, *err) overload so i
+	// can get rid of this horrible std::array<> header; nonsense.  
+	std::array<unsigned char, 8> header;
+	auto dest = header.data();
+	for (int i=0; i<8; ++i) {
+		if (it==end) {  // => it==end
+			set_error(mtrk_error_t::errc::header_overflow,0x00u);
+			return it;
+		}
+		*dest++ = static_cast<unsigned char>(*it++);
+	}
+	
+	if (!jmid::is_mtrk_header_id(header.data(),header.data()+header.size())) {
+		if (jmid::is_valid_header_id(header.data(),header.data()+header.size())) {
+			// Could be an "Unknown"-type chunk
+			set_error(mtrk_error_t::errc::valid_but_non_mtrk_id,0x00u);
+		} else {
+			set_error(mtrk_error_t::errc::invalid_id,0x00u);
+		}
+		return it;
+	}
+	auto ulen = jmid::read_be<std::uint32_t>(header.data()+4,
+									header.data()+header.size());
+	if (ulen > mtrk_t::length_max) {
+		set_error(mtrk_error_t::errc::length_gt_mtrk_max,0x00u);
+		return it;
+		// TODO:  This check belongs in some kind of 
+		// read_header(it,it,*result,...) function.  
+	}
+	auto len = static_cast<std::int32_t>(ulen);
+
+	// From experience with thousands of midi files encountered in the wild,
+	// the average number of bytes per MTrk event is about 3.  
+	auto expect_nevents = static_cast<double>(len)/3.0;
+	auto init_nevents = result->evnts_.size();
+	// TODO:  Magic number 2000
+	// TODO:  Some kind of uninitialized fill...
+	//result->evnts_.reserve(init_nevents+std::min(static_cast<int32_t>(expect_nevents),2000));
+	result->evnts_.resize(init_nevents+std::min(static_cast<int32_t>(expect_nevents),2000));
+
+	bool found_eot = false;
+	unsigned char rs = 0x00u;  // value of the running-status
+	jmid::mtrk_event_t *p_curr_event = result->evnts_.data() + init_nevents;
+	jmid::mtrk_event_error_t curr_mtrk_event_error;
+	while ((it!=end) && (!found_eot)) {
+		if (p_curr_event == (result->evnts_.data() + result->evnts_.size())) {
+			auto init_size = result->evnts_.size();
+			result->evnts_.resize(init_size+2000);  // TODO:  Magic number 2000
+			p_curr_event = result->evnts_.data() + init_size;
+		}
+		it = jmid::make_mtrk_event2(it,end,rs,p_curr_event,&curr_mtrk_event_error);
+		if (curr_mtrk_event_error.code != jmid::mtrk_event_error_t::errc::no_error) {
+			// I could check curr_event.size() != 0, but this is more expensive 
+			// than testing curr_mtrk_event_error
+			set_error(mtrk_error_t::errc::invalid_event,rs);
+			result->evnts_.resize(p_curr_event - result->evnts_.data());
+			return it;
+		}
+		
+		if (!found_eot) {
+			found_eot = jmid::is_eot(p_curr_event);
+		}
+		rs = p_curr_event->running_status();
+		++p_curr_event;
+	}
+	result->evnts_.resize(p_curr_event - result->evnts_.data());
+
+	if (!found_eot) {
+		set_error(mtrk_error_t::errc::no_eot_event,rs);
+		return it;
+	}
+
+	return it;
+};
+
+template <typename InIt>
+InIt make_mtrk_event_seq(InIt it, InIt end, mtrk_t *result, mtrk_error_t *err) {
+	auto set_error = [&err](mtrk_error_t::errc ec, unsigned char rs) -> void {
+		if (err) {
+			err->rs = rs;
+			err->code = ec;
+		}
+	};
+	set_error(mtrk_error_t::errc::no_error);
+
+	bool found_eot = false;
+	unsigned char rs = 0x00u;  // value of the running-status
+	auto init_nevents = result->evnts_.size(); 
+	jmid::mtrk_event_t *p_curr_event = result->evnts_.data() + init_nevents;
+	jmid::mtrk_event_error_t curr_mtrk_event_error;
+	while ((it!=end) && (!found_eot)) {
+		if (p_curr_event == (result->evnts_.data() + result->evnts_.size())) {
+			auto init_size = result->evnts_.size();
+			result->evnts_.resize(init_size+2000);  // TODO:  Magic number 2000
+			p_curr_event = result->evnts_.data() + init_size;
+		}
+		it = jmid::make_mtrk_event2(it,end,rs,p_curr_event,&curr_mtrk_event_error);
+		if (curr_mtrk_event_error.code != jmid::mtrk_event_error_t::errc::no_error) {
+			// I could check curr_event.size() != 0, but this is more expensive 
+			// than testing curr_mtrk_event_error
+			set_error(mtrk_error_t::errc::invalid_event,rs);
+			result->evnts_.resize(p_curr_event - result->evnts_.data());
+			return it;
+		}
+		
+		if (!found_eot) {
+			found_eot = jmid::is_eot(p_curr_event);
+		}
+		rs = p_curr_event->running_status();
+		++p_curr_event;
+	}
+	result->evnts_.resize(p_curr_event - result->evnts_.data());
+
+	if (!found_eot) {
+		set_error(mtrk_error_t::errc::no_eot_event,rs);
+		return it;
+	}
+
+	return it;
+};
+
+
+
+
+
+
 //
 // This ignores the 'length' field in the MTrk header, and only stops 
 // collecting mtrk events into the array upon encountering and EOT event
@@ -311,27 +453,32 @@ InIt make_mtrk(InIt it, InIt end, maybe_mtrk_t *result, mtrk_error_t *err,
 	bool found_eot = false;
 	unsigned char rs = 0x00u;  // value of the running-status
 	// TODO:  Again, somewhat defeats the caller-allocated *result
-	maybe_mtrk_event_t curr_event;
+	mtrk_event_t curr_event; //maybe_mtrk_event_t curr_event;
 	while ((it!=end) && (!found_eot) && (i<max_stream_bytes)) {
-		it = make_mtrk_event(it,end,rs,&curr_event,p_mtrk_event_error,max_stream_bytes-i);
-		i += curr_event.nbytes_read;
-		if (!curr_event) {
+		//it = make_mtrk_event(it,end,rs,&curr_event,p_mtrk_event_error,max_stream_bytes-i);
+		it = make_mtrk_event2(it,end,rs,&curr_event,p_mtrk_event_error);
+		//i += curr_event.nbytes_read;
+		if (curr_event.size() == 0) { //if (!curr_event) {
+			// TODO:  The size test is more expensive than testing p_mtrk_event_error
 			set_error(mtrk_error_t::errc::invalid_event,rs);
 			return it;
 		}
 		
 		if (!found_eot) {
-			found_eot = jmid::is_eot(curr_event.event);
+			found_eot = jmid::is_eot(curr_event);
+			//found_eot = jmid::is_eot(curr_event.event);
 		}
-		rs = curr_event.event.running_status();
-		result->mtrk.evnts_.push_back(std::move(curr_event.event));
+		rs = curr_event.running_status();
+		//rs = curr_event.event.running_status();
+		result->mtrk.evnts_.push_back(std::move(curr_event));
+		//result->mtrk.evnts_.push_back(std::move(curr_event.event));
 	}
 	
 	if (!found_eot) {
-		if (i>=max_stream_bytes) {
+		/*if (i>=max_stream_bytes) {
 			set_error(mtrk_error_t::errc::other,rs);  // TODO:  Wrong error code
 			return it;
-		}
+		}*/
 		set_error(mtrk_error_t::errc::no_eot_event,rs);
 		return it;
 	}

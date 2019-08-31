@@ -6,6 +6,7 @@
 #include "midi_vlq.h"
 #include "midi_delta_time.h"
 #include "print_hexascii.h"
+#include "make_mtrk_event.h"
 #include <string>
 #include <vector>
 #include <array>
@@ -336,13 +337,17 @@ jmid::mtrk_event_t jmid::make_eot(const std::int32_t& dt) {
 	return jmid::make_meta_sysex_generic_impl(dt,0xFFu,0x2Fu,false,nullptr,nullptr);
 }
 jmid::mtrk_event_t jmid::make_timesig(const std::int32_t& dt, const jmid::midi_timesig_t& ts) {
-	std::array<unsigned char,7> d {0xFFu,0x58u,0x04u,
+	// TODO:  Not the most efficient way...
+	std::array<unsigned char,8> d {0x00u,0xFFu,0x58u,0x04u,
 		static_cast<unsigned char>(ts.num),
 		static_cast<unsigned char>(ts.log2denom),
 		static_cast<unsigned char>(ts.clckspclk),
 		static_cast<unsigned char>(ts.ntd32pq)};
-	return jmid::make_mtrk_event(d.data(),d.data()+d.size(),dt,0,
-		nullptr,d.size()+4).event;
+	auto ev = make_mtrk_event2(d.data(),d.data()+d.size(),0,nullptr);
+	ev.set_delta_time(dt);
+	return ev;
+	//return jmid::make_mtrk_event(d.data(),d.data()+d.size(),dt,0,
+	//	nullptr,d.size()+4).event;
 	// Setting the max event size to d.size()+4 to allow for the largest 
 	// possible delta_time.  
 }
