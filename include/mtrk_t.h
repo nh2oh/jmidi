@@ -168,7 +168,12 @@ private:
 	std::vector<mtrk_event_t> evnts_;
 
 	template <typename InIt>
-	friend InIt make_mtrk(InIt, InIt, maybe_mtrk_t*, mtrk_error_t*,std::int32_t);
+	friend InIt make_mtrk(InIt, InIt, maybe_mtrk_t*, mtrk_error_t*,
+							std::int32_t);
+
+	template <typename InIt>
+	friend InIt make_mtrk_event_seq(InIt, InIt, unsigned char, mtrk_t*,
+									mtrk_error_t*);
 };
 std::string print(const mtrk_t&);
 // Prints each mtrk event as hexascii (using dbk::print_hexascii()) along
@@ -329,27 +334,33 @@ InIt make_mtrk2(InIt it, InIt end, mtrk_t *result, mtrk_error_t *err) {
 	return it;
 };
 
+//
+// Overwrites the mtrk_event_t's in result beginning at result[0] and 
+// proceeding until it==end or and eot event is encountered.  result is
+// resized such that result.size() == the number of events that were
+// overwritten.  
 template <typename InIt>
-InIt make_mtrk_event_seq(InIt it, InIt end, mtrk_t *result, mtrk_error_t *err) {
+InIt make_mtrk_event_seq(InIt it, InIt end, unsigned char rs, 
+						mtrk_t *result, mtrk_error_t *err) {
 	auto set_error = [&err](mtrk_error_t::errc ec, unsigned char rs) -> void {
 		if (err) {
 			err->rs = rs;
 			err->code = ec;
 		}
 	};
-	set_error(mtrk_error_t::errc::no_error);
+	set_error(mtrk_error_t::errc::no_error,rs);
 
 	bool found_eot = false;
-	unsigned char rs = 0x00u;  // value of the running-status
-	auto init_nevents = result->evnts_.size(); 
-	jmid::mtrk_event_t *p_curr_event = result->evnts_.data() + init_nevents;
-	jmid::mtrk_event_error_t curr_mtrk_event_error;
+	jmid::mtrk_event_t *p_curr_event = result->evnts_.data();
+	// NB:  p_curr_event may not be dereferenceable if size()==0.  
 	while ((it!=end) && (!found_eot)) {
 		if (p_curr_event == (result->evnts_.data() + result->evnts_.size())) {
-			auto init_size = result->evnts_.size();
-			result->evnts_.resize(init_size+2000);  // TODO:  Magic number 2000
-			p_curr_event = result->evnts_.data() + init_size;
+			auto init_sz = result->evnts_.size();
+			result->evnts_.resize(2*init_sz);  // TODO:  Magic number 2
+			p_curr_event = result->evnts_.data() + init_sz;
 		}
+
+		jmid::mtrk_event_error_t curr_mtrk_event_error;
 		it = jmid::make_mtrk_event2(it,end,rs,p_curr_event,&curr_mtrk_event_error);
 		if (curr_mtrk_event_error.code != jmid::mtrk_event_error_t::errc::no_error) {
 			// I could check curr_event.size() != 0, but this is more expensive 
@@ -360,7 +371,7 @@ InIt make_mtrk_event_seq(InIt it, InIt end, mtrk_t *result, mtrk_error_t *err) {
 		}
 		
 		if (!found_eot) {
-			found_eot = jmid::is_eot(p_curr_event);
+			found_eot = jmid::is_eot(*p_curr_event);
 		}
 		rs = p_curr_event->running_status();
 		++p_curr_event;

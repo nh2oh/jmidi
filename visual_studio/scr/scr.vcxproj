@@ -11,12 +11,16 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\examples\scr\dfa.cpp" />
     <ClCompile Include="..\..\examples\scr\scr.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\jmidi\jmidi.vcxproj">
       <Project>{2d5f43cc-a421-4482-855d-496461e189c8}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\examples\scr\dfa.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

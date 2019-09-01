@@ -7,6 +7,8 @@
 namespace jmid {
 
 // 
+// Overwrites the mtrk_event_t at result w/ the event read in from 
+// [it,end).  
 // If exiting due to error result.size() == 0.  
 //
 template <typename InIt>

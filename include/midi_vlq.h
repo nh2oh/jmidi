@@ -213,7 +213,7 @@ InIt read_be(InIt beg, InIt end, T* result) {
 		*result += static_cast<unsigned char>(*beg++);
 	}
 
-	return result;
+	return beg;
 };
 
 

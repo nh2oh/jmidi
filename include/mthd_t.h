@@ -56,6 +56,7 @@ namespace jmid {
 //
 struct maybe_mthd_t;
 struct mthd_error_t;
+class mthd_t;
 
 struct mthd_container_types_t {
 	using value_type = unsigned char;
@@ -163,6 +164,9 @@ private:
 
 	template <typename InIt>
 	friend InIt make_mthd(InIt, InIt, maybe_mthd_t*, mthd_error_t*, std::int32_t);
+
+	template <typename InIt>
+	friend InIt make_mthd2(InIt, InIt, mthd_t*, mthd_error_t*);
 };
 std::string print(const mthd_t&);
 std::string& print(const mthd_t&, std::string&);
@@ -219,6 +223,114 @@ struct maybe_mthd_t {
 	mthd_error_t::errc error;
 	operator bool() const;
 };
+
+
+//
+// Overwrites the mthd_t at result w/ the mthd read in from [it,end).  
+//
+template <typename InIt>
+InIt make_mthd2(InIt it, InIt end, mthd_t *result, mthd_error_t *err) {
+	// <Header Chunk> = <chunk type> <length> <format> <ntrks> <division> 
+	//                   MThd uint32_t uint16_t uint16_t uint16_t
+	auto set_error = [&err](mthd_error_t::errc ec)->void {
+		if (err) {
+			err->code = ec;
+		}
+	};
+	
+	result->d_.resize_preserve_cap(14);
+	auto dest = result->d_.begin();  // TODO:  Returned by resize_preserve_cap();
+	auto dest_beg = dest;
+	set_error(mthd_error_t::errc::no_error);
+
+	// {'M','T','h','d', n,n,n,n}
+	int i = 0;
+	while ((it!=end) && (i<8)) {
+		++i;
+		*dest++ = static_cast<unsigned char>(*it++);
+	}
+	if (i!=8) {
+		result->d_.resize(dest-result->d_.begin());
+		set_error(mthd_error_t::errc::header_overflow);
+		return it;
+	}
+	if (!jmid::is_mthd_header_id(dest_beg,dest)) {
+		result->d_.resize(dest-result->d_.begin());
+		set_error(mthd_error_t::errc::non_mthd_id);
+		return it;
+	}
+	auto ulen = jmid::read_be<std::uint32_t>(dest_beg+4,dest);
+	if ((ulen < 6) || (ulen > mthd_t::length_max)) {
+		result->d_.resize(dest-result->d_.begin());
+		set_error(mthd_error_t::errc::invalid_length);
+		return it;
+	}
+	auto len = static_cast<std::int32_t>(ulen);
+	
+	// Format, ntrks, division
+	// TODO:  I am reading these fields directly into the mthd_t d_ array, 
+	// thereby breaking the invariants of the class.  Wat.  
+	// TODO:  ... and in consequence i am repeating the invariant checks
+	// below:  if ((format==0) && (ntrks >1)) ...
+	i = 0;  // The number of bytes read from the data section (== i-8).  
+	while ((it!=end) && (i<6)) {
+		++i;
+		*dest++ = static_cast<unsigned char>(*it++);
+	}
+	if (i!=6) {
+		result->d_.resize(dest-result->d_.begin());
+		set_error(mthd_error_t::errc::overflow_in_data_section);
+		return it;
+	}
+	auto format = jmid::read_be<std::uint16_t>(dest_beg+8,dest_beg+10);
+	auto ntrks = jmid::read_be<std::uint16_t>(dest_beg+10,dest_beg+12);
+	auto division = jmid::read_be<std::uint16_t>(dest_beg+12,dest_beg+14);
+	if ((format==0) && (ntrks >1)) {
+		result->d_.resize(dest-result->d_.begin());
+		set_error(mthd_error_t::errc::inconsistent_format_ntrks);
+		return it;
+	}
+	if (!jmid::is_valid_time_division_raw_value(division)) {
+		result->d_.resize(dest-result->d_.begin());
+		set_error(mthd_error_t::errc::invalid_time_division);
+		return it;
+	}
+
+	// Data beyond the standard 6 bytes
+	if (len > 6) {
+		auto dest_end = result->d_.begin() + result->d_.size();
+		i=0;
+		while ((i<len) && (it!=end)) {
+			if (dest == dest_end) {
+				auto old_sz = result->d_.size();
+				result->d_.resize(old_sz+256);  // TODO:  Magic number 256
+				dest_beg = result->d_.begin();
+				dest = dest_beg + old_sz;
+				dest_end = dest_beg + result->d_.size();
+			}
+			++i;
+			*dest++ = static_cast<unsigned char>(*it++);
+		}
+		if (i!=len) {
+			result->d_.resize(dest-result->d_.begin());
+			set_error(mthd_error_t::errc::overflow_in_data_section);
+			return it;
+		}
+		// Above, the loop that writes data beyond the standard 6 bytes may 
+		// oversize the container, since it calls resize() 256 bytes at a 
+		// time.  
+		result->d_.resize(dest - result->d_.begin());
+	}
+
+	return it;
+};
+
+
+
+
+
+
+
 template <typename InIt>
 InIt make_mthd(InIt it, InIt end, maybe_mthd_t *result, mthd_error_t *err,
 				const std::int32_t max_stream_bytes) {

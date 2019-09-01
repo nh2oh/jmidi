@@ -2,7 +2,7 @@
 #include "midi_vlq.h"
 #include <string>
 #include <cstdint>
-
+#include <cstring>
 
 
 bool jmid::is_mthd_header_id(const unsigned char *beg, const unsigned char *end) {
@@ -99,3 +99,30 @@ std::string jmid::explain(const jmid::chunk_header_error_t& err) {
 	}
 	return s;
 }
+
+
+
+
+
+bool jmid::has_mthd_id(const chunk_header_t& h) {
+	std::array<unsigned char,4> mthd {0x4Du,0x54u,0x68u,0x64u};
+	return (std::memcmp(mthd.data(),h.id.data(),mthd.size())==0);
+}
+bool jmid::has_mtrk_id(const chunk_header_t& h) {
+	std::array<unsigned char,4> mthd {0x4Du,0x54u,0x72u,0x6Bu};
+	return (std::memcmp(mthd.data(),h.id.data(),mthd.size())==0);
+}
+bool jmid::has_uchk_id(const chunk_header_t& h) {
+	// Verifies the ID is ASCII
+	for (const auto& b : h.id) {
+		if (b>=127 || b<32) {
+			return false;
+		}
+	}
+	return true;
+}
+bool jmid::has_valid_length(const chunk_header_t& h) {
+	return h.length <= jmid::chunk_view_t::length_max;
+}
+
+
