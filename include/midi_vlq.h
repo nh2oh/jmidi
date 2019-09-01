@@ -199,16 +199,26 @@ T read_be(InIt beg, InIt end) {
 
 	return result;
 };
-// TODO:  This should return some sort of error if beg==end before 
-// sizeof(T) reads.  
+//
+// If beg == end before sizeof(T) reads have been made, sets is_error_condition
+// to true (if non-null).  Otherwise, is_error_condition is left unchanged 
+// (thus, if is_error_condition is initially == true, it will remain true 
+// even if no error occured.  
+// 
 template<typename T, typename InIt>
-InIt read_be(InIt beg, InIt end, T* result) {
+InIt read_be(InIt beg, InIt end, T* result, bool *is_error_condition) {
 	static_assert(std::is_same<typename std::decay<decltype(*beg)>::type,char>::value
 		|| std::is_same<typename std::decay<decltype(*beg)>::type,unsigned char>::value);
 	static_assert(std::is_integral<T>::value && std::is_unsigned<T>::value);
 
 	*result = T(0);
-	for (int i=0; (i<sizeof(T) && (beg!=end)); ++i) {
+	for (int i=0; i<sizeof(T); ++i) {
+		if (beg==end) {
+			if (is_error_condition!=nullptr) {
+				*is_error_condition = true;
+			}
+			return beg;
+		}
 		*result <<= CHAR_BIT;
 		*result += static_cast<unsigned char>(*beg++);
 	}

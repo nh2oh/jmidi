@@ -6,6 +6,8 @@
 #include "aux_types.h"
 #include <string>  // For declaration of print()
 #include <cstdint>
+#include <variant>
+#include <optional>
 
 
 namespace jmid {
@@ -211,9 +213,9 @@ struct mtrk_event_error_t {
 	};
 	// The running status passed in to the make_ function; the status
 	// byte deduced for the event from rs and the input buffer
-	unsigned char rs;
-	unsigned char s;
-	mtrk_event_error_t::errc code;
+	unsigned char rs {0x00u};
+	unsigned char s {0x00u};
+	mtrk_event_error_t::errc code {mtrk_event_error_t::errc::no_error};
 };
 // std::string print(mtrk_event_error_t::errc ec);
 // If ec == mtrk_event_error_t::errc::no_error, returns an empty string
@@ -225,7 +227,6 @@ struct maybe_mtrk_event_t {
 	mtrk_event_error_t::errc error;
 	operator bool() const;
 };
-
 
 struct validate_channel_event_result_t {
 	jmid::ch_event_data_t data;

@@ -246,7 +246,7 @@ struct maybe_mtrk_t {
 
 
 
-
+// TODO:  Untested and not used anywhere
 template <typename InIt>
 InIt make_mtrk2(InIt it, InIt end, mtrk_t *result, mtrk_error_t *err) {
 	auto set_error = [&err](mtrk_error_t::errc ec, unsigned char rs) -> void {
@@ -398,7 +398,7 @@ InIt make_mtrk_event_seq(InIt it, InIt end, unsigned char rs,
 // actual event sequence is not reported as an error.  
 // 
 //
-template <typename InIt>
+/*template <typename InIt>
 InIt make_mtrk(InIt it, InIt end, maybe_mtrk_t *result, mtrk_error_t *err,
 				const std::int32_t max_stream_bytes) {
 	std::ptrdiff_t i = 0;  // The number of bytes read from the stream
@@ -486,10 +486,10 @@ InIt make_mtrk(InIt it, InIt end, maybe_mtrk_t *result, mtrk_error_t *err,
 	}
 	
 	if (!found_eot) {
-		/*if (i>=max_stream_bytes) {
+		*//*if (i>=max_stream_bytes) {
 			set_error(mtrk_error_t::errc::other,rs);  // TODO:  Wrong error code
 			return it;
-		}*/
+		}*//*
 		set_error(mtrk_error_t::errc::no_eot_event,rs);
 		return it;
 	}
@@ -505,7 +505,7 @@ maybe_mtrk_t make_mtrk(InIt it, InIt end, mtrk_error_t *err,
 	maybe_mtrk_t result;
 	it = make_mtrk(it,end,&result,err);
 	return result;
-};
+};*/
 
 template<typename OIt>
 OIt write_mtrk(const mtrk_t& mtrk, OIt it) {

@@ -25,6 +25,7 @@ struct dt_field_interpreted {
 	std::int8_t N {0};
 	bool is_valid {false};
 };
+// TODO:  Add (result.N > 0) check:  See overload 2
 template<typename InIt>
 dt_field_interpreted read_delta_time(InIt beg, InIt end) {
 	//static_assert(std::is_same<std::remove_reference<decltype(*InIt)>::type,
@@ -49,6 +50,7 @@ dt_field_interpreted read_delta_time(InIt beg, InIt end) {
 };
 template<typename InIt>
 InIt read_delta_time(InIt beg, InIt end, dt_field_interpreted& result) {
+	result.N = 0;
 	std::uint32_t uval = 0;
 	unsigned char uc = 0;
 	while (beg!=end) {
@@ -62,7 +64,9 @@ InIt read_delta_time(InIt beg, InIt end, dt_field_interpreted& result) {
 		}
 	}
 	result.val = static_cast<std::int32_t>(uval);
-	result.is_valid = !(uc & 0x80u);
+	result.is_valid = (!(uc & 0x80u)) && (result.N > 0);
+	// The (result.N > 0) check will cause result.is_valid==false in the
+	// case that the caller passed in iterators where beg==end.  
 	return beg;
 };
 // Advance the iterator to the end of the delta-time vlq; a maximum of 4 

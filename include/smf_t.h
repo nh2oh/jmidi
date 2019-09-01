@@ -282,7 +282,7 @@ InIt make_smf2(InIt it, InIt end, smf_t *result, smf_error_t *err) {
 };
 
 
-
+/*
 template<typename InIt>
 InIt make_smf(InIt it, InIt end, maybe_smf_t *result, smf_error_t *err,
 			const std::int32_t max_stream_bytes) {
@@ -387,7 +387,7 @@ InIt make_smf(InIt it, InIt end, maybe_smf_t *result, smf_error_t *err,
 	result->error = smf_error_t::errc::no_error;
 	result->nbytes_read = i;
 	return it;
-};
+};*/
 
 
 template<typename OIt>

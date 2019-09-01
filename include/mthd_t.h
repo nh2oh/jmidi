@@ -213,8 +213,8 @@ struct mthd_error_t {
 		other
 	};
 	// TODO:  This array is dumb
-	std::array<unsigned char, 14> header;
-	mthd_error_t::errc code;
+	//std::array<unsigned char, 14> header;
+	mthd_error_t::errc code {mthd_error_t::errc::no_error};
 };
 std::string explain(const mthd_error_t&);
 struct maybe_mthd_t {
@@ -325,12 +325,19 @@ InIt make_mthd2(InIt it, InIt end, mthd_t *result, mthd_error_t *err) {
 	return it;
 };
 
+template <typename InIt>
+mthd_t make_mthd2(InIt it, InIt end, mthd_error_t *err) {
+	// <Header Chunk> = <chunk type> <length> <format> <ntrks> <division> 
+	//                   MThd uint32_t uint16_t uint16_t uint16_t
+	mthd_t result;
+	it = make_mthd2(it,end,&result,err);
+	return result;
+};
 
 
 
 
-
-
+/*
 template <typename InIt>
 InIt make_mthd(InIt it, InIt end, maybe_mthd_t *result, mthd_error_t *err,
 				const std::int32_t max_stream_bytes) {
@@ -421,7 +428,7 @@ InIt make_mthd(InIt it, InIt end, maybe_mthd_t *result, mthd_error_t *err,
 	if ((j!=len)) { // || (i>=max_stream_bytes)) {
 		set_error(mthd_error_t::errc::overflow_in_data_section);
 		return it;
-	}
+	}*/
 	/*
 	// Data beyond the std-specified format-ntrks-division fields.  
 	// The present size of mthd.d_ is 14
@@ -440,7 +447,7 @@ InIt make_mthd(InIt it, InIt end, maybe_mthd_t *result, mthd_error_t *err,
 			return it;
 		}
 	}*/
-	
+	/*
 	result->error = mthd_error_t::errc::no_error;
 	result->nbytes_read = i;
 	return it;
@@ -455,7 +462,7 @@ maybe_mthd_t make_mthd(InIt it, InIt end, mthd_error_t *err,
 	it = make_mthd(it,end,&result,err,max_stream_bytes);
 	return result;
 };
-
+*/
 
 
 }  // namespace jmid

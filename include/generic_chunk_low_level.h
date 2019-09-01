@@ -84,18 +84,10 @@ InIt read_chunk_header(InIt it, InIt end, chunk_header_t *result,
 	}
 
 	result->length = 0;
-	for (int i=0; i<4; ++i) {
-		if (it == end) {
-			if (err != nullptr) {
-				err->code = chunk_header_error_t::errc::overflow;
-			}
-			return it;
-		}
-		result->length <<= 8;
-		result->length += *it++;
-		// TODO:  read_be will exit silently if < 4 bytes are read 
-		// (ex, if it==end after 2 bytes)
-		//it = jmid::read_be<std::uint32_t>(it,end,&(result->length));
+	bool read_be_error = false;
+	it = jmid::read_be<std::uint32_t>(it,end,&(result->length),&read_be_error);
+	if (read_be_error && (err != nullptr)) {
+		err->code = chunk_header_error_t::errc::overflow;
 	}
 
 	return it;

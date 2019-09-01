@@ -10,7 +10,7 @@ namespace mthd_test {
 // bytes_range_t testcase,
 // auto beg = testcase.data.data();
 // auto end = beg + testcase.offset_to_data_end;
-// Meant to be used as: make_mtrk(beg,end);
+// Intended to be used as: make_mtrk(beg,end);
 //
 struct bytes_range_t {
 	std::array<unsigned char,14> data;

@@ -278,7 +278,14 @@ jmid::maybe_smf_t jmid::read_smf(const std::filesystem::path& fp,
 		return result;
 	}
 	
-	jmid::make_smf(it,end,&result,err,max_stream_bytes);
+	//jmid::make_smf(it,end,&result,err,max_stream_bytes);
+	auto p_result = &(result.smf);
+	smf_error_t local_err_obj;
+	jmid::make_smf2(it,end,p_result,&local_err_obj);
+	if (err!=nullptr) {
+		*err = local_err_obj;
+	}
+	result.error = local_err_obj.code;
 	return result;
 };
 
@@ -320,7 +327,14 @@ jmid::maybe_smf_t jmid::read_smf_bulkfileread(const std::filesystem::path& fp,
 
 	const char *it = pfdata->data();
 	const char *end = pfdata->data()+pfdata->size();
-	jmid::make_smf(it,end,&result,err,max_stream_bytes);
+	//jmid::make_smf(it,end,&result,err,max_stream_bytes);
+	auto p_result = &(result.smf);
+	smf_error_t local_err_obj;
+	jmid::make_smf2(it,end,p_result,&local_err_obj);
+	if (err!=nullptr) {
+		*err = local_err_obj;
+	}
+	result.error = local_err_obj.code;
 	return result;
 }
 

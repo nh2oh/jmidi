@@ -162,9 +162,19 @@ TEST(mthd_tests, MakeMthdInvalidInput) {
 	for (const auto& tcase : mthd_test::invalid_set_a) {
 		auto beg = tcase.data.data();
 		auto end = beg + tcase.offset_to_data_end;
-		auto mthd = jmid::make_mthd(beg,end,nullptr,tcase.offset_to_data_end);
 		
-		EXPECT_FALSE(mthd);
+		{
+		jmid::mthd_error_t mthd2_err;
+		auto mthd = jmid::make_mthd2(beg,end,&mthd2_err);
+		EXPECT_NE(mthd2_err.code,jmid::mthd_error_t::errc::no_error);
+		}
+
+		{
+		jmid::mthd_t mthd2_result;
+		jmid::mthd_error_t mthd2_err;
+		auto it_end = jmid::make_mthd2(beg,end,&mthd2_result,&mthd2_err);
+		EXPECT_NE(mthd2_err.code,jmid::mthd_error_t::errc::no_error);
+		}
 	}
 }
 
@@ -178,13 +188,33 @@ TEST(mthd_tests, MakeMthdInvalidInput) {
 TEST(mthd_tests, MakeMthdValidInput) {
 	int i=0;
 	for (const auto& tcase : mthd_test::valid_set_a) {
-		++i;
 		auto beg = tcase.data.data();
 		auto end = beg + tcase.offset_to_data_end;
-		auto mthd = jmid::make_mthd(beg,end,nullptr,tcase.offset_to_data_end);
+		{
+		jmid::mthd_error_t mthd2_err;
+		auto mthd = jmid::make_mthd2(beg,end,&mthd2_err);
+		EXPECT_EQ(mthd2_err.code,jmid::mthd_error_t::errc::no_error);
+		}
+
+		/*auto mthd = jmid::make_mthd(beg,end,nullptr,tcase.offset_to_data_end);
 		EXPECT_TRUE(mthd) 
 			<< "test case i==" << i 
-			<< "; offset_to_data_end==" << tcase.offset_to_data_end;
+			<< "; offset_to_data_end==" << tcase.offset_to_data_end;*/
+
+		{
+		jmid::mthd_t mthd2_result;
+		jmid::mthd_error_t mthd2_err;
+		auto it_end = jmid::make_mthd2(beg,end,&mthd2_result,&mthd2_err);
+		EXPECT_EQ(mthd2_err.code,jmid::mthd_error_t::errc::no_error);
+		}
+
+		/*jmid::mthd_t mthd2_result;
+		jmid::mthd_error_t mthd2_err;
+		auto it_end = jmid::make_mthd2(beg,end,&mthd2_result,&mthd2_err);
+		EXPECT_EQ(mthd2_err.code,jmid::mthd_error_t::errc::no_error) 
+			<< "test case i==" << i;*/
+
+		++i;
 	}
 }
 
@@ -199,12 +229,32 @@ TEST(mthd_tests, MakeMthdValidUnusualInput) {
 	for (const auto& tcase : mthd_test::valid_unusual_a) {
 		auto beg = tcase.data.data();
 		auto end = tcase.data.data() + tcase.data.size();
-		auto mthd = jmid::make_mthd(beg,end,nullptr,tcase.data.size());
+		{
+		jmid::mthd_error_t mthd_err;
+		auto mthd = jmid::make_mthd2(beg,end,&mthd_err);
+		EXPECT_EQ(mthd_err.code,jmid::mthd_error_t::errc::no_error);
+		EXPECT_EQ(mthd.length(),tcase.ans_length);
+		EXPECT_EQ(mthd.format(),tcase.ans_format);
+		EXPECT_EQ(mthd.ntrks(),tcase.ans_ntrks);
+		EXPECT_EQ(mthd.division().get_tpq(),tcase.ans_division);
+		}
+
+		/*auto mthd = jmid::make_mthd(beg,end,nullptr,tcase.data.size());
 		EXPECT_TRUE(mthd);
 		EXPECT_EQ(mthd.mthd.length(),tcase.ans_length);
 		EXPECT_EQ(mthd.mthd.format(),tcase.ans_format);
 		EXPECT_EQ(mthd.mthd.ntrks(),tcase.ans_ntrks);
-		EXPECT_EQ(mthd.mthd.division().get_tpq(),tcase.ans_division);
+		EXPECT_EQ(mthd.mthd.division().get_tpq(),tcase.ans_division);*/
+		{
+		jmid::mthd_t mthd_result;
+		jmid::mthd_error_t mthd_err;
+		auto mthd = jmid::make_mthd2(beg,end,&mthd_result,&mthd_err);
+		EXPECT_EQ(mthd_err.code,jmid::mthd_error_t::errc::no_error);
+		EXPECT_EQ(mthd_result.length(),tcase.ans_length);
+		EXPECT_EQ(mthd_result.format(),tcase.ans_format);
+		EXPECT_EQ(mthd_result.ntrks(),tcase.ans_ntrks);
+		EXPECT_EQ(mthd_result.division().get_tpq(),tcase.ans_division);
+		}
 	}
 }
 

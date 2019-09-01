@@ -180,43 +180,45 @@ std::string jmid::explain(const jmid::mthd_error_t& err) {
 		s += "Invalid ID field; expected the first 4 bytes to be "
 			"'MThd' (0x4D,54,68,64).  ";
 	} else if (err.code==jmid::mthd_error_t::errc::invalid_length) {
-		s += "The length field in the chunk header \nencodes the value ";
-		s += std::to_string(jmid::read_be<std::uint32_t>(err.header.data()+4,err.header.data()+8));
+		s += "The length field in the chunk header \nis invalid";
+		/*s += "The length field in the chunk header \nencodes the value ";
+		s += std::to_string(jmid::read_be<std::uint32_t>(err.header.data()+4,err.header.data()+8));*/
 		s += ".  This library requires that MThd chunks have \nlength >= 6 && <= "
 			"mthd_t::length_max == ";
 		s += std::to_string(jmid::mthd_t::length_max);
 		s += ".  ";
 	} else if (err.code==jmid::mthd_error_t::errc::overflow_in_data_section) {
-		auto p = err.header.data();
+		s += "Encountered end-of-input after reading \n< 'length' bytes.  ";
+		/*auto p = err.header.data();
 		s += "Encountered end-of-input after reading \n< 'length' bytes; "
 			"length == " + std::to_string(jmid::read_be<std::uint32_t>(p+4,p+8))
-			+ ".  ";
+			+ ".  ";*/
 	} else if (err.code==jmid::mthd_error_t::errc::invalid_time_division) {
-		std::int8_t time_code = 0;
+		/*std::int8_t time_code = 0;
 		std::uint16_t division = jmid::read_be<uint16_t>(err.header.data()+12,err.header.data()+14);
 		std::uint8_t subframes = (division&0x00FFu);
 		std::uint8_t high = (division>>8);
 		auto psrc = static_cast<const unsigned char*>(static_cast<const void*>(&high));
 		auto pdest = static_cast<unsigned char*>(static_cast<void*>(&time_code));
-		*pdest = *psrc;
+		*pdest = *psrc;*/
 		s += "The value of field 'division' is invalid.  \nIt is probably an "
 			"SMPTE-type field attempting to specify a time-code \nof something "
-			"other than -24, -25, -29, or -30.  \ndivision == ";
-		s += std::to_string(division);
+			"other than -24, -25, -29, or -30.  ";//\ndivision == ";
+		/*s += std::to_string(division);
 		s += " => time-code == ";
 		s += std::to_string(time_code);
 		s += " => ticks-per-frame == ";
 		s += std::to_string(subframes);
-		s += ".  ";
+		s += ".  ";*/
 	} else if (err.code==jmid::mthd_error_t::errc::inconsistent_format_ntrks) {
-		std::uint16_t format = jmid::read_be<std::uint16_t>(err.header.data()+8,err.header.data()+10);
-		std::uint16_t ntrks = jmid::read_be<std::uint16_t>(err.header.data()+10,err.header.data()+12);
+		/*std::uint16_t format = jmid::read_be<std::uint16_t>(err.header.data()+8,err.header.data()+10);
+		std::uint16_t ntrks = jmid::read_be<std::uint16_t>(err.header.data()+10,err.header.data()+12);*/
 		s += "The values encoded by 'format' 'division' are \ninconsistent.  "
-			"In a format==0 SMF, ntrks must be <= 1.  \nformat == ";
-		s += std::to_string(format);
+			"In a format==0 SMF, ntrks must be <= 1.  ";//\nformat == ";
+		/*s += std::to_string(format);
 		s += ", ntrks == ";
 		s += std::to_string(ntrks);
-		s += ".  ";
+		s += ".  ";*/
 	} else if (err.code==jmid::mthd_error_t::errc::other) {
 		s += "mthd_error_t::errc::other.  ";
 	} else {
