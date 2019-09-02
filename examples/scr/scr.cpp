@@ -11,6 +11,11 @@
 
 
 int main(int argc, char *argv[]) {
+
+	dfa2_parse_midis("C:\\Users\\ben\\Desktop\\midi_archive\\desktop\\midi_simple_valid\\");
+
+
+
 	std::filesystem::path pth(R"(C:\Users\ben\Desktop\midi_archive\SONGS\CHRISTMAS\)");
 	auto rdi = std::filesystem::recursive_directory_iterator(pth);
 
