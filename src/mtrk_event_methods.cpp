@@ -315,81 +315,92 @@ std::vector<unsigned char> jmid::get_seqspecific(const mtrk_event_t& ev,
 	}
 	return data;
 }
-jmid::mtrk_event_t jmid::make_seqn(const std::int32_t& dt, const std::uint16_t& seqn) {
+jmid::mtrk_event_t jmid::make_seqn(const std::int32_t& dt, 
+									const std::uint16_t& seqn) {
 	std::uint16_t pyld = jmid::to_be_byte_order(seqn);
-	// TODO:  write_be()
-	//std::array<unsigned char,2> pyld {0x00u,0x00u};
-	//write_be(
 	auto p = static_cast<unsigned char*>(static_cast<void*>(&pyld));
-	return jmid::make_meta_sysex_generic_impl(dt,0xFFu,0x00u,false,p,p+2);
+	return jmid::mtrk_event_t(jmid::delta_time_strong_t(dt),
+		jmid::meta_header_strong_t(0x00u,2),p,p+2);
 }
-jmid::mtrk_event_t jmid::make_chprefix(const std::int32_t& dt, const uint8_t& ch) {
-	const unsigned char pyld = 0x01u;
-	return jmid::make_meta_sysex_generic_impl(dt,0xFFu,0x20u,false,&pyld,&pyld+1);
+jmid::mtrk_event_t jmid::make_chprefix(const std::int32_t& dt,
+										const uint8_t& ch) {
+	const unsigned char pyld = ch;
+	return jmid::mtrk_event_t(jmid::delta_time_strong_t(dt),
+		jmid::meta_header_strong_t(0x20u,1),&pyld,&pyld+1);
 }
-jmid::mtrk_event_t jmid::make_tempo(const std::int32_t& dt, const std::uint32_t& uspqn) {
+jmid::mtrk_event_t jmid::make_tempo(const std::int32_t& dt, 
+									const std::uint32_t& uspqn) {
 	std::array<unsigned char,3> pyld;
 	jmid::write_24bit_be((uspqn>0xFFFFFFu ? 0xFFFFFFu : uspqn), pyld.data());
-	return jmid::make_meta_sysex_generic_impl(dt,0xFFu,0x51u,false,
-		pyld.data(),pyld.data()+pyld.size());
+	return jmid::mtrk_event_t(jmid::delta_time_strong_t(dt),
+				jmid::meta_header_strong_t(0x51u,pyld.size()),pyld.data(),
+				pyld.data()+pyld.size());
 }
 jmid::mtrk_event_t jmid::make_eot(const std::int32_t& dt) {
-	return jmid::make_meta_sysex_generic_impl(dt,0xFFu,0x2Fu,false,nullptr,nullptr);
+	unsigned char pyld_dummy = 0;
+	return jmid::mtrk_event_t(jmid::delta_time_strong_t(dt),
+			jmid::meta_header_strong_t(0x2Fu,0),&pyld_dummy,&pyld_dummy);
 }
-jmid::mtrk_event_t jmid::make_timesig(const std::int32_t& dt, const jmid::midi_timesig_t& ts) {
-	// TODO:  Not the most efficient way...
-	std::array<unsigned char,8> d {0x00u,0xFFu,0x58u,0x04u,
+jmid::mtrk_event_t jmid::make_timesig(const std::int32_t& dt, 
+									const jmid::midi_timesig_t& ts) {
+	std::array<unsigned char,4> pyld {
 		static_cast<unsigned char>(ts.num),
 		static_cast<unsigned char>(ts.log2denom),
 		static_cast<unsigned char>(ts.clckspclk),
 		static_cast<unsigned char>(ts.ntd32pq)};
-	auto ev = make_mtrk_event2(d.data(),d.data()+d.size(),0,nullptr);
-	ev.set_delta_time(dt);
-	return ev;
-	//return jmid::make_mtrk_event(d.data(),d.data()+d.size(),dt,0,
-	//	nullptr,d.size()+4).event;
-	// Setting the max event size to d.size()+4 to allow for the largest 
-	// possible delta_time.  
+	return jmid::mtrk_event_t(jmid::delta_time_strong_t(dt),
+		jmid::meta_header_strong_t(0x58u,pyld.size()),pyld.data(),
+		pyld.data()+pyld.size());
 }
-jmid::mtrk_event_t jmid::make_instname(const std::int32_t& dt, const std::string& s) {
-	return make_meta_generic_text(dt,jmid::meta_event_t::instname,s);
+jmid::mtrk_event_t jmid::make_instname(const std::int32_t& dt, 
+										const std::string& s) {
+	auto p = reinterpret_cast<const unsigned char*>(s.data());
+	return jmid::mtrk_event_t(jmid::delta_time_strong_t(dt),
+				jmid::meta_header_strong_t(0x04u,s.size()),p,
+				p+s.size());
 }
-jmid::mtrk_event_t jmid::make_trackname(const std::int32_t& dt, const std::string& s) {
-	return jmid::make_meta_generic_text(dt,jmid::meta_event_t::trackname,s);
+jmid::mtrk_event_t jmid::make_trackname(const std::int32_t& dt,
+										const std::string& s) {
+	auto p = reinterpret_cast<const unsigned char*>(s.data());
+	return jmid::mtrk_event_t(jmid::delta_time_strong_t(dt),
+				jmid::meta_header_strong_t(0x03u,s.size()),p,
+				p+s.size());
 }
-jmid::mtrk_event_t jmid::make_lyric(const std::int32_t& dt, const std::string& s) {
-	return jmid::make_meta_generic_text(dt,jmid::meta_event_t::lyric,s);
-}
-jmid::mtrk_event_t jmid::make_marker(const std::int32_t& dt, const std::string& s) {
-	return jmid::make_meta_generic_text(dt,jmid::meta_event_t::marker,s);
-}
-jmid::mtrk_event_t jmid::make_cuepoint(const std::int32_t& dt, const std::string& s) {
-	return jmid::make_meta_generic_text(dt,jmid::meta_event_t::cuepoint,s);
-}
-jmid::mtrk_event_t jmid::make_text(const std::int32_t& dt, const std::string& s) {
-	return jmid::make_meta_generic_text(dt,jmid::meta_event_t::text,s);
-}
-jmid::mtrk_event_t jmid::make_copyright(const std::int32_t& dt, const std::string& s) {
-	return jmid::make_meta_generic_text(dt,jmid::meta_event_t::copyright,s);
-}
-jmid::mtrk_event_t jmid::make_meta_generic_text(const std::int32_t& dt, const jmid::meta_event_t& type, 
+jmid::mtrk_event_t jmid::make_lyric(const std::int32_t& dt,
 									const std::string& s) {
-	jmid::mtrk_event_t result;
-
-	auto type_int16 = static_cast<std::uint16_t>(type);  // TODO:  Gross
-	if (!jmid::meta_hastext_impl(type_int16)) {  // TODO:  This probably breaks nrvo ??
-		result = jmid::mtrk_event_t();
-		return result;
-	}
-
-	auto mtype = static_cast<unsigned char>(type_int16 & 0x00FFu);
-	result = jmid::make_meta_sysex_generic_impl(dt,0xFFu,mtype,false,
-		reinterpret_cast<const unsigned char*>(s.data()), 
-		reinterpret_cast<const unsigned char*>(s.data()+s.size()));
-
-	return result;
+	auto p = reinterpret_cast<const unsigned char*>(s.data());
+	return jmid::mtrk_event_t(jmid::delta_time_strong_t(dt),
+				jmid::meta_header_strong_t(0x05u,s.size()),p,
+				p+s.size());
 }
-
+jmid::mtrk_event_t jmid::make_marker(const std::int32_t& dt, 
+										const std::string& s) {
+	auto p = reinterpret_cast<const unsigned char*>(s.data());
+	return jmid::mtrk_event_t(jmid::delta_time_strong_t(dt),
+				jmid::meta_header_strong_t(0x06u,s.size()),p,
+				p+s.size());
+}
+jmid::mtrk_event_t jmid::make_cuepoint(const std::int32_t& dt, 
+										const std::string& s) {
+	auto p = reinterpret_cast<const unsigned char*>(s.data());
+	return jmid::mtrk_event_t(jmid::delta_time_strong_t(dt),
+				jmid::meta_header_strong_t(0x07u,s.size()),p,
+				p+s.size());
+}
+jmid::mtrk_event_t jmid::make_text(const std::int32_t& dt, 
+									const std::string& s) {
+	auto p = reinterpret_cast<const unsigned char*>(s.data());
+	return jmid::mtrk_event_t(jmid::delta_time_strong_t(dt),
+				jmid::meta_header_strong_t(0x01u,s.size()),p,
+				p+s.size());
+}
+jmid::mtrk_event_t jmid::make_copyright(const std::int32_t& dt, 
+										const std::string& s) {
+	auto p = reinterpret_cast<const unsigned char*>(s.data());
+	return jmid::mtrk_event_t(jmid::delta_time_strong_t(dt),
+				jmid::meta_header_strong_t(0x02u,s.size()),p,
+				p+s.size());
+}
 
 
 jmid::ch_event_data_t jmid::get_channel_event(const mtrk_event_t& ev, jmid::ch_event_data_t def) {

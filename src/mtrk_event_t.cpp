@@ -30,6 +30,27 @@ jmid::mtrk_event_t::mtrk_event_t(jmid::delta_time_strong_t dt,
 	}
 	this->d_.resize(dest_end-dest_beg);
 }
+jmid::mtrk_event_t::mtrk_event_t(jmid::delta_time_strong_t dt, 
+					jmid::meta_header_strong_t mt, const unsigned char *beg, 
+					const unsigned char *end) {
+	if ((end-beg) != mt.length()) {
+		this->d_.resize(0);
+		return;
+	}
+	// 4 + 1 + 1 + 4 == 10; dt + 0xFF + mt-type + vlq-len
+	auto dest_beg = this->d_.resize_nocopy(10);  // Probably oversized
+	auto dest_end = jmid::write_delta_time_unsafe(dt.get(),dest_beg);
+	*dest_end++ = 0xFFu;
+	*dest_end++ = mt.type();
+	dest_end = jmid::write_vlq_unsafe(mt.length(),dest_end);
+	dest_end = this->d_.resize((dest_end-dest_beg)+mt.length()) 
+		+ (dest_end-dest_beg);
+	dest_end = std::copy(beg,end,dest_end);
+	// An alternative strategy is to resize to 10+mt.length(), write
+	// everything, then resize to dest_end-dest_beg at the end.  This is 
+	// suboptimal because the initial oversized resize may cause an 
+	// unnecessary allocation.  
+}
 jmid::mtrk_event_t::mtrk_event_t(const jmid::mtrk_event_t& rhs) {
 	this->d_=rhs.d_;
 }
@@ -321,6 +342,7 @@ jmid::mtrk_event_t jmid::make_meta_sysex_generic_unsafe(std::int32_t dt, unsigne
 	// Ex, 
 	// if end-beg == 7 && add_f7_cap, len will == 8
 	// if end-beg == 31 && !add_f7_cap, len will == 31
+	// TODO:  Does this size calc account for bool add_f7_cap ??
 	std::int32_t sz = jmid::delta_time_field_size(dt) + 1 + jmid::vlq_field_size(len)
 		+ len;
 	if (type == 0xFFu) {

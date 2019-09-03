@@ -133,7 +133,8 @@ jmid::mtrk_event_t make_chprefix(const std::int32_t&, const std::uint8_t&);
 jmid::mtrk_event_t make_tempo(const std::int32_t&, const std::uint32_t&);
 jmid::mtrk_event_t make_eot(const std::int32_t&);
 // TODO:  Are there bounds on the values of the ts params?
-jmid::mtrk_event_t make_timesig(const std::int32_t&, const jmid::midi_timesig_t&);
+jmid::mtrk_event_t make_timesig(const std::int32_t&, 
+								const jmid::midi_timesig_t&);
 jmid::mtrk_event_t make_instname(const std::int32_t&, const std::string&);
 jmid::mtrk_event_t make_trackname(const std::int32_t&, const std::string&);
 jmid::mtrk_event_t make_lyric(const std::int32_t&, const std::string&);
@@ -141,12 +142,6 @@ jmid::mtrk_event_t make_marker(const std::int32_t&, const std::string&);
 jmid::mtrk_event_t make_cuepoint(const std::int32_t&, const std::string&);
 jmid::mtrk_event_t make_text(const std::int32_t&, const std::string&);
 jmid::mtrk_event_t make_copyright(const std::int32_t&, const std::string&);
-// Writes the delta time, 0xFF, type, a vl-length, then the string into
-// the event.  If the uint8_t type byte does not correspond to a
-// text-containing meta event, returns a default-constructed mtrk_event_t
-// (which is a meta text event w/ payload size 0).  
-jmid::mtrk_event_t make_meta_generic_text(const std::int32_t&, const meta_event_t&,
-									const std::string&);
 
 //
 // Channel event data access

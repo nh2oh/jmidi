@@ -87,10 +87,15 @@ public:
 	explicit mtrk_event_t() noexcept;
 	// Default-constructed value w/ the given delta-time.  
 	explicit mtrk_event_t(std::int32_t) noexcept;
+
 	mtrk_event_t(jmid::delta_time_strong_t, jmid::ch_event_data_strong_t) noexcept;
 	mtrk_event_t(std::int32_t dt, jmid::ch_event_data_t md) noexcept 
 		: mtrk_event_t(jmid::delta_time_strong_t(dt),
 			jmid::ch_event_data_strong_t(md)) {};
+	mtrk_event_t(jmid::delta_time_strong_t, jmid::meta_header_strong_t, 
+					const unsigned char*, const unsigned char*);
+
+
 	mtrk_event_t(const mtrk_event_t&);
 	mtrk_event_t& operator=(const mtrk_event_t&);
 	mtrk_event_t(mtrk_event_t&&) noexcept;

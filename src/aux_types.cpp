@@ -1,6 +1,7 @@
 #include "aux_types.h"
 #include "midi_status_byte.h"
 #include "midi_delta_time.h"
+#include "midi_vlq.h"
 #include <string>
 #include <cstdint>
 #include <algorithm>
@@ -18,6 +19,30 @@ jmid::meta_header_t::operator bool() const {
 }
 jmid::sysex_header_t::operator bool() const {
 	return jmid::is_sysex_status_byte(this->s);
+}
+
+jmid::meta_header_strong_t::meta_header_strong_t(std::uint8_t type, 
+												std::int32_t sz) {
+	this->type_ = type;
+	this->length_ = jmid::to_nearest_valid_vlq(sz);
+}
+jmid::meta_header_strong_t::meta_header_strong_t(std::uint8_t type, 
+												std::uint64_t sz) {
+	this->type_ = type;
+	this->length_ = jmid::to_nearest_valid_vlq(sz);
+}
+jmid::meta_header_strong_t::meta_header_strong_t(meta_header_t mth) {
+	this->type_ = mth.mt;
+	this->length_ = jmid::to_nearest_valid_vlq(mth.size);
+}
+jmid::meta_header_t jmid::meta_header_strong_t::get() const {
+	return jmid::meta_header_t {0xFFu,this->type_,this->length_};
+}
+std::int32_t jmid::meta_header_strong_t::length() const {
+	return this->length_;
+}
+std::uint8_t jmid::meta_header_strong_t::type() const {
+	return this->type_;
 }
 
 bool jmid::operator==(const jmid::midi_timesig_t& rhs, 

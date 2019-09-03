@@ -19,6 +19,7 @@ bool is_valid_delta_time(std::int32_t);
 // Clamps the input value to [0,0x0FFFFFFF] == [0,268,435,455]
 std::int32_t to_nearest_valid_delta_time(std::int32_t);
 std::int32_t delta_time_field_size(std::int32_t);
+std::int32_t delta_time_field_size_unsafe(std::int32_t);
 
 struct dt_field_interpreted {
 	std::int32_t val {0};

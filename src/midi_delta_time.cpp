@@ -34,4 +34,18 @@ std::int32_t jmid::delta_time_field_size(std::int32_t val) {
 	} while ((uval!=0) && (n<4));
 	return n;
 }
+std::int32_t jmid::delta_time_field_size_unsafe(std::int32_t val) {
+	std::uint32_t uval = static_cast<std::uint32_t>(val);
+	if (uval <= 0x7Fu) {
+		return 1;
+	} else if (uval <= (0x3F'FFu)) {
+		return 2;
+	} else if (uval <= (0x1F'FF'FFu)) {
+		return 3;
+	} else {
+		return 4;
+	}
+}
+
+
 

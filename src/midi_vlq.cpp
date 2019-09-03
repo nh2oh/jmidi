@@ -1,6 +1,15 @@
 #include "midi_vlq.h"
 #include <limits>
 #include <cstdint>
+#include <algorithm>
+
+std::int32_t jmid::to_nearest_valid_vlq(std::int32_t val) {
+	return std::clamp(val,0,0x0FFFFFFF);
+}
+std::int32_t jmid::to_nearest_valid_vlq(std::uint64_t val) {
+	return static_cast<std::int32_t>(std::clamp(val,std::uint64_t(0),
+										std::uint64_t(0x0FFFFFFF)));
+}
 
 
 template<typename TIn, typename TOut>

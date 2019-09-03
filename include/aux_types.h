@@ -22,6 +22,18 @@ struct meta_header_t  {
 	std::int32_t size;  // vlq length
 	operator bool() const;
 };
+class meta_header_strong_t {
+public:
+	explicit meta_header_strong_t(std::uint8_t,std::int32_t);
+	explicit meta_header_strong_t(std::uint8_t,std::uint64_t);
+	explicit meta_header_strong_t(meta_header_t);
+	meta_header_t get() const;
+	std::int32_t length() const;
+	std::uint8_t type() const;
+private:
+	std::uint8_t type_;
+	std::int32_t length_;
+};
 
 
 struct sysex_header_t  {
