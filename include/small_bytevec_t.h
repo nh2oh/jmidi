@@ -17,8 +17,8 @@ namespace internal {
 // Class small_t
 // Invariants:  
 // -> flags_&0x80u==0x80u
-// -> flags_&0x7Fu==size(); size() <= capacity() <= small_t::size_max
-// -> capacity()==small_t::size_max()
+// -> flags_&0x7Fu==size(); size() <= capacity();
+// -> capacity() is constant && capacity()==small_t::size_max()
 //
 struct small_t {
 	static constexpr std::int32_t size_max = 23;
@@ -163,6 +163,7 @@ public:
 	unsigned char *push_back(unsigned char);
 
 	bool debug_is_big() const noexcept;
+	bool debug_is_small() const noexcept;
 
 	small_bytevec_range_t data_range() noexcept;
 	small_bytevec_const_range_t data_range() const noexcept;

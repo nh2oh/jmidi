@@ -491,33 +491,20 @@ bool jmid::is_onoff_pair(int on_ch, int on_note, int off_ch, int off_note) {
 }
 
 
-jmid::mtrk_event_t jmid::make_ch_event_generic_unsafe(std::int32_t dt, const jmid::ch_event_data_t& md) noexcept {
-	jmid::mtrk_event_t result = jmid::mtrk_event_t(jmid::mtrk_event_t::init_small_w_size_0_t());
-
-	unsigned char s = md.status_nybble|md.ch;
-	auto n = jmid::channel_status_byte_n_data_bytes(s);
-	//result.d_.resize_small2small_nocopy(jmid::delta_time_field_size(dt) + 1 + n);
-	result.d_.resize_nocopy(jmid::delta_time_field_size(dt) + 1 + n);  // +1 for the status byte
-	auto it = result.d_.begin();
-	it = jmid::write_delta_time(dt,it);
-	*it++ = s;
-	*it++ = md.p1;
-	if (n==2) {
-		*it++ = md.p2;
-	}
-	return result;
-}
 jmid::mtrk_event_t jmid::make_ch_event(std::int32_t dt, const jmid::ch_event_data_t& md) {
-	return jmid::make_ch_event_generic_unsafe(jmid::to_nearest_valid_delta_time(dt),jmid::normalize(md));
+	return jmid::mtrk_event_t(jmid::delta_time_strong_t(dt),
+		jmid::ch_event_data_strong_t(md));
 }
 jmid::mtrk_event_t jmid::make_ch_event(std::int32_t dt, int sn, int ch, int p1, int p2) {
-	return jmid::make_ch_event_generic_unsafe(jmid::to_nearest_valid_delta_time(dt),
-		jmid::make_midi_ch_event_data(sn,ch,p1,p2));
+	return jmid::mtrk_event_t(jmid::delta_time_strong_t(dt),
+		jmid::ch_event_data_strong_t(sn,ch,p1,p2));
 }
-jmid::mtrk_event_t jmid::make_note_on(std::int32_t dt, jmid::ch_event_data_t md) {
+jmid::mtrk_event_t jmid::make_note_on(std::int32_t dt,
+									jmid::ch_event_data_t md) {
 	md.status_nybble = 0x90u;
 	md.p2 = md.p2 > 0 ? md.p2 : 1;  // A note-on event must have a velocity > 0
-	return jmid::make_ch_event(dt,md);
+	return jmid::mtrk_event_t(jmid::delta_time_strong_t(dt),
+		jmid::ch_event_data_strong_t(md));
 }
 jmid::mtrk_event_t jmid::make_note_on(std::int32_t dt, int ch, int p1, int p2) {
 	return jmid::make_note_on(dt,jmid::make_midi_ch_event_data(0,ch,p1,p2));

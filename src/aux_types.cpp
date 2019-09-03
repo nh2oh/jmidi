@@ -1,10 +1,17 @@
 #include "aux_types.h"
 #include "midi_status_byte.h"
+#include "midi_delta_time.h"
 #include <string>
 #include <cstdint>
 #include <algorithm>
 
 
+jmid::delta_time_strong_t::delta_time_strong_t(std::int32_t dt) {
+	this->d_ = jmid::to_nearest_valid_delta_time(dt);
+}
+const std::int32_t& jmid::delta_time_strong_t::get() const {
+	return this->d_;
+}
 
 jmid::meta_header_t::operator bool() const {
 	return jmid::is_meta_status_byte(this->s);
@@ -35,6 +42,28 @@ bool jmid::is_major(const jmid::midi_keysig_t& ks) {
 }
 bool jmid::is_minor(const jmid::midi_keysig_t& ks) {
 	return ks.mi==1;
+}
+jmid::ch_event_data_strong_t::ch_event_data_strong_t(const jmid::ch_event_data_t& md) {
+	this->d_ = jmid::normalize(md);
+}
+jmid::ch_event_data_strong_t::ch_event_data_strong_t(int sn, int ch,
+												int p1, int p2) {
+	this->d_ = jmid::make_midi_ch_event_data(sn,ch,p1,p2);
+}
+jmid::ch_event_data_t jmid::ch_event_data_strong_t::get() const {
+	return this->d_;
+}
+std::uint8_t jmid::ch_event_data_strong_t::status_nybble() const {
+	return this->d_.status_nybble;
+}
+std::uint8_t jmid::ch_event_data_strong_t::ch() const {
+	return this->d_.ch;
+}
+std::uint8_t jmid::ch_event_data_strong_t::p1() const {
+	return this->d_.p1;
+}
+std::uint8_t jmid::ch_event_data_strong_t::p2() const {
+	return this->d_.p2;
 }
 jmid::ch_event_data_t jmid::make_midi_ch_event_data(int sn, int ch,
 												int p1, int p2) {

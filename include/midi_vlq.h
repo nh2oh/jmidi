@@ -130,6 +130,30 @@ OIt write_vlq(T val, OIt it) {
 	}
 	return it;
 };
+// Omits checks for < 0 and > 0x0F'FF'FF'FF
+template<typename T, typename OIt>
+OIt write_vlq_unsafe(T val, OIt it) {
+	if (val <= 0x7Fu) {
+		std::uint32_t uval = static_cast<std::uint32_t>(val);
+		*it++ = static_cast<unsigned char>(0x7Fu&uval);
+	} else if (val <= (0x3F'FFu)) {
+		std::uint32_t uval = static_cast<std::uint32_t>(val);
+		*it++ = static_cast<unsigned char>((0x80u)|(0xFFu&(uval>>7)));
+		*it++ = static_cast<unsigned char>((0x7Fu)&uval);
+	} else if (val <= (0x1F'FF'FF)) {
+		std::uint32_t uval = static_cast<std::uint32_t>(val);
+		*it++ = static_cast<unsigned char>((0x80u)|(0xFFu&(uval>>14)));
+		*it++ = static_cast<unsigned char>((0x80u)|(0xFFu&(uval>>7)));
+		*it++ = static_cast<unsigned char>((0x7Fu)&uval);
+	} else { // (val <= (0x0F'FF'FF'FFu)) {
+		std::uint32_t uval = static_cast<std::uint32_t>(val);
+		*it++ = static_cast<unsigned char>((0x80u)|(0xFFu&(uval>>21)));
+		*it++ = static_cast<unsigned char>((0x80u)|(0xFFu&(uval>>14)));
+		*it++ = static_cast<unsigned char>((0x80u)|(0xFFu&(uval>>7)));
+		*it++ = static_cast<unsigned char>((0x7Fu)&uval);
+	}
+	return it;
+};
 
 //
 // template<typename T> 

@@ -109,7 +109,7 @@ TEST(small_bytevec, copyAssignBigToSmall) {
 	jmid::internal::small_bytevec_t dest = jmid::internal::small_bytevec_t();
 	dest.resize(b.size());
 	fill_small_bytevec_to_sbo_size(dest,b);
-	EXPECT_FALSE(dest.debug_is_big());  // dest is small
+	EXPECT_TRUE(dest.debug_is_small());  // dest is small
 
 	dest = src;
 
@@ -130,7 +130,7 @@ TEST(small_bytevec, copyAssignSmallToBig) {
 	jmid::internal::small_bytevec_t src = jmid::internal::small_bytevec_t();
 	src.resize(b.size());
 	fill_small_bytevec_to_sbo_size(src,f100);
-	EXPECT_FALSE(src.debug_is_big());  // src is small
+	EXPECT_TRUE(src.debug_is_small());  // src is small
 
 	jmid::internal::small_bytevec_t dest = jmid::internal::small_bytevec_t();
 	dest.resize(f100.size());
@@ -153,12 +153,12 @@ TEST(small_bytevec, moveCtorSmall) {
 	auto data = a;
 	src.resize(data.size());
 	fill_small_bytevec_to_sbo_size(src,data);
-	EXPECT_FALSE(src.debug_is_big());
+	EXPECT_TRUE(src.debug_is_small());
 	auto src_size = src.size();
 	auto src_cap = src.capacity();
 
 	jmid::internal::small_bytevec_t dest = std::move(src);
-	EXPECT_FALSE(dest.debug_is_big());
+	EXPECT_TRUE(dest.debug_is_small());
 	EXPECT_EQ(src_size,dest.size());
 	EXPECT_EQ(src_cap,dest.capacity());
 	for (int i=0; i<src_size; ++i) {
@@ -187,7 +187,7 @@ TEST(small_bytevec, moveCtorBig) {
 TEST(small_bytevec, defaultCtorReserveToSmallMax) {
 	jmid::internal::small_bytevec_t x = jmid::internal::small_bytevec_t();
 	x.reserve(jmid::internal::small_bytevec_t::capacity_small);
-	EXPECT_FALSE(x.debug_is_big());
+	EXPECT_TRUE(x.debug_is_small());
 	EXPECT_EQ(x.size(),0);
 	EXPECT_EQ(x.capacity(),jmid::internal::small_bytevec_t::capacity_small);
 	EXPECT_EQ(x.begin(),x.end());
@@ -197,7 +197,7 @@ TEST(small_bytevec, defaultCtorReserveToSmallMax) {
 TEST(small_bytevec, defaultCtorResizeToSmallMax) {
 	jmid::internal::small_bytevec_t x = jmid::internal::small_bytevec_t();
 	x.resize(jmid::internal::small_bytevec_t::capacity_small);
-	EXPECT_FALSE(x.debug_is_big());
+	EXPECT_TRUE(x.debug_is_small());
 	EXPECT_EQ(x.size(),jmid::internal::small_bytevec_t::capacity_small);
 	EXPECT_EQ(x.capacity(),jmid::internal::small_bytevec_t::capacity_small);
 	EXPECT_NE(x.begin(),x.end());
@@ -209,7 +209,7 @@ TEST(small_bytevec, defaultCtorResizeToSmallMax) {
 TEST(small_bytevec, smallObjectMultipleResize) {
 	jmid::internal::small_bytevec_t x = jmid::internal::small_bytevec_t();
 	x.resize(b.size());
-	EXPECT_FALSE(x.debug_is_big());
+	EXPECT_TRUE(x.debug_is_small());
 	EXPECT_EQ(x.size(),b.size());
 
 	fill_small_bytevec_to_sbo_size(x,b);
@@ -224,7 +224,7 @@ TEST(small_bytevec, smallObjectMultipleResize) {
 	};
 	for (const auto& new_sz : resize_to) {
 		x.resize(new_sz);
-		EXPECT_FALSE(x.debug_is_big());
+		EXPECT_TRUE(x.debug_is_small());
 		EXPECT_EQ(x.size(),new_sz);
 		EXPECT_EQ(x.capacity(),jmid::internal::small_bytevec_t::capacity_small);
 		EXPECT_EQ(x.end()-x.begin(),new_sz);
@@ -242,7 +242,7 @@ TEST(small_bytevec, smallObjectMultipleResize) {
 // both the size and capacity
 TEST(small_bytevec, createBigObjByResize) {
 	jmid::internal::small_bytevec_t x = jmid::internal::small_bytevec_t();
-	EXPECT_FALSE(x.debug_is_big());  // Initially small
+	EXPECT_TRUE(x.debug_is_small());  // Initially small
 	int resize_to = d24.size();
 	if (resize_to<=jmid::internal::small_bytevec_t::capacity_small) {
 		// The whole point of this test is to make a 'big' object
@@ -261,7 +261,7 @@ TEST(small_bytevec, createBigObjByResize) {
 // the capacity but not the size
 TEST(small_bytevec, createBigObjByReserve) {
 	jmid::internal::small_bytevec_t x = jmid::internal::small_bytevec_t();
-	EXPECT_FALSE(x.debug_is_big());  // Initially small
+	EXPECT_TRUE(x.debug_is_small());  // Initially small
 	int reserve_to = e25.size();
 	if (reserve_to<=jmid::internal::small_bytevec_t::capacity_small) {
 		// The whole point of this test is to make a 'big' object
@@ -315,11 +315,11 @@ TEST(small_bytevec, multipleReserveValueStability) {
 	}
 }
 
-/*
-// Resize can interconvert between small and big objects
-TEST(small_bytevec, interconvertSmallAndBigByResize) {
+
+// Resize converts a small to a big, but will not convert a big to a small.  
+TEST(small_bytevec, conversionBetweenSmallAndBigByResize) {
 	jmid::internal::small_bytevec_t x = jmid::internal::small_bytevec_t();
-	EXPECT_FALSE(x.debug_is_big());  // Initially small
+	EXPECT_TRUE(x.debug_is_small());
 
 	std::vector<unsigned char> assorted_sizes {
 		jmid::internal::small_bytevec_t::capacity_small+1,0,
@@ -328,12 +328,19 @@ TEST(small_bytevec, interconvertSmallAndBigByResize) {
 		112,2,113,24,114,115,116,117,23,118,119
 	};
 
+	bool resized_to_big = false;
 	for (const auto& resize_to : assorted_sizes) {
-		x.resize(resize_to);
-		if (resize_to>jmid::internal::small_bytevec_t::capacity_small) {
+		if (resized_to_big) {
+			// Once the resized_to_big switch has been flipped, it will 
+			// never be flipped back, and x should remain 'big' forever.  
 			EXPECT_TRUE(x.debug_is_big());
 		} else {
 			EXPECT_FALSE(x.debug_is_big());
+		}
+		x.resize(resize_to);
+		if (resize_to>jmid::internal::small_bytevec_t::capacity_small) {
+			EXPECT_TRUE(x.debug_is_big());
+			resized_to_big = true;
 		}
 		EXPECT_EQ(x.size(),resize_to);
 		EXPECT_TRUE(x.capacity()>=resize_to);
@@ -345,7 +352,7 @@ TEST(small_bytevec, interconvertSmallAndBigByResize) {
 		EXPECT_EQ(x.end()-x.begin(),x.size());
 	}
 }
-*/
+
 
 TEST(small_bytevec, bigObjBasicConstFuntions) {
 	jmid::internal::small_bytevec_t x = jmid::internal::small_bytevec_t();

@@ -88,6 +88,11 @@ OIt write_delta_time(std::int32_t val, OIt it) {
 	std::uint32_t uval = static_cast<std::uint32_t>(val);
 	return jmid::write_vlq(uval,it);
 };
+template<typename OIt>
+OIt write_delta_time_unsafe(std::int32_t val, OIt it) {
+	std::uint32_t uval = static_cast<std::uint32_t>(val);
+	return jmid::write_vlq_unsafe(uval,it);
+};
 
 
 }  // namespace jmid

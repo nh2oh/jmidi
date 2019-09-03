@@ -8,6 +8,14 @@ namespace jmid {
 // aux types
 //
 
+class delta_time_strong_t {
+public:
+	explicit delta_time_strong_t(std::int32_t);
+	const std::int32_t& get() const;
+private:
+	std::int32_t d_;
+};
+
 struct meta_header_t  {
 	std::uint8_t s;  // 0xFFu
 	std::uint8_t mt;  // meta-type byte
@@ -51,6 +59,18 @@ struct ch_event_data_t {
 	std::uint8_t p1 {0x00u};
 	std::uint8_t p2 {0x00u};
 	operator bool() const;
+};
+class ch_event_data_strong_t {  // Always valid
+public:
+	explicit ch_event_data_strong_t(const ch_event_data_t&);
+	explicit ch_event_data_strong_t(int, int, int, int);
+	ch_event_data_t get() const;
+	std::uint8_t status_nybble() const;
+	std::uint8_t ch() const;
+	std::uint8_t p1() const;
+	std::uint8_t p2() const;
+private:
+	ch_event_data_t d_;
 };
 std::string print(const ch_event_data_t&);
 bool verify(const ch_event_data_t&);

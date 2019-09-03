@@ -18,21 +18,17 @@ jmid::mtrk_event_t::mtrk_event_t(jmid::mtrk_event_t::init_small_w_size_0_t) noex
 jmid::mtrk_event_t::mtrk_event_t(std::int32_t dt) noexcept {
 	this->default_init(dt);
 }
-jmid::mtrk_event_t::mtrk_event_t(std::int32_t dt, jmid::ch_event_data_t md) noexcept {
-	this->d_ = jmid::internal::small_bytevec_t();
-	md = jmid::normalize(md);
-	unsigned char s = (md.status_nybble)|(md.ch);
-	auto n = jmid::channel_status_byte_n_data_bytes(s);
-	// NB:  n==0 if s is invalid, but this is impossible after a call
-	// to normalize().  
-	//auto dest = this->d_.resize_small2small_nocopy(jmid::delta_time_field_size(dt)+1+n);
-	auto dest = this->d_.resize_nocopy(jmid::delta_time_field_size(dt)+1+n);  // +1=>s
-	dest = jmid::write_delta_time(dt,dest);
-	*dest++ = s;
-	*dest++ = md.p1;
-	if (n==2) {
-		*dest++ = md.p2;
+jmid::mtrk_event_t::mtrk_event_t(jmid::delta_time_strong_t dt, 
+								jmid::ch_event_data_strong_t md) noexcept {
+	auto s = (md.status_nybble()|md.ch());
+	auto dest_beg = this->d_.resize_nocopy(7);
+	auto dest_end = jmid::write_delta_time_unsafe(dt.get(),dest_beg);
+	*dest_end++ = s;
+	*dest_end++ = md.p1();
+	if (jmid::channel_status_byte_n_data_bytes(s)==2) {
+		*dest_end++ = md.p2();
 	}
+	this->d_.resize(dest_end-dest_beg);
 }
 jmid::mtrk_event_t::mtrk_event_t(const jmid::mtrk_event_t& rhs) {
 	this->d_=rhs.d_;

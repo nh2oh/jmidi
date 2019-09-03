@@ -339,6 +339,9 @@ std::int32_t jmid::internal::small_bytevec_t::capacity() const noexcept {
 bool jmid::internal::small_bytevec_t::debug_is_big() const noexcept {
 	return this->is_big();
 }
+bool jmid::internal::small_bytevec_t::debug_is_small() const noexcept {
+	return this->is_small();
+}
 jmid::internal::small_bytevec_range_t jmid::internal::small_bytevec_t::data_range() noexcept {
 	if (this->is_small()) {
 		return {this->u_.s_.begin(),this->u_.s_.end()};
