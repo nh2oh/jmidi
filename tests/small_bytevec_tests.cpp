@@ -124,7 +124,7 @@ TEST(small_bytevec, copyAssignBigToSmall) {
 
 
 // Copy assign 'small' src to 'big' dest
-// Assigning a 'small' object to a 'big' object causes a big->small
+// Assigning a 'small' object to a 'big' object does not cause a big->small
 // transition in the destination object.  
 TEST(small_bytevec, copyAssignSmallToBig) {
 	jmid::internal::small_bytevec_t src = jmid::internal::small_bytevec_t();
@@ -135,11 +135,13 @@ TEST(small_bytevec, copyAssignSmallToBig) {
 	jmid::internal::small_bytevec_t dest = jmid::internal::small_bytevec_t();
 	dest.resize(f100.size());
 	fill_small_bytevec_to_sbo_size(dest,f100);
+	auto dest_init_cap = dest.capacity();
 	EXPECT_TRUE(dest.debug_is_big());  // dest is big
 
 	dest = src;
 
-	EXPECT_FALSE(dest.debug_is_big());  // dest is now small
+	EXPECT_TRUE(dest.debug_is_big());  // dest is still big
+	EXPECT_EQ(dest.capacity(),dest_init_cap);
 	EXPECT_EQ(src.size(),dest.size());
 	for (int i=0; i<src.size(); ++i) {
 		EXPECT_EQ(*(src.begin()+i),*(dest.begin()+i));
@@ -313,6 +315,7 @@ TEST(small_bytevec, multipleReserveValueStability) {
 	}
 }
 
+/*
 // Resize can interconvert between small and big objects
 TEST(small_bytevec, interconvertSmallAndBigByResize) {
 	jmid::internal::small_bytevec_t x = jmid::internal::small_bytevec_t();
@@ -342,7 +345,7 @@ TEST(small_bytevec, interconvertSmallAndBigByResize) {
 		EXPECT_EQ(x.end()-x.begin(),x.size());
 	}
 }
-
+*/
 
 TEST(small_bytevec, bigObjBasicConstFuntions) {
 	jmid::internal::small_bytevec_t x = jmid::internal::small_bytevec_t();
@@ -379,6 +382,7 @@ TEST(small_bytevec, multipleResizeValueStability) {
 	}
 	x.resize(data.size());
 	fill_small_bytevec_to_sbo_size(x,f100);
+	auto init_cap = x.capacity();
 
 	std::vector<int> resize_to {
 		x.size(),
@@ -386,13 +390,12 @@ TEST(small_bytevec, multipleResizeValueStability) {
 	};
 	for (const auto& new_sz : resize_to) {
 		x.resize(new_sz);
-		if (new_sz>jmid::internal::small_bytevec_t::capacity_small) {
-			EXPECT_TRUE(x.debug_is_big());
-		} else {
-			EXPECT_FALSE(x.debug_is_big());
-		}
+		// Since x starts out big, it remains big; resize() does not cause
+		// big->small transitions
+		EXPECT_TRUE(x.debug_is_big());
+
 		EXPECT_EQ(x.size(),new_sz);
-		EXPECT_TRUE(x.capacity()>=x.size());
+		EXPECT_EQ(x.capacity(),init_cap);
 		EXPECT_EQ(x.end()-x.begin(),new_sz);
 		auto it = x.begin();
 		for (int i=0; i<x.size(); ++i) {

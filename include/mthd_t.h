@@ -238,8 +238,8 @@ InIt make_mthd2(InIt it, InIt end, mthd_t *result, mthd_error_t *err) {
 		}
 	};
 	
-	result->d_.resize_preserve_cap(14);
-	auto dest = result->d_.begin();  // TODO:  Returned by resize_preserve_cap();
+	result->d_.resize_nocopy(14);
+	auto dest = result->d_.begin();  // TODO:  Returned by resize_nocopy();
 	auto dest_beg = dest;
 	set_error(mthd_error_t::errc::no_error);
 

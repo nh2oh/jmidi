@@ -1,12 +1,17 @@
 #pragma once
 #include <cstdint>
 #include <array>
-#include <algorithm>
 
 namespace jmid {
 
 namespace internal {
 
+//
+// TODO:  
+// -Why not just store int32_t (rather than uint32_t) in big_t?
+// -Reorder conditionals in resize()/reserve() etc to put the is_small() 
+//  case first.  
+//
 
 //
 // Class small_t
@@ -21,13 +26,14 @@ struct small_t {
 	unsigned char flags_;  // small => flags_&0x80u==0x80u
 	std::array<unsigned char,23> d_;
 	
+	// Sets flag_==0x80u; this also has the effect of setting size == 0
 	void init() noexcept;
 	std::int32_t size() const noexcept;
 	constexpr std::int32_t capacity() const noexcept;
-	// Can only resize to a value on [0,small_t::size_max]
+	// Returns the new size.  Size must lie on [0,small_t::size_max]; the
+	// input is std::clamp()ed to this range.  
 	std::int32_t resize(std::int32_t) noexcept;
-	//std::int32_t resize(small_size_t) noexcept;
-	// Does not std::clamp(sz,0,this->capacity());
+	// Does not std::clamp() the input to [0,small_t::size_max]
 	std::int32_t resize_unchecked(std::int32_t) noexcept;
 
 	void abort_if_not_active() const noexcept;
@@ -54,15 +60,21 @@ struct big_t {
 	std::uint32_t sz_;  // 20
 	std::uint32_t cap_;  // 24
 
+	// Sets p_==nullptr and zeros all members (including pad_).  
 	// init() is meant to be called from an _uninitialized_ state; it does
 	// not and can not test and conditionally delete [] p_.  
 	void init() noexcept;
 	// free_and_reinit() checks p_ and calls delete []; it should only 
 	// be called from an _initialized_ state.  
 	void free_and_reinit() noexcept;
-	// Deletes p_; object must be initialized before calling
+	// Object must be initialized before calling.  If p_!=nullptr, 
+	// deletes p_, then assigns pad_, sz_, cap_ to the values passed in
 	void adopt(const pad_t&, unsigned char*, std::int32_t, std::int32_t) noexcept;
 	std::int32_t size() const noexcept;
+	// Sets size==0, does not alter capacity
+	void clear() noexcept;
+	// resize() and resize_nocopy() only change the capacity() when new_sz
+	// is > the present capacity.  
 	std::int32_t resize(std::int32_t);
 	// If resizing to something bigger than the present capacity, does 
 	// not copy the data into the new buffer; if resizing smaller, the 
@@ -70,9 +82,9 @@ struct big_t {
 	std::int32_t resize_nocopy(std::int32_t);
 	std::int32_t reserve(std::int32_t);
 	std::int32_t capacity() const noexcept;
+
 	void abort_if_not_active() const noexcept;
 	
-
 	unsigned char *begin() noexcept;
 	const unsigned char *begin() const noexcept;
 	unsigned char *end() noexcept;
@@ -101,50 +113,53 @@ public:
 	// Constructs a 'small' object w/ size()==0
 	small_bytevec_t() noexcept;
 	// Constructs a 'small' or 'big' object w/ size() as specified
-	small_bytevec_t(std::int32_t);
-	// Copy ctor, copy assign; the new/destination object does not necessarily
-	// inherit the same size-type as the the source.  If the source is 'big'
-	// but its data fits in a small object, the destination object will be
-	// constructed as, or transition to, a small object.  If the source is
-	// small, the destination object is always small.  Contrast w/ the move
-	// functions.  
+	explicit small_bytevec_t(std::int32_t);
+
+	// Copy ctor.  The new object has size-type appropriate to rhs.size(), 
+	// and does _not_ necessarily inherit the size-type of rhs.  Big objects
+	// are _only_ produced when rhs.size() > small_t::size_max.  
 	small_bytevec_t(const small_bytevec_t&);
+	// Copy assign.  The lhs object retains its size-type if sufficient to 
+	// accomodate rhs.size().  This means that a big lhs remains big always, 
+	// and a small lhs will undergo a small->big transition only if 
+	// rhs.size() > small_t::size_max.  
 	small_bytevec_t& operator=(const small_bytevec_t&);  
+
 	// Move ctor, move assignment; the new/destination object inherits the 
 	// same size-type as the source, even if the source data will fit in a 
-	// small object.  Contrast w/the copy ctor/assign op.  
+	// small object.  Contrast w/the copy ctor/assign op.  The source object
+	// is left 'small' w/a size()==0.  
 	small_bytevec_t(small_bytevec_t&&) noexcept;
 	small_bytevec_t& operator=(small_bytevec_t&&) noexcept;
+	// Dtor;  the destructed state is a 'small 'object w/ size()==0.  
 	~small_bytevec_t() noexcept;
 
 	std::int32_t size() const noexcept;
 	std::int32_t capacity() const noexcept;
-	// int32_t resize(int32_t new_sz);
-	// If 'big' and the new size is <= small_bytevec_t::capacity_small, 
-	// will cause a big->small transition.  
-	unsigned char *resize(std::int32_t);
-	template<typename T>
-	unsigned char *resize(T sz) {
-		std::int32_t szi32 = static_cast<std::int32_t>(std::clamp(sz,T(0),
-			static_cast<T>(small_bytevec_t::size_max)));
-		return this->resize(szi32);
-	};
-	// If resizing causes either allocation of a new buffer or a 
-	// big->small transition, the present object's data is not copied into
-	// the new buffer.  Otherwise the effect is the same as a call to 
-	// resize().  
-	unsigned char *resize_nocopy(std::int32_t);
-	// A wrapper for this->u_.s_.resize(new_sz); For a small->small resize
-	// there is no allocation, thus the method can be noexcept
-	unsigned char *resize_small2small_nocopy(std::int32_t) noexcept;
-	// TODO:  unsigned char *resize_preserve_cap(std::int32_t) should be
-	// the default behavior of reserve().  
-	// If big, does _not_ cause a big->small transition
-	unsigned char *resize_preserve_cap(std::int32_t);
+	
 	// int32_t reserve(int32_t new_cap);
-	// Will cause big->small, but never small->big transitions.  
+	// If new_cap is > the present capacity(), the capacity is increased
+	// (with a small->big transition if necessary); if new_cap <= the present
+	// capacity, does nothing.  
 	std::int32_t reserve(std::int32_t);
-
+	// unsigned char *resize(std::int32_t new_sz);
+	// Changes the size() of the object to the new value.  Does not cause 
+	// unnecessary size transitions:  big objects /always/ remain big, small 
+	// objects remain small if new_sz < small_t::size_max, otherwise they 
+	// become big.  
+	unsigned char *resize(std::uint64_t);
+	unsigned char *resize(std::int64_t);
+	unsigned char *resize(std::int32_t);
+	// unsigned char *resize_nocopy(std::int32_t new_sz);
+	// Same as for resize(), except that for values causing small->big 
+	// transitions (for small objects) or new buffer allocation (for big 
+	// objects), the old data is not copied into the new buffer.  
+	unsigned char *resize_nocopy(std::int32_t);
+	
+	// unsigned char *push_back(unsigned char);
+	// If this->is_small(), a small->big transition will not occur until the
+	// small object is completely full.  If big, the capacity() is unchanged 
+	// unless size()==capacity(), in which case the capacity() doubles.   
 	unsigned char *push_back(unsigned char);
 
 	bool debug_is_big() const noexcept;
@@ -172,8 +187,11 @@ private:
 
 	bool is_big() const noexcept;
 	bool is_small() const noexcept;
+
 	// Call only on an unitialized object; calls the init() method of the 
-	// corresponding type.  big_t::init() does _not_ free memory.  
+	// corresponding type (note that big_t::init(), and therefore init_big(),
+	// does _not_ free memory).  These functions are how i formally change
+	// the active member of the union.  
 	void init_small() noexcept;
 	void init_big() noexcept;
 };
@@ -182,6 +200,6 @@ static_assert(sizeof(small_t)==sizeof(big_t));
 static_assert(sizeof(small_t)==sizeof(small_bytevec_t));
 
 
+}  // namespace internal
 }  // namespace jmid
-} // namespace internal
 

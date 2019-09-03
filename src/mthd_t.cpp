@@ -18,7 +18,7 @@ const std::array<unsigned char,14> jmid::mthd_t::def_ {
 
 void jmid::mthd_t::default_init() noexcept {  // private
 	this->d_ = jmid::internal::small_bytevec_t();
-	this->d_.resize_small2small_nocopy(14);
+	this->d_.resize_nocopy(14);  //this->d_.resize_small2small_nocopy(14);
 	std::memcpy(this->d_.begin(),&(jmid::mthd_t::def_[0]),jmid::mthd_t::def_.size());
 }
 

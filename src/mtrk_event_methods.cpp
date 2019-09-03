@@ -496,7 +496,8 @@ jmid::mtrk_event_t jmid::make_ch_event_generic_unsafe(std::int32_t dt, const jmi
 
 	unsigned char s = md.status_nybble|md.ch;
 	auto n = jmid::channel_status_byte_n_data_bytes(s);
-	result.d_.resize_small2small_nocopy(jmid::delta_time_field_size(dt) + 1 + n);  // +1 for the status byte
+	//result.d_.resize_small2small_nocopy(jmid::delta_time_field_size(dt) + 1 + n);
+	result.d_.resize_nocopy(jmid::delta_time_field_size(dt) + 1 + n);  // +1 for the status byte
 	auto it = result.d_.begin();
 	it = jmid::write_delta_time(dt,it);
 	*it++ = s;

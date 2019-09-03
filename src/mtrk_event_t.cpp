@@ -25,7 +25,8 @@ jmid::mtrk_event_t::mtrk_event_t(std::int32_t dt, jmid::ch_event_data_t md) noex
 	auto n = jmid::channel_status_byte_n_data_bytes(s);
 	// NB:  n==0 if s is invalid, but this is impossible after a call
 	// to normalize().  
-	auto dest = this->d_.resize_small2small_nocopy(jmid::delta_time_field_size(dt)+1+n);  // +1=>s
+	//auto dest = this->d_.resize_small2small_nocopy(jmid::delta_time_field_size(dt)+1+n);
+	auto dest = this->d_.resize_nocopy(jmid::delta_time_field_size(dt)+1+n);  // +1=>s
 	dest = jmid::write_delta_time(dt,dest);
 	*dest++ = s;
 	*dest++ = md.p1;
@@ -291,7 +292,8 @@ bool jmid::mtrk_event_t::operator!=(const jmid::mtrk_event_t& rhs) const noexcep
 
 void jmid::mtrk_event_t::default_init(std::int32_t dt) noexcept {
 	//this->d_ = mtrk_event_t_internal::small_bytevec_t();
-	auto it = this->d_.resize_small2small_nocopy(jmid::delta_time_field_size(dt)+3);
+	//auto it = this->d_.resize_small2small_nocopy(jmid::delta_time_field_size(dt)+3);
+	auto it = this->d_.resize_nocopy(jmid::delta_time_field_size(dt)+3);
 	it = jmid::write_delta_time(dt,it);
 	*it++ = 0x90u;  // Note-on, channel "1"
 	*it++ = 0x3Cu;  // 0x3C==60=="Middle C" (C4, 261.63Hz)
