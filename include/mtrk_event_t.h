@@ -88,13 +88,15 @@ public:
 	// Default-constructed value w/ the given delta-time.  
 	explicit mtrk_event_t(std::int32_t) noexcept;
 
-	mtrk_event_t(jmid::delta_time_strong_t, jmid::ch_event_data_strong_t) noexcept;
+	mtrk_event_t(jmid::delta_time_strong_t,
+				jmid::ch_event_data_strong_t) noexcept;
 	mtrk_event_t(std::int32_t dt, jmid::ch_event_data_t md) noexcept 
 		: mtrk_event_t(jmid::delta_time_strong_t(dt),
 			jmid::ch_event_data_strong_t(md)) {};
 	mtrk_event_t(jmid::delta_time_strong_t, jmid::meta_header_strong_t, 
 					const unsigned char*, const unsigned char*);
-
+	mtrk_event_t(jmid::delta_time_strong_t, jmid::sysex_header_strong_t, 
+					const unsigned char*, const unsigned char*);
 
 	mtrk_event_t(const mtrk_event_t&);
 	mtrk_event_t& operator=(const mtrk_event_t&);
@@ -170,12 +172,6 @@ private:
 	unsigned char flags() const;
 	bool is_big() const;
 	bool is_small() const;
-
-	// delta-time, type (0x{FF,F0,F7}), meta-type, length, payload beg, payload end, 
-	// add_f7_cap.  length must be consistent w/ end-beg && add_f7_cap.  
-	friend mtrk_event_t make_meta_sysex_generic_unsafe(std::int32_t, unsigned char, 
-		unsigned char, std::int32_t, const unsigned char *, 
-		const unsigned char *, bool);
 
 	template <typename InIt>
 	friend InIt make_mtrk_event(InIt, InIt, std::int32_t, 

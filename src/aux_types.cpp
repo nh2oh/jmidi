@@ -45,6 +45,42 @@ std::uint8_t jmid::meta_header_strong_t::type() const {
 	return this->type_;
 }
 
+jmid::sysex_header_strong_t::sysex_header_strong_t(std::uint8_t type, 
+												std::int32_t sz) {
+	if ((type == 0xF7u) || (type == 0xF0u)) {
+		this->d_.s = type;
+	} else {
+		this->d_.s = 0xF7u;
+	}
+	this->d_.size =jmid::to_nearest_valid_vlq(sz);
+}
+jmid::sysex_header_strong_t::sysex_header_strong_t(std::uint8_t type, 
+												std::uint64_t sz) {
+	if ((type == 0xF7u) || (type == 0xF0u)) {
+		this->d_.s = type;
+	} else {
+		this->d_.s = 0xF7u;
+	}
+	this->d_.size =jmid::to_nearest_valid_vlq(sz);
+}
+jmid::sysex_header_strong_t::sysex_header_strong_t(sysex_header_t sxh) {
+	this->d_.size = jmid::to_nearest_valid_vlq(sxh.size);
+	if ((sxh.s == 0xF7u) || (sxh.s == 0xF0u)) {
+		this->d_.s = sxh.s;
+	} else {
+		this->d_.s = 0xF7u;
+	}
+}
+jmid::sysex_header_t jmid::sysex_header_strong_t::get() const {
+	return this->d_;
+}
+std::int32_t jmid::sysex_header_strong_t::length() const {
+	return this->d_.size;
+}
+std::uint8_t jmid::sysex_header_strong_t::type() const {
+	return this->d_.s;
+}
+
 bool jmid::operator==(const jmid::midi_timesig_t& rhs, 
 						const jmid::midi_timesig_t& lhs) {
 	return ((rhs.clckspclk == lhs.clckspclk)

@@ -51,6 +51,22 @@ jmid::mtrk_event_t::mtrk_event_t(jmid::delta_time_strong_t dt,
 	// suboptimal because the initial oversized resize may cause an 
 	// unnecessary allocation.  
 }
+jmid::mtrk_event_t::mtrk_event_t(jmid::delta_time_strong_t dt, 
+					jmid::sysex_header_strong_t sx, const unsigned char *beg, 
+					const unsigned char *end) {
+	if ((end-beg) != sx.length()) {
+		this->d_.resize(0);
+		return;
+	}
+	// 4 + 1 + 4 == 9; dt + 0xF0/F7 + vlq-len
+	auto dest_beg = this->d_.resize_nocopy(9);  // Probably oversized
+	auto dest_end = jmid::write_delta_time_unsafe(dt.get(),dest_beg);
+	*dest_end++ = sx.type();
+	dest_end = jmid::write_vlq_unsafe(sx.length(),dest_end);
+	dest_end = this->d_.resize((dest_end-dest_beg)+sx.length()) 
+		+ (dest_end-dest_beg);
+	dest_end = std::copy(beg,end,dest_end);
+}
 jmid::mtrk_event_t::mtrk_event_t(const jmid::mtrk_event_t& rhs) {
 	this->d_=rhs.d_;
 }
@@ -331,38 +347,6 @@ bool jmid::mtrk_event_t::is_big() const {
 }
 bool jmid::mtrk_event_t::is_small() const {
 	return !(this->is_big());
-}
-
-// Declared as a friend of mtrk_event_t
-jmid::mtrk_event_t jmid::make_meta_sysex_generic_unsafe(std::int32_t dt, unsigned char type,
-		unsigned char mtype, std::int32_t len, const unsigned char *beg, 
-		const unsigned char *end, bool add_f7_cap) {
-	// Assumes dt is valid, type is valid (==0xFF,F7,F0), 
-	// len==end-beg+add_f7_cap.  
-	// Ex, 
-	// if end-beg == 7 && add_f7_cap, len will == 8
-	// if end-beg == 31 && !add_f7_cap, len will == 31
-	// TODO:  Does this size calc account for bool add_f7_cap ??
-	std::int32_t sz = jmid::delta_time_field_size(dt) + 1 + jmid::vlq_field_size(len)
-		+ len;
-	if (type == 0xFFu) {
-		sz += 1;  // For meta events, 1 extra byte for the mtype byte
-	}
-
-	auto result = jmid::mtrk_event_t(jmid::mtrk_event_t::init_small_w_size_0_t {});
-	result.d_.resize(sz);
-	auto it = result.d_.begin();
-	it = jmid::write_delta_time(dt,it);
-	*it++ = type;
-	if (type==0xFFu) {
-		*it++ = mtype;
-	}
-	it = jmid::write_vlq(len,it);
-	it = std::copy(beg,end,it);
-	if (add_f7_cap) {
-		*it++ = 0xF7u;
-	}
-	return result;
 }
 
 jmid::mtrk_event_debug_helper_t jmid::debug_info(const jmid::mtrk_event_t& ev) {

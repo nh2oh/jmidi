@@ -257,31 +257,10 @@ bool is_sysex(const jmid::mtrk_event_t&);
 bool is_sysex_f0(const jmid::mtrk_event_t&);
 bool is_sysex_f7(const jmid::mtrk_event_t&);
 // Sysex factories
-// mtrk_event_t make_meta_sysex_generic_impl(int32_t, unsigned char, 
-//					bool, const unsigned char *,
-//					const unsigned char *);
-jmid::mtrk_event_t make_meta_sysex_generic_impl(std::int32_t, unsigned char, 
-					unsigned char, bool, const unsigned char *,
-					const unsigned char *);
-// Create a sysex event w/ type byte == 0xF0u and payload == to the contents 
-// of the provided vector.  In the event returned, the final byte of the 
-// payload is always 0xF7u, even if this is not the final byte of the input
-// vector.  If the final byte of the vector /is/ an 0xF7u, this is 
-// interpreted as the terminating F7 and an additional 0xF7u is _not_ written.  
-// Ex:
-// make_sysex_f0(0, {0x01u,0x02u,0x03u,0x04u})  // no terminal F7
-// =>  {0x00u,  0xF0u,  0x05u,  0x01u,0x02u,0x03u,0x04u,0xF7u}
-//
-// make_sysex_f0(0, {0x01u,0x02u,0x03u,0x04u,0xF7u})
-// =>  {0x00u,  0xF0u,  0x05u,  0x01u,0x02u,0x03u,0x04u,0xF7u}
-//
-// make_sysex_f0(0, {0x03u,0x04u,0xF7u,0xF7u})  // two terminal F7's
-// =>  {0x00u,  0xF0u,  0x04u,  0x03u,0x04u,0xF7u,0xF7u}
-//
-// make_sysex_f0(0, {0x04u,0xF7u,0xF7u,0xF7u})  // three terminal F7's
-// =>  {0x00u,  0xF0u,  0x04u,  0x04u,0xF7u,0xF7u,0xF7u}
-jmid::mtrk_event_t make_sysex_f0(const std::uint32_t&, const std::vector<unsigned char>&);
-jmid::mtrk_event_t make_sysex_f7(const std::uint32_t&, const std::vector<unsigned char>&);
+jmid::mtrk_event_t make_sysex_f0(const std::int32_t&,
+								const std::vector<unsigned char>&);
+jmid::mtrk_event_t make_sysex_f7(const std::int32_t&,
+								const std::vector<unsigned char>&);
 
 }  // namespace jmid
 

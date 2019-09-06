@@ -604,48 +604,17 @@ bool jmid::is_sysex_f7(const jmid::mtrk_event_t& ev) {
 	auto s = ev.status_byte();
 	return (s==0xF7u);
 }
-
-// Delegates to make_meta_sysex_generic_unsafe() after checking the input.  
-// For invalid input, returns a default-constructed mtrk_event_t.  
-jmid::mtrk_event_t jmid::make_meta_sysex_generic_impl(std::int32_t dt, unsigned char type, 
-					unsigned char mtype, bool f7_terminate,
-					const unsigned char *beg, const unsigned char *end) {
-	// [beg,end) is the event data without the delta-time, the leading F0, 
-	// the vlq length field, and possibly the terminating F7.  
-	// If f7_terminate == true, the caller wants the event to end in an 0xF7.  
-	// If pyld does not end in an F7, an F7 is appended.  
-	// If f7_terminate == false, no terminating F7 is added.  
-	jmid::mtrk_event_t result;
-
-	dt = jmid::to_nearest_valid_delta_time(dt);
-	if (type!=0xFFu && type!=0xF7u && type!=0xF0u) {
-		result = jmid::mtrk_event_t();   // TODO:  Don't need to call this ctor...
-		return result;
-	}
-
-	std::int32_t payload_len;
-	if (((end-beg)>=0) && ((end-beg) <= 0x0FFFFFFF)) {
-		payload_len = static_cast<std::int32_t>(end-beg);
-	} else {  // end-beg < 0 || > the max allowed payload size
-		payload_len = 0;
-	}
-
-	bool add_f7_cap = false;
-	if ((payload_len==0 && f7_terminate) 
-			|| (payload_len>0 && f7_terminate && (*(end-1))!=0xF7u)) {
-		++payload_len;
-		add_f7_cap = true;
-	}
-	result = jmid::make_meta_sysex_generic_unsafe(dt, type, mtype,
-		payload_len, beg, end, add_f7_cap);
-	
-	return result;
-}
-jmid::mtrk_event_t jmid::make_sysex_f0(const std::uint32_t& dt, const std::vector<unsigned char>& pyld) {
-	return jmid::make_meta_sysex_generic_impl(dt,0xF0u,0x00u,true,
+jmid::mtrk_event_t jmid::make_sysex_f0(const std::int32_t& dt,
+								const std::vector<unsigned char>& pyld) {
+	return jmid::mtrk_event_t(jmid::delta_time_strong_t(dt),
+		jmid::sysex_header_strong_t(0xF0u,pyld.size()),
 		pyld.data(),pyld.data()+pyld.size());
 }
-jmid::mtrk_event_t jmid::make_sysex_f7(const std::uint32_t& dt, const std::vector<unsigned char>& pyld) {
-	return jmid::make_meta_sysex_generic_impl(dt,0xF7u,0x00u,true,
+jmid::mtrk_event_t jmid::make_sysex_f7(const std::int32_t& dt,
+								const std::vector<unsigned char>& pyld) {
+	return jmid::mtrk_event_t(jmid::delta_time_strong_t(dt),
+		jmid::sysex_header_strong_t(0xF7u,pyld.size()),
 		pyld.data(),pyld.data()+pyld.size());
 }
+
+

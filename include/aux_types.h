@@ -41,6 +41,17 @@ struct sysex_header_t  {
 	std::int32_t size;  // vlq length
 	operator bool() const;
 };
+class sysex_header_strong_t {
+public:
+	explicit sysex_header_strong_t(std::uint8_t,std::int32_t);
+	explicit sysex_header_strong_t(std::uint8_t,std::uint64_t);
+	explicit sysex_header_strong_t(sysex_header_t);
+	sysex_header_t get() const;
+	std::int32_t length() const;
+	std::uint8_t type() const;
+private:
+	sysex_header_t d_;
+};
 
 // P.134:  
 // All MIDI Files should specify tempo and time signature.  If they don't,
