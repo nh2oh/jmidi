@@ -12,9 +12,6 @@
 jmid::mtrk_event_t::mtrk_event_t() noexcept {
 	this->default_init(0);
 }
-jmid::mtrk_event_t::mtrk_event_t(jmid::mtrk_event_t::init_small_w_size_0_t) noexcept {  // private
-	this->d_ = jmid::internal::small_bytevec_t();
-}
 jmid::mtrk_event_t::mtrk_event_t(std::int32_t dt) noexcept {
 	this->default_init(dt);
 }

@@ -143,6 +143,8 @@ jmid::mtrk_event_t make_cuepoint(const std::int32_t&, const std::string&);
 jmid::mtrk_event_t make_text(const std::int32_t&, const std::string&);
 jmid::mtrk_event_t make_copyright(const std::int32_t&, const std::string&);
 
+
+
 //
 // Channel event data access
 //

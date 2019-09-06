@@ -137,6 +137,12 @@ mtrk_event_t make_mtrk_event2(InIt it, InIt end, unsigned char rs,
 	return result;
 };
 
+/*
+
+template <typename InIt>
+InIt make_mtrk_event_unsafe(jmid::meta_header_data mt, InIt it, InIt end, unsigned char rs, 
+					mtrk_event_t *result, mtrk_event_error_t *err) {
+	*/
 
 
 }  // namespace jmid

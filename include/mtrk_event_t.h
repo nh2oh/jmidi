@@ -104,6 +104,44 @@ public:
 	mtrk_event_t& operator=(mtrk_event_t&&) noexcept;
 	~mtrk_event_t() noexcept;
 
+	//
+	// construct_unsafe(...)
+	//
+	// Writes the delta-time and header data w/o performing any validity 
+	// checks (UB if any of these values are invalid), then attempts to 
+	// copy mt.length bytes from [beg,end) into the payload of the event.  
+	// When copying from the range [beg,end), checks for a premature 
+	// beg==end condition and stops if this occurs.  The event is _not_ 
+	// resized to reflect the number of bytes actually copied.   
+	//
+	// TODO:  replace_unsafe()?  overwrite_unsafe()?  set_unsafe()?
+	template<typename InIt>
+	struct construct_unsafe_result {
+		InIt src_last;
+		int32_t n_src_bytes_written;
+	};
+	template<typename InIt>
+	construct_unsafe_result<InIt> construct_unsafe(std::int32_t dt, 
+						jmid::meta_header_data mt, InIt beg, InIt end) {
+		// 4 + 1 + 1 + 4 == 10; dt + 0xFF + mt-type + vlq-len
+		auto dest_beg = this->d_.resize_nocopy(10);  // Probably oversized
+		auto dest = jmid::write_delta_time_unsafe(dt,dest_beg);
+		*dest++ = 0xFFu;
+		*dest++ = mt.type;
+		dest = jmid::write_vlq_unsafe(mt.length,dest);
+		
+		auto init_sz = dest - dest_beg;
+		dest_beg = this->d_.resize(init_sz + mt.length);
+		dest = dest_beg + init_sz;
+		int i=0;
+		while ((i<mt.length) && (beg!=end)) {
+			*dest++ = *beg++;
+			++i;
+		}
+		this->d_.resize(dest-dest_beg);
+		return {beg,i};
+	}
+
 	size_type size() const noexcept;
 	size_type capacity() const noexcept;
 	size_type reserve(size_type);
@@ -160,11 +198,6 @@ private:
 	// {0x00u,0x90u,0x3Cu,0x3Fu}
 	void default_init(std::int32_t=0) noexcept;
 
-	// This ctor avoids calling default_init(), thus the newly ctor'd object
-	// is in an invalid state (it's not a valid mtrk event).   
-	struct init_small_w_size_0_t {};
-	mtrk_event_t(init_small_w_size_0_t) noexcept;
-
 	unsigned char *push_back(unsigned char);
 	mtrk_event_iterator_range_t payload_range_impl() const noexcept;
 
@@ -192,6 +225,14 @@ struct mtrk_event_debug_helper_t {
 	bool is_big {false};
 };
 mtrk_event_debug_helper_t debug_info(const mtrk_event_t&);
+
+/*
+template<typename InIt>
+mtrk_event_t make_event_unsafe(std::int32_t dt, jmid::meta_header_data mt,
+								InIt beg, InIt end) {
+	mtrk_event_t
+}*/
+
 
 struct mtrk_event_error_t {
 	enum class errc : std::uint8_t {
