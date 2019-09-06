@@ -8,8 +8,11 @@
 
 namespace jmid {
 
+bool is_valid_vlq(std::int32_t);
+
 std::int32_t to_nearest_valid_vlq(std::int32_t);
 std::int32_t to_nearest_valid_vlq(std::uint64_t);
+std::int32_t to_nearest_valid_vlq(std::int64_t);
 
 // TODO:  Need to clarify behavior for iterators w/ value-type char
 // vs unsigned char.  

@@ -7,78 +7,147 @@
 #include <algorithm>
 
 
-jmid::delta_time_strong_t::delta_time_strong_t(std::int32_t dt) {
+
+jmid::delta_time::delta_time() {
+	this->d_ = 0;
+}
+jmid::delta_time::delta_time(std::int32_t dt) {
 	this->d_ = jmid::to_nearest_valid_delta_time(dt);
 }
-const std::int32_t& jmid::delta_time_strong_t::get() const {
+const std::int32_t& jmid::delta_time::get() const {
 	return this->d_;
 }
 
-jmid::meta_header_t::operator bool() const {
-	return jmid::is_meta_status_byte(this->s);
+
+
+
+jmid::meta_header_data::operator bool() const {
+	return (jmid::is_meta_status_byte(this->type) 
+		&& jmid::is_valid_vlq(this->length));
 }
-jmid::sysex_header_t::operator bool() const {
-	return jmid::is_sysex_status_byte(this->s);
+bool jmid::operator==(const jmid::meta_header_data& lhs,
+						const jmid::meta_header_data& rhs) {
+	return ((lhs.length == rhs.length) && (lhs.type == rhs.type));
+}
+bool jmid::operator!=(const jmid::meta_header_data& lhs,
+						const jmid::meta_header_data& rhs) {
+	return !(lhs == rhs);
 }
 
-jmid::meta_header_strong_t::meta_header_strong_t(std::uint8_t type, 
-												std::int32_t sz) {
-	this->type_ = type;
-	this->length_ = jmid::to_nearest_valid_vlq(sz);
+jmid::meta_header::meta_header() {
+	this->d_.type = 0x01u;
+	this->d_.length = 0;
 }
-jmid::meta_header_strong_t::meta_header_strong_t(std::uint8_t type, 
-												std::uint64_t sz) {
-	this->type_ = type;
-	this->length_ = jmid::to_nearest_valid_vlq(sz);
+jmid::meta_header::meta_header(std::uint8_t type, std::int32_t len) {
+	this->set_type(type);
+	this->set_length(len);
 }
-jmid::meta_header_strong_t::meta_header_strong_t(meta_header_t mth) {
-	this->type_ = mth.mt;
-	this->length_ = jmid::to_nearest_valid_vlq(mth.size);
+jmid::meta_header::meta_header(std::uint8_t type, std::uint64_t len) {
+	this->set_type(type);
+	this->set_length(len);
 }
-jmid::meta_header_t jmid::meta_header_strong_t::get() const {
-	return jmid::meta_header_t {0xFFu,this->type_,this->length_};
+jmid::meta_header::meta_header(std::uint8_t type, std::int64_t len) {
+	this->set_type(type);
+	this->set_length(len);
 }
-std::int32_t jmid::meta_header_strong_t::length() const {
-	return this->length_;
+jmid::meta_header::meta_header(meta_header_data mt) {
+	this->set_type(mt.type);
+	this->set_length(mt.length);
 }
-std::uint8_t jmid::meta_header_strong_t::type() const {
-	return this->type_;
-}
-
-jmid::sysex_header_strong_t::sysex_header_strong_t(std::uint8_t type, 
-												std::int32_t sz) {
-	if ((type == 0xF7u) || (type == 0xF0u)) {
-		this->d_.s = type;
-	} else {
-		this->d_.s = 0xF7u;
-	}
-	this->d_.size =jmid::to_nearest_valid_vlq(sz);
-}
-jmid::sysex_header_strong_t::sysex_header_strong_t(std::uint8_t type, 
-												std::uint64_t sz) {
-	if ((type == 0xF7u) || (type == 0xF0u)) {
-		this->d_.s = type;
-	} else {
-		this->d_.s = 0xF7u;
-	}
-	this->d_.size =jmid::to_nearest_valid_vlq(sz);
-}
-jmid::sysex_header_strong_t::sysex_header_strong_t(sysex_header_t sxh) {
-	this->d_.size = jmid::to_nearest_valid_vlq(sxh.size);
-	if ((sxh.s == 0xF7u) || (sxh.s == 0xF0u)) {
-		this->d_.s = sxh.s;
-	} else {
-		this->d_.s = 0xF7u;
-	}
-}
-jmid::sysex_header_t jmid::sysex_header_strong_t::get() const {
+jmid::meta_header_data jmid::meta_header::get() const {
 	return this->d_;
 }
-std::int32_t jmid::sysex_header_strong_t::length() const {
-	return this->d_.size;
+std::int32_t jmid::meta_header::length() const {
+	return this->d_.length;
 }
-std::uint8_t jmid::sysex_header_strong_t::type() const {
-	return this->d_.s;
+std::uint8_t jmid::meta_header::type_byte() const {
+	return this->d_.type;
+}
+std::int32_t jmid::meta_header::set_length(std::int32_t len) {
+	this->d_.length = jmid::to_nearest_valid_vlq(len);
+	return this->d_.length;
+}
+std::uint8_t jmid::meta_header::set_type(std::uint8_t type) {
+	// From the MIDI Std. p. 136:
+	// All meta-events begin with FF, then have an event type byte (which 
+	// is always less than 128), and then...
+	if (type > 127) {
+		type = 127;
+	}
+	this->d_.type = type;
+	return this->d_.type;
+}
+bool jmid::operator==(const jmid::meta_header& lhs,
+						const jmid::meta_header& rhs) {
+	return (lhs.d_ == rhs.d_);
+}
+bool jmid::operator!=(const jmid::meta_header& lhs,
+						const jmid::meta_header& rhs) {
+	return !(lhs == rhs);
+}
+
+
+
+jmid::sysex_header_data::operator bool() const {
+	return (jmid::is_sysex_status_byte(this->type) 
+		&& jmid::is_valid_vlq(this->length));
+}
+bool jmid::operator==(const jmid::sysex_header_data& lhs,
+						const jmid::sysex_header_data& rhs) {
+	return ((lhs.length == rhs.length) && (lhs.type == rhs.type));
+}
+bool jmid::operator!=(const jmid::sysex_header_data& lhs,
+						const jmid::sysex_header_data& rhs) {
+	return !(lhs == rhs);
+}
+jmid::sysex_header::sysex_header() {
+	this->d_.type=0xF7u;
+	this->d_.length = 0;
+}
+jmid::sysex_header::sysex_header(std::uint8_t type, std::int32_t len) {
+	this->set_type(type);
+	this->set_length(len);
+}
+jmid::sysex_header::sysex_header(std::uint8_t type, std::uint64_t len) {
+	this->set_type(type);
+	this->set_length(len);
+}
+jmid::sysex_header::sysex_header(std::uint8_t type, std::int64_t len) {
+	this->set_type(type);
+	this->set_length(len);
+}
+jmid::sysex_header::sysex_header(sysex_header_data sxd) {
+	this->set_type(sxd.type);
+	this->set_length(sxd.length);
+}
+jmid::sysex_header_data jmid::sysex_header::get() const {
+	return this->d_;
+}
+std::int32_t jmid::sysex_header::length() const {
+	return this->d_.length;
+}
+std::uint8_t jmid::sysex_header::type_byte() const {
+	return this->d_.type;
+}
+std::uint8_t jmid::sysex_header::set_type(std::uint8_t type) {
+	if ((type == 0xF7u) || (type == 0xF0u)) {
+		this->d_.type = type;
+	} else {
+		this->d_.type = 0xF7u;
+	}
+	return this->d_.type;
+}
+std::int32_t jmid::sysex_header::set_length(std::int32_t len) {
+	this->d_.length = jmid::to_nearest_valid_vlq(len);
+	return this->d_.length;
+}
+bool jmid::operator==(const jmid::sysex_header& lhs,
+						const jmid::sysex_header& rhs) {
+	return (lhs.d_ == rhs.d_);
+}
+bool jmid::operator!=(const jmid::sysex_header& lhs,
+						const jmid::sysex_header& rhs) {
+	return !(lhs == rhs);
 }
 
 bool jmid::operator==(const jmid::midi_timesig_t& rhs, 

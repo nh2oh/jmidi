@@ -18,7 +18,7 @@ jmid::mtrk_event_t::mtrk_event_t(jmid::mtrk_event_t::init_small_w_size_0_t) noex
 jmid::mtrk_event_t::mtrk_event_t(std::int32_t dt) noexcept {
 	this->default_init(dt);
 }
-jmid::mtrk_event_t::mtrk_event_t(jmid::delta_time_strong_t dt, 
+jmid::mtrk_event_t::mtrk_event_t(jmid::delta_time dt, 
 								jmid::ch_event_data_strong_t md) noexcept {
 	auto s = (md.status_nybble()|md.ch());
 	auto dest_beg = this->d_.resize_nocopy(7);
@@ -30,8 +30,8 @@ jmid::mtrk_event_t::mtrk_event_t(jmid::delta_time_strong_t dt,
 	}
 	this->d_.resize(dest_end-dest_beg);
 }
-jmid::mtrk_event_t::mtrk_event_t(jmid::delta_time_strong_t dt, 
-					jmid::meta_header_strong_t mt, const unsigned char *beg, 
+jmid::mtrk_event_t::mtrk_event_t(jmid::delta_time dt, 
+					jmid::meta_header mt, const unsigned char *beg, 
 					const unsigned char *end) {
 	if ((end-beg) != mt.length()) {
 		this->d_.resize(0);
@@ -41,7 +41,7 @@ jmid::mtrk_event_t::mtrk_event_t(jmid::delta_time_strong_t dt,
 	auto dest_beg = this->d_.resize_nocopy(10);  // Probably oversized
 	auto dest_end = jmid::write_delta_time_unsafe(dt.get(),dest_beg);
 	*dest_end++ = 0xFFu;
-	*dest_end++ = mt.type();
+	*dest_end++ = mt.type_byte();
 	dest_end = jmid::write_vlq_unsafe(mt.length(),dest_end);
 	dest_end = this->d_.resize((dest_end-dest_beg)+mt.length()) 
 		+ (dest_end-dest_beg);
@@ -51,8 +51,8 @@ jmid::mtrk_event_t::mtrk_event_t(jmid::delta_time_strong_t dt,
 	// suboptimal because the initial oversized resize may cause an 
 	// unnecessary allocation.  
 }
-jmid::mtrk_event_t::mtrk_event_t(jmid::delta_time_strong_t dt, 
-					jmid::sysex_header_strong_t sx, const unsigned char *beg, 
+jmid::mtrk_event_t::mtrk_event_t(jmid::delta_time dt, 
+					jmid::sysex_header sx, const unsigned char *beg, 
 					const unsigned char *end) {
 	if ((end-beg) != sx.length()) {
 		this->d_.resize(0);
@@ -61,7 +61,7 @@ jmid::mtrk_event_t::mtrk_event_t(jmid::delta_time_strong_t dt,
 	// 4 + 1 + 4 == 9; dt + 0xF0/F7 + vlq-len
 	auto dest_beg = this->d_.resize_nocopy(9);  // Probably oversized
 	auto dest_end = jmid::write_delta_time_unsafe(dt.get(),dest_beg);
-	*dest_end++ = sx.type();
+	*dest_end++ = sx.type_byte();
 	dest_end = jmid::write_vlq_unsafe(sx.length(),dest_end);
 	dest_end = this->d_.resize((dest_end-dest_beg)+sx.length()) 
 		+ (dest_end-dest_beg);
@@ -238,48 +238,45 @@ jmid::ch_event_data_t jmid::mtrk_event_t::get_channel_event_data() const noexcep
 	
 	return result;
 }
-jmid::meta_header_t jmid::mtrk_event_t::get_meta() const noexcept {
+jmid::meta_header_data jmid::mtrk_event_t::get_meta() const noexcept {
 	// TODO:
 	// The reason this is most efficiently implemented as a member function
 	// is that if big, it can safely read d_.u_.b_.pad_ directly, skipping
 	// the its.end-its.begin checks and the pointer-chasing into the 
 	// remote buffer.  
-	jmid::meta_header_t result;  result.s = 0x00u;  // Invalid
+	jmid::meta_header_data result;  
 
 	auto its = this->d_.pad_or_data_range();
 	its.begin = jmid::advance_to_dt_end(its.begin,its.end);
 	if (its.end-its.begin < 3) {
 		return result;
 	}
-	result.s = *(its.begin);
-	if (!jmid::is_meta_status_byte(result.s)) {
+	auto s = *(its.begin);
+	if (!jmid::is_meta_status_byte(s)) {
 		return result;
 	}
 	++(its.begin);
-	result.mt = *(its.begin);
+	result.type = *(its.begin);
 	++(its.begin);
-	result.size = jmid::read_vlq(its.begin,its.end).val;
+	result.length = jmid::read_vlq(its.begin,its.end).val;
 	return result;
 }
-jmid::sysex_header_t jmid::mtrk_event_t::get_sysex() const noexcept {
+jmid::sysex_header_data jmid::mtrk_event_t::get_sysex() const noexcept {
 	// TODO:
 	// The reason this is most efficiently implemented as a member function
 	// is that if big, it can safely read d_.u_.b_.pad_ directly, skipping
 	// the its.end-its.begin checks and the pointer-chasing into the 
 	// remote buffer.  
-	jmid::sysex_header_t result;  result.s = 0x00u;  // Invalid
+	jmid::sysex_header_data result;
 
 	auto its = this->d_.pad_or_data_range();
 	its.begin = jmid::advance_to_dt_end(its.begin,its.end);
 	if (its.end-its.begin < 2) {
 		return result;
 	}
-	result.s = *(its.begin);
-	if (!jmid::is_sysex_status_byte(result.s)) {
-		return result;
-	}
+	result.type = *(its.begin);
 	++(its.begin);
-	result.size = jmid::read_vlq(its.begin,its.end).val;
+	result.length = jmid::read_vlq(its.begin,its.end).val;
 	return result;
 }
 

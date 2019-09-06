@@ -8,50 +8,100 @@ namespace jmid {
 // aux types
 //
 
-class delta_time_strong_t {
+class delta_time {
 public:
-	explicit delta_time_strong_t(std::int32_t);
+	explicit delta_time();  // == 0
+	explicit delta_time(std::int32_t);
 	const std::int32_t& get() const;
 private:
 	std::int32_t d_;
 };
 
-struct meta_header_t  {
-	std::uint8_t s;  // 0xFFu
-	std::uint8_t mt;  // meta-type byte
-	std::int32_t size;  // vlq length
+
+// 
+// class meta_header & struct meta_header_data
+// Holds the meta type byte directly following the 0xFFu and the vlq length
+// field of a meta event.  
+// Struct meta_header_data can be populated with invalid values (ex, a
+// type_byte > 128, a length < 0, etc.  Invalid data can be detected via 
+// meta_header_data::operator bool().  
+// Class meta_header can never hold invalid data (type_byte() is always 
+// < 128; length() is always >= 0 && <= 0x0FFFFFFF).  
+// If a ctor or a setter is called with an out-of-range input:
+// - For an invalid type byte, the value 127 is set.
+// - For an invalid length, a valid value closest in value to the input
+//   is set.  
+//   Ex, for any < 0, the value 0 is written; for any input > 0x0FFFFFFF,
+//   the value 0x0FFFFFFF is written.  
+struct meta_header_data {
+	std::int32_t length;  // vlq length
+	std::uint8_t type;  // meta-type byte following the 0xFFu
 	operator bool() const;
 };
-class meta_header_strong_t {
+bool operator==(const meta_header_data&, const meta_header_data&);
+bool operator!=(const meta_header_data&, const meta_header_data&);
+class meta_header {
 public:
-	explicit meta_header_strong_t(std::uint8_t,std::int32_t);
-	explicit meta_header_strong_t(std::uint8_t,std::uint64_t);
-	explicit meta_header_strong_t(meta_header_t);
-	meta_header_t get() const;
+	explicit meta_header();  // Txt event w/ len 0 ({0xFFu,0x01u,0x00u})
+	explicit meta_header(std::uint8_t,std::int32_t);
+	explicit meta_header(std::uint8_t,std::uint64_t);
+	explicit meta_header(std::uint8_t,std::int64_t);
+	explicit meta_header(meta_header_data);
+	meta_header_data get() const;
 	std::int32_t length() const;
-	std::uint8_t type() const;
+	std::uint8_t type_byte() const;
+	std::uint8_t set_type(std::uint8_t);
+	std::int32_t set_length(std::int32_t);
 private:
-	std::uint8_t type_;
-	std::int32_t length_;
+	meta_header_data d_;
+	friend bool operator==(const meta_header&, const meta_header&);
+	friend bool operator!=(const meta_header&, const meta_header&);
 };
+bool operator==(const meta_header&, const meta_header&);
+bool operator!=(const meta_header&, const meta_header&);
 
 
-struct sysex_header_t  {
-	std::uint8_t s;  // 0xF0u or 0xF7u
-	std::int32_t size;  // vlq length
+// 
+// class sysex_header & struct sysex_header_data
+// Holds the sysex type byte (0xF7u or 0xF0u) and the vlq length field of
+// a sysex event.  
+// Struct sysex_header_data can be populated with invalid values (ex, a
+// type_byte != 0xF7u or 0xF0u, a length < 0, etc.  Invalid data can be
+// detected via sysex_header_data::operator bool().  
+// Class sysex_header can never hold invalid data (type_byte() is always 
+// == 0xF0u or 0xF7u; length() is always >= 0 && <= 0x0FFFFFFF).  
+// If a ctor or a setter is called with an out-of-range input:
+// - For an invalid type byte, the value 0xF7u is set.
+// - For an invalid length, a valid value closest in value to the input
+//   is set.  
+//   Ex, for any < 0, the value 0 is written; for any input > 0x0FFFFFFF,
+//   the value 0x0FFFFFFF is written.  
+struct sysex_header_data {
+	std::int32_t length;  // vlq length
+	std::uint8_t type;  // 0xF0u or 0xF7u
 	operator bool() const;
 };
-class sysex_header_strong_t {
+bool operator==(const sysex_header_data&, const sysex_header_data&);
+bool operator!=(const sysex_header_data&, const sysex_header_data&);
+class sysex_header {
 public:
-	explicit sysex_header_strong_t(std::uint8_t,std::int32_t);
-	explicit sysex_header_strong_t(std::uint8_t,std::uint64_t);
-	explicit sysex_header_strong_t(sysex_header_t);
-	sysex_header_t get() const;
+	explicit sysex_header();  // 0xF7u, length == 0
+	explicit sysex_header(std::uint8_t,std::int32_t);
+	explicit sysex_header(std::uint8_t,std::uint64_t);
+	explicit sysex_header(std::uint8_t,std::int64_t);
+	explicit sysex_header(sysex_header_data);
+	sysex_header_data get() const;
 	std::int32_t length() const;
-	std::uint8_t type() const;
+	std::uint8_t type_byte() const;
+	std::uint8_t set_type(std::uint8_t);
+	std::int32_t set_length(std::int32_t);
 private:
-	sysex_header_t d_;
+	sysex_header_data d_;
+	friend bool operator==(const sysex_header&, const sysex_header&);
+	friend bool operator!=(const sysex_header&, const sysex_header&);
 };
+bool operator==(const sysex_header&, const sysex_header&);
+bool operator!=(const sysex_header&, const sysex_header&);
 
 // P.134:  
 // All MIDI Files should specify tempo and time signature.  If they don't,

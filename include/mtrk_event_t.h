@@ -88,14 +88,14 @@ public:
 	// Default-constructed value w/ the given delta-time.  
 	explicit mtrk_event_t(std::int32_t) noexcept;
 
-	mtrk_event_t(jmid::delta_time_strong_t,
+	mtrk_event_t(jmid::delta_time,
 				jmid::ch_event_data_strong_t) noexcept;
 	mtrk_event_t(std::int32_t dt, jmid::ch_event_data_t md) noexcept 
-		: mtrk_event_t(jmid::delta_time_strong_t(dt),
+		: mtrk_event_t(jmid::delta_time(dt),
 			jmid::ch_event_data_strong_t(md)) {};
-	mtrk_event_t(jmid::delta_time_strong_t, jmid::meta_header_strong_t, 
+	mtrk_event_t(jmid::delta_time, jmid::meta_header, 
 					const unsigned char*, const unsigned char*);
-	mtrk_event_t(jmid::delta_time_strong_t, jmid::sysex_header_strong_t, 
+	mtrk_event_t(jmid::delta_time, jmid::sysex_header, 
 					const unsigned char*, const unsigned char*);
 
 	mtrk_event_t(const mtrk_event_t&);
@@ -140,10 +140,11 @@ public:
 	size_type data_size() const noexcept;  // Not including the delta-t
 
 	// If the object is not a channel event, the value that is returned 
-	// will test invalid.  The exact value is unspecified.  
+	// is unspecified.  Note that while it will /probably/ test invalid
+	// via its operator::bool(), this is not guaranteed!.  
 	jmid::ch_event_data_t get_channel_event_data() const noexcept;
-	jmid::meta_header_t get_meta() const noexcept;
-	jmid::sysex_header_t get_sysex() const noexcept;
+	jmid::meta_header_data get_meta() const noexcept;
+	jmid::sysex_header_data get_sysex() const noexcept;
 
 	// Setters
 	std::int32_t set_delta_time(std::int32_t);
@@ -191,10 +192,6 @@ struct mtrk_event_debug_helper_t {
 	bool is_big {false};
 };
 mtrk_event_debug_helper_t debug_info(const mtrk_event_t&);
-
-mtrk_event_t make_meta_sysex_generic_unsafe(std::int32_t, unsigned char, 
-		unsigned char, std::int32_t, const unsigned char *,
-		const unsigned char *, bool);
 
 struct mtrk_event_error_t {
 	enum class errc : std::uint8_t {
