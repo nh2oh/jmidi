@@ -361,7 +361,7 @@ InIt make_mtrk_event_seq(InIt it, InIt end, unsigned char rs,
 		}
 
 		jmid::mtrk_event_error_t curr_mtrk_event_error;
-		it = jmid::make_mtrk_event2(it,end,rs,p_curr_event,&curr_mtrk_event_error);
+		it = jmid::make_mtrk_event3(it,end,rs,p_curr_event,&curr_mtrk_event_error);
 		if (curr_mtrk_event_error.code != jmid::mtrk_event_error_t::errc::no_error) {
 			// I could check curr_event.size() != 0, but this is more expensive 
 			// than testing curr_mtrk_event_error

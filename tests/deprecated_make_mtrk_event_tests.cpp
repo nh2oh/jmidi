@@ -1,9 +1,10 @@
 #include "gtest/gtest.h"
-#include "make_mtrk_event.h"
+#include "mtrk_event_t.h"
 #include "midi_raw_test_data.h"
 #include <vector>
 #include <cstdint>
 
+/*
 
 //
 // maybe_mtrk_event_t make_mtrk_event(const unsigned char*,
@@ -18,7 +19,7 @@
 // All events have an event-local status byte; all tests pass 0x00u for the
 // value of the running-status.  
 //
-TEST(make_mtrk_event2_tests, assortedMidiEventsNoRS) {
+TEST(make_mtrk_event_tests, assortedMidiEventsNoRS) {
 	struct test_t {
 		std::vector<unsigned char> bytes {};
 		int32_t delta_time {0};
@@ -51,22 +52,20 @@ TEST(make_mtrk_event2_tests, assortedMidiEventsNoRS) {
 	};
 
 	for (const auto& tc : tests) {
-		auto ev = jmid::make_mtrk_event2(tc.bytes.data(),
-			tc.bytes.data()+tc.bytes.size(),0,nullptr);
-		EXPECT_TRUE(ev.size()!=0);
-		EXPECT_EQ(ev.delta_time(),tc.delta_time);
+		auto maybe_ev = jmid::make_mtrk_event(tc.bytes.data(),
+			tc.bytes.data()+tc.bytes.size(),0,nullptr,tc.bytes.size());
+		EXPECT_TRUE(maybe_ev);
+		EXPECT_EQ(maybe_ev.event.delta_time(),tc.delta_time);
 
-		EXPECT_EQ(ev.size(),tc.size);
-		EXPECT_EQ(ev.data_size(),tc.data_size);
-		ASSERT_TRUE(ev.size()<=tc.bytes.size());
-		for (int i=0; i<ev.size(); ++i) {
-			auto a = ev[i];
+		EXPECT_EQ(maybe_ev.event.size(),tc.size);
+		EXPECT_EQ(maybe_ev.event.data_size(),tc.data_size);
+		for (int i=0; i<maybe_ev.event.size(); ++i) {
+			auto a = maybe_ev.event[i];
 			auto b = tc.bytes[i];
-			EXPECT_EQ(ev[i],tc.bytes[i]);
+			EXPECT_EQ(maybe_ev.event[i],tc.bytes[i]);
 		}
 
-		// Test of the caller-supplied-dt overload
-		/*auto dt_end = tc.bytes.data() + (tc.size-tc.data_size);
+		auto dt_end = tc.bytes.data() + (tc.size-tc.data_size);
 		maybe_ev = jmid::make_mtrk_event(dt_end,
 			tc.bytes.data()+tc.bytes.size(),tc.delta_time,0,
 			nullptr,tc.bytes.size());
@@ -80,7 +79,7 @@ TEST(make_mtrk_event2_tests, assortedMidiEventsNoRS) {
 			auto a = maybe_ev.event[i];
 			auto b = tc.bytes[i];
 			EXPECT_EQ(maybe_ev.event[i],tc.bytes[i]);
-		}*/
+		}
 	}
 }
 
@@ -106,7 +105,7 @@ TEST(make_mtrk_event2_tests, assortedMidiEventsNoRS) {
 // value in tests_t.midisb_prev_event is sometimes not valid as a 
 // running-status (ex, it's == 0xFFu or something).  
 //
-TEST(make_mtrk_event2_tests, randomChEvntsSmallRandomRS) {
+TEST(make_mtrk_event_tests, randomChEvntsSmallRandomRS) {
 	// Fields applic_midi_status, n_data_bytes are not (yet) tested here
 	struct test_t {
 		std::vector<unsigned char> data {};
@@ -232,22 +231,20 @@ TEST(make_mtrk_event2_tests, randomChEvntsSmallRandomRS) {
 				tc.applic_midi_status);
 		}
 
-		auto ev = jmid::make_mtrk_event2(tc.data.data(),
-			tc.data.data()+tc.data.size(),tc.midisb_prev_event,nullptr);
+		auto maybe_ev = jmid::make_mtrk_event(tc.data.data(),
+			tc.data.data()+tc.data.size(),tc.midisb_prev_event,nullptr,
+			size_with_status_byte);
 		// NB:  I could set the max event size to something 
 		// > size_with_status_byte, but not smaller.  
-		EXPECT_TRUE(ev.size() != 0);
-		EXPECT_EQ(ev.delta_time(),tc.dt_value);
+		EXPECT_TRUE(maybe_ev);
+		EXPECT_EQ(maybe_ev.event.delta_time(),tc.dt_value);
 
-		EXPECT_EQ(ev.size(),size_with_status_byte);
-		EXPECT_EQ(ev.data_size(),data_size_with_status_byte);
-		ASSERT_TRUE(ev.size()<=data_no_rs.size());
-		for (int i=0; i<ev.size(); ++i) {
-			EXPECT_EQ(ev[i],data_no_rs[i]);
+		EXPECT_EQ(maybe_ev.event.size(),size_with_status_byte);
+		EXPECT_EQ(maybe_ev.event.data_size(),data_size_with_status_byte);
+		for (int i=0; i<maybe_ev.event.size(); ++i) {
+			EXPECT_EQ(maybe_ev.event[i],data_no_rs[i]);
 		}
 
-		// Test of the caller-suppleid-dt overload
-		/*
 		auto dt_end = tc.data.data() + tc.dt_field_size;
 		maybe_ev = jmid::make_mtrk_event(dt_end,
 			tc.data.data()+tc.data.size(),tc.dt_value,tc.midisb_prev_event,
@@ -261,7 +258,7 @@ TEST(make_mtrk_event2_tests, randomChEvntsSmallRandomRS) {
 		EXPECT_EQ(maybe_ev.event.data_size(),data_size_with_status_byte);
 		for (int i=0; i<maybe_ev.event.size(); ++i) {
 			EXPECT_EQ(maybe_ev.event[i],data_no_rs[i]);
-		}*/
+		}
 	}
 }
 
@@ -277,7 +274,7 @@ TEST(make_mtrk_event2_tests, randomChEvntsSmallRandomRS) {
 //
 // All tests pass 0x00u for the value of the running-status.  
 //
-TEST(make_mtrk_event2_tests, metaEventsSmallNoRS) {
+TEST(make_mtrk_event_tests, metaEventsSmallNoRS) {
 	struct p142tests_t {
 		std::vector<unsigned char> bytes {};
 		int32_t delta_time {0};
@@ -310,20 +307,17 @@ TEST(make_mtrk_event2_tests, metaEventsSmallNoRS) {
 	};
 	
 	for (const auto& tc : tests) {
-		auto ev = jmid::make_mtrk_event2(tc.bytes.data(),
-			tc.bytes.data()+tc.bytes.size(),0,nullptr);
-		EXPECT_TRUE(ev.size() != 0);
-		EXPECT_EQ(ev.delta_time(),tc.delta_time);
+		auto maybe_ev = jmid::make_mtrk_event(tc.bytes.data(),
+			tc.bytes.data()+tc.bytes.size(),0,nullptr,tc.bytes.size()+100);
+		EXPECT_TRUE(maybe_ev);
+		EXPECT_EQ(maybe_ev.event.delta_time(),tc.delta_time);
 
-		EXPECT_EQ(ev.size(),tc.size);
-		EXPECT_EQ(ev.data_size(),tc.data_size);
-		ASSERT_TRUE(ev.size()<=tc.bytes.size());
-		for (int i=0; i<ev.size(); ++i) {
-			EXPECT_EQ(ev[i],tc.bytes[i]);
+		EXPECT_EQ(maybe_ev.event.size(),tc.size);
+		EXPECT_EQ(maybe_ev.event.data_size(),tc.data_size);
+		for (int i=0; i<maybe_ev.event.size(); ++i) {
+			EXPECT_EQ(maybe_ev.event[i],tc.bytes[i]);
 		}
 
-		// Test of the caller-supplied-dt overload
-		/*
 		auto dt_end = tc.bytes.data() + (tc.size-tc.data_size);
 		maybe_ev = jmid::make_mtrk_event(dt_end,
 			tc.bytes.data()+tc.bytes.size(),tc.delta_time,0,
@@ -335,7 +329,7 @@ TEST(make_mtrk_event2_tests, metaEventsSmallNoRS) {
 		EXPECT_EQ(maybe_ev.event.data_size(),tc.data_size);
 		for (int i=0; i<maybe_ev.event.size(); ++i) {
 			EXPECT_EQ(maybe_ev.event[i],tc.bytes[i]);
-		}*/
+		}
 	}
 }
 
@@ -351,7 +345,7 @@ TEST(make_mtrk_event2_tests, metaEventsSmallNoRS) {
 //
 // All tests pass 0x00u for the value of the running-status.  
 //
-TEST(make_mtrk_event2_tests, metaEventsBigNoRS) {
+TEST(make_mtrk_event_tests, metaEventsBigNoRS) {
 	struct test_t {
 		std::vector<unsigned char> bytes {};
 		int32_t delta_time {0};
@@ -398,20 +392,17 @@ TEST(make_mtrk_event2_tests, metaEventsBigNoRS) {
 	};
 
 	for (const auto& tc : tests) {
-		auto ev = jmid::make_mtrk_event2(tc.bytes.data(),
-			tc.bytes.data()+tc.bytes.size(),0,nullptr);
-		EXPECT_TRUE(ev.size() != 0);
-		EXPECT_EQ(ev.delta_time(),tc.delta_time);
+		auto maybe_ev = jmid::make_mtrk_event(tc.bytes.data(),
+			tc.bytes.data()+tc.bytes.size(),0,nullptr,tc.bytes.size());
+		EXPECT_TRUE(maybe_ev);
+		EXPECT_EQ(maybe_ev.event.delta_time(),tc.delta_time);
 
-		EXPECT_EQ(ev.size(),tc.size);
-		EXPECT_EQ(ev.data_size(),tc.data_size);
-		ASSERT_TRUE(ev.size()<=tc.bytes.size());
-		for (int i=0; i<ev.size(); ++i) {
-			EXPECT_EQ(ev[i],tc.bytes[i]);
+		EXPECT_EQ(maybe_ev.event.size(),tc.size);
+		EXPECT_EQ(maybe_ev.event.data_size(),tc.data_size);
+		for (int i=0; i<maybe_ev.event.size(); ++i) {
+			EXPECT_EQ(maybe_ev.event[i],tc.bytes[i]);
 		}
 
-		// Test of the caller-supplied-dt overload
-		/*
 		auto dt_end = tc.bytes.data() + (tc.size-tc.data_size);
 		maybe_ev = jmid::make_mtrk_event(dt_end,
 			tc.bytes.data()+tc.bytes.size(),tc.delta_time,0,nullptr,
@@ -423,7 +414,7 @@ TEST(make_mtrk_event2_tests, metaEventsBigNoRS) {
 		EXPECT_EQ(maybe_ev.event.data_size(),tc.data_size);
 		for (int i=0; i<maybe_ev.event.size(); ++i) {
 			EXPECT_EQ(maybe_ev.event[i],tc.bytes[i]);
-		}*/
+		}
 	}
 }
 
@@ -450,7 +441,7 @@ TEST(make_mtrk_event2_tests, metaEventsBigNoRS) {
 // value in tests_t.midisb_prev_event is sometimes not valid as a 
 // running-status (ex, it's == 0xFFu or something).  
 //
-TEST(make_mtrk_event2_tests, assortedChEvntsSmallRandomRSTestSetC) {
+TEST(make_mtrk_event_tests, assortedChEvntsSmallRandomRSTestSetC) {
 	// Fields applic_midi_status, n_data_bytes are not (yet) tested here
 	for (auto& tc : set_c_midi_events_valid) {
 		auto data_size_with_status_byte = tc.n_data_bytes + 1;
@@ -463,21 +454,18 @@ TEST(make_mtrk_event2_tests, assortedChEvntsSmallRandomRSTestSetC) {
 				tc.applic_midi_status);
 		}
 
-		auto ev = jmid::make_mtrk_event2(tc.data.data(),
+		auto maybe_ev = jmid::make_mtrk_event(tc.data.data(),
 			tc.data.data()+tc.data.size(),tc.midisb_prev_event,
-			nullptr);
-		EXPECT_TRUE(ev.size() != 0);
-		EXPECT_EQ(ev.delta_time(),tc.dt_value);
+			nullptr,size_with_status_byte);
+		EXPECT_TRUE(maybe_ev);
+		EXPECT_EQ(maybe_ev.event.delta_time(),tc.dt_value);
 
-		EXPECT_EQ(ev.size(),size_with_status_byte);
-		EXPECT_EQ(ev.data_size(),data_size_with_status_byte);
-		ASSERT_TRUE(ev.size()<=data_no_rs.size());
-		for (int i=0; i<ev.size(); ++i) {
-			EXPECT_EQ(ev[i],data_no_rs[i]);
+		EXPECT_EQ(maybe_ev.event.size(),size_with_status_byte);
+		EXPECT_EQ(maybe_ev.event.data_size(),data_size_with_status_byte);
+		for (int i=0; i<maybe_ev.event.size(); ++i) {
+			EXPECT_EQ(maybe_ev.event[i],data_no_rs[i]);
 		}
 
-		// Test of the caller-supplied-dt overload
-		/*
 		auto dt_end = tc.data.data() + tc.dt_field_size;
 		maybe_ev = jmid::make_mtrk_event(dt_end,
 			tc.data.data()+tc.data.size(),tc.dt_value,tc.midisb_prev_event,
@@ -489,7 +477,7 @@ TEST(make_mtrk_event2_tests, assortedChEvntsSmallRandomRSTestSetC) {
 		EXPECT_EQ(maybe_ev.event.data_size(),data_size_with_status_byte);
 		for (int i=0; i<maybe_ev.event.size(); ++i) {
 			EXPECT_EQ(maybe_ev.event[i],data_no_rs[i]);
-		}*/
+		}
 	}
 }
 
@@ -503,12 +491,13 @@ TEST(make_mtrk_event2_tests, assortedChEvntsSmallRandomRSTestSetC) {
 // A set of channel event data, "invalid" for lack of a valid event-local
 // & running-status byte.  
 //
-TEST(make_mtrk_event2_tests, assortedChEvntsSmallInvalidTestSetD) {
+TEST(make_mtrk_event_tests, assortedChEvntsSmallInvalidTestSetD) {
 	for (auto& tc : set_d_midi_events_nostatus_invalid) {
 		jmid::mtrk_event_error_t err;
-		auto ev = jmid::make_mtrk_event2(tc.data.data(),
-			tc.data.data()+tc.data.size(),tc.midisb_prev_event,&err);
-		EXPECT_TRUE(ev.size() == 0);
+		auto maybe_ev = jmid::make_mtrk_event(tc.data.data(),
+			tc.data.data()+tc.data.size(),tc.midisb_prev_event,&err,
+			tc.data.size());
+		EXPECT_FALSE(maybe_ev);
 	}
 }
 
@@ -518,15 +507,15 @@ TEST(make_mtrk_event2_tests, assortedChEvntsSmallInvalidTestSetD) {
 // "random" but valid running-status bytes.  Events also have dt fields of
 // varying size.  
 //
-TEST(make_mtrk_event2_tests, RandomEventsAllRSBytesValid) {
+TEST(make_mtrk_event_tests, RandomEventsAllRSBytesValid) {
 	for (const auto& tc : set_a_valid_rs) {
 		jmid::mtrk_event_error_t err;
-		auto ev = jmid::make_mtrk_event2(tc.data.data(),
-			tc.data.data()+tc.data.size(),tc.rs_pre,&err);
-		EXPECT_TRUE(ev.size() != 0);
-		EXPECT_EQ(ev.running_status(),tc.rs_post);
+		auto maybe_ev = jmid::make_mtrk_event(tc.data.data(),
+			tc.data.data()+tc.data.size(),tc.rs_pre,&err,tc.data.size()+100);
+		EXPECT_TRUE(maybe_ev);
+		EXPECT_EQ(maybe_ev.event.running_status(),tc.rs_post);
 		
-		auto sz_dt = ev.event_begin()-ev.begin();
+		auto sz_dt = maybe_ev.event.event_begin()-maybe_ev.event.begin();
 		EXPECT_EQ(sz_dt,tc.dtsize);
 	}
 }
@@ -537,25 +526,25 @@ TEST(make_mtrk_event2_tests, RandomEventsAllRSBytesValid) {
 // "random" but *invalid* running-status bytes.  Events also have dt fields of
 // varying size.  
 // 
-TEST(make_mtrk_event2_tests, RandomMtrkEventsAllRSBytesInvalid) {
+TEST(make_mtrk_event_tests, RandomMtrkEventsAllRSBytesInvalid) {
 	for (const auto& tc : set_b_invalid_rs) {
 		jmid::mtrk_event_error_t err;
-		auto ev = jmid::make_mtrk_event2(tc.data.data(),
-			tc.data.data()+tc.data.size(), tc.rs_pre, &err);
+		auto maybe_ev = jmid::make_mtrk_event(tc.data.data(),
+			tc.data.data()+tc.data.size(),tc.rs_pre,&err,tc.data.size()+100);
 
 		// In this set, events w/o an event-local status byte are
 		// uninterpretible, since all rs bytes are invalid.  
 		const unsigned char *p = &(tc.data[0]);
 		auto maybe_loc_sb = *(p+tc.dtsize);
 		if ((maybe_loc_sb&0x80u) != 0x80) { 
-			EXPECT_TRUE(ev.size() == 0);
+			EXPECT_FALSE(maybe_ev);
 			continue;
 		}
 
-		EXPECT_TRUE(ev.size() != 0);
-		EXPECT_EQ(ev.running_status(),tc.rs_post);
+		EXPECT_TRUE(maybe_ev);
+		EXPECT_EQ(maybe_ev.event.running_status(),tc.rs_post);
 		
-		auto sz_dt = ev.event_begin()-ev.begin();
+		auto sz_dt = maybe_ev.event.event_begin()-maybe_ev.event.begin();
 		EXPECT_EQ(sz_dt,tc.dtsize);
 	}
 }
@@ -571,13 +560,16 @@ TEST(make_mtrk_event2_tests, RandomMtrkEventsAllRSBytesInvalid) {
 // an event-local status byte; if not, the rs byte correctly describes the
 // event.  Events also have dt fields of varying size.  
 //
-TEST(make_mtrk_event2_tests, RandomMIDIEventsRSandNonRS) {
+TEST(make_mtrk_event_tests, RandomMIDIEventsRSandNonRS) {
 	for (const auto& tc : set_c_midi_events_valid) {
 		jmid::mtrk_event_error_t err;
-		auto ev = jmid::make_mtrk_event2(tc.data.data(),
-			tc.data.data()+tc.data.size(),tc.midisb_prev_event,&err);
-		EXPECT_TRUE(ev.size() != 0);
-		EXPECT_EQ(ev.running_status(),tc.applic_midi_status);
+		auto maybe_ev = jmid::make_mtrk_event(tc.data.data(),
+			tc.data.data()+tc.data.size(),tc.midisb_prev_event,&err,
+			tc.data.size()+100);
+		EXPECT_TRUE(maybe_ev);
+		EXPECT_EQ(maybe_ev.event.running_status(),tc.applic_midi_status);
 	}
 }
+
+*/
 

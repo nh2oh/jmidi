@@ -12,6 +12,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\aux_types.cpp" />
+    <ClCompile Include="..\..\src\deprecated_make_mtrk_event.cpp" />
     <ClCompile Include="..\..\src\generic_chunk_low_level.cpp" />
     <ClCompile Include="..\..\src\generic_iterator.cpp" />
     <ClCompile Include="..\..\src\make_mtrk_event.cpp" />
@@ -32,6 +33,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\aux_types.h" />
+    <ClInclude Include="..\..\include\deprecated_make_mtrk_event.h" />
     <ClInclude Include="..\..\include\generic_chunk_low_level.h" />
     <ClInclude Include="..\..\include\generic_iterator.h" />
     <ClInclude Include="..\..\include\make_mtrk_event.h" />

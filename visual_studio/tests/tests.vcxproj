@@ -12,8 +12,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\tests\delta_time_test_data.cpp" />
-    <ClCompile Include="..\..\tests\make_mtrk_event2_tests.cpp" />
-    <ClCompile Include="..\..\tests\make_mtrk_event_tests.cpp" />
+    <ClCompile Include="..\..\tests\deprecated_make_mtrk_event2_tests.cpp" />
+    <ClCompile Include="..\..\tests\make_mtrk_event3.cpp" />
+    <ClCompile Include="..\..\tests\deprecated_make_mtrk_event_tests.cpp" />
     <ClCompile Include="..\..\tests\midi_chunk_low_level_tests.cpp" />
     <ClCompile Include="..\..\tests\midi_dt_tests.cpp" />
     <ClCompile Include="..\..\tests\midi_raw_test_data.cpp" />

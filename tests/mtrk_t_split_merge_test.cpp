@@ -2,6 +2,7 @@
 #include "mtrk_test_data.h"
 #include "mtrk_t.h"
 #include "mtrk_event_t.h"
+#include "make_mtrk_event.h"
 #include "mtrk_event_methods.h"
 #include <vector>
 #include <cstdint>
@@ -13,8 +14,10 @@ using namespace mtrk_tests;
 jmid::mtrk_t make_mtrk_tsb(const std::vector<tsb_t>& v) {
 	auto mtrk_tsb = jmid::mtrk_t();  // auto to avoid MVP
 	for (const auto& e : v) {
-		auto curr_ev = jmid::make_mtrk_event(e.d.data(),e.d.data()+e.d.size(),
-			0,nullptr,e.d.size()).event;
+		auto curr_ev = jmid::make_mtrk_event3(e.d.data(),
+			e.d.data()+e.d.size(),0,nullptr);
+		//auto curr_ev = jmid::make_mtrk_event(e.d.data(),e.d.data()+e.d.size(),
+		//	0,nullptr,e.d.size()).event;
 		mtrk_tsb.push_back(curr_ev);
 	}
 	return mtrk_tsb;
@@ -48,9 +51,12 @@ TEST(mtrk_t_tests, SplitCopyIfForNoteNum67WithTSB) {
 
 		// The raw data in tsb_note_67_events have the delta time fields from
 		// mtrk_b
-		auto ev = jmid::make_mtrk_event(tsb_note_67_events[i].d.data(),
+		auto ev = jmid::make_mtrk_event3(tsb_note_67_events[i].d.data(),
 			tsb_note_67_events[i].d.data()+tsb_note_67_events[i].d.size(),
-			0x00u,nullptr,tsb_note_67_events[i].d.size()).event;
+			0x00u,nullptr);
+		//auto ev = jmid::make_mtrk_event(tsb_note_67_events[i].d.data(),
+		//	tsb_note_67_events[i].d.data()+tsb_note_67_events[i].d.size(),
+		//	0x00u,nullptr,tsb_note_67_events[i].d.size()).event;
 		ev.set_delta_time(new_mtrk[i].delta_time());
 		EXPECT_EQ(new_mtrk[i],ev);
 	}
@@ -81,9 +87,12 @@ TEST(mtrk_t_tests, SplitCopyIfForMetaEventsWithTSB) {
 
 		// The raw data in tsb_meta_events have the delta time fields from
 		// mtrk_b
-		auto ev = jmid::make_mtrk_event(tsb_meta_events[i].d.data(),
+		auto ev = jmid::make_mtrk_event3(tsb_meta_events[i].d.data(),
 			tsb_meta_events[i].d.data()+tsb_meta_events[i].d.size(),
-			0x00u,nullptr,tsb_meta_events[i].d.size()).event;
+			0x00u,nullptr);
+		//auto ev = jmid::make_mtrk_event(tsb_meta_events[i].d.data(),
+		//	tsb_meta_events[i].d.data()+tsb_meta_events[i].d.size(),
+		//	0x00u,nullptr,tsb_meta_events[i].d.size()).event;
 		ev.set_delta_time(new_mtrk[i].delta_time());
 		EXPECT_EQ(new_mtrk[i],ev);
 	}
@@ -117,9 +126,12 @@ TEST(mtrk_t_tests, SplitIfForNoteNum67WithTSB) {
 
 		// The raw data in tsb_note_67_events have the delta time fields from
 		// mtrk_b
-		auto ev = jmid::make_mtrk_event(tsb_note_67_events[i].d.data(),
+		auto ev = jmid::make_mtrk_event3(tsb_note_67_events[i].d.data(),
 			tsb_note_67_events[i].d.data()+tsb_note_67_events[i].d.size(),
-			0x00u,nullptr,tsb_note_67_events[i].d.size()).event;
+			0x00u,nullptr);
+		//auto ev = jmid::make_mtrk_event(tsb_note_67_events[i].d.data(),
+		//	tsb_note_67_events[i].d.data()+tsb_note_67_events[i].d.size(),
+		//	0x00u,nullptr,tsb_note_67_events[i].d.size()).event;
 		ev.set_delta_time(mtrk_first[i].delta_time());
 		EXPECT_EQ(mtrk_first[i],ev);
 	}
@@ -136,9 +148,12 @@ TEST(mtrk_t_tests, SplitIfForNoteNum67WithTSB) {
 
 		// The raw data in tsb_non_note_67_events have the delta time fields from
 		// mtrk_b
-		auto ev = jmid::make_mtrk_event(tsb_non_note_67_events[i].d.data(),
+		auto ev = jmid::make_mtrk_event3(tsb_non_note_67_events[i].d.data(),
 			tsb_non_note_67_events[i].d.data()+tsb_non_note_67_events[i].d.size(),
-			0x00u,nullptr,tsb_non_note_67_events[i].d.size()).event;
+			0x00u,nullptr);
+		//auto ev = jmid::make_mtrk_event(tsb_non_note_67_events[i].d.data(),
+		//	tsb_non_note_67_events[i].d.data()+tsb_non_note_67_events[i].d.size(),
+		//	0x00u,nullptr,tsb_non_note_67_events[i].d.size()).event;
 		ev.set_delta_time(mtrk_second[i].delta_time());
 		EXPECT_EQ(mtrk_second[i],ev);
 	}

@@ -2,6 +2,7 @@
 #include "mtrk_test_data.h"
 #include "mtrk_t.h"
 #include "mtrk_event_t.h"
+#include "make_mtrk_event.h"
 #include "aux_types.h"
 #include <vector>
 #include <cstdint>
@@ -11,8 +12,10 @@ using namespace mtrk_tests;
 jmid::mtrk_t make_tsa() {
 	auto mtrk_tsa = jmid::mtrk_t();  // auto to avoid MVP
 	for (const auto& e : tsa) {
-		auto curr_ev = jmid::make_mtrk_event(e.d.data(),e.d.data()+e.d.size(),
-			0,nullptr,e.d.size()).event;
+		auto curr_ev = jmid::make_mtrk_event3(e.d.data(),
+			e.d.data()+e.d.size(),0,nullptr);
+		//auto curr_ev = jmid::make_mtrk_event(e.d.data(),e.d.data()+e.d.size(),
+		//	0,nullptr,e.d.size()).event;
 		mtrk_tsa.push_back(curr_ev);
 	}
 	return mtrk_tsa;
@@ -27,8 +30,10 @@ TEST(mtrk_t_tests, DefaultCtorMultiplePushBackTestSetA) {
 	EXPECT_EQ(mtrk_tsa.size(),tsa.size());
 	EXPECT_EQ(mtrk_tsa.nticks(),tsa_props.duration_tks);
 	for (int i=0; i<tsa.size(); ++i) {
-		auto curr_ev = jmid::make_mtrk_event(tsa[i].d.data(),
-			tsa[i].d.data()+tsa[i].d.size(),0,nullptr,tsa[i].d.size()).event;
+		auto curr_ev = jmid::make_mtrk_event3(tsa[i].d.data(),
+			tsa[i].d.data()+tsa[i].d.size(),0,nullptr);
+		//auto curr_ev = jmid::make_mtrk_event(tsa[i].d.data(),
+		//	tsa[i].d.data()+tsa[i].d.size(),0,nullptr,tsa[i].d.size()).event;
 		EXPECT_EQ(mtrk_tsa[i],curr_ev);
 	}
 }

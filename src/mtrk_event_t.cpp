@@ -83,6 +83,9 @@ jmid::mtrk_event_t& jmid::mtrk_event_t::operator=(jmid::mtrk_event_t&& rhs) noex
 jmid::mtrk_event_t::~mtrk_event_t() noexcept {  // dtor
 	//...
 }
+void jmid::mtrk_event_t::clear() noexcept {
+	this->d_.resize_nocopy(0);
+}
 void jmid::mtrk_event_t::replace_unsafe(std::int32_t dt,
 										jmid::ch_event_data_t md) {
 	auto s = (md.status_nybble|md.ch);
@@ -435,10 +438,6 @@ std::string jmid::explain(const jmid::mtrk_event_error_t& err) {
 	return s;
 }
 
-jmid::maybe_mtrk_event_t::operator bool() const {
-	auto tf = (this->error==jmid::mtrk_event_error_t::errc::no_error);
-	return tf;
-}
 jmid::validate_channel_event_result_t::operator bool() const {
 	return this->error==jmid::mtrk_event_error_t::errc::no_error;
 }

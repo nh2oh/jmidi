@@ -18,9 +18,6 @@
     <ClCompile Include="..\..\tests\delta_time_test_data.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\tests\make_mtrk_event_tests.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\tests\midi_chunk_low_level_tests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -90,7 +87,13 @@
     <ClCompile Include="..\..\tests\small_bytevec_tests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\tests\make_mtrk_event2_tests.cpp">
+    <ClCompile Include="..\..\tests\make_mtrk_event3.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\tests\deprecated_make_mtrk_event2_tests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\tests\deprecated_make_mtrk_event_tests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -1,6 +1,7 @@
 #include "gtest/gtest.h"
 #include "aux_types.h"
 #include "mtrk_event_t.h"
+#include "make_mtrk_event.h"
 #include "mtrk_event_methods.h"
 #include "midi_raw_test_data.h"
 #include <vector>
@@ -10,14 +11,12 @@
 // Test set C data (all cases are valid mtrk channel events)
 TEST(mtrk_event_channel_interrogators, isChannelVoiceModeTestSetCEvents) {
 	for (auto& tc : set_c_midi_events_valid) {
-		auto maybe_ev = jmid::make_mtrk_event(tc.data.data(),
-			tc.data.data()+tc.data.size(),tc.midisb_prev_event,nullptr,
-			tc.data.size()+1);
+		auto ev = jmid::make_mtrk_event3(tc.data.data(),
+			tc.data.data()+tc.data.size(),tc.midisb_prev_event,nullptr);
 		// Note I am setting the max allowable event size to 
 		// tc.data.size()+1.  The final events differ from the raw data
 		// only by the presence of an event-local status byte.  
-		EXPECT_TRUE(maybe_ev);
-		auto ev = maybe_ev.event;
+		EXPECT_TRUE(ev.size() > 0);
 		
 		EXPECT_TRUE(jmid::is_channel(ev));
 		if (tc.is_ch_mode) {

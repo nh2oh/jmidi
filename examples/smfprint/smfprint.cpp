@@ -38,5 +38,9 @@ int main(int argc, char *argv[]) {
 		trkn++;
 	}
 
+	// Alternatively...
+	// jmid::print(jmid::smf_t)
+	// std::cout << jmid::print(smf.smf) << "\n";
+
 	return 0;
 }

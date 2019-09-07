@@ -1,6 +1,7 @@
 #include "gtest/gtest.h"
 #include "midi_time.h"
 #include "mtrk_event_t.h"
+#include "make_mtrk_event.h"
 #include "mtrk_event_methods.h"
 #include <vector>
 #include <cstdint>
@@ -32,10 +33,9 @@ TEST(mtrk_event_t_tests, metaEventsSmallCopyCtorAndCopyAssign) {
 	};
 
 	for (const auto& e : tests) {
-		auto maybe_ev = jmid::make_mtrk_event(e.data(),e.data()+e.size(),0,
-			nullptr,e.size());
-		EXPECT_TRUE(maybe_ev);
-		auto c1 = maybe_ev.event;
+		auto c1 = jmid::make_mtrk_event3(e.data(),e.data()+e.size(),0,
+			nullptr);
+		EXPECT_TRUE(c1.size()>0);
 		
 		//---------------------------------------------------------------------------
 		// copy ctor:
@@ -52,9 +52,9 @@ TEST(mtrk_event_t_tests, metaEventsSmallCopyCtorAndCopyAssign) {
 
 		//---------------------------------------------------------------------------
 		// copy assign:
-		maybe_ev = jmid::make_mtrk_event(tests[0].data(),
-			tests[0].data()+tests[0].size(),0,nullptr,tests[0].size());
-		auto c3 = maybe_ev.event;
+		auto c3 = jmid::make_mtrk_event3(tests[0].data(),
+			tests[0].data()+tests[0].size(),0,nullptr);
+		EXPECT_TRUE(c3.size()>0);
 		c3 = c1;
 
 		EXPECT_EQ(c3.status_byte(),c1.status_byte());
@@ -106,10 +106,8 @@ TEST(mtrk_event_t_tests, metaEventsBigCopyCtorAndCopyAssign) {
 	
 	bool first_iter=true;
 	for (const auto& e : tests) {
-		auto maybe_ev = jmid::make_mtrk_event(e.data(),e.data()+e.size(),0,
-			nullptr,e.size());
-		EXPECT_TRUE(maybe_ev);
-		auto c1 = maybe_ev.event;
+		auto c1 = jmid::make_mtrk_event3(e.data(),e.data()+e.size(),0,nullptr);
+		EXPECT_TRUE(c1.size()>0);
 
 		//---------------------------------------------------------------------------
 		// copy ctor:
@@ -131,9 +129,9 @@ TEST(mtrk_event_t_tests, metaEventsBigCopyCtorAndCopyAssign) {
 		if (!first_iter) {
 			j=0;
 		}
-		maybe_ev = jmid::make_mtrk_event(tests[j].data(),
-			tests[j].data()+tests[j].size(),0,nullptr,tests[j].size());
-		auto c3 = maybe_ev.event;
+		auto c3 = jmid::make_mtrk_event3(tests[j].data(),
+			tests[j].data()+tests[j].size(),0,nullptr);
+		EXPECT_TRUE(c3.size()>0);
 		c3 = c1;
 		EXPECT_EQ(c3.status_byte(),c1.status_byte());
 		EXPECT_EQ(c3.delta_time(),c1.delta_time());
@@ -182,21 +180,17 @@ TEST(mtrk_event_t_tests, metaEventsMoveAssignBigIntoSmall) {
 		24430434,0x05u,172,176
 	};
 
-	auto maybe_small = jmid::make_mtrk_event(small_data.bytes.data(),
-		small_data.bytes.data()+small_data.bytes.size(),0,nullptr,
-		small_data.bytes.size());
-	EXPECT_TRUE(maybe_small);
-	auto small = maybe_small.event;
+	auto small = jmid::make_mtrk_event3(small_data.bytes.data(),
+		small_data.bytes.data()+small_data.bytes.size(),0,nullptr);
+	EXPECT_TRUE(small.size()>0);
 	EXPECT_EQ(small.delta_time(),small_data.dtval);
 	EXPECT_TRUE(jmid::is_meta(small));
 	EXPECT_EQ(small.size(),small_data.bytes.size());
 	EXPECT_EQ(small.data_size(),small_data.data_size);
 
-	auto maybe_big = jmid::make_mtrk_event(big_data.bytes.data(),
-		big_data.bytes.data()+big_data.bytes.size(),0,nullptr,
-		big_data.bytes.size());
-	EXPECT_TRUE(maybe_big);
-	auto big = maybe_big.event;
+	auto big = jmid::make_mtrk_event3(big_data.bytes.data(),
+		big_data.bytes.data()+big_data.bytes.size(),0,nullptr);
+	EXPECT_TRUE(big.size()>0);
 	EXPECT_EQ(big.delta_time(),big_data.dtval);
 	EXPECT_TRUE(jmid::is_meta(big));
 	EXPECT_EQ(big.size(),big_data.bytes.size());
@@ -223,9 +217,8 @@ TEST(mtrk_event_t_tests, metaEventsMoveAssignBigIntoSmall) {
 	//-------------------------------------------------------------------------
 	// Invoke move-assign by assigning from a temporary
 	small_mvinto = small;
-	small_mvinto = jmid::make_mtrk_event(big_data.bytes.data(),
-		big_data.bytes.data()+big_data.bytes.size(),0,nullptr,
-		big_data.bytes.size()).event;
+	small_mvinto = jmid::make_mtrk_event3(big_data.bytes.data(),
+		big_data.bytes.data()+big_data.bytes.size(),0,nullptr);
 	// small has the values as if constructed from big_data
 	EXPECT_EQ(small_mvinto.delta_time(),big_data.dtval);
 	EXPECT_TRUE(jmid::is_meta(small_mvinto));
@@ -267,22 +260,18 @@ TEST(mtrk_event_t_tests, metaEventsMoveAssignSmallIntoBig) {
 		24430434,0x05u,172,176
 	};
 
-	auto maybe_small = jmid::make_mtrk_event(small_data.bytes.data(),
-		small_data.bytes.data()+small_data.bytes.size(),0,nullptr,
-		small_data.bytes.size());
-	EXPECT_TRUE(maybe_small);
-	auto small = maybe_small.event;
+	auto small = jmid::make_mtrk_event3(small_data.bytes.data(),
+		small_data.bytes.data()+small_data.bytes.size(),0,nullptr);
+	EXPECT_TRUE(small.size()>0);
 
 	EXPECT_EQ(small.delta_time(),small_data.dtval);
 	EXPECT_TRUE(jmid::is_meta(small));
 	EXPECT_EQ(small.size(),small_data.bytes.size());
 	EXPECT_EQ(small.data_size(),small_data.data_size);
 
-	auto maybe_big = jmid::make_mtrk_event(big_data.bytes.data(),
-		big_data.bytes.data()+big_data.bytes.size(),0,nullptr,
-		big_data.bytes.size());
-	EXPECT_TRUE(maybe_big);
-	auto big = maybe_big.event;
+	auto big = jmid::make_mtrk_event3(big_data.bytes.data(),
+		big_data.bytes.data()+big_data.bytes.size(),0,nullptr);
+	EXPECT_TRUE(big.size()>0);
 	EXPECT_EQ(big.delta_time(),big_data.dtval);
 	EXPECT_TRUE(jmid::is_meta(big));
 	EXPECT_EQ(big.size(),big_data.bytes.size());
@@ -309,9 +298,8 @@ TEST(mtrk_event_t_tests, metaEventsMoveAssignSmallIntoBig) {
 	//-------------------------------------------------------------------------
 	// Invoke move-assign by assigning from a temporary
 	big_mvinto = big;
-	big_mvinto = jmid::make_mtrk_event(small_data.bytes.data(),
-		small_data.bytes.data()+small_data.bytes.size(),0,nullptr,
-		small_data.bytes.size()).event;
+	big_mvinto = jmid::make_mtrk_event3(small_data.bytes.data(),
+		small_data.bytes.data()+small_data.bytes.size(),0,nullptr);
 	// big_mvinto (which is no longer "big") has the values as if 
 	// constructed from small_data
 	EXPECT_EQ(big_mvinto.delta_time(),small_data.dtval);
