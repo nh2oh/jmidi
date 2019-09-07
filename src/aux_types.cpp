@@ -40,19 +40,19 @@ jmid::meta_header::meta_header() {
 }
 jmid::meta_header::meta_header(std::uint8_t type, std::int32_t len) {
 	this->set_type(type);
-	this->set_length(len);
+	this->d_.length = jmid::to_nearest_valid_vlq(len);
 }
 jmid::meta_header::meta_header(std::uint8_t type, std::uint64_t len) {
 	this->set_type(type);
-	this->set_length(len);
+	this->d_.length = jmid::to_nearest_valid_vlq(len);
 }
 jmid::meta_header::meta_header(std::uint8_t type, std::int64_t len) {
 	this->set_type(type);
-	this->set_length(len);
+	this->d_.length = jmid::to_nearest_valid_vlq(len);
 }
 jmid::meta_header::meta_header(meta_header_data mt) {
 	this->set_type(mt.type);
-	this->set_length(mt.length);
+	this->d_.length = jmid::to_nearest_valid_vlq(mt.length);
 }
 jmid::meta_header_data jmid::meta_header::get() const {
 	return this->d_;
@@ -71,7 +71,7 @@ std::uint8_t jmid::meta_header::set_type(std::uint8_t type) {
 	// From the MIDI Std. p. 136:
 	// All meta-events begin with FF, then have an event type byte (which 
 	// is always less than 128), and then...
-	if (type > 127) {
+	if (!jmid::is_meta_type_byte(type)) {
 		type = 127;
 	}
 	this->d_.type = type;
@@ -106,19 +106,19 @@ jmid::sysex_header::sysex_header() {
 }
 jmid::sysex_header::sysex_header(std::uint8_t type, std::int32_t len) {
 	this->set_type(type);
-	this->set_length(len);
+	this->d_.length = jmid::to_nearest_valid_vlq(len);
 }
 jmid::sysex_header::sysex_header(std::uint8_t type, std::uint64_t len) {
 	this->set_type(type);
-	this->set_length(len);
+	this->d_.length = jmid::to_nearest_valid_vlq(len);
 }
 jmid::sysex_header::sysex_header(std::uint8_t type, std::int64_t len) {
 	this->set_type(type);
-	this->set_length(len);
+	this->d_.length = jmid::to_nearest_valid_vlq(len);
 }
 jmid::sysex_header::sysex_header(sysex_header_data sxd) {
 	this->set_type(sxd.type);
-	this->set_length(sxd.length);
+	this->d_.length = jmid::to_nearest_valid_vlq(sxd.length);
 }
 jmid::sysex_header_data jmid::sysex_header::get() const {
 	return this->d_;
@@ -130,7 +130,7 @@ std::uint8_t jmid::sysex_header::type_byte() const {
 	return this->d_.type;
 }
 std::uint8_t jmid::sysex_header::set_type(std::uint8_t type) {
-	if ((type == 0xF7u) || (type == 0xF0u)) {
+	if (jmid::is_sysex_status_byte(type)) {
 		this->d_.type = type;
 	} else {
 		this->d_.type = 0xF7u;
@@ -157,7 +157,8 @@ bool jmid::operator==(const jmid::midi_timesig_t& rhs,
 		&& (rhs.ntd32pq == lhs.ntd32pq)
 		&& (rhs.num == lhs.num));
 }
-bool jmid::operator!=(const jmid::midi_timesig_t& rhs, const jmid::midi_timesig_t& lhs) {
+bool jmid::operator!=(const jmid::midi_timesig_t& rhs, 
+						const jmid::midi_timesig_t& lhs) {
 	return !(rhs==lhs);
 }
 
@@ -173,30 +174,30 @@ bool jmid::is_major(const jmid::midi_keysig_t& ks) {
 bool jmid::is_minor(const jmid::midi_keysig_t& ks) {
 	return ks.mi==1;
 }
-jmid::ch_event_data_strong_t::ch_event_data_strong_t(const jmid::ch_event_data_t& md) {
+jmid::ch_event::ch_event(const jmid::ch_event_data_t& md) {
 	this->d_ = jmid::normalize(md);
 }
-jmid::ch_event_data_strong_t::ch_event_data_strong_t(int sn, int ch,
+jmid::ch_event::ch_event(int sn, int ch,
 												int p1, int p2) {
 	this->d_ = jmid::make_midi_ch_event_data(sn,ch,p1,p2);
 }
-jmid::ch_event_data_t jmid::ch_event_data_strong_t::get() const {
+jmid::ch_event_data_t jmid::ch_event::get() const {
 	return this->d_;
 }
-std::uint8_t jmid::ch_event_data_strong_t::status_nybble() const {
+std::uint8_t jmid::ch_event::status_nybble() const {
 	return this->d_.status_nybble;
 }
-std::uint8_t jmid::ch_event_data_strong_t::ch() const {
+std::uint8_t jmid::ch_event::ch() const {
 	return this->d_.ch;
 }
-std::uint8_t jmid::ch_event_data_strong_t::p1() const {
+std::uint8_t jmid::ch_event::p1() const {
 	return this->d_.p1;
 }
-std::uint8_t jmid::ch_event_data_strong_t::p2() const {
+std::uint8_t jmid::ch_event::p2() const {
 	return this->d_.p2;
 }
 jmid::ch_event_data_t jmid::make_midi_ch_event_data(int sn, int ch,
-												int p1, int p2) {
+													int p1, int p2) {
 	jmid::ch_event_data_t md;
 	md.status_nybble = 0xF0u & static_cast<std::uint8_t>(std::clamp(sn,0x80,0xF0));
 	md.ch = std::clamp(ch,0,15);
@@ -222,7 +223,7 @@ std::string jmid::print(const jmid::ch_event_data_t& md) {
 		s += "Key pressure";
 		break;
 	case 0xB0u:
-		if (((md.p1)>>3)==0b00001111u) {
+		if (jmid::p1_implies_channel_mode_msg(md.p1)) {
 			s += "Channel mode";
 		} else {
 			s += "Control change";

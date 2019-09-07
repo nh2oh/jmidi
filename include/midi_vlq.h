@@ -10,9 +10,17 @@ namespace jmid {
 
 bool is_valid_vlq(std::int32_t);
 
-std::int32_t to_nearest_valid_vlq(std::int32_t);
-std::int32_t to_nearest_valid_vlq(std::uint64_t);
-std::int32_t to_nearest_valid_vlq(std::int64_t);
+template<typename T>
+constexpr std::int32_t to_nearest_valid_vlq(T val) {
+	if (val > 0x0FFFFFFF) {
+		return 0x0FFFFFFF;
+	} else if (val < 0) {
+		return 0;
+	} else {
+		return static_cast<std::int32_t>(val);
+	}
+}
+
 
 // TODO:  Need to clarify behavior for iterators w/ value-type char
 // vs unsigned char.  

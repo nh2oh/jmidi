@@ -32,6 +32,10 @@ bool is_sysex_status_byte(const unsigned char);
 bool is_meta_status_byte(const unsigned char);
 bool is_sysex_or_meta_status_byte(const unsigned char);
 bool is_data_byte(const unsigned char);
+// From the MIDI Std. p. 136:
+// "All meta-events begin with FF, then have an event type byte (which is
+// always less than 128), and then...
+bool is_meta_type_byte(unsigned char);
 // unsigned char get_status_byte(unsigned char s, unsigned char rs);
 // The status byte applicable to an event w/ "maybe-a-status-byte" s
 // and an "inherited" running status byte rs.  Where is_status_byte(s)
@@ -47,6 +51,9 @@ unsigned char get_status_byte(unsigned char, unsigned char);
 unsigned char get_running_status_byte(unsigned char, unsigned char);
 // Implements table I of the midi std
 std::int32_t channel_status_byte_n_data_bytes(unsigned char);
+// A channel-mode msg has s == 0xB0u && p1 == 0b01111xxx; a channel-voice
+// msg with s == 0xB0u has p1 == 0b1011nnnn.  
+bool p1_implies_channel_mode_msg(unsigned char);
 
 }  // namespace jmid
 

@@ -65,6 +65,9 @@ bool jmid::is_sysex_or_meta_status_byte(const unsigned char s) {
 bool jmid::is_data_byte(const unsigned char s) {
 	return (s&0x80u)==0x00u;
 }
+bool jmid::is_meta_type_byte(unsigned char b) {
+	return b <= 127;
+}
 unsigned char jmid::get_status_byte(unsigned char s, unsigned char rs) {
 	if (jmid::is_status_byte(s)) {
 		// s could be a valid, but "unrecognized" status byte, ex, 0xF1u.
@@ -103,4 +106,6 @@ std::int32_t jmid::channel_status_byte_n_data_bytes(unsigned char s) {
 	}
 }
 
-
+bool jmid::p1_implies_channel_mode_msg(unsigned char b) {
+	return jmid::is_data_byte(b) && ((b>>3)==0b00001111u);
+}

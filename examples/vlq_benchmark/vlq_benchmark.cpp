@@ -29,6 +29,7 @@ int main (int argc, char *argv[]) {
 	std::random_device rdev;
 	std::default_random_engine re(rdev());
 	std::uniform_int_distribution<uint32_t> rd(0u,0xFFFFFFFFu);
+	//std::geometric_distribution<uint32_t> rd(0.5);
 	std::vector<uint32_t> rints(opts.N);
 	for (int64_t i=0; i<rints.size(); ++i) {
 		rints[i] = rd(re);
@@ -37,7 +38,7 @@ int main (int argc, char *argv[]) {
 	// For each repeat opts.N_rpts, each of the 3 functions is run exactly
 	// once.  The order each function is run in each set of repeats is 
 	// randomized as dictated by test_order.  
-	std::array<int,3> fest_func_idx {0,1,2};
+	std::array<int,4> fest_func_idx {0,1,2,3};
 	std::vector<int> test_order;
 	for (int i=0; i<opts.N_rpts; ++i) {
 		std::shuffle(fest_func_idx.begin(),fest_func_idx.end(),re);
@@ -50,6 +51,7 @@ int main (int argc, char *argv[]) {
 	std::array<unsigned char,8> dest;
 	uint64_t result_sum = 0;
 	int64_t tot_ms_new = 0;  int64_t tot_ms_a = 0;  int64_t tot_ms_b = 0;
+	int64_t tot_ms_unsafe = 0;
 	for (const auto& idx : test_order) {
 		if (idx==0) {
 			std::cout << "\tStarting jmid::write_vlq():  ";
@@ -87,12 +89,25 @@ int main (int argc, char *argv[]) {
 			std::cout << "Took  " << tdelta.count() << " milliseconds." << std::endl;
 			tot_ms_b += tdelta.count();
 		}
+		if (idx==3) {
+			std::cout << "\tStarting jmid::write_vlq_unsafe():  ";
+			auto tstart = std::chrono::high_resolution_clock::now();
+			for (size_t i=0; i<opts.N; ++i) {
+				jmid::write_vlq_unsafe(rints[i],dest.data());
+				result_sum += dest[2];
+			}
+			auto tend = std::chrono::high_resolution_clock::now();
+			auto tdelta = std::chrono::duration_cast<std::chrono::milliseconds>(tend-tstart);
+			std::cout << "Took  " << tdelta.count() << " milliseconds." << std::endl;
+			tot_ms_unsafe += tdelta.count();
+		}
 	}
 	std::cout << "------------------------------------\n";
 
 	std::cout << "jmid::write_vlq():  " << tot_ms_new << " ms total\n";
 	std::cout << "write_vlq_old_a():  " << tot_ms_a << " ms total\n";
 	std::cout << "write_vlq_old_b():  " << tot_ms_b << " ms total\n";
+	std::cout << "jmid::write_vlq_unsafe():  " << tot_ms_unsafe << " ms total\n";
 
 	std::cout << "result_sum (ignore this) == " << result_sum << std::endl;
 
@@ -111,7 +126,7 @@ opts_t get_options(int argc, char **argv) {
 		{std::regex("-N=(\\d+)"),-1,10'000'000},
 		// How many times each write_vlq procedure should be run through
 		// the set of random numbers.  
-		{std::regex("-rpt=(\\d+)"),-1,10}
+		{std::regex("-Nrpts=(\\d+)"),-1,10}
 	}};
 
 	for (int i=0; i<argc; ++i) {

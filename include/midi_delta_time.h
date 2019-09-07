@@ -4,14 +4,6 @@
 #include <type_traits>
 
 namespace jmid {
-/*
-TODO:  In progress...
-struct in_dt_field {
-	std::uint32_t uval {0};
-	std::uint8_t last {0};
-	std::int8_t n {0};
-	bool operator()(const unsigned char&);
-};*/
 
 // True if the input value falls within [0,0x0FFFFFFF] == [0,268,435,455]
 bool is_valid_delta_time(std::int32_t);

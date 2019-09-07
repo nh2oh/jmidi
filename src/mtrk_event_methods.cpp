@@ -272,7 +272,8 @@ std::int32_t jmid::get_tempo(const mtrk_event_t& ev, std::int32_t def) {
 	return static_cast<std::int32_t>(jmid::read_be<std::uint32_t>(its.begin,its.end));
 }
 
-jmid::midi_timesig_t jmid::get_timesig(const mtrk_event_t& ev, jmid::midi_timesig_t def) {
+jmid::midi_timesig_t jmid::get_timesig(const mtrk_event_t& ev,
+										jmid::midi_timesig_t def) {
 	if (!jmid::is_timesig(ev)) {
 		return def;
 	}
@@ -287,7 +288,8 @@ jmid::midi_timesig_t jmid::get_timesig(const mtrk_event_t& ev, jmid::midi_timesi
 	result.ntd32pq = *it++;
 	return result;
 }
-jmid::midi_keysig_t jmid::get_keysig(const mtrk_event_t& ev, jmid::midi_keysig_t def) {
+jmid::midi_keysig_t jmid::get_keysig(const mtrk_event_t& ev,
+									jmid::midi_keysig_t def) {
 	if (!jmid::is_keysig(ev)) {
 		return def;
 	}
@@ -403,7 +405,8 @@ jmid::mtrk_event_t jmid::make_copyright(const std::int32_t& dt,
 }
 
 
-jmid::ch_event_data_t jmid::get_channel_event(const mtrk_event_t& ev, jmid::ch_event_data_t def) {
+jmid::ch_event_data_t jmid::get_channel_event(const mtrk_event_t& ev,
+											jmid::ch_event_data_t def) {
 	auto result = jmid::get_channel_event_impl(ev);
 	if (!result) {
 		return def;
@@ -482,7 +485,8 @@ bool jmid::is_channel_pressure(const jmid::mtrk_event_t& ev) {
 bool jmid::is_pitch_bend(const jmid::mtrk_event_t& ev) {
 	return ((ev.status_byte()&0xF0u)==0xE0u);
 }
-bool jmid::is_onoff_pair(const jmid::mtrk_event_t& on, const jmid::mtrk_event_t& off) {
+bool jmid::is_onoff_pair(const jmid::mtrk_event_t& on, 
+						const jmid::mtrk_event_t& off) {
 	auto on_md = jmid::get_channel_event_impl(on);
 	auto off_md = jmid::get_channel_event_impl(off);
 	if (!jmid::is_note_on(on_md) || !jmid::is_note_off(off_md)) {
@@ -490,7 +494,8 @@ bool jmid::is_onoff_pair(const jmid::mtrk_event_t& on, const jmid::mtrk_event_t&
 	}
 	return jmid::is_onoff_pair(on_md.ch,on_md.p1,off_md.ch,off_md.p1);
 }
-bool jmid::is_onoff_pair(int on_ch, int on_note, const jmid::mtrk_event_t& off) {
+bool jmid::is_onoff_pair(int on_ch, int on_note, 
+						const jmid::mtrk_event_t& off) {
 	auto off_md = jmid::get_channel_event_impl(off);
 	if (!jmid::is_note_off(off_md)) {
 		return false;
@@ -502,94 +507,120 @@ bool jmid::is_onoff_pair(int on_ch, int on_note, int off_ch, int off_note) {
 }
 
 
-jmid::mtrk_event_t jmid::make_ch_event(std::int32_t dt, const jmid::ch_event_data_t& md) {
-	return jmid::mtrk_event_t(jmid::delta_time(dt),
-		jmid::ch_event_data_strong_t(md));
+jmid::mtrk_event_t jmid::make_ch_event(std::int32_t dt, 
+									const jmid::ch_event_data_t& md) {
+	return jmid::mtrk_event_t(jmid::delta_time(dt),jmid::ch_event(md));
 }
-jmid::mtrk_event_t jmid::make_ch_event(std::int32_t dt, int sn, int ch, int p1, int p2) {
+jmid::mtrk_event_t jmid::make_ch_event(std::int32_t dt, int sn, int ch, 
+										int p1, int p2) {
 	return jmid::mtrk_event_t(jmid::delta_time(dt),
-		jmid::ch_event_data_strong_t(sn,ch,p1,p2));
+				jmid::ch_event(sn,ch,p1,p2));
 }
 jmid::mtrk_event_t jmid::make_note_on(std::int32_t dt,
 									jmid::ch_event_data_t md) {
 	md.status_nybble = 0x90u;
 	md.p2 = md.p2 > 0 ? md.p2 : 1;  // A note-on event must have a velocity > 0
-	return jmid::mtrk_event_t(jmid::delta_time(dt),
-		jmid::ch_event_data_strong_t(md));
+	return jmid::mtrk_event_t(jmid::delta_time(dt), jmid::ch_event(md));
 }
-jmid::mtrk_event_t jmid::make_note_on(std::int32_t dt, int ch, int p1, int p2) {
+jmid::mtrk_event_t jmid::make_note_on(std::int32_t dt, int ch, 
+									int p1, int p2) {
 	return jmid::make_note_on(dt,jmid::make_midi_ch_event_data(0,ch,p1,p2));
 }
-jmid::mtrk_event_t jmid::make_note_off(std::int32_t dt, jmid::ch_event_data_t md) {
+jmid::mtrk_event_t jmid::make_note_off(std::int32_t dt,
+										jmid::ch_event_data_t md) {
 	md.status_nybble = 0x80u;
 	return jmid::make_ch_event(dt,md);
 }
-jmid::mtrk_event_t jmid::make_note_off(std::int32_t dt, int ch, int p1, int p2) {
+jmid::mtrk_event_t jmid::make_note_off(std::int32_t dt, int ch, 
+										int p1, int p2) {
 	return jmid::make_note_off(dt,jmid::make_midi_ch_event_data(0,ch,p1,p2));
 }
-jmid::mtrk_event_t jmid::make_note_off90(std::int32_t dt, jmid::ch_event_data_t md) {
+jmid::mtrk_event_t jmid::make_note_off90(std::int32_t dt,
+											jmid::ch_event_data_t md) {
 	md.status_nybble = 0x90u;
 	md.p2 = 0;
 	return jmid::make_ch_event(dt,md);
 }
-jmid::mtrk_event_t jmid::make_key_pressure(std::int32_t dt, jmid::ch_event_data_t md) {
+jmid::mtrk_event_t jmid::make_key_pressure(std::int32_t dt,
+											jmid::ch_event_data_t md) {
 	md.status_nybble = 0xA0u;
 	return jmid::make_ch_event(dt,md);
 }
-jmid::mtrk_event_t jmid::make_key_pressure(std::int32_t dt, int ch, int p1, int p2) {
-	return jmid::make_key_pressure(dt,jmid::make_midi_ch_event_data(0,ch,p1,p2));
+jmid::mtrk_event_t jmid::make_key_pressure(std::int32_t dt, int ch, 
+											int p1, int p2) {
+	return jmid::make_key_pressure(dt,
+					jmid::make_midi_ch_event_data(0,ch,p1,p2));
 }
-jmid::mtrk_event_t jmid::make_control_change(std::int32_t dt, jmid::ch_event_data_t md) {
+jmid::mtrk_event_t jmid::make_control_change(std::int32_t dt, 
+											jmid::ch_event_data_t md) {
 	md.status_nybble = 0xB0u;
 	if (md.p1 >= 120) {  // p1 >=120 (==0b01111000) => select_ch_mode
 		md.p1 = 119;
-	}
+	}  // TODO:  Use the new jmid::p1_implies_ch_mode...?() 
 	return jmid::make_ch_event(dt,md);
 }
-jmid::mtrk_event_t jmid::make_control_change(std::int32_t dt, int ch, int p1, int p2) {
-	return jmid::make_control_change(dt,jmid::make_midi_ch_event_data(0,ch,p1,p2));
+jmid::mtrk_event_t jmid::make_control_change(std::int32_t dt, int ch,
+											int p1, int p2) {
+	return jmid::make_control_change(dt,
+				jmid::make_midi_ch_event_data(0,ch,p1,p2));
 }
-jmid::mtrk_event_t jmid::make_program_change(std::int32_t dt, jmid::ch_event_data_t md) {
+jmid::mtrk_event_t jmid::make_program_change(std::int32_t dt,
+											jmid::ch_event_data_t md) {
 	md.status_nybble = 0xC0u;
 	md.p2 = 0x00u;
 	return jmid::make_ch_event(dt,md);
 }
-jmid::mtrk_event_t jmid::make_program_change(std::int32_t dt, int ch, int p1) {
-	return jmid::make_program_change(dt,jmid::make_midi_ch_event_data(0,ch,p1,0));
+jmid::mtrk_event_t jmid::make_program_change(std::int32_t dt, 
+											int ch, int p1) {
+	return jmid::make_program_change(dt,
+				jmid::make_midi_ch_event_data(0,ch,p1,0));
 }
-jmid::mtrk_event_t jmid::make_channel_pressure(std::int32_t dt, jmid::ch_event_data_t md) {
+jmid::mtrk_event_t jmid::make_channel_pressure(std::int32_t dt,
+												jmid::ch_event_data_t md) {
 	md.status_nybble = 0xD0u;
 	md.p2 = 0x00u;
 	return jmid::make_ch_event(dt,md);
 }
-jmid::mtrk_event_t jmid::make_channel_pressure(std::int32_t dt, int ch, int p1) {
-	return jmid::make_channel_pressure(dt,jmid::make_midi_ch_event_data(0,ch,p1,0));
+jmid::mtrk_event_t jmid::make_channel_pressure(std::int32_t dt, 
+											int ch, int p1) {
+	return jmid::make_channel_pressure(dt,
+				jmid::make_midi_ch_event_data(0,ch,p1,0));
 }
-jmid::mtrk_event_t jmid::make_pitch_bend(std::int32_t dt, jmid::ch_event_data_t md) {
+jmid::mtrk_event_t jmid::make_pitch_bend(std::int32_t dt, 
+										jmid::ch_event_data_t md) {
 	md.status_nybble = 0xE0u;
 	return jmid::make_ch_event(dt,md);
 }
-jmid::mtrk_event_t jmid::make_pitch_bend(std::int32_t dt, int ch, int p1, int p2) {
-	return jmid::make_pitch_bend(dt,jmid::make_midi_ch_event_data(0,ch,p1,p2));
+jmid::mtrk_event_t jmid::make_pitch_bend(std::int32_t dt, int ch, 
+										int p1, int p2) {
+	return jmid::make_pitch_bend(dt,
+				jmid::make_midi_ch_event_data(0,ch,p1,p2));
 }
-jmid::mtrk_event_t jmid::make_channel_mode(std::int32_t dt, jmid::ch_event_data_t md) {
+jmid::mtrk_event_t jmid::make_channel_mode(std::int32_t dt, 
+											jmid::ch_event_data_t md) {
 	md.status_nybble = 0xB0u;
 	if (md.p1 < 120) {  // p1 <120 (==0b01111000) => control_change
 		md.p1 = 120;
-	}
+	}  // TODO:  Use the new jmid::p1_implies_ch_mode...?() 
 	return jmid::make_ch_event(dt,md);
 }
-jmid::mtrk_event_t jmid::make_channel_mode(std::int32_t dt, int ch, int p1, int p2) {
-	return jmid::make_channel_mode(dt,jmid::make_midi_ch_event_data(0,ch,p1,p2));
+jmid::mtrk_event_t jmid::make_channel_mode(std::int32_t dt, int ch, 
+										int p1, int p2) {
+	return jmid::make_channel_mode(dt,
+				jmid::make_midi_ch_event_data(0,ch,p1,p2));
 }
 
-jmid::onoff_pair_t jmid::make_onoff_pair(std::int32_t duration, int ch, int nt, int vel_on, int vel_off) {
-	return {jmid::make_note_on(0,ch,nt,vel_on),jmid::make_note_off(duration,ch,nt,vel_off)};
+jmid::onoff_pair_t jmid::make_onoff_pair(std::int32_t duration, int ch,
+										int nt, int vel_on, int vel_off) {
+	return {jmid::make_note_on(0,ch,nt,vel_on),
+				jmid::make_note_off(duration,ch,nt,vel_off)};
 }
-jmid::mtrk_event_t jmid::make_matching_off(std::int32_t dt, const jmid::mtrk_event_t& on_ev) {
+jmid::mtrk_event_t jmid::make_matching_off(std::int32_t dt,
+										const jmid::mtrk_event_t& on_ev) {
 	return jmid::make_note_off(dt,jmid::get_channel_event(on_ev));
 }
-jmid::mtrk_event_t jmid::make_matching_off90(std::int32_t dt, const jmid::mtrk_event_t& on_ev) {
+jmid::mtrk_event_t jmid::make_matching_off90(std::int32_t dt,
+										const jmid::mtrk_event_t& on_ev) {
 	return jmid::make_note_off90(dt,jmid::get_channel_event(on_ev));
 }
 

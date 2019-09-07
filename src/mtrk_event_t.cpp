@@ -16,16 +16,16 @@ jmid::mtrk_event_t::mtrk_event_t(std::int32_t dt) noexcept {
 	this->default_init(dt);
 }
 jmid::mtrk_event_t::mtrk_event_t(jmid::delta_time dt, 
-								jmid::ch_event_data_strong_t md) noexcept {
+								jmid::ch_event md) noexcept {
 	auto s = (md.status_nybble()|md.ch());
 	auto dest_beg = this->d_.resize_nocopy(7);
-	auto dest_end = jmid::write_delta_time_unsafe(dt.get(),dest_beg);
-	*dest_end++ = s;
-	*dest_end++ = md.p1();
+	auto dest = jmid::write_delta_time_unsafe(dt.get(),dest_beg);
+	*dest++ = s;
+	*dest++ = md.p1();
 	if (jmid::channel_status_byte_n_data_bytes(s)==2) {
-		*dest_end++ = md.p2();
+		*dest++ = md.p2();
 	}
-	this->d_.resize(dest_end-dest_beg);
+	this->d_.resize(dest-dest_beg);
 }
 jmid::mtrk_event_t::mtrk_event_t(jmid::delta_time dt, 
 					jmid::meta_header mt, const unsigned char *beg, 
@@ -82,6 +82,18 @@ jmid::mtrk_event_t& jmid::mtrk_event_t::operator=(jmid::mtrk_event_t&& rhs) noex
 }
 jmid::mtrk_event_t::~mtrk_event_t() noexcept {  // dtor
 	//...
+}
+void jmid::mtrk_event_t::replace_unsafe(std::int32_t dt,
+										jmid::ch_event_data_t md) {
+	auto s = (md.status_nybble|md.ch);
+	auto dest_beg = this->d_.resize_nocopy(7);
+	auto dest = jmid::write_delta_time_unsafe(dt,dest_beg);
+	*dest++ = s;
+	*dest++ = md.p1;
+	if (jmid::channel_status_byte_n_data_bytes(s)==2) {
+		*dest++ = md.p2;
+	}
+	this->d_.resize(dest-dest_beg);
 }
 
 jmid::mtrk_event_t::size_type jmid::mtrk_event_t::size() const noexcept {

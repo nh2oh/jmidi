@@ -88,11 +88,9 @@ public:
 	// Default-constructed value w/ the given delta-time.  
 	explicit mtrk_event_t(std::int32_t) noexcept;
 
-	mtrk_event_t(jmid::delta_time,
-				jmid::ch_event_data_strong_t) noexcept;
+	mtrk_event_t(jmid::delta_time,jmid::ch_event) noexcept;
 	mtrk_event_t(std::int32_t dt, jmid::ch_event_data_t md) noexcept 
-		: mtrk_event_t(jmid::delta_time(dt),
-			jmid::ch_event_data_strong_t(md)) {};
+		: mtrk_event_t(jmid::delta_time(dt), jmid::ch_event(md)) {};
 	mtrk_event_t(jmid::delta_time, jmid::meta_header, 
 					const unsigned char*, const unsigned char*);
 	mtrk_event_t(jmid::delta_time, jmid::sysex_header, 
@@ -105,23 +103,30 @@ public:
 	~mtrk_event_t() noexcept;
 
 	//
-	// construct_unsafe(...)
+	// construct_unsafe_result construct_unsafe(...)
 	//
 	// Writes the delta-time and header data w/o performing any validity 
 	// checks (UB if any of these values are invalid), then attempts to 
 	// copy mt.length bytes from [beg,end) into the payload of the event.  
 	// When copying from the range [beg,end), checks for a premature 
 	// beg==end condition and stops if this occurs.  The event is _not_ 
-	// resized to reflect the number of bytes actually copied.   
-	//
-	// TODO:  replace_unsafe()?  overwrite_unsafe()?  set_unsafe()?
+	// resized to reflect the number of bytes actually copied.  This way, 
+	// the vlq length field in the header correctly describes the number of
+	// bytes in the container.  A consequence is that it is necessary to
+	// return the number of bytes copied out of [beg,end) so the caller can
+	// check to see that the expected number of bytes was actually copied
+	// out.  There is no need to bother w/ the method conditionally writing
+	// to error objects etc.  
+	// 
+	// TODO:  replace_unsafe()?  overwrite_unsafe()?  set_unsafe()?  
+	// construct_unsafe()?
 	template<typename InIt>
 	struct construct_unsafe_result {
 		InIt src_last;
 		int32_t n_src_bytes_written;
 	};
 	template<typename InIt>
-	construct_unsafe_result<InIt> construct_unsafe(std::int32_t dt, 
+	construct_unsafe_result<InIt> replace_unsafe(std::int32_t dt, 
 						jmid::meta_header_data mt, InIt beg, InIt end) {
 		// 4 + 1 + 1 + 4 == 10; dt + 0xFF + mt-type + vlq-len
 		auto dest_beg = this->d_.resize_nocopy(10);  // Probably oversized
@@ -140,7 +145,28 @@ public:
 		}
 		this->d_.resize(dest-dest_beg);
 		return {beg,i};
-	}
+	};
+	template<typename InIt>
+	construct_unsafe_result<InIt> replace_unsafe(std::int32_t dt, 
+						jmid::sysex_header_data sx, InIt beg, InIt end) {
+		// 4 + 1 + 4 == 10; dt + 0xF0/F7 + vlq-len
+		auto dest_beg = this->d_.resize_nocopy(9);  // Probably oversized
+		auto dest = jmid::write_delta_time_unsafe(dt,dest_beg);
+		*dest++ = sx.type;
+		dest = jmid::write_vlq_unsafe(sx.length,dest);
+		
+		auto init_sz = dest - dest_beg;
+		dest_beg = this->d_.resize(init_sz + sx.length);
+		dest = dest_beg + init_sz;
+		int i=0;
+		while ((i<sx.length) && (beg!=end)) {
+			*dest++ = *beg++;
+			++i;
+		}
+		this->d_.resize(dest-dest_beg);
+		return {beg,i};
+	};
+	void replace_unsafe(std::int32_t, jmid::ch_event_data_t);
 
 	size_type size() const noexcept;
 	size_type capacity() const noexcept;

@@ -133,10 +133,10 @@ struct ch_event_data_t {
 	std::uint8_t p2 {0x00u};
 	operator bool() const;
 };
-class ch_event_data_strong_t {  // Always valid
+class ch_event {  // Always valid
 public:
-	explicit ch_event_data_strong_t(const ch_event_data_t&);
-	explicit ch_event_data_strong_t(int, int, int, int);
+	explicit ch_event(const ch_event_data_t&);
+	explicit ch_event(int, int, int, int);
 	ch_event_data_t get() const;
 	std::uint8_t status_nybble() const;
 	std::uint8_t ch() const;
