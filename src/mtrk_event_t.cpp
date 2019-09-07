@@ -10,10 +10,10 @@
 
 
 jmid::mtrk_event_t::mtrk_event_t() noexcept {
-	this->default_init(0);
+	//this->default_init(0);
 }
 jmid::mtrk_event_t::mtrk_event_t(std::int32_t dt) noexcept {
-	this->default_init(dt);
+	//this->default_init(dt);
 }
 jmid::mtrk_event_t::mtrk_event_t(jmid::delta_time dt, 
 								jmid::ch_event md) noexcept {
@@ -73,11 +73,11 @@ jmid::mtrk_event_t& jmid::mtrk_event_t::operator=(const jmid::mtrk_event_t& rhs)
 }
 jmid::mtrk_event_t::mtrk_event_t(jmid::mtrk_event_t&& rhs) noexcept {
 	this->d_ = std::move(rhs.d_);
-	rhs.default_init(0);
+	//rhs.default_init(0);
 }
 jmid::mtrk_event_t& jmid::mtrk_event_t::operator=(jmid::mtrk_event_t&& rhs) noexcept {
 	this->d_ = std::move(rhs.d_);
-	rhs.default_init(0);
+	//rhs.default_init(0);
 	return *this;
 }
 jmid::mtrk_event_t::~mtrk_event_t() noexcept {  // dtor

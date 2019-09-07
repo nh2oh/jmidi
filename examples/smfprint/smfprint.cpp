@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
 
 	jmid::smf_error_t smf_error;
 	jmid::maybe_smf_t smf = jmid::read_smf(f,&smf_error,std::filesystem::file_size(f));
-	if (!smf) {
+	if (smf_error.code!=jmid::smf_error_t::errc::no_error) {
 		std::cout << jmid::explain(smf_error) << std::endl;
 		return 2;
 	}

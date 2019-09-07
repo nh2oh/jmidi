@@ -73,8 +73,9 @@ int avg_and_max_event_sizes(const std::vector<std::filesystem::path>& files,
 			continue;
 		}
 
-		jmid::maybe_smf_t maybe_smf;
+		jmid::smf_t smf;
 		jmid::smf_error_t smf_error;
+		smf_error.code = jmid::smf_error_t::errc::no_error;
 		if (mode == 0) {  // Batch
 			std::basic_ifstream<char> f(curr_path,
 				std::ios_base::in|std::ios_base::binary);
@@ -89,8 +90,8 @@ int avg_and_max_event_sizes(const std::vector<std::filesystem::path>& files,
 			fdata.resize(fsize);
 			f.read(fdata.data(),fsize);
 			//auto n = std::min(fdata.size(),std::size_t{25});
-			jmid::make_smf(fdata.data(),fdata.data()+fdata.size(),
-				&maybe_smf,&smf_error,fdata.size()+500);
+			jmid::make_smf2(fdata.data(),fdata.data()+fdata.size(),
+				&smf,&smf_error);
 			f.close();
 		} else if (mode == 1) {  // iostreams
 			std::basic_ifstream<char> f(curr_path,
@@ -101,8 +102,7 @@ int avg_and_max_event_sizes(const std::vector<std::filesystem::path>& files,
 			++n_midi_files;
 			std::istreambuf_iterator<char> it(f);
 			auto end = std::istreambuf_iterator<char>();
-			jmid::make_smf(it,end,&maybe_smf,&smf_error,
-				std::filesystem::file_size(curr_path)+500);
+			jmid::make_smf2(it,end,&smf,&smf_error);
 			f.close();
 		} else if (mode == 2) {  // csio
 			auto nbytes = std::filesystem::file_size(curr_path);
@@ -110,16 +110,16 @@ int avg_and_max_event_sizes(const std::vector<std::filesystem::path>& files,
 			nbytes = jmid::read_binary_csio(curr_path,fdata);
 			fdata.resize(nbytes);
 			++n_midi_files;
-			jmid::make_smf(fdata.data(),fdata.data()+fdata.size(),
-				&maybe_smf,&smf_error,nbytes+500);
+			jmid::make_smf2(fdata.data(),fdata.data()+fdata.size(),
+				&smf,&smf_error);
 		}
 		
 
 		outfile << "File " << std::to_string(n_midi_files) << ")  " 
 			<< curr_path.string() << '\n';
-		if (!maybe_smf) {
+		if (smf_error.code!=jmid::smf_error_t::errc::no_error) {
 			outfile << "\t!maybe_smf:  " << explain(smf_error) 
-				<< "\n\tnbytes_read == " << maybe_smf.nbytes_read
+				//<< "\n\tnbytes_read == " << maybe_smf.nbytes_read
 				<< ".  skipping...\n"; 
 			continue;
 		}
@@ -131,7 +131,7 @@ int avg_and_max_event_sizes(const std::vector<std::filesystem::path>& files,
 		int32_t n_events_leq23bytes = 0;
 		int32_t max_sz = 0;
 		auto biggest_event = jmid::mtrk_event_t();
-		for (const auto& trk : maybe_smf.smf) {
+		for (const auto& trk : smf) {
 			for (const auto& ev : trk) {
 				auto sz = ev.size();
 				if (sz > 31) {
