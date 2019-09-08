@@ -46,7 +46,7 @@ std::string jmid::print(const jmid::mtrk_event_t& evnt, jmid::mtrk_sbo_print_opt
 	s += "] ";
 	jmid::print_hexascii(evnt.event_begin(),evnt.end(),std::back_inserter(s),'\0',' ');
 	
-	if (opts == mtrk_sbo_print_opts::detail || opts == mtrk_sbo_print_opts::debug) {
+	if (opts == mtrk_sbo_print_opts::detail) {
 		if (jmid::is_meta(evnt)) {
 			s += "\n";
 			s += ("\tmeta type: " + print(jmid::classify_meta_event(evnt)) + "; ");
@@ -63,22 +63,6 @@ std::string jmid::print(const jmid::mtrk_event_t& evnt, jmid::mtrk_sbo_print_opt
 			}
 		}
 	} 
-	if (opts == jmid::mtrk_sbo_print_opts::debug) {
-		auto dbg = debug_info(evnt);
-		s += "\n\t";
-		if (!dbg.is_big) {
-			s += "sbo=>small = ";
-		} else {
-			s += "sbo=>big   = ";
-		}
-		s += "{";
-		jmid::print_hexascii(dbg.raw_beg,dbg.raw_end,
-			std::back_inserter(s),'\0',' ');
-		s += "}; \n";
-		s += "\tbigsmall_flag = ";
-		auto f = dbg.flags;
-		jmid::print_hexascii(&f, &f+1, std::back_inserter(s), ' ');
-	}
 	return s;
 }
 

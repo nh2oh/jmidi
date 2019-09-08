@@ -4,8 +4,10 @@
 #include "midi_vlq.h"
 #include "midi_delta_time.h"
 #include "aux_types.h"
+#include "print_hexascii.h"
 #include <cstdint>
 #include <algorithm>
+#include <string>
 #include <utility>  // std::move()
 
 
@@ -67,11 +69,9 @@ jmid::mtrk_event_t& jmid::mtrk_event_t::operator=(const jmid::mtrk_event_t& rhs)
 }
 jmid::mtrk_event_t::mtrk_event_t(jmid::mtrk_event_t&& rhs) noexcept {
 	this->d_ = std::move(rhs.d_);
-	//rhs.default_init(0);
 }
 jmid::mtrk_event_t& jmid::mtrk_event_t::operator=(jmid::mtrk_event_t&& rhs) noexcept {
 	this->d_ = std::move(rhs.d_);
-	//rhs.default_init(0);
 	return *this;
 }
 jmid::mtrk_event_t::~mtrk_event_t() noexcept {  // dtor
@@ -96,11 +96,14 @@ void jmid::mtrk_event_t::replace_unsafe(std::int32_t dt,
 jmid::mtrk_event_t::size_type jmid::mtrk_event_t::size() const noexcept {
 	return this->d_.size();
 }
+constexpr jmid::mtrk_event_t::size_type jmid::mtrk_event_t::max_size() const noexcept {
+	return 0x0FFFFFFF;
+}
 jmid::mtrk_event_t::size_type jmid::mtrk_event_t::capacity() const noexcept {
 	return this->d_.capacity();
 }
 jmid::mtrk_event_t::size_type jmid::mtrk_event_t::reserve(jmid::mtrk_event_t::size_type new_cap) {
-	new_cap = std::clamp(new_cap,0,jmid::mtrk_event_t::size_max);
+	new_cap = std::clamp(new_cap,0,this->max_size());
 	return this->d_.reserve(new_cap);
 }
 bool jmid::mtrk_event_t::is_empty() const {
@@ -172,48 +175,41 @@ unsigned char jmid::mtrk_event_t::operator[](jmid::mtrk_event_t::size_type i) co
 unsigned char jmid::mtrk_event_t::operator[](jmid::mtrk_event_t::size_type i) noexcept {
 	return *(this->d_.begin()+i);
 };
-unsigned char *jmid::mtrk_event_t::push_back(unsigned char c) {  // Private
-	return this->d_.push_back(c);
-}
+
 jmid::mtrk_event_iterator_range_t jmid::mtrk_event_t::payload_range_impl() const noexcept {
 	auto its = this->d_.data_range();
-	its.begin = jmid::advance_to_dt_end(its.begin,its.end);
-	auto s = *(its.begin);
-	if (jmid::is_meta_status_byte(s)) {
-		its.begin += 2;  // 0xFFu, type-byte
-		its.begin = jmid::advance_to_vlq_end(its.begin,its.end);
-	} else if (jmid::is_sysex_status_byte(s)) {
-		its.begin += 1;  // 0xF0u or 0xF7u
-		its.begin = jmid::advance_to_vlq_end(its.begin,its.end);
+	if (its.begin!=its.end) {
+		// If the object is_empty(), the manual increments of its.begin
+		// for the meta and sysex cases will result in hard UB.  
+		its.begin = jmid::advance_to_dt_end(its.begin,its.end);
+		auto s = *(its.begin);
+		if (jmid::is_meta_status_byte(s)) {
+			its.begin += 2;  // 0xFFu, type-byte
+			its.begin = jmid::advance_to_vlq_end(its.begin,its.end);
+		} else if (jmid::is_sysex_status_byte(s)) {
+			its.begin += 1;  // 0xF0u or 0xF7u
+			its.begin = jmid::advance_to_vlq_end(its.begin,its.end);
+		}
 	}
 	return {its.begin,its.end};
-
-	/*auto it_end = this->d_.end();
-	auto it = jmid::advance_to_dt_end(this->d_.begin(),it_end);
-	auto s = *it;
-	if (jmid::is_meta_status_byte(s)) {
-		it += 2;  // 0xFFu, type-byte
-		it = jmid::advance_to_vlq_end(it,it_end);
-	} else if (jmid::is_sysex_status_byte(s)) {
-		it += 1;  // 0xF0u or 0xF7u
-		it = jmid::advance_to_vlq_end(it,it_end);
-	}
-	return {it,it_end};*/
 }
 std::int32_t jmid::mtrk_event_t::delta_time() const noexcept {
 	return jmid::read_delta_time(this->d_.begin(),this->d_.end()).val;
 }
 unsigned char jmid::mtrk_event_t::status_byte() const noexcept {
-	return *jmid::advance_to_dt_end(this->d_.begin(),this->d_.end());
+	auto its = this->d_.data_range();
+	auto p = jmid::advance_to_dt_end(its.begin,its.end);
+	return *p;
 }
 unsigned char jmid::mtrk_event_t::running_status() const noexcept {
-	auto p = jmid::advance_to_dt_end(this->d_.begin(),this->d_.end());
+	auto its = this->d_.data_range();
+	auto p = jmid::advance_to_dt_end(its.begin,its.end);
 	return jmid::get_running_status_byte(*p,0x00u);
 }
 jmid::mtrk_event_t::size_type jmid::mtrk_event_t::data_size() const noexcept {  // Not including delta-t
-	auto end = this->d_.end();
-	auto p = jmid::advance_to_dt_end(this->d_.begin(),end);
-	return end-p;
+	auto its = this->d_.data_range();
+	auto p = jmid::advance_to_dt_end(its.begin,its.end);
+	return its.end - p;
 }
 
 jmid::ch_event_data_t jmid::mtrk_event_t::get_channel_event_data() const noexcept {
@@ -253,7 +249,7 @@ jmid::meta_header_data jmid::mtrk_event_t::get_meta() const noexcept {
 	// is that if big, it can safely read d_.u_.b_.pad_ directly, skipping
 	// the its.end-its.begin checks and the pointer-chasing into the 
 	// remote buffer.  
-	jmid::meta_header_data result;  
+	jmid::meta_header_data result;
 
 	auto its = this->d_.pad_or_data_range();
 	its.begin = jmid::advance_to_dt_end(its.begin,its.end);
@@ -311,48 +307,40 @@ std::int32_t jmid::mtrk_event_t::set_delta_time(std::int32_t dt) {
 	}
 	return this->delta_time();
 }
+std::string jmid::mtrk_event_t::debug_print() const {
+	std::string s;
+	if (this->d_.capacity() 
+		<= jmid::internal::small_bytevec_t::capacity_small) {
+		s += "small; {";
+	} else {
+		s += "big;   {";
+	}
+	jmid::print_hexascii(this->d_.raw_begin(), this->d_.raw_end(),
+		std::back_inserter(s),'\0',' ');
+	s += "};";
+	return s;
+}
 
-bool jmid::mtrk_event_t::operator==(const jmid::mtrk_event_t& rhs) const noexcept {
-	auto it_lhs = this->d_.begin();  auto lhs_end = this->d_.end();
-	auto it_rhs = rhs.d_.begin();  auto rhs_end = rhs.d_.end();
-	if ((lhs_end-it_lhs) != (rhs_end-it_rhs)) {
+
+bool jmid::operator==(const jmid::mtrk_event_t& lhs, 
+						const jmid::mtrk_event_t& rhs) noexcept {
+	auto l = lhs.d_.data_range();
+	auto r = rhs.d_.data_range();
+	if ((l.end-l.begin) != (r.end-r.begin)) {
 		return false;
 	}
-	while (it_lhs!=lhs_end) {
-		if (*it_lhs++ != *it_rhs++) {
+	while ((l.begin!=l.end) && (r.begin!=r.end)) {
+		if (*(l.begin)++ != *(r.begin)++) {
 			return false;
 		}
 	}
 	return true;
 }
-bool jmid::mtrk_event_t::operator!=(const jmid::mtrk_event_t& rhs) const noexcept {
-	return !(*this==rhs);
+bool jmid::operator!=(const jmid::mtrk_event_t& lhs, 
+						const jmid::mtrk_event_t& rhs) noexcept {
+	return !(lhs==rhs);
 }
 
-const unsigned char *jmid::mtrk_event_t::raw_begin() const {
-	return this->d_.raw_begin();
-}
-const unsigned char *jmid::mtrk_event_t::raw_end() const {
-	return this->d_.raw_end();
-}
-unsigned char jmid::mtrk_event_t::flags() const {
-	return *(this->d_.raw_begin());
-}
-bool jmid::mtrk_event_t::is_big() const {
-	return !(this->flags()&0x80u);
-}
-bool jmid::mtrk_event_t::is_small() const {
-	return !(this->is_big());
-}
-
-jmid::mtrk_event_debug_helper_t jmid::debug_info(const jmid::mtrk_event_t& ev) {
-	jmid::mtrk_event_debug_helper_t r;
-	r.raw_beg = ev.d_.raw_begin();
-	r.raw_end = ev.d_.raw_end();
-	r.flags = *(r.raw_beg);
-	r.is_big = ev.d_.debug_is_big();
-	return r;
-}
 std::string jmid::print(jmid::mtrk_event_error_t::errc ec) {
 	std::string s;
 	switch (ec) {

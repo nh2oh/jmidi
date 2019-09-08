@@ -15,10 +15,6 @@ namespace jmid {
 enum class mtrk_sbo_print_opts {
 	normal,
 	detail,
-	// Prints the value of flags_, midi_status_.  If big, prints the byte 
-	// array d_ for the local container in addition to the heap-allocated
-	// data.  
-	debug  
 };
 
 std::string print_type(const jmid::mtrk_event_t&);

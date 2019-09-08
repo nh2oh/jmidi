@@ -3,6 +3,7 @@
 #include "generic_iterator.h"
 #include "midi_status_byte.h"
 #include "midi_delta_time.h"
+#include "midi_vlq.h"
 #include "aux_types.h"
 #include <string>  // For declaration of print()
 #include <cstdint>
@@ -49,7 +50,6 @@ namespace jmid {
 
 struct mtrk_event_error_t;
 struct maybe_mtrk_event_t;
-struct mtrk_event_debug_helper_t;
 class mtrk_event_t;
 
 struct mtrk_event_container_types_t {
@@ -79,11 +79,9 @@ public:
 	using const_iterator = internal::generic_ra_const_iterator<mtrk_event_container_types_t>;
 	// TODO:  reverse_iterator, const_reverse_iterator
 
-	static constexpr size_type size_max = 0x0FFFFFFF;
 
 	// Default ctor creates an empty event (size()==0, is_empty()==true)
 	mtrk_event_t() noexcept = default;
-
 	mtrk_event_t(jmid::delta_time,jmid::ch_event) noexcept;
 	mtrk_event_t(std::int32_t dt, jmid::ch_event_data_t md) noexcept 
 		: mtrk_event_t(jmid::delta_time(dt), jmid::ch_event(md)) {};
@@ -165,11 +163,12 @@ public:
 
 	void clear() noexcept;
 	size_type size() const noexcept;
+	constexpr size_type max_size() const noexcept;
 	size_type capacity() const noexcept;
 	size_type reserve(size_type);
 	bool is_empty() const;
 
-	// Getters
+	// Data accessors
 	const unsigned char *data() const noexcept;
 	const unsigned char *data() noexcept;
 	const_iterator begin() const noexcept;
@@ -207,40 +206,19 @@ public:
 	jmid::meta_header_data get_meta() const noexcept;
 	jmid::sysex_header_data get_sysex() const noexcept;
 
-	// Setters
 	std::int32_t set_delta_time(std::int32_t);
 
-	bool operator==(const mtrk_event_t&) const noexcept;
-	bool operator!=(const mtrk_event_t&) const noexcept;
+	std::string debug_print() const;
 private:
 	jmid::internal::small_bytevec_t d_;
 	
-	// delta_time()==0, Note-on, channel==1, note==60 (0x3C), 
-	// velocity==63 (0x3F).  
-	// 63 is ~1/2 way between 0 and the max velocity of 127 (0x7F)
-	// {0x00u,0x90u,0x3Cu,0x3Fu}
-	void default_init(std::int32_t=0) noexcept;
-
-	unsigned char *push_back(unsigned char);
 	mtrk_event_iterator_range_t payload_range_impl() const noexcept;
 
-	const unsigned char *raw_begin() const;
-	const unsigned char *raw_end() const;
-	unsigned char flags() const;
-	bool is_big() const;
-	bool is_small() const;
-
-	friend mtrk_event_debug_helper_t debug_info(const mtrk_event_t&);
+	friend bool operator==(const mtrk_event_t&, const mtrk_event_t&) noexcept;
+	friend bool operator!=(const mtrk_event_t&, const mtrk_event_t&) noexcept;
 };
-struct mtrk_event_debug_helper_t {
-	const unsigned char *raw_beg {nullptr};
-	const unsigned char *raw_end {nullptr};
-	unsigned char flags {0x00u};
-	bool is_big {false};
-};
-mtrk_event_debug_helper_t debug_info(const mtrk_event_t&);
-
-
+bool operator==(const mtrk_event_t&, const mtrk_event_t&) noexcept;
+bool operator!=(const mtrk_event_t&, const mtrk_event_t&) noexcept;
 
 struct mtrk_event_error_t {
 	enum class errc : std::uint8_t {
