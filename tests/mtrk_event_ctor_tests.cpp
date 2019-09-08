@@ -10,7 +10,6 @@
 #include <cstdint>
 #include <array>
 
-std::array<unsigned char,4> default_ctord_data {0x00u,0x90u,0x3Cu,0x3Fu};
 
 // 
 // Test of the default-constructed value, a middle C (note-num==60)
@@ -19,57 +18,10 @@ std::array<unsigned char,4> default_ctord_data {0x00u,0x90u,0x3Cu,0x3Fu};
 TEST(mtrk_event_ctor_tests, defaultCtor) {
 	const auto d = jmid::mtrk_event_t();
 
-	EXPECT_EQ(d.size(),4);
+	EXPECT_EQ(d.size(),0);
+	EXPECT_TRUE(d.is_empty());
 	EXPECT_TRUE(d.size()<=d.capacity());
-	EXPECT_EQ(d.dt_end()-d.dt_begin(),1);
 	EXPECT_EQ(d.end()-d.begin(),d.size());
-
-	EXPECT_TRUE(jmid::is_channel(d));
-	EXPECT_EQ(d.delta_time(),0);
-	EXPECT_EQ(d.status_byte(),0x90u);
-	EXPECT_EQ(d.running_status(),0x90u);
-	EXPECT_EQ(d.data_size(),3);
-	
-	for (int i=0; i<d.size(); ++i) {
-		EXPECT_EQ(d[i],default_ctord_data[i]);
-	}
-}
-
-// 
-// Test of the mtrk_event_t(uint32_t dt) ctor, which constructs a middle C
-// (note-num==60) note-on event on channel "1" w/ velocity 60 and as
-// specified.  For values of delta_time>max allowed, the value written is the
-// max allowed.  
-//
-TEST(mtrk_event_ctor_tests, dtOnlyCtor) {
-	std::array<unsigned char,6> ans_dt_encoded;
-	auto ans_data_size = 3;  // For a default-ctor'd mtrk_event
-	for (const auto& tc : dt_test_set_a) {
-		ans_dt_encoded.fill(0x00u);
-		jmid::write_delta_time(tc.ans_value,ans_dt_encoded.begin());
-		auto ans_size = ans_data_size + tc.ans_n_bytes;
-
-		const jmid::mtrk_event_t ev(tc.dt_input);
-
-		EXPECT_EQ(ev.size(),ans_size);
-		EXPECT_TRUE(ev.size()<=ev.capacity());
-		EXPECT_EQ(ev.dt_end()-ev.dt_begin(),tc.ans_n_bytes);
-		EXPECT_EQ(ev.end()-ev.begin(),ev.size());
-
-		EXPECT_TRUE(jmid::is_channel(ev));
-		EXPECT_EQ(ev.delta_time(),tc.ans_value);
-		EXPECT_EQ(ev.status_byte(),0x90u);
-		EXPECT_EQ(ev.running_status(),0x90u);
-		auto ds=ev.data_size();
-		EXPECT_EQ(ev.data_size(),ans_data_size);
-	
-		for (int i=0; i<tc.ans_n_bytes; ++i) {
-			EXPECT_EQ(ev[i],ans_dt_encoded[i]);
-		}
-		for (int i=tc.ans_n_bytes; i<ev.size(); ++i) {
-			EXPECT_EQ(ev[i],default_ctord_data[i-(tc.ans_n_bytes-1)]);
-		}
-	}
 }
 
 

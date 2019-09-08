@@ -201,13 +201,9 @@ TEST(mtrk_event_t_tests, metaEventsMoveAssignBigIntoSmall) {
 	auto small_mvinto = small;
 	auto big_mvfrom = big;
 	small_mvinto=std::move(big_mvfrom);
-	// 'big' now has the moved-from state of an array of 0x00u's; the first 
-	// 0x00u is interpreted as a delta_time == 0; the event is otherwise
-	// invalid
-	EXPECT_EQ(big_mvfrom.delta_time(),0);
-	EXPECT_TRUE(jmid::is_channel(big_mvfrom));
-	EXPECT_EQ(big_mvfrom.size(),4);
-	EXPECT_EQ(big_mvfrom.data_size(),3);
+	// 'big' now has the moved-from state of an empty event
+	EXPECT_EQ(big_mvfrom.size(),0);
+	EXPECT_TRUE(big_mvfrom.is_empty());
 	// small has the values as if constructed from big_data
 	EXPECT_EQ(small_mvinto.delta_time(),big_data.dtval);
 	EXPECT_TRUE(jmid::is_meta(small_mvinto));
@@ -283,11 +279,9 @@ TEST(mtrk_event_t_tests, metaEventsMoveAssignSmallIntoBig) {
 	auto small_mvfrom = small;
 	big_mvinto=std::move(small_mvfrom);
 	// small_mvfrom now has the moved-from state
-	EXPECT_EQ(small_mvfrom.delta_time(),0);
+	EXPECT_EQ(small_mvfrom.size(),0);
+	EXPECT_TRUE(small_mvfrom.is_empty());
 
-	EXPECT_TRUE(jmid::is_channel(small_mvfrom));
-	EXPECT_EQ(small_mvfrom.size(),4);
-	EXPECT_EQ(small_mvfrom.data_size(),3);
 	// big_mvinto (which is no longer "big") has the values as if 
 	// constructed from small_data
 	EXPECT_EQ(big_mvinto.delta_time(),small_data.dtval);

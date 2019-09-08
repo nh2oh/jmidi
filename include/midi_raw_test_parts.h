@@ -2,16 +2,18 @@
 #include <vector>
 #include <cstdint>
 #include <array>
+#include <limits>
 
 //
 // Q&D functions and raw data for making randomized tests of the midi lib.
 //
 // Absolutely zero effort has been made to make these routines effecient.
 //
-namespace testdata {
+namespace jmid {
+namespace rand {
 struct vlq_max64_interpreted {
-	uint64_t val {0};
-	int8_t N {0};
+	std::uint64_t val {0};
+	std::int8_t N {0};
 	bool is_valid {false};
 };
 template<typename InIt>
@@ -21,43 +23,59 @@ vlq_max64_interpreted read_vlq_max64(InIt it) {
 	while (true) {
 		result.val += (*it & 0x7Fu);
 		++(result.N);
-		if (!(*it & 0x80u) || result.N==8) { // the high-bit is not set
+		if (!(*it & 0x80u) || result.N==8) { 
 			break;
 		} else {
-			result.val <<= 7;  // result.val << 7;
+			result.val <<= 7;
 			++it;
 		}
 	}
 	result.is_valid = !(*it & 0x80u);
 	return result;
 };
+template<typename T, typename OIt>
+OIt write_vlq_max64(T val, OIt it) {
+	uint64_t uval;
+	if (val < 0) {
+		uval = 0;
+	} else if (val > (std::numeric_limits<std::uint64_t>::max()>>8)) {
+		uval = (std::numeric_limits<std::uint64_t>::max()>>8);
+	} else {
+		uval = static_cast<uint64_t>(val);
+	}
 
-struct vlq_testcase_t {
-	uint64_t input_value {0};  // [0,uint_max]
-	uint32_t ans_value {0};  // [0,0x0FFFFFFFu]
-	int8_t input_field_size {0};
-	int8_t norm_field_size {0};
-	std::array<unsigned char,8> input_encoded {};
-	std::array<unsigned char,8> normalized_encoded {};
+	auto s = 7*7u;
+	uint64_t mask = (0b01111111u<<(7u*7u));
+	while (((uval&mask)==0u) && (mask>0u)) {
+		mask>>=7u;
+		s-=7u;
+	}
+	while (mask>0b01111111u) {
+		*it++ = 0x80u|((uval&mask)>>(s));
+		mask>>=7u;
+		s-=7u;
+	}
+	*it++ = uval&mask;
+
+	return it;
 };
-
-vlq_testcase_t make_vlq_testcase();
-
-
-struct dt_fields_t {
-	std::vector<unsigned char> data {};
-	uint32_t value {0};
-	uint8_t field_size {0};
+struct vlq_testcase {
+	std::array<unsigned char,8> field {0,0,0,0,0,0,0,0};
+	uint64_t encoded_value {0};  // [0,0x0FFFFFFFu]
+	int8_t field_size {0};
 };
+vlq_testcase make_random_vlq();
 
-struct meta_events_t {
-	std::vector<unsigned char> data {};
-	uint32_t data_length {};  // == data.size() == 2 + size-of-vl-length-field + value-of-vl-length-field
-	uint32_t payload_size {};  // value of the "length" field
+
+struct meta_event {
+	std::vector<unsigned char> data;
+	std::uint8_t type_byte;
+	std::int32_t length;  // value of the "length" field
+	std::uint32_t expect_size;  // == 2 + size-of-vlq-length-field + length
 };
-// arg 1: force type-byte (>= 128 => random)
+// arg 1: type-byte (< 0 => random, otherwise static_cast<>()'d to uint8_t)
 // arg 2: force payload length; -1=>random
-meta_events_t random_meta_event(uint8_t=128u,int=-1);
+meta_event random_meta_event(int, int=-1);
 
 struct sysex_events_t {
 	std::vector<unsigned char> data {};
@@ -113,7 +131,7 @@ void print_meta_tests(const std::vector<meta_test_t>&);
 int make_example_midifile_081019();
 
 
-};  // namespace testdata
-
+}  // namespace rand
+}  // namespace jmid
 
 

@@ -9,12 +9,6 @@
 #include <utility>  // std::move()
 
 
-jmid::mtrk_event_t::mtrk_event_t() noexcept {
-	//this->default_init(0);
-}
-jmid::mtrk_event_t::mtrk_event_t(std::int32_t dt) noexcept {
-	//this->default_init(dt);
-}
 jmid::mtrk_event_t::mtrk_event_t(jmid::delta_time dt, 
 								jmid::ch_event md) noexcept {
 	auto s = (md.status_nybble()|md.ch());
@@ -108,6 +102,9 @@ jmid::mtrk_event_t::size_type jmid::mtrk_event_t::capacity() const noexcept {
 jmid::mtrk_event_t::size_type jmid::mtrk_event_t::reserve(jmid::mtrk_event_t::size_type new_cap) {
 	new_cap = std::clamp(new_cap,0,jmid::mtrk_event_t::size_max);
 	return this->d_.reserve(new_cap);
+}
+bool jmid::mtrk_event_t::is_empty() const {
+	return this->d_.size()==0;
 }
 const unsigned char *jmid::mtrk_event_t::data() noexcept {
 	return this->d_.begin();
@@ -330,16 +327,6 @@ bool jmid::mtrk_event_t::operator==(const jmid::mtrk_event_t& rhs) const noexcep
 }
 bool jmid::mtrk_event_t::operator!=(const jmid::mtrk_event_t& rhs) const noexcept {
 	return !(*this==rhs);
-}
-
-void jmid::mtrk_event_t::default_init(std::int32_t dt) noexcept {
-	//this->d_ = mtrk_event_t_internal::small_bytevec_t();
-	//auto it = this->d_.resize_small2small_nocopy(jmid::delta_time_field_size(dt)+3);
-	auto it = this->d_.resize_nocopy(jmid::delta_time_field_size(dt)+3);
-	it = jmid::write_delta_time(dt,it);
-	*it++ = 0x90u;  // Note-on, channel "1"
-	*it++ = 0x3Cu;  // 0x3C==60=="Middle C" (C4, 261.63Hz)
-	*it++ = 0x3Fu;  // 0x3F==63, ~= 127/2
 }
 
 const unsigned char *jmid::mtrk_event_t::raw_begin() const {

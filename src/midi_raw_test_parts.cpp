@@ -18,109 +18,36 @@
 #include <iostream>
 #include <cmath>  // std::log for delta-time generation
 
-namespace testdata {
+namespace jmid {
+namespace rand {
 
 
-vlq_testcase_t make_vlq_testcase() {
+jmid::rand::vlq_testcase jmid::rand::make_random_vlq() {
 	std::random_device rdev;
 	std::mt19937 re(rdev());
 	std::uniform_int_distribution rd(0x00u,0xFFu);
+	//std::geometric_distribution rdgeo(0.5);
 
-	vlq_testcase_t tc;
-
-	auto it = tc.input_encoded.begin();
-	while (it!=tc.input_encoded.end()) {
+	jmid::rand::vlq_testcase tc;
+	tc.encoded_value = 0;
+	auto it=tc.field.begin();
+	while (it<(tc.field.end()-1)) {
+		tc.encoded_value <<= 7;
 		*it = rd(re);
 		*it |= 0x80u;
-		if ((rd(re)/2 < 255/2) || (it==(tc.input_encoded.end()-1))) {
-			*it &= 0x7Fu;
-			break;  // Another digit w/ ~50% probability
-		}
+		tc.encoded_value += ((*it)&0x7Fu);
 		++it;
+		if (rd(re)%2 == 0) {
+			break;  // Terminate w/ ~50% probability
+		}
 	}
-	tc.input_field_size = (it - tc.input_encoded.begin());
-	auto vlq = read_vlq_max64(tc.input_encoded.begin());
-	if (tc.input_field_size != vlq.N) {
-		std::abort();
-	}
-	tc.input_value =  vlq.val;
-	tc.ans_value = ((vlq.val)&0x0FFFFFFFu);
-	jmid::write_delta_time(tc.ans_value,tc.normalized_encoded.begin());
-	if (read_vlq_max64(tc.normalized_encoded.begin()).val != tc.ans_value) {
-		std::abort();
-	}
-
+	*(it-1) &= 0x7Fu;
+	tc.field_size = static_cast<std::int8_t>(it - tc.field.begin());
 	return tc;
-};
+}
 
 
-
-
-// Assorted dt fields; can be prepended to the meta, sysex, and midi events
-// below.  
-// dt_fields_t ~ {data,value,field_size}
-// Note that most of these are absurdly large; they are meant to exercise the
-// field-length determination code, not nec. be representative of real-world
-// event delta-times.  
-std::vector<dt_fields_t> delta_time {
-	// From p131 of the MIDI std
-	{{0x00},0x00000000,1},
-	{{0x40},0x00000040,1},
-	{{0x7F},0x0000007F,1},
-	{{0xC0,0x00},0x00002000,2},
-	{{0x81,0x00},0x00000080,2},
-	{{0xFF,0x7F},0x00003FFF,2},
-	{{0x81,0x80,0x00},0x00004000,3},
-	{{0xC0,0x80,0x00},0x00100000,3},
-	{{0xFF,0xFF,0x7F},0x001FFFFF,3},
-	{{0x81,0x80,0x80,0x00},0x00200000,4},
-	{{0xC0,0x80,0x80,0x00},0x08000000,4},
-	{{0xFF,0xFF,0xFF,0x7F},0x0FFFFFFF,4},
-	
-	// Other assorted examples
-	{{0x64u},100,1},
-	{{0x81u,0x48u},200,2}
-};
-
-//
-// Example events
-// Each entry is devoid of a leading delta-time and must be appended to a
-// delta-time to make a valid event.  
-//
-
-// meta events
-std::vector<meta_events_t> meta_events {
-	// text events ---------------------------------------------------
-	// "creator: "
-	{{0xFFu,0x01u,0x09u,
-		0x63u,0x72u,0x65u,0x61u,0x74u,0x6Fu,0x72u,0x3Au,0x20u},12,9},
-	// "Harpsichord High"
-	{{0xFF,0x01,0x10,
-		0x48,0x61,0x72,0x70,0x73,0x69,0x63,0x68,0x6F,0x72,0x64,0x20,
-		0x48,0x69,0x67,0x68},19,16},
-	// 128 chars, which forces the length field to occupy 2 bytes:  
-	// 128 == 0x80 => 0x81,0x00
-	{{0xFF,0x01,0x81,0x00,
-		0x6D,0x6F,0x75,0x6E,0x74,0x20,0x6F,0x66,0x20,0x74,0x65,0x78,
-		0x74,0x20,0x64,0x65,0x73,0x63,0x72,0x69,0x62,0x69,0x6E,0x67,
-		0x74,0x20,0x69,0x73,0x20,0x61,0x20,0x67,0x6F,0x6F,0x64,0x20,
-		0x20,0x61,0x6E,0x79,0x74,0x68,0x69,0x6E,0x67,0x2E,0x20,0x49,
-		0x61,0x20,0x74,0x65,0x78,0x74,0x20,0x65,0x76,0x65,0x6E,0x74,
-		0x69,0x64,0x65,0x61,0x20,0x74,0x6F,0x20,0x70,0x75,0x74,0x20,
-		0x20,0x6F,0x66,0x20,0x61,0x20,0x74,0x72,0x61,0x63,0x6B,0x2C,
-		0x20,0x72,0x69,0x67,0x68,0x74,0x20,0x61,0x74,0x20,0x74,0x68,
-		0x65,0x0D,0x0A,0x62,0x65,0x67,0x69,0x6E,0x6E,0x69,0x6E,0x67,
-		0x20,0x77,0x69,0x74,0x68,0x20,0x74,0x68,0x65,0x20,0x6E,0x61,
-		0x6D,0x65,0x20,0x6F,0x66,0x20,0x74,0x77},132,128},
-
-		// time signature -----------------------------------------------------
-		{{0xFFu,0x58u,0x04u,0x04u,0x02u,0x12u,0x08u},7,4},
-
-		// end of track -------------------------------------------------------
-		{{0xFFu,0x2Fu,0x00u},3,0},
-};
-
-meta_events_t random_meta_event(uint8_t type_byte, int len) {
+jmid::rand::meta_event jmid::rand::random_meta_event(int type_byte, int len) {
 	std::random_device rdev;
 	std::mt19937 re(rdev());
 	std::uniform_int_distribution<int> rd127(0,127);
@@ -129,13 +56,13 @@ meta_events_t random_meta_event(uint8_t type_byte, int len) {
 
 	// All meta-events begin with FF, then have an event type 
 	// byte which is always less than 128 (midi std p. 136)
-	meta_events_t result {};
+	jmid::rand::meta_event result;
 	result.data.push_back(0xFFu);
 	
-	if (type_byte >= 128) {
-		type_byte = static_cast<uint8_t>(rd127(re));
+	if (type_byte < 0) {
+		type_byte = rd127(re);
 	}
-	result.data.push_back(type_byte);
+	result.data.push_back(static_cast<std::uint8_t>(type_byte));
 
 	if (type_byte == 0x59 || type_byte == 0x00) {
 		len = 2;
@@ -154,16 +81,13 @@ meta_events_t random_meta_event(uint8_t type_byte, int len) {
 	if (len < 0) {
 		len = rd200(re);
 	}
-	std::array<unsigned char,4> temp_len_field {};
-	auto len_field_end = jmid::write_vlq(static_cast<uint8_t>(len),
-		temp_len_field.begin());
-	std::copy(temp_len_field.begin(),len_field_end,std::back_inserter(result.data));
-	result.payload_size = len;
+	auto len_field_end = jmid::write_vlq(len,std::back_inserter(result.data));
+	auto header_size = result.data.end()-result.data.begin();
+	result.expect_size = static_cast<std::int32_t>(header_size + result.length);
 
 	for (int i=0; i<len; ++i) {
 		result.data.push_back(rduint8t(re));
 	}
-	result.data_length = result.data.size();
 
 	return result;
 }
@@ -267,7 +191,7 @@ std::vector<midi_tests_t> make_random_midi_tests() {
 }
 
 void print_midi_test_cases() {
-	auto yay = testdata::make_random_midi_tests();
+	auto yay = jmid::rand::make_random_midi_tests();
 	std::cout << "// data, rs, applic-sb, is_rs, ndata, data_length, dt_val, dt.N\n";
 	for (const auto& tc : yay) {
 		std::cout << "{{";
@@ -532,8 +456,8 @@ int make_example_midifile_081019() {
 
 
 
-};  // namespace testdata
-
+}  // namespace rand
+}  // namespace jmid
 
 
 
