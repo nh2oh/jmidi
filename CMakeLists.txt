@@ -14,9 +14,25 @@ message("CMAKE_PROJECT_NAME == ${CMAKE_PROJECT_NAME}")
 
 add_library(
 	jmidi
-	src/aux_types.cpp  src/generic_chunk_low_level.cpp  src/generic_iterator.cpp  src/midi_delta_time.cpp  src/midi_raw_test_parts.cpp  src/midi_status_byte.cpp  src/midi_time.cpp  src/midi_vlq.cpp  src/mthd_t.cpp  src/mtrk_event_methods.cpp  src/mtrk_event_t.cpp  src/small_bytevec_t.cpp  src/mtrk_integrators.cpp  src/mtrk_t.cpp  src/print_hexascii.cpp  src/smf_t.cpp  src/util.cpp
-
-	include/aux_types.h  include/generic_chunk_low_level.h  include/generic_iterator.h  include/midi_data.h  include/midi_delta_time.h  include/midi_raw_test_parts.h  include/midi_status_byte.h  include/midi_time.h  include/midi_vlq.h  include/mthd_t.h  include/mtrk_event_methods.h  include/mtrk_event_t.h  include/small_bytevec_t.h  include/mtrk_integrators.h  include/mtrk_t.h  include/print_hexascii.h  include/smf_t.h  include/util.h
+	include/aux_types.h  src/aux_types.cpp
+	include/generic_chunk_low_level.h  src/generic_chunk_low_level.cpp
+	include/generic_iterator.h  src/generic_iterator.cpp
+	include/make_mtrk_event.h  src/make_mtrk_event.cpp
+	include/midi_data.h
+	include/midi_delta_time.h  src/midi_delta_time.cpp
+	include/midi_raw_test_parts.h  src/midi_raw_test_parts.cpp
+	include/midi_status_byte.h  src/midi_status_byte.cpp
+	include/midi_time.h  src/midi_time.cpp
+	include/midi_vlq.h  src/midi_vlq.cpp
+	include/mthd_t.h  src/mthd_t.cpp
+	include/mtrk_event_methods.h  src/mtrk_event_methods.cpp
+	include/mtrk_event_t.h  src/mtrk_event_t.cpp
+	include/mtrk_integrators.h  src/mtrk_integrators.cpp
+	include/mtrk_t.h  src/mtrk_t.cpp
+	include/print_hexascii.h  src/print_hexascii.cpp
+	include/small_bytevec_t.h  src/small_bytevec_t.cpp
+	include/smf_t.h  src/smf_t.cpp
+	include/util.h  src/util.cpp
 )
 target_include_directories(jmidi PUBLIC include)
 target_compile_features(jmidi PUBLIC cxx_std_17)
@@ -25,7 +41,7 @@ target_compile_features(jmidi PUBLIC cxx_std_17)
 
 add_executable(tests
 	tests/delta_time_test_data.cpp  tests/delta_time_test_data.h  
-	tests/make_mtrk_event_tests.cpp  tests/midi_chunk_low_level_tests.cpp  
+	tests/make_mtrk_event3.cpp  tests/midi_chunk_low_level_tests.cpp  
 	tests/midi_dt_tests.cpp  tests/midi_raw_test_data.cpp  tests/midi_raw_test_data.h
 	tests/midi_sb_classification_funcs.cpp  tests/midi_tempo_and_timediv_tests.cpp  
 	tests/midi_testdata_status_bytes.cpp  tests/midi_testdata_status_bytes.h  
@@ -55,8 +71,8 @@ add_executable(event_sizes_benchmark
 	examples/event_sizes_benchmark/event_sizes_benchmark.h
 )
 target_compile_features(event_sizes_benchmark PUBLIC cxx_std_17)
-#find_package(Threads)
-#target_link_libraries(event_sizes_benchmark PUBLIC ${CMAKE_THREAD_LIBS_INIT}) 
+find_package(Threads)
+target_link_libraries(event_sizes_benchmark PUBLIC ${CMAKE_THREAD_LIBS_INIT}) 
 target_link_libraries(event_sizes_benchmark PUBLIC jmidi)
 
 add_executable(vlq_benchmark

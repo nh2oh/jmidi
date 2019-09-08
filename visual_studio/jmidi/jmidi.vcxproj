@@ -37,7 +37,6 @@
     <ClInclude Include="..\..\include\generic_chunk_low_level.h" />
     <ClInclude Include="..\..\include\generic_iterator.h" />
     <ClInclude Include="..\..\include\make_mtrk_event.h" />
-    <ClInclude Include="..\..\include\midi_data.h" />
     <ClInclude Include="..\..\include\midi_delta_time.h" />
     <ClInclude Include="..\..\include\midi_raw_test_parts.h" />
     <ClInclude Include="..\..\include\midi_status_byte.h" />

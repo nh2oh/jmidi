@@ -77,9 +77,6 @@
     <ClInclude Include="..\..\include\generic_chunk_low_level.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\midi_data.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\include\midi_delta_time.h">
       <Filter>Header Files</Filter>
     </ClInclude>

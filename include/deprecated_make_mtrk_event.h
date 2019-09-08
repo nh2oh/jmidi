@@ -1,4 +1,5 @@
 #pragma once
+/*
 #include "mtrk_event_t.h"
 #include "midi_delta_time.h"
 #include "midi_vlq.h"
@@ -203,11 +204,11 @@ InIt make_mtrk_event(InIt it, InIt end, std::int32_t dt,
 			set_error(mtrk_event_error_t::errc::sysex_or_meta_invalid_vlq_length);
 			return it;
 		}
-		/*auto len = inl_read_vlq();
-		if (uc & 0x80u) {
-			set_error(mtrk_event_error_t::errc::sysex_or_meta_invalid_vlq_length);
-			return it;
-		}*/
+		//auto len = inl_read_vlq();
+		//if (uc & 0x80u) {
+		//	set_error(mtrk_event_error_t::errc::sysex_or_meta_invalid_vlq_length);
+		//	return it;
+		//}
 		dest = jmid::write_vlq(static_cast<uint32_t>(lenf.val),dest);
 		max_event_nbytes -= lenf.N;
 		if (lenf.val > max_event_nbytes) {
@@ -409,3 +410,4 @@ mtrk_event_t make_mtrk_event2(InIt it, InIt end, unsigned char rs,
 
 }  // namespace jmid
 
+*/
