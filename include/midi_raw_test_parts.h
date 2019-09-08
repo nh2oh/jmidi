@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <array>
 #include <limits>
+#include <random>
 
 //
 // Q&D functions and raw data for making randomized tests of the midi lib.
@@ -44,8 +45,8 @@ OIt write_vlq_max64(T val, OIt it) {
 		uval = static_cast<uint64_t>(val);
 	}
 
-	auto s = 7*7u;
-	uint64_t mask = (0b01111111u<<(7u*7u));
+	unsigned int s = 49u;
+	uint64_t mask = (std::uint64_t(0b01111111u)<<(49));
 	while (((uval&mask)==0u) && (mask>0u)) {
 		mask>>=7u;
 		s-=7u;
@@ -61,21 +62,59 @@ OIt write_vlq_max64(T val, OIt it) {
 };
 struct vlq_testcase {
 	std::array<unsigned char,8> field {0,0,0,0,0,0,0,0};
-	uint64_t encoded_value {0};  // [0,0x0FFFFFFFu]
-	int8_t field_size {0};
+	std::array<unsigned char,8> canonical_field {0,0,0,0,0,0,0,0};
+	uint64_t encoded_value;
+	int8_t field_size;
+	int8_t canonical_field_size;
+	bool is_canonical;
+		// redundant: is_canonical = (field_size==canonical_field_size)
 };
-vlq_testcase make_random_vlq();
+struct make_random_vlq_opts {
+	int a {5};  // non-canonical
+	int b {2};  // early break
+};
+vlq_testcase make_random_vlq(std::mt19937&,make_random_vlq_opts={});
 
 
-struct meta_event {
-	std::vector<unsigned char> data;
-	std::uint8_t type_byte;
-	std::int32_t length;  // value of the "length" field
-	std::uint32_t expect_size;  // == 2 + size-of-vlq-length-field + length
+struct random_meta_event {
+	std::uint64_t dt_val;
+	std::uint64_t length_val;
+	std::int8_t dt_field_sz;
+	std::int8_t length_field_sz;
+	unsigned char type_byte;
+	bool dt_field_is_canonical;
+	bool length_field_is_canonical;
+	bool is_valid;
 };
-// arg 1: type-byte (< 0 => random, otherwise static_cast<>()'d to uint8_t)
-// arg 2: force payload length; -1=>random
-meta_event random_meta_event(int, int=-1);
+random_meta_event make_random_meta_valid(std::mt19937&, 
+							std::vector<unsigned char>&, int);
+// _Possibly_ invalid due to dt, length, or type byte.  The value of the
+// length field always == the actual payload length.  Caller can truncate
+// or supplement the tail of the output vector if desired.  
+random_meta_event make_random_meta(std::mt19937&, 
+							std::vector<unsigned char>&, int);
+
+
+struct random_ch_event {
+	std::uint64_t dt_val;
+	std::int8_t dt_field_sz;
+	unsigned char s;
+	unsigned char p1;
+	unsigned char p2;
+	bool dt_field_is_canonical;
+	bool is_valid;
+};
+random_ch_event make_random_ch_valid(std::mt19937&, 
+							std::vector<unsigned char>&);
+// _Possibly_ invalid due to dt, length, type byte, or data bytes.  
+random_ch_event make_random_ch(std::mt19937&, 
+							std::vector<unsigned char>&);
+
+
+void make_random_sequence(std::mt19937&, std::vector<unsigned char>&);
+
+
+
 
 struct sysex_events_t {
 	std::vector<unsigned char> data {};
@@ -127,8 +166,6 @@ struct meta_test_t {
 // payload-length pairs
 std::vector<meta_test_t> make_random_meta_tests(int);
 void print_meta_tests(const std::vector<meta_test_t>&);
-
-int make_example_midifile_081019();
 
 
 }  // namespace rand

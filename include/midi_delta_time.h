@@ -7,6 +7,7 @@ namespace jmid {
 
 // True if the input value falls within [0,0x0FFFFFFF] == [0,268,435,455]
 bool is_valid_delta_time(std::int32_t);
+bool is_valid_delta_time(std::uint64_t);
 
 // Clamps the input value to [0,0x0FFFFFFF] == [0,268,435,455]
 std::int32_t to_nearest_valid_delta_time(std::int32_t);

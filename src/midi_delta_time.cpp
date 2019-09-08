@@ -6,6 +6,9 @@
 bool jmid::is_valid_delta_time(std::int32_t dt) {
 	return !((dt>0x0FFFFFFF) || (dt<0));
 }
+bool jmid::is_valid_delta_time(std::uint64_t dt) {
+	return !(dt>0x0FFFFFFF);
+}
 std::int32_t jmid::to_nearest_valid_delta_time(std::int32_t val) {
 	return std::clamp(val,0,0x0FFFFFFF);
 }

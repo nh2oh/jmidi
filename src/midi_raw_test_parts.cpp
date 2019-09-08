@@ -21,75 +21,239 @@
 namespace jmid {
 namespace rand {
 
-
-jmid::rand::vlq_testcase jmid::rand::make_random_vlq() {
-	std::random_device rdev;
-	std::mt19937 re(rdev());
-	std::uniform_int_distribution rd(0x00u,0xFFu);
-	//std::geometric_distribution rdgeo(0.5);
+jmid::rand::vlq_testcase jmid::rand::make_random_vlq(std::mt19937& re, 
+						jmid::rand::make_random_vlq_opts o) {
+	std::uniform_int_distribution<int> rd(0x00u,0x7Fu);
 
 	jmid::rand::vlq_testcase tc;
 	tc.encoded_value = 0;
+	tc.field_size = 0;  tc.canonical_field_size = 0;
+	bool generated_nonzero_b = false;
 	auto it=tc.field.begin();
-	while (it<(tc.field.end()-1)) {
+	auto it_canonical = tc.canonical_field.begin();
+	while (it<tc.field.end()) {
 		tc.encoded_value <<= 7;
-		*it = rd(re);
-		*it |= 0x80u;
-		tc.encoded_value += ((*it)&0x7Fu);
-		++it;
-		if (rd(re)%2 == 0) {
-			break;  // Terminate w/ ~50% probability
+		
+		unsigned char b = static_cast<unsigned char>(rd(re));
+		if (!generated_nonzero_b && rd(re)%o.a==0) {
+			b = 0;  // Causes a non-canonical field to be generated
+		}
+		generated_nonzero_b = (generated_nonzero_b || (b>0));
+		tc.encoded_value += b;
+		++(tc.field_size);
+		*it++ = (b|0x80u);
+		if (generated_nonzero_b) {
+			++(tc.canonical_field_size);
+			*it_canonical++ = (b|0x80u);
+		}
+		if (rd(re)%o.b == 0) {
+			break;  // Terminate early w/ ~50% probability
 		}
 	}
 	*(it-1) &= 0x7Fu;
-	tc.field_size = static_cast<std::int8_t>(it - tc.field.begin());
+
+	if (generated_nonzero_b) {
+		// it_canonical is only incremented if generated_nonzero_b; for a 
+		// pass where the generated_nonzero_b is never flipped, 
+		// it_canonical==tc.canonical_field.begin() and it_canonical-1 is
+		// invalid.  
+		*(it_canonical-1) &= 0x7Fu;
+	} else {
+		// where the generated_nonzero_b is never flipped, 
+		// canonical_field_size==0, but a field of all 0's is still considerd
+		// to have a size == 1.  
+		tc.canonical_field_size = 1;
+	}
+	tc.is_canonical = (tc.canonical_field_size == tc.field_size);
 	return tc;
 }
 
 
-jmid::rand::meta_event jmid::rand::random_meta_event(int type_byte, int len) {
-	std::random_device rdev;
-	std::mt19937 re(rdev());
-	std::uniform_int_distribution<int> rd127(0,127);
-	std::uniform_int_distribution<int> rd200(0,200);
-	std::uniform_int_distribution<int> rduint8t(0,std::numeric_limits<uint8_t>::max());
+jmid::rand::random_meta_event jmid::rand::make_random_meta_valid(std::mt19937& re, 
+							std::vector<unsigned char>& dest, int max_plen) {
+	dest.clear();
+	jmid::rand::random_meta_event result;
+	result.is_valid = true;
+	std::uniform_int_distribution<int> rd_type(0,127);
+	std::uniform_int_distribution<int> rd_payl(0,255);
 
-	// All meta-events begin with FF, then have an event type 
-	// byte which is always less than 128 (midi std p. 136)
-	jmid::rand::meta_event result;
-	result.data.push_back(0xFFu);
+	jmid::rand::vlq_testcase rvlq;
+	do {
+		rvlq = jmid::rand::make_random_vlq(re,{3,3});
+	} while (!jmid::is_valid_delta_time(rvlq.encoded_value) 
+		|| rvlq.field_size > 4);
+	// I check the field size as well as the value b/c i want to be able to
+	// use the non-canonical field.  
+	result.dt_val = rvlq.encoded_value;
+	result.dt_field_sz = rvlq.field_size;
+	result.dt_field_is_canonical = rvlq.is_canonical;
+	for (int i=0; i<rvlq.field_size; ++i) {
+		dest.push_back(rvlq.field[i]);
+	}
+
+	dest.push_back(0xFFu);
+	result.type_byte = static_cast<unsigned char>(rd_type(re));
+	dest.push_back(result.type_byte);
 	
-	if (type_byte < 0) {
-		type_byte = rd127(re);
-	}
-	result.data.push_back(static_cast<std::uint8_t>(type_byte));
-
-	if (type_byte == 0x59 || type_byte == 0x00) {
-		len = 2;
-	} else if (type_byte == 0x58) {
-		len = 4;
-	} else if (type_byte == 0x54) {
-		len = 5;
-	} else if (type_byte == 0x51) {
-		len = 3;
-	} else if (type_byte == 0x2F) {
-		len=0;
-	} else if (type_byte == 0x20) {
-		len=1;
+	do {
+		rvlq = jmid::rand::make_random_vlq(re,{3,3});
+	} while (!jmid::is_valid_vlq(rvlq.encoded_value) 
+		|| rvlq.field_size > 4
+		|| rvlq.encoded_value > max_plen);
+	result.length_val = rvlq.encoded_value;
+	result.length_field_sz = rvlq.field_size;
+	result.length_field_is_canonical = rvlq.is_canonical;
+	for (int i=0; i<rvlq.field_size; ++i) {
+		dest.push_back(rvlq.field[i]);
 	}
 
-	if (len < 0) {
-		len = rd200(re);
-	}
-	auto len_field_end = jmid::write_vlq(len,std::back_inserter(result.data));
-	auto header_size = result.data.end()-result.data.begin();
-	result.expect_size = static_cast<std::int32_t>(header_size + result.length);
-
-	for (int i=0; i<len; ++i) {
-		result.data.push_back(rduint8t(re));
+	for (int i=0; i<rvlq.encoded_value; ++i) {
+		dest.push_back(static_cast<unsigned char>(rd_payl(re)));
 	}
 
 	return result;
+}
+jmid::rand::random_meta_event jmid::rand::make_random_meta(std::mt19937& re, 
+							std::vector<unsigned char>& dest, int max_plen) {
+	dest.clear();
+	jmid::rand::random_meta_event result;
+	result.is_valid = true;
+	std::uniform_int_distribution<int> rd_type(0,255);
+	std::uniform_int_distribution<int> rd_payl(0,255);
+
+	jmid::rand::vlq_testcase rvlq;
+	rvlq = jmid::rand::make_random_vlq(re,{3,3});
+	result.dt_val = rvlq.encoded_value;
+	result.dt_field_sz = rvlq.field_size;
+	result.dt_field_is_canonical = rvlq.is_canonical;
+	for (int i=0; i<rvlq.field_size; ++i) {
+		dest.push_back(rvlq.field[i]);
+	}
+	if (!jmid::is_valid_delta_time(result.dt_val)
+			|| result.dt_field_sz > 4) {
+		result.is_valid = false;
+	}
+
+	dest.push_back(0xFFu);
+	result.type_byte = static_cast<unsigned char>(rd_type(re));
+	dest.push_back(result.type_byte);
+	if (!jmid::is_meta_type_byte(result.type_byte)) {
+		result.is_valid = false;
+	}
+
+	do {
+		rvlq = jmid::rand::make_random_vlq(re,{3,3});
+	} while (rvlq.encoded_value > max_plen);
+	result.length_val = rvlq.encoded_value;
+	result.length_field_sz = rvlq.field_size;
+	result.length_field_is_canonical = rvlq.is_canonical;
+	for (int i=0; i<rvlq.field_size; ++i) {
+		dest.push_back(rvlq.field[i]);
+	}
+	if (!jmid::is_valid_vlq(result.length_val)
+			|| result.length_field_sz > 4) {
+		result.is_valid = false;
+	}
+
+	for (int i=0; i<rvlq.encoded_value; ++i) {
+		dest.push_back(static_cast<unsigned char>(rd_payl(re)));
+	}
+
+	return result;
+}
+
+jmid::rand::random_ch_event jmid::rand::make_random_ch_valid(std::mt19937& re, 
+							std::vector<unsigned char>& dest) {
+	dest.clear();
+	jmid::rand::random_ch_event result;
+	result.is_valid = true;
+	std::uniform_int_distribution<int> rd_data(0,127);
+	std::uniform_int_distribution<int> rd_s(0x80,0xEF);
+
+	jmid::rand::vlq_testcase rvlq;
+	do {
+		rvlq = jmid::rand::make_random_vlq(re,{3,3});
+	} while (!jmid::is_valid_delta_time(rvlq.encoded_value) 
+		|| rvlq.field_size > 4);
+	// I check the field size as well as the value b/c i want to be able to
+	// use the non-canonical field.  
+	result.dt_val = rvlq.encoded_value;
+	result.dt_field_sz = rvlq.field_size;
+	result.dt_field_is_canonical = rvlq.is_canonical;
+	for (int i=0; i<rvlq.field_size; ++i) {
+		dest.push_back(rvlq.field[i]);
+	}
+
+	result.s = static_cast<unsigned char>(rd_s(re));
+	result.p1 = static_cast<unsigned char>(rd_data(re));
+	dest.push_back(result.s);
+	dest.push_back(result.p1);
+	if (jmid::channel_status_byte_n_data_bytes(result.s) == 2) {
+		result.p2 = static_cast<unsigned char>(rd_data(re));
+		dest.push_back(result.p2);
+	}
+
+	return result;
+}
+jmid::rand::random_ch_event jmid::rand::make_random_ch(std::mt19937& re, 
+							std::vector<unsigned char>& dest) {
+	dest.clear();
+	jmid::rand::random_ch_event result;
+	result.is_valid = true;
+	std::uniform_int_distribution<int> rd_data(0,255);
+	std::uniform_int_distribution<int> rd_s(0,0xFF);
+
+	jmid::rand::vlq_testcase rvlq;
+	rvlq = jmid::rand::make_random_vlq(re,{3,3});
+	result.dt_val = rvlq.encoded_value;
+	result.dt_field_sz = rvlq.field_size;
+	result.dt_field_is_canonical = rvlq.is_canonical;
+	for (int i=0; i<rvlq.field_size; ++i) {
+		dest.push_back(rvlq.field[i]);
+	}
+	if (!jmid::is_valid_delta_time(result.dt_val)
+			|| result.dt_field_sz > 4) {
+		result.is_valid = false;
+	}
+
+	result.s = static_cast<unsigned char>(rd_s(re));
+	result.p1 = static_cast<unsigned char>(rd_data(re));
+	if (!jmid::is_channel_status_byte(result.s) 
+			|| !jmid::is_data_byte(result.p1)) {
+		result.is_valid = false;
+	}
+	dest.push_back(result.s);
+	dest.push_back(result.p1);
+	if (jmid::channel_status_byte_n_data_bytes(result.s) == 2) {
+		result.p2 = static_cast<unsigned char>(rd_data(re));
+		if (!jmid::is_data_byte(result.p2)) {
+			result.is_valid = false;
+		}
+		dest.push_back(result.p2);
+	}
+
+	return result;
+}
+
+
+void make_random_sequence(std::mt19937& re, std::vector<unsigned char>& dest) {
+	dest.clear();
+
+	std::uniform_int_distribution<int> rd_meta_or_ch(0,100);
+	std::vector<unsigned char> curr_event;
+	int n_events = 0;
+	bool seq_is_valid = true;
+	while (seq_is_valid && n_events < 40) {
+		if (rd_meta_or_ch(re) > 90) {
+			auto curr_meta = jmid::rand::make_random_meta_valid(re,curr_event,127);
+			seq_is_valid = curr_meta.is_valid;
+		} else {
+			auto curr_ch = jmid::rand::make_random_ch_valid(re,curr_event);
+			seq_is_valid = curr_ch.is_valid;
+		}
+		std::copy(curr_event.begin(),curr_event.end(),std::back_inserter(dest));
+		++n_events;
+	}
 }
 
 // Sysex_f0/f7 events
@@ -440,20 +604,6 @@ void print_meta_tests(const std::vector<meta_test_t>& tests) {
 	}
 	std::cout << std::endl;
 }
-
-
-
-int make_example_midifile_081019() {
-	auto mf = jmid::smf_t();
-
-
-
-
-
-	return 0;
-}
-
-
 
 
 }  // namespace rand

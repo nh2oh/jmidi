@@ -11,6 +11,17 @@ namespace jmid {
 bool is_valid_vlq(std::int32_t);
 
 template<typename T>
+constexpr bool is_valid_vlq(T val) {
+	if (val > 0x0FFFFFFF) {
+		return false;
+	} else if (val < 0) {
+		return false;
+	} else {
+		return true;
+	}
+}
+
+template<typename T>
 constexpr std::int32_t to_nearest_valid_vlq(T val) {
 	if (val > 0x0FFFFFFF) {
 		return 0x0FFFFFFF;
