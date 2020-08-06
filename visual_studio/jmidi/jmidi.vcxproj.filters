@@ -72,6 +72,9 @@
     <ClCompile Include="..\..\src\deprecated_make_mtrk_event.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\smf_t2.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\generic_chunk_low_level.h">
@@ -129,6 +132,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\include\deprecated_make_mtrk_event.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\smf_t2.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -111,7 +111,7 @@ random_ch_event make_random_ch(std::mt19937&,
 							std::vector<unsigned char>&);
 
 
-void make_random_sequence(std::mt19937&, std::vector<unsigned char>&);
+void make_random_sequence(int, std::mt19937&, std::vector<unsigned char>&);
 
 
 

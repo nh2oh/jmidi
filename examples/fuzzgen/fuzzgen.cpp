@@ -15,20 +15,24 @@ int main() {
 
 	std::vector<unsigned char> seq;
 
-	for (int i=0; i<20; ++i) {
+	for (int i=0; i<10; ++i) {
 		seq.clear();
-		jmid::rand::make_random_sequence(re,seq);
+		jmid::rand::make_random_sequence(100,re,seq);
 		
 		jmid::mtrk_event_error_t curr_err;
 		jmid::mtrk_event_t curr_event;
 		curr_err.code = jmid::mtrk_event_error_t::errc::no_error;
 		for (auto it = seq.begin(); it!=seq.end(); true) {
+			auto it_beg = it;
 			it = jmid::make_mtrk_event3(it,seq.end(),
 				0x00u,&curr_event,&curr_err);
 			if (curr_err.code != jmid::mtrk_event_error_t::errc::no_error) {
 				break;
 			}
-			std::cout << jmid::print(curr_event) << std::endl;
+			std::string s;
+			jmid::print_hexascii(it_beg,it,std::back_inserter(s),'\0',' ');
+			std::cout << s << std::endl;
+			std::cout << jmid::print(curr_event) << std::endl << std::endl;
 		}
 
 		std::cout << "--------------------------------\n";

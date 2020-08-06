@@ -236,24 +236,35 @@ jmid::rand::random_ch_event jmid::rand::make_random_ch(std::mt19937& re,
 }
 
 
-void make_random_sequence(std::mt19937& re, std::vector<unsigned char>& dest) {
+void make_random_sequence(int n_events, std::mt19937& re, 
+							std::vector<unsigned char>& dest) {
 	dest.clear();
-
 	std::uniform_int_distribution<int> rd_meta_or_ch(0,100);
+	std::uniform_int_distribution<int> rd_valid_or_invalid(0,1000);
 	std::vector<unsigned char> curr_event;
-	int n_events = 0;
-	bool seq_is_valid = true;
-	while (seq_is_valid && n_events < 40) {
-		if (rd_meta_or_ch(re) > 90) {
-			auto curr_meta = jmid::rand::make_random_meta_valid(re,curr_event,127);
-			seq_is_valid = curr_meta.is_valid;
+	int n_events_generated = 0;
+	bool curr_event_is_valid = true;
+	while (n_events_generated < n_events) {//(seq_is_valid && n_events < 40) {
+		if (rd_meta_or_ch(re) > 95) {
+			auto curr_meta = jmid::rand::make_random_meta(re,curr_event,127);
+			curr_event_is_valid = curr_meta.is_valid;
 		} else {
-			auto curr_ch = jmid::rand::make_random_ch_valid(re,curr_event);
-			seq_is_valid = curr_ch.is_valid;
+			auto curr_ch = jmid::rand::make_random_ch(re,curr_event);
+			curr_event_is_valid = curr_ch.is_valid;
 		}
+
+		if (!curr_event_is_valid) {
+			if (rd_valid_or_invalid(re) < 999) {
+				continue;
+			} else {
+				int idx_invalid = n_events_generated;
+			}
+		}
+
+		++n_events_generated;
 		std::copy(curr_event.begin(),curr_event.end(),std::back_inserter(dest));
-		++n_events;
 	}
+	return;
 }
 
 // Sysex_f0/f7 events
