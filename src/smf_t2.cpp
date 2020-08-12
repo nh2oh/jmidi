@@ -4,4 +4,10 @@
 
 
 
+jmid::smf_t2::smf_t2() noexcept {
+
+	//...
+}
+
+
 

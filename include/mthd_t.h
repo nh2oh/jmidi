@@ -46,7 +46,7 @@ namespace jmid {
 // set_format(0) on an object with ntrks > 1 results in no change to the 
 // value for format.  If the value for ntrks is set to something > 1 on
 // an object with format==0, the value of format is set to 1.  That is, 
-// calls to set_ntrks() always "succeed" unconditionally, bur format() may
+// calls to set_ntrks() always "succeed" unconditionally, but format() may
 // change out from under you.  
 //
 // mthd_t is a container adapter around small_bytevec_t.  
