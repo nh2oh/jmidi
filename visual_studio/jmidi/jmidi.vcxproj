@@ -29,7 +29,6 @@
     <ClCompile Include="..\..\src\mtrk_t.cpp" />
     <ClCompile Include="..\..\src\print_hexascii.cpp" />
     <ClCompile Include="..\..\src\smf_t.cpp" />
-    <ClCompile Include="..\..\src\smf_t2.cpp" />
     <ClCompile Include="..\..\src\util.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -51,7 +50,6 @@
     <ClInclude Include="..\..\include\mtrk_t.h" />
     <ClInclude Include="..\..\include\print_hexascii.h" />
     <ClInclude Include="..\..\include\smf_t.h" />
-    <ClInclude Include="..\..\include\smf_t2.h" />
     <ClInclude Include="..\..\include\util.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
